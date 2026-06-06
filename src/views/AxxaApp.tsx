@@ -123,10 +123,24 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     abortRef.current?.abort();
   };
 
+  // Lê provider/modelo das settings a cada render — quando o user mudar em
+  // Settings, próximo re-render do AxxaApp já mostra o atualizado.
+  const providerId = plugin.settings.defaultProvider;
+  const providerName = getProvider(providerId).name;
+  const modelName =
+    providerId === "anthropic"
+      ? plugin.settings.anthropicModel
+      : plugin.settings.defaultModel;
+
   return (
     <AppContext.Provider value={plugin.app}>
       <div className="axxa-root">
-        <Header version={plugin.manifest.version} />
+        <Header
+          version={plugin.manifest.version}
+          providerName={providerName}
+          modelName={modelName}
+          streaming={isLoading}
+        />
         <ChatArea />
         <Composer onSend={handleSend} onStop={handleStop} streaming={isLoading} />
       </div>

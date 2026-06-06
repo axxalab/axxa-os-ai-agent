@@ -93,10 +93,12 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ **Bonus:** Markdown render nas respostas da IA (MarkdownRenderer nativo do Obsidian — code blocks, listas, headers, links, callouts, syntax highlight)
 
 ### 1.6 Build de teste
-- ⬜ `npm run build` gera arquivos na pasta `/output`
+- ✅ `npm run build` gera arquivos na pasta `/output` (com minify, 156KB)
 - ⬜ Plugin testado no Obsidian desktop
-- ⬜ Plugin testado no Obsidian mobile
-- ⬜ **🎯 MARCO:** Chat com OpenAI funcionando end-to-end
+- ✅ Plugin testado no Obsidian mobile (Android — dev confirmou via prints v0.1.7+)
+- ✅ **🎯 MARCO:** Chat com OpenAI funcionando end-to-end (streaming + stop + markdown + timestamps + scroll stick)
+
+> **Módulo 1 ✅ Concluído em 06/06/2026** — MVP do chat completo: OpenAI streaming, markdown render, composer CodeMirror, mobile keyboard handling estilo Copilot, scroll sticky-bottom estilo ChatGPT.
 
 ---
 
@@ -130,11 +132,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ⬜ Visível no Status Line
 
 ### 2.5 Status Line
-- ⬜ Indicador de conexão (● verde / ● vermelho)
-- ⬜ Provider + Model ativos
-- ⬜ Modo atual
-- ⬜ Context window usado / total
-- ⬜ Tokens consumidos na sessão
+- ✅ Indicador de conexão (dot accent + pulse durante streaming, faint quando ready)
+- ✅ Provider + Model ativos (lê das settings, atualiza a cada render do AxxaApp)
+- ⬜ Modo atual (precisa do sistema de modos primeiro — Módulo 4.x)
+- ⬜ Context window usado / total (precisa parsear usage das respostas)
+- ⬜ Tokens consumidos na sessão (precisa parsear usage das respostas)
 
 ### 2.6 Build de teste
 - ⬜ Todos os providers testados com chaves reais
