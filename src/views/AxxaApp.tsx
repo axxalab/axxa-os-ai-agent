@@ -1,58 +1,83 @@
 // src/views/AxxaApp.tsx
-// Layout completo do chat — header + área scrollável + composer.
-// Por enquanto sem provider OpenAI (vem no Módulo 1.3).
-// Inclui um seed de mock data pra você ver os 4 tipos de mensagem.
+// Layout completo do chat com integração OpenAI (Módulo 1.3).
+// Fluxo no send:
+//   1. Adiciona bubble do user
+//   2. Adiciona ai-comment "Pensando..." (com ícone animado)
+//   3. Trava o composer (isLoading = true)
+//   4. Chama OpenAI via provider
+//   5. Remove o "Pensando..." e adiciona a resposta da IA
+//   6. Libera o composer
 
-import { useEffect } from "react";
 import type AxxaPlugin from "../main";
 import { Header } from "../components/layout/Header";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { useChatStore } from "../store/chat";
+import { openaiProvider } from "../providers/openai";
+import type { ProviderMessage } from "../providers/base";
 
 interface AxxaAppProps {
   plugin: AxxaPlugin;
 }
 
+const SYSTEM_PROMPT =
+  "Você é o AXXA Agent, um assistente integrado ao Obsidian. " +
+  "Responda em português, de forma clara, direta e útil. " +
+  "Quando fizer sentido, use Markdown.";
+
 export function AxxaApp({ plugin }: AxxaAppProps) {
-  const addMessage = useChatStore((s) => s.addMessage);
-  const messageCount = useChatStore((s) => s.messages.length);
+  const isLoading = useChatStore((s) => s.isLoading);
 
-  // Seed de exemplo na primeira montagem — pra você ver os 4 tipos.
-  // Quando o Módulo 1.3 plugar a OpenAI, removemos esse bloco.
-  useEffect(() => {
-    if (messageCount > 0) return;
-    addMessage({
-      type: "user",
-      content: "oi, me mostra como o chat se comporta com os 4 tipos de mensagem",
-    });
-    addMessage({
-      type: "ai-response",
-      content:
-        "Esse aqui é o tipo padrão da IA — texto sem bubble, alinhado à esquerda, com os footer buttons abaixo (copiar, regenerar, curtir, descurtir). Toda resposta normal vem assim.",
-    });
-    addMessage({
-      type: "ai-comment",
-      content: "Buscando arquivos no vault...",
-    });
-    addMessage({
-      type: "ai-options",
-      prompt: "Qual estilo prefere pra continuar?",
-      options: ["Mais conciso", "Mais detalhado", "Estilo atual"],
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const handleSend = async (text: string) => {
+    const { addMessage, removeMessage, setLoading } = useChatStore.getState();
 
-  const handleSend = (text: string) => {
+    // 1. Adiciona a mensagem do user
     addMessage({ type: "user", content: text });
-    // No Módulo 1.3, aqui é onde a chamada à OpenAI vai disparar.
+
+    // 2. Adiciona o "Pensando..." (vai sumir quando a resposta chegar)
+    const commentId = addMessage({ type: "ai-comment", content: "Pensando..." });
+    setLoading(true);
+
+    try {
+      // Monta o histórico convertendo nossos types pros roles da OpenAI.
+      // Filtra ai-comment e ai-options (não fazem parte da conversa real).
+      const history: ProviderMessage[] = [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...useChatStore.getState().messages
+          .filter((m) => m.type === "user" || m.type === "ai-response")
+          .map((m) => ({
+            role: (m.type === "user" ? "user" : "assistant") as "user" | "assistant",
+            content: (m as { content: string }).content,
+          })),
+      ];
+
+      const response = await openaiProvider.chat(
+        {
+          model: plugin.settings.defaultModel,
+          messages: history,
+        },
+        plugin.settings.openaiApiKey
+      );
+
+      removeMessage(commentId);
+      addMessage({ type: "ai-response", content: response.content });
+    } catch (err) {
+      removeMessage(commentId);
+      const errorMsg = err instanceof Error ? err.message : "Erro desconhecido.";
+      addMessage({
+        type: "ai-response",
+        content: `[Erro] ${errorMsg}`,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="axxa-root">
       <Header version={plugin.manifest.version} />
       <ChatArea />
-      <Composer onSend={handleSend} />
+      <Composer onSend={handleSend} disabled={isLoading} />
     </div>
   );
 }

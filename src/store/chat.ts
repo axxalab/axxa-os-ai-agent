@@ -53,9 +53,12 @@ export type NewMessageInput = DistributiveOmit<ChatMessage, "id" | "timestamp">;
 
 interface ChatState {
   messages: ChatMessage[];
+  isLoading: boolean;
   addMessage: (msg: NewMessageInput) => string;
+  removeMessage: (id: string) => void;
   selectOption: (messageId: string, optionIndex: number) => void;
   clearMessages: () => void;
+  setLoading: (loading: boolean) => void;
 }
 
 function makeId(): string {
@@ -69,6 +72,7 @@ function makeId(): string {
 
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
+  isLoading: false,
   addMessage: (msg) => {
     const id = makeId();
     set((state) => ({
@@ -79,6 +83,10 @@ export const useChatStore = create<ChatState>((set) => ({
     }));
     return id;
   },
+  removeMessage: (id) =>
+    set((state) => ({
+      messages: state.messages.filter((m) => m.id !== id),
+    })),
   selectOption: (messageId, optionIndex) =>
     set((state) => ({
       messages: state.messages.map((m) =>
@@ -87,5 +95,6 @@ export const useChatStore = create<ChatState>((set) => ({
           : m
       ),
     })),
-  clearMessages: () => set({ messages: [] }),
+  clearMessages: () => set({ messages: [], isLoading: false }),
+  setLoading: (loading) => set({ isLoading: loading }),
 }));

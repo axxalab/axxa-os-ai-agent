@@ -72,10 +72,12 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Botão de enviar (com ícone `send` do Lucide via `setIcon`)
 
 ### 1.3 Provider OpenAI
-- ⬜ `providers/openai.ts` — chamada básica à API
-- ⬜ API key configurável nas Settings
-- ⬜ Resposta aparecendo na tela (sem streaming ainda)
-- ⬜ Tratamento de erro (key inválida, sem conexão)
+- ✅ `providers/base.ts` — interface comum (Provider, ProviderMessage, ProviderRequest, ProviderResponse, ProviderError)
+- ✅ `providers/openai.ts` — chamada básica à `/v1/chat/completions` via `requestUrl` (sem CORS issues)
+- ✅ API key configurável nas Settings (campo password + autocomplete off)
+- ✅ Modelo configurável nas Settings (default `gpt-4o`)
+- ✅ Resposta aparecendo na tela (sem streaming ainda — vem no 1.4)
+- ✅ Tratamento de erro: `ProviderError` com códigos (no-key, invalid-key, rate-limit, network, unknown) + mensagens PT-BR
 
 ### 1.4 Streaming
 - ⬜ SSE implementado para OpenAI

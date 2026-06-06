@@ -14,8 +14,9 @@
  * ===================================================== */
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  padding-left: 0;
-  padding-right: 0;
+  /* Nukar TODO padding do Obsidian (top, left, right, bottom) */
+  padding: 0 !important;
+  /* Re-adiciona apenas o bottom calculado (Copilot pattern) */
   padding-bottom: calc(
     var(--safe-area-inset-bottom, 0px) +
     var(--axxa-status-bar-clearance, 0px) +

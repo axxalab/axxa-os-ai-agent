@@ -17,13 +17,18 @@ import { Icon } from "../_shared/Icon";
 
 interface ComposerProps {
   onSend: (text: string) => void;
+  disabled?: boolean;
 }
 
-export function Composer({ onSend }: ComposerProps) {
+export function Composer({ onSend, disabled = false }: ComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const sendRef = useRef(onSend);
   sendRef.current = onSend;
+  // disabledRef permite que o keymap consulte o valor atual sem precisar
+  // recriar o EditorView toda vez que disabled muda
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
 
   // Controla se o campo está vazio — pra alternar ícone do botão da direita
   const [isEmpty, setIsEmpty] = useState(true);
@@ -32,6 +37,8 @@ export function Composer({ onSend }: ComposerProps) {
     if (!editorRef.current) return;
 
     function sendCurrent(view: EditorView): boolean {
+      // Se tá esperando resposta da IA, não envia outra mensagem
+      if (disabledRef.current) return false;
       const text = view.state.doc.toString().trim();
       if (!text) return false;
       sendRef.current(text);
@@ -103,6 +110,7 @@ export function Composer({ onSend }: ComposerProps) {
   }, []);
 
   const handleSendClick = () => {
+    if (disabled) return;
     const view = viewRef.current;
     if (!view) return;
     const text = view.state.doc.toString().trim();
@@ -115,6 +123,7 @@ export function Composer({ onSend }: ComposerProps) {
   };
 
   const handleMicClick = () => {
+    if (disabled) return;
     // Stub — áudio será implementado num módulo próprio
     console.log("[axxa] mic click — gravação de áudio em breve");
   };
@@ -137,6 +146,7 @@ export function Composer({ onSend }: ComposerProps) {
         type="button"
         className="axxa-composer-send"
         onClick={isEmpty ? handleMicClick : handleSendClick}
+        disabled={disabled}
         aria-label={isEmpty ? "Gravar áudio" : "Enviar mensagem"}
         title={isEmpty ? "Gravar áudio (em breve)" : "Enviar"}
       >
