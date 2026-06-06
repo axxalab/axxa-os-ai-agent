@@ -7,49 +7,47 @@
  */
 
 /* =====================================================
- * View-content padding — sistema Copilot PRESERVADO
- * O calc continua de pé com todas as vars referenciadas
- * (--safe-area-inset-bottom, --axxa-status-bar-clearance,
- * --navbar-height, --size-4-*). O multiplicador `0 *` na
- * frente força o resultado a 0 enquanto a gente decide o
- * comportamento final — pra ativar, basta trocar `0 *` por
- * `1 *` (ou remover o multiplicador).
+ * View-content padding — versão MANUAL TESTADA pelo dev,
+ * funcionando 100%. NÃO alterar sem confirmação.
+ * Usa --copilot-status-bar-clearance (var setada pelo
+ * plugin Copilot quando instalado; fallback 0px senão).
  * ===================================================== */
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  padding-top: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  padding-bottom: calc(0 * (
-    var(--safe-area-inset-bottom, 0px) +
-    var(--axxa-status-bar-clearance, 0px) +
-    var(--size-4-1)
-  )) !important;
+    padding-left: 0;
+    padding-right: 0;
+
+    padding-bottom: calc(
+        var(--safe-area-inset-bottom, 0px) +
+        var(--copilot-status-bar-clearance, 0px) +
+        var(--size-4-1)
+    ) !important;
 }
 
-/* Mobile dentro de tab-container */
 body.is-mobile
 .workspace-tab-container
 .workspace-leaf-content[data-type="axxa-os-ai-agent"]
 .view-content {
-  padding-bottom: calc(0 * var(--size-4-1)) !important;
+
+    padding-bottom: var(--size-4-1) !important;
 }
 
-/* Mobile navbar visível */
 @supports selector(body:has(*)) {
-  body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
-  .workspace-tab-container
-  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  .view-content {
-    padding-bottom: calc(0 * (
-      var(--navbar-height, 50px) +
-      max(
-        var(--safe-area-inset-bottom, 0px),
-        var(--size-4-3)
-      ) +
-      var(--size-4-1)
-    )) !important;
-  }
+
+    body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
+    .workspace-tab-container
+    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+    .view-content {
+
+        padding-bottom: calc(
+            var(--navbar-height, 50px) +
+            max(
+                var(--safe-area-inset-bottom, 0px),
+                var(--size-4-3)
+            ) +
+            var(--size-4-1)
+        ) !important;
+    }
 }
 
 /* Drawer + teclado aberto → esconde header/tab options do drawer */
