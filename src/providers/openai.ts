@@ -32,7 +32,8 @@ export class OpenAIProvider implements Provider {
         body: JSON.stringify({
           model: req.model,
           messages: req.messages,
-          max_tokens: req.maxTokens ?? 2000,
+          // gpt-4o e modelos mais novos exigem max_completion_tokens (max_tokens deprecado)
+          max_completion_tokens: req.maxTokens ?? 2000,
         }),
         throw: false,
       });
