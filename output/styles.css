@@ -7,23 +7,52 @@
  */
 
 /* =====================================================
- * View-content: padding ZERO em todas as condições.
- * Decisão do dev: chat ocupa 100% da área disponível,
- * sem safe-area / sem navbar compensation.
- *
- * A lógica de captação do teclado (MutationObserver no
- * AxxaView + measurement de --axxa-status-bar-clearance)
- * CONTINUA ATIVA — é usada pelo bloco abaixo pra esconder
- * elementos do drawer durante a digitação.
+ * View-content padding — sistema Copilot PRESERVADO
+ * O calc continua de pé com todas as vars referenciadas
+ * (--safe-area-inset-bottom, --axxa-status-bar-clearance,
+ * --navbar-height, --size-4-*). O multiplicador `0 *` na
+ * frente força o resultado a 0 enquanto a gente decide o
+ * comportamento final — pra ativar, basta trocar `0 *` por
+ * `1 *` (ou remover o multiplicador).
  * ===================================================== */
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  padding: 0 !important;
+  padding-top: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-bottom: calc(0 * (
+    var(--safe-area-inset-bottom, 0px) +
+    var(--axxa-status-bar-clearance, 0px) +
+    var(--size-4-1)
+  )) !important;
 }
 
-/* Drawer + teclado aberto → esconde header e tab options do drawer
- * pra dar mais espaço pro chat durante a digitação.
- * A classe .axxa-keyboard-open é toggleada via JS (AxxaView). */
+/* Mobile dentro de tab-container */
+body.is-mobile
+.workspace-tab-container
+.workspace-leaf-content[data-type="axxa-os-ai-agent"]
+.view-content {
+  padding-bottom: calc(0 * var(--size-4-1)) !important;
+}
+
+/* Mobile navbar visível */
+@supports selector(body:has(*)) {
+  body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
+  .workspace-tab-container
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+    padding-bottom: calc(0 * (
+      var(--navbar-height, 50px) +
+      max(
+        var(--safe-area-inset-bottom, 0px),
+        var(--size-4-3)
+      ) +
+      var(--size-4-1)
+    )) !important;
+  }
+}
+
+/* Drawer + teclado aberto → esconde header/tab options do drawer */
 body.is-mobile
 .workspace-drawer.axxa-keyboard-open
 .workspace-drawer-header,
