@@ -76,6 +76,16 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
         >
           <Icon name="thumbs-down" />
         </button>
+        <button
+          type="button"
+          className="axxa-footer-btn"
+          aria-label="Mais opções"
+          title="Mais opções (em breve)"
+          disabled
+        >
+          <Icon name="more-horizontal" />
+        </button>
+        <span className="axxa-pro-pill" aria-label="Upgrade para PRO">PRO</span>
       </div>
     </div>
   );

@@ -5,7 +5,18 @@
  */
 
 /* =====================================================
+ * Zera padding do view-content do Obsidian pra nossa view
+ * (faz o chat ocupar o sidebar inteiro, sem bordas claras)
+ * ===================================================== */
+
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+  padding: 0;
+}
+
+/* =====================================================
  * Layout raiz da view
+ * overflow: hidden evita que o parent rolasse quando o
+ * teclado virtual abre (composer subindo demais no mobile)
  * ===================================================== */
 
 .axxa-root {
@@ -13,6 +24,7 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
   background: var(--background-primary);
   color: var(--text-normal);
   font-family: var(--font-interface);
@@ -50,18 +62,19 @@
 
 /* =====================================================
  * Chat area (lista de mensagens, scrollável)
+ * Padding lateral menor pra ocupar mais o sidebar
  * ===================================================== */
 
 .axxa-chat-area {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px;
+  padding: 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  -webkit-overflow-scrolling: touch; /* scroll suave no iOS */
+  -webkit-overflow-scrolling: touch;
 }
 
 .axxa-chat-empty {
@@ -97,7 +110,7 @@
 }
 
 /* =====================================================
- * Bubbles (user + ai-comment)
+ * User bubble (direita)
  * ===================================================== */
 
 .axxa-bubble {
@@ -107,23 +120,29 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
   line-height: 1.5;
-  font-size: var(--font-ui-medium);
 }
 
 .axxa-bubble-user {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
-  border-bottom-right-radius: 6px; /* "tail" sutil */
+  border-bottom-right-radius: 6px;
+  font-size: var(--font-ui-medium);
 }
+
+/* =====================================================
+ * AI Comment — sem moldura, texto menor, ícone animado
+ * ===================================================== */
 
 .axxa-bubble-ai {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: var(--background-modifier-hover);
-  color: var(--text-muted);
-  border-bottom-left-radius: 6px;
-  font-size: var(--font-ui-small);
+  gap: 6px;
+  padding: 2px 0;
+  background: transparent;
+  border-radius: 0;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
 }
 
 .axxa-bubble-icon {
@@ -131,8 +150,23 @@
   color: var(--text-accent);
 }
 
+@keyframes axxa-icon-pulse {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.axxa-bubble-ai .axxa-bubble-icon {
+  animation: axxa-icon-pulse 1.4s ease-in-out infinite;
+}
+
 /* =====================================================
- * AI Response (texto puro, sem bubble) + footer
+ * AI Response (texto puro, sem bubble) + footer bare
  * ===================================================== */
 
 .axxa-response-text {
@@ -147,32 +181,31 @@
 .axxa-response-footer {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   margin-top: 8px;
 }
 
+/* Botões bare — só ícone, sem fundo/borda */
 .axxa-footer-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
+  padding: 6px;
+  margin: 0;
   border: none;
   border-radius: 6px;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: color 0.15s;
 }
 
 .axxa-footer-btn:not(:disabled):active {
-  background: var(--background-modifier-active-hover);
+  color: var(--text-normal);
 }
 
 @media (hover: hover) {
   .axxa-footer-btn:not(:disabled):hover {
-    background: var(--background-modifier-hover);
     color: var(--text-normal);
   }
 }
@@ -180,6 +213,26 @@
 .axxa-footer-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* =====================================================
+ * PRO pill — placeholder agressivo pra upgrade
+ * ===================================================== */
+
+.axxa-pro-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff5c1c 0%, #ff9d00 100%);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  box-shadow: 0 1px 6px rgba(255, 92, 28, 0.35);
+  user-select: none;
 }
 
 /* =====================================================
@@ -196,7 +249,7 @@
 }
 
 .axxa-option-btn {
-  min-height: 44px; /* touch target mínimo */
+  min-height: 44px;
   padding: 10px 14px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
@@ -232,6 +285,8 @@
 
 /* =====================================================
  * Composer
+ * padding-bottom respeita safe-area do iOS e dá um
+ * "default" de respiro de ~8mm na base
  * ===================================================== */
 
 .axxa-composer {
@@ -239,7 +294,8 @@
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 12px 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
   border-top: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
 }
@@ -295,4 +351,14 @@
 .axxa-icon .svg-icon {
   width: 18px;
   height: 18px;
+}
+
+.axxa-footer-btn .axxa-icon .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.axxa-bubble-ai .axxa-icon .svg-icon {
+  width: 14px;
+  height: 14px;
 }
