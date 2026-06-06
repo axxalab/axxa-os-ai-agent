@@ -1,7 +1,7 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento  
+> **Status:** 🟡 Em andamento — Módulo 0 ✅ · próximo: Módulo 1  
 > **Versão:** 1.0  
 > **Última revisão:** 05/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
@@ -23,8 +23,9 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 
 ---
 
-## MÓDULO 0 — Setup e Infraestrutura
+## MÓDULO 0 — Setup e Infraestrutura ✅
 > Pré-requisito para tudo. Não avance sem este módulo completo.
+> **Concluído em 05/06/2026** — plugin rodando no Obsidian com Hello World.
 
 ### 0.1 Ambiente de desenvolvimento
 - ✅ Claude Pro assinado
@@ -51,8 +52,8 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ `npm install` executado sem erros (28 packages, 11s)
 - ✅ `npm run build` testado — gera `/output/main.js` (1MB), `manifest.json` (0.34KB), `styles.css` (0.8KB)
 - 🟡 `npm run dev` (watch mode) — config pronta, testar localmente
-- ⬜ Plugin aparecendo na lista do Obsidian (depende do `npm run deploy:output` + ativação no Vault)
-- ⬜ **🎯 MARCO:** Plugin ativável no Obsidian — sidebar direita abre
+- ✅ Plugin aparecendo na lista do Obsidian
+- ✅ **🎯 MARCO:** Plugin ativável no Obsidian — sidebar direita abre (confirmado pelo dev em 05/06/2026)
 
 ---
 
