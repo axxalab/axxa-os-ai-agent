@@ -1,0 +1,11 @@
+{
+  "id": "axxa-os-ai-agent",
+  "name": "AXXA OS — AI Agent",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "AI Agent nativo para seu Vault. Chat, Q&A, Agent e Coder com múltiplos providers.",
+  "author": "Axxa Lab",
+  "authorUrl": "https://axxa.lab",
+  "fundingUrl": "https://axxa.lab/support",
+  "isDesktopOnly": false
+}
