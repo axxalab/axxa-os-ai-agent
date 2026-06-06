@@ -230,7 +230,6 @@ model: claude-opus-4-6
 effort: high
 projects:
   - "[[AXXA OS]]"
-  - "[[Clipei Project]]"
 tags:
   - axxa-chat
   - agent
@@ -625,5 +624,5 @@ axxa-os-ai-agent/
 
 ---
 
-*Documento gerado para vibe coding com Claude — AXXA Lab × Clipei Project*
+*Documento gerado para vibe coding com Claude — AXXA Lab*
 *Próximo passo: Setup do repositório + scaffold do plugin*
