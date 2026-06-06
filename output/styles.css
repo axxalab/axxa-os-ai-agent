@@ -1,38 +1,298 @@
 /*
  * AXXA OS — AI Agent · estilos do plugin
  * Regra: SEMPRE usar CSS variables do Obsidian.
- * Assim o plugin herda o tema do usuário (dark/light/Minimal/etc).
+ * Mobile first: touch targets 44px, sem hover-only.
  */
+
+/* =====================================================
+ * Layout raiz da view
+ * ===================================================== */
 
 .axxa-root {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 16px;
-  color: var(--text-normal);
+  min-height: 0;
   background: var(--background-primary);
+  color: var(--text-normal);
   font-family: var(--font-interface);
   font-size: var(--font-ui-medium);
 }
 
-.axxa-root h2 {
-  margin: 0 0 8px 0;
-  color: var(--text-accent);
-  font-size: var(--font-ui-large);
+/* =====================================================
+ * Header
+ * ===================================================== */
+
+.axxa-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.axxa-header-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.axxa-header-name {
   font-weight: 600;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
 }
 
-.axxa-root p {
-  margin: 4px 0;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.axxa-root .axxa-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--background-modifier-hover);
+.axxa-header-version {
   font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+
+/* =====================================================
+ * Chat area (lista de mensagens, scrollável)
+ * ===================================================== */
+
+.axxa-chat-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  -webkit-overflow-scrolling: touch; /* scroll suave no iOS */
+}
+
+.axxa-chat-empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.axxa-empty-hint {
+  color: var(--text-faint);
+  font-size: var(--font-ui-small);
+  text-align: center;
+  margin: 0;
+}
+
+/* =====================================================
+ * Mensagens — wrappers de posicionamento
+ * ===================================================== */
+
+.axxa-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.axxa-msg-user {
+  align-items: flex-end;
+}
+
+.axxa-msg-ai-response,
+.axxa-msg-ai-comment,
+.axxa-msg-ai-options {
+  align-items: flex-start;
+}
+
+/* =====================================================
+ * Bubbles (user + ai-comment)
+ * ===================================================== */
+
+.axxa-bubble {
+  padding: 10px 14px;
+  border-radius: 16px;
+  max-width: 85%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+  font-size: var(--font-ui-medium);
+}
+
+.axxa-bubble-user {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-bottom-right-radius: 6px; /* "tail" sutil */
+}
+
+.axxa-bubble-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  border-bottom-left-radius: 6px;
+  font-size: var(--font-ui-small);
+}
+
+.axxa-bubble-icon {
+  flex: 0 0 auto;
   color: var(--text-accent);
+}
+
+/* =====================================================
+ * AI Response (texto puro, sem bubble) + footer
+ * ===================================================== */
+
+.axxa-response-text {
+  color: var(--text-normal);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-width: 100%;
+  font-size: var(--font-ui-medium);
+}
+
+.axxa-response-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.axxa-footer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.axxa-footer-btn:not(:disabled):active {
+  background: var(--background-modifier-active-hover);
+}
+
+@media (hover: hover) {
+  .axxa-footer-btn:not(:disabled):hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+}
+
+.axxa-footer-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =====================================================
+ * AI Options (botões de seleção)
+ * ===================================================== */
+
+.axxa-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.axxa-option-btn {
+  min-height: 44px; /* touch target mínimo */
+  padding: 10px 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.axxa-option-btn:not(:disabled):active {
+  background: var(--background-modifier-active-hover);
+}
+
+@media (hover: hover) {
+  .axxa-option-btn:not(:disabled):hover {
+    border-color: var(--interactive-accent);
+    background: var(--background-modifier-hover);
+  }
+}
+
+.axxa-option-selected {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+  color: var(--text-accent);
+}
+
+.axxa-option-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =====================================================
+ * Composer
+ * ===================================================== */
+
+.axxa-composer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+}
+
+.axxa-composer-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.axxa-composer-editor:focus-within {
+  border-color: var(--interactive-accent);
+}
+
+.axxa-composer-send {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.axxa-composer-send:active {
+  background: var(--interactive-accent-hover);
+}
+
+@media (hover: hover) {
+  .axxa-composer-send:hover {
+    background: var(--interactive-accent-hover);
+  }
+}
+
+/* =====================================================
+ * Icon helper
+ * ===================================================== */
+
+.axxa-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.axxa-icon .svg-icon {
+  width: 18px;
+  height: 18px;
 }

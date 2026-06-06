@@ -61,15 +61,15 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 > Objetivo: Mandar uma mensagem e receber resposta. Nada mais.
 
 ### 1.1 View e estrutura React
-- ⬜ `AxxaView.ts` — ItemView registrado no Obsidian (sidebar direita)
-- ⬜ `AxxaApp.tsx` — React root montado dentro da view
-- ⬜ Layout base: header + chat area + composer
-- ⬜ Funciona no mobile (drawer lateral)
+- ✅ `AxxaView.tsx` — ItemView registrado no Obsidian (sidebar direita) — feito no Módulo 0
+- ✅ `AxxaApp.tsx` — React root montado dentro da view
+- ✅ Layout base: header + chat area + composer
+- 🟡 Funciona no mobile (drawer lateral) — CSS mobile-first pronto, testar localmente
 
 ### 1.2 Composer básico
-- ⬜ Campo de texto funcional
-- ⬜ Enter envia, Shift+Enter quebra linha
-- ⬜ Botão de enviar
+- ✅ Campo de texto funcional (CodeMirror nativo Obsidian — `@codemirror/view` + `@codemirror/state`)
+- ✅ Enter envia (desktop), Shift+Enter quebra linha — no mobile, Enter sempre quebra linha
+- ✅ Botão de enviar (com ícone `send` do Lucide via `setIcon`)
 
 ### 1.3 Provider OpenAI
 - ⬜ `providers/openai.ts` — chamada básica à API
@@ -355,6 +355,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 05/06/2026 | `.axxa.local.json` (gitignored) | Guarda vault path local sem vazar no repo |
 | 05/06/2026 | `tsconfig.json` com `jsx: "react-jsx"` | Novo JSX transform do React 18 — sem precisar importar React em todo `.tsx` |
 | 05/06/2026 | TODO: minify production build | `main.js` em 1MB — adicionar `minify: prod` no esbuild reduz pra ~200KB |
+| 05/06/2026 | ✅ `minify: prod` adicionado | Bundle: 1025 KB → 142 KB (Hello World) → 151 KB (chat completo) |
+| 05/06/2026 | 4 tipos de mensagem no chat | `user` (bubble dir), `ai-response` (texto + footer), `ai-comment` (bubble esq), `ai-options` (botões) — definido pelo dev |
+| 05/06/2026 | Composer com CodeMirror nativo | Em vez de `<textarea>` — herda tema/atalhos/markdown do Obsidian. Externals já configurados no esbuild |
+| 05/06/2026 | Vulnerabilidade esbuild (audit) | Afeta só modo `serve` HTTP — não usamos. Adiada pra v1.0 (upgrade pra esbuild 0.28 é breaking) |
+| 05/06/2026 | `setIcon` do Obsidian (Lucide) | Wrapper React `<Icon name="..." />` — mantém ícones consistentes com o resto do app |
 
 ---
 

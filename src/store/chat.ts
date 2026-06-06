@@ -1,0 +1,91 @@
+// src/store/chat.ts
+// Store Zustand do chat — fonte única de verdade pras mensagens.
+// Analogia: pensa nele como o "Layers panel" no Figma — uma lista ordenada de
+// elementos (mensagens), cada um com seu tipo. Componentes leem essa lista e
+// renderizam o variant correto pra cada item.
+
+import { create } from "zustand";
+
+export type MessageType = "user" | "ai-response" | "ai-comment" | "ai-options";
+
+interface BaseMessage {
+  id: string;
+  type: MessageType;
+  timestamp: number;
+}
+
+export interface UserMessage extends BaseMessage {
+  type: "user";
+  content: string;
+}
+
+export interface AIResponseMessage extends BaseMessage {
+  type: "ai-response";
+  content: string;
+}
+
+export interface AICommentMessage extends BaseMessage {
+  type: "ai-comment";
+  content: string;
+}
+
+export interface AIOptionsMessage extends BaseMessage {
+  type: "ai-options";
+  prompt: string;
+  options: string[];
+  selectedIndex?: number;
+}
+
+export type ChatMessage =
+  | UserMessage
+  | AIResponseMessage
+  | AICommentMessage
+  | AIOptionsMessage;
+
+// DistributiveOmit aplica o Omit em cada membro do union separadamente.
+// Sem isso, Omit<ChatMessage, "id"> colapsa pros campos comuns dos 4 variants
+// e perde a discriminação por `type`.
+type DistributiveOmit<T, K extends keyof any> = T extends unknown
+  ? Omit<T, K>
+  : never;
+
+export type NewMessageInput = DistributiveOmit<ChatMessage, "id" | "timestamp">;
+
+interface ChatState {
+  messages: ChatMessage[];
+  addMessage: (msg: NewMessageInput) => string;
+  selectOption: (messageId: string, optionIndex: number) => void;
+  clearMessages: () => void;
+}
+
+function makeId(): string {
+  // crypto.randomUUID está disponível em Electron/Obsidian e em browsers modernos
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback simples (não precisa ser globally unique, só local-unique)
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export const useChatStore = create<ChatState>((set) => ({
+  messages: [],
+  addMessage: (msg) => {
+    const id = makeId();
+    set((state) => ({
+      messages: [
+        ...state.messages,
+        { ...msg, id, timestamp: Date.now() } as ChatMessage,
+      ],
+    }));
+    return id;
+  },
+  selectOption: (messageId, optionIndex) =>
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === messageId && m.type === "ai-options"
+          ? { ...m, selectedIndex: optionIndex }
+          : m
+      ),
+    })),
+  clearMessages: () => set({ messages: [] }),
+}));
