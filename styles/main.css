@@ -13,7 +13,6 @@
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
   padding: 0;
-  position: relative;
 }
 
 /* =====================================================
@@ -322,6 +321,12 @@
   padding: 10px 12px;
   border-top: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
+  /*
+   * Quando o teclado abre, o browser autoscrola pra deixar o
+   * elemento focado visível. Esse scroll-margin diz "deixe 8cm
+   * acima do composer livre" → chat content fica visível em cima.
+   */
+  scroll-margin-block-start: 8cm;
 }
 
 .axxa-composer-pill {
