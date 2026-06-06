@@ -25,6 +25,7 @@ export function UserBubble({ msg }: { msg: UserMessage }) {
 
 export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   const [copied, setCopied] = useState(false);
+  const [liked, setLiked] = useState<null | boolean>(null);
 
   const handleCopy = async () => {
     try {
@@ -34,6 +35,22 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
     } catch (err) {
       console.error("[axxa] copy falhou:", err);
     }
+  };
+
+  const handleRegen = () => {
+    // Stub — vai disparar uma nova chamada à IA quando o provider estiver plugado (1.3+)
+    console.log("[axxa] regen request — implementar quando provider estiver plugado");
+  };
+
+  const handleLike = () => {
+    setLiked((prev) => (prev === true ? null : true));
+    // Stub — feedback será persistido quando tivermos storage de mensagens (4.x)
+    console.log("[axxa] like");
+  };
+
+  const handleDislike = () => {
+    setLiked((prev) => (prev === false ? null : false));
+    console.log("[axxa] dislike");
   };
 
   return (
@@ -52,27 +69,27 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
         <button
           type="button"
           className="axxa-footer-btn"
+          onClick={handleRegen}
           aria-label="Regenerar"
-          title="Regenerar (em breve)"
-          disabled
+          title="Regenerar"
         >
           <Icon name="refresh-cw" />
         </button>
         <button
           type="button"
-          className="axxa-footer-btn"
+          className={"axxa-footer-btn" + (liked === true ? " axxa-footer-btn-active" : "")}
+          onClick={handleLike}
           aria-label="Curtir"
-          title="Curtir (em breve)"
-          disabled
+          title="Curtir"
         >
           <Icon name="thumbs-up" />
         </button>
         <button
           type="button"
-          className="axxa-footer-btn"
+          className={"axxa-footer-btn" + (liked === false ? " axxa-footer-btn-active" : "")}
+          onClick={handleDislike}
           aria-label="Descurtir"
-          title="Descurtir (em breve)"
-          disabled
+          title="Descurtir"
         >
           <Icon name="thumbs-down" />
         </button>

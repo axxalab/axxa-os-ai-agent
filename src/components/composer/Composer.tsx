@@ -1,14 +1,15 @@
 // src/components/composer/Composer.tsx
-// Campo de texto do chat usando CodeMirror 6 — o MESMO editor que o Obsidian
-// usa nas notas. Vantagem: herda tema, atalhos, suporte a markdown, e
-// comportamento de teclado virtual no mobile.
+// Composer pill — "+" à esquerda, CodeMirror no meio, send/mic externo à direita.
+// O botão da direita transforma: vazio = mic (futuro: gravar áudio), com texto = enviar.
+//
+// CodeMirror é o MESMO editor que o Obsidian usa nas notas — herda tema, atalhos,
+// markdown e comportamento de teclado virtual.
 //
 // Keymap:
 //   Desktop:  Enter = enviar, Shift+Enter = nova linha
-//   Mobile:   Enter = nova linha (Send button é a única forma de enviar)
-//             — convenção dos apps de chat (ChatGPT, Claude, WhatsApp)
+//   Mobile:   Enter = nova linha (botão send é a única forma de enviar)
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { Platform } from "obsidian";
@@ -21,10 +22,11 @@ interface ComposerProps {
 export function Composer({ onSend }: ComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  // sendRef permite que o handler do keymap chame a versão atual de onSend
-  // mesmo que ele mude entre renders, sem precisar recriar o EditorView.
   const sendRef = useRef(onSend);
   sendRef.current = onSend;
+
+  // Controla se o campo está vazio — pra alternar ícone do botão da direita
+  const [isEmpty, setIsEmpty] = useState(true);
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -39,19 +41,11 @@ export function Composer({ onSend }: ComposerProps) {
       return true;
     }
 
-    // No desktop, Enter envia. No mobile, Enter quebra linha (Send é o botão).
     const enterKey = Platform.isMobile
       ? []
       : [
-          {
-            key: "Enter",
-            run: (view: EditorView) => sendCurrent(view),
-          },
-          {
-            // Shift+Enter no desktop deixa o comportamento default (newline)
-            key: "Shift-Enter",
-            run: () => false,
-          },
+          { key: "Enter", run: (view: EditorView) => sendCurrent(view) },
+          { key: "Shift-Enter", run: () => false },
         ];
 
     const state = EditorState.create({
@@ -59,9 +53,14 @@ export function Composer({ onSend }: ComposerProps) {
       extensions: [
         keymap.of(enterKey),
         EditorView.lineWrapping,
-        placeholder("Pergunte alguma coisa..."),
-        // Tema pontual aplicando CSS variables do Obsidian.
-        // O CSS principal (styles/main.css) cuida do layout externo.
+        placeholder("Pergunte ao AXXA Agent..."),
+        // Listener pra trackear se o doc está vazio (botão muda mic ↔ send)
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            const text = update.state.doc.toString().trim();
+            setIsEmpty(text.length === 0);
+          }
+        }),
         EditorView.theme({
           "&": {
             backgroundColor: "transparent",
@@ -76,7 +75,7 @@ export function Composer({ onSend }: ComposerProps) {
           },
           ".cm-content": {
             caretColor: "var(--text-normal)",
-            padding: "8px 0",
+            padding: "4px 0",
           },
           ".cm-line": {
             padding: "0",
@@ -91,8 +90,10 @@ export function Composer({ onSend }: ComposerProps) {
     });
     viewRef.current = view;
 
-    // Foca o editor ao montar
-    view.focus();
+    // Não dá foco automático — no mobile isso abre o teclado e atrapalha
+    if (!Platform.isMobile) {
+      view.focus();
+    }
 
     return () => {
       view.destroy();
@@ -113,17 +114,33 @@ export function Composer({ onSend }: ComposerProps) {
     view.focus();
   };
 
+  const handleMicClick = () => {
+    // Stub — áudio será implementado num módulo próprio
+    console.log("[axxa] mic click — gravação de áudio em breve");
+  };
+
   return (
     <div className="axxa-composer">
-      <div ref={editorRef} className="axxa-composer-editor" />
+      <div className="axxa-composer-pill">
+        <button
+          type="button"
+          className="axxa-composer-plus"
+          aria-label="Mais opções"
+          title="Mais opções (em breve)"
+          disabled
+        >
+          <Icon name="plus" />
+        </button>
+        <div ref={editorRef} className="axxa-composer-editor" />
+      </div>
       <button
         type="button"
         className="axxa-composer-send"
-        onClick={handleSendClick}
-        aria-label="Enviar mensagem"
-        title="Enviar"
+        onClick={isEmpty ? handleMicClick : handleSendClick}
+        aria-label={isEmpty ? "Gravar áudio" : "Enviar mensagem"}
+        title={isEmpty ? "Gravar áudio (em breve)" : "Enviar"}
       >
-        <Icon name="send" />
+        <Icon name={isEmpty ? "mic" : "arrow-up"} />
       </button>
     </div>
   );
