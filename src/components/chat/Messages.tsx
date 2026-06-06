@@ -33,6 +33,9 @@ export function UserBubble({ msg }: { msg: UserMessage }) {
 export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState<null | boolean>(null);
+  // Esconde footer enquanto essa msg específica tá sendo streamada
+  const streamingId = useChatStore((s) => s.streamingMessageId);
+  const isStreaming = msg.id === streamingId;
 
   const handleCopy = async () => {
     try {
@@ -61,55 +64,57 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   return (
     <div className="axxa-msg axxa-msg-ai-response">
       <Markdown content={msg.content} />
-      <div className="axxa-response-footer">
-        <button
-          type="button"
-          className="axxa-footer-btn"
-          onClick={handleCopy}
-          aria-label="Copiar resposta"
-          title="Copiar"
-        >
-          <Icon name={copied ? "check" : "copy"} />
-        </button>
-        <button
-          type="button"
-          className="axxa-footer-btn"
-          onClick={handleRegen}
-          aria-label="Regenerar"
-          title="Regenerar"
-        >
-          <Icon name="refresh-cw" />
-        </button>
-        <button
-          type="button"
-          className={"axxa-footer-btn" + (liked === true ? " axxa-footer-btn-active" : "")}
-          onClick={handleLike}
-          aria-label="Curtir"
-          title="Curtir"
-        >
-          <Icon name="thumbs-up" />
-        </button>
-        <button
-          type="button"
-          className={"axxa-footer-btn" + (liked === false ? " axxa-footer-btn-active" : "")}
-          onClick={handleDislike}
-          aria-label="Descurtir"
-          title="Descurtir"
-        >
-          <Icon name="thumbs-down" />
-        </button>
-        <button
-          type="button"
-          className="axxa-footer-btn"
-          aria-label="Mais opções"
-          title="Mais opções (em breve)"
-          disabled
-        >
-          <Icon name="more-horizontal" />
-        </button>
-        <span className="axxa-pro-pill" aria-label="Upgrade para PRO">PRO</span>
-      </div>
-      <Timestamp ts={msg.timestamp} />
+      {!isStreaming && (
+        <div className="axxa-response-footer">
+          <button
+            type="button"
+            className="axxa-footer-btn"
+            onClick={handleCopy}
+            aria-label="Copiar resposta"
+            title="Copiar"
+          >
+            <Icon name={copied ? "check" : "copy"} />
+          </button>
+          <button
+            type="button"
+            className="axxa-footer-btn"
+            onClick={handleRegen}
+            aria-label="Regenerar"
+            title="Regenerar"
+          >
+            <Icon name="refresh-cw" />
+          </button>
+          <button
+            type="button"
+            className={"axxa-footer-btn" + (liked === true ? " axxa-footer-btn-active" : "")}
+            onClick={handleLike}
+            aria-label="Curtir"
+            title="Curtir"
+          >
+            <Icon name="thumbs-up" />
+          </button>
+          <button
+            type="button"
+            className={"axxa-footer-btn" + (liked === false ? " axxa-footer-btn-active" : "")}
+            onClick={handleDislike}
+            aria-label="Descurtir"
+            title="Descurtir"
+          >
+            <Icon name="thumbs-down" />
+          </button>
+          <button
+            type="button"
+            className="axxa-footer-btn"
+            aria-label="Mais opções"
+            title="Mais opções (em breve)"
+            disabled
+          >
+            <Icon name="more-horizontal" />
+          </button>
+          <span className="axxa-pro-pill" aria-label="Upgrade para PRO">PRO</span>
+        </div>
+      )}
+      {!isStreaming && <Timestamp ts={msg.timestamp} />}
     </div>
   );
 }

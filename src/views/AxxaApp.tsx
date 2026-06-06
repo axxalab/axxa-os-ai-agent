@@ -1,13 +1,11 @@
 // src/views/AxxaApp.tsx
-// Layout completo do chat com streaming OpenAI (Módulo 1.4).
-// Fluxo no send:
-//   1. Adiciona bubble do user
-//   2. Adiciona ai-comment "Pensando..." (com sparkles animado)
-//   3. setLoading(true) → composer mostra botão Stop
-//   4. streamChat dispara, AbortController fica em ref pra abort manual
-//   5. Primeiro token: remove "Pensando...", cria ai-response com o token
-//   6. Tokens seguintes: appendToMessage no mesmo ai-response
-//   7. Stream encerra (normal ou abort): setLoading(false)
+// Layout completo do chat com session lock + starter screen + scroll inteligente.
+//
+// Fluxo:
+//   - Chat vazio → renderiza StarterScreen com provider/model/effort selectors
+//   - Primeira mensagem → lockSession() trava provider+model no store
+//   - Durante conversa → status mostra provider/model travados; só effort muda
+//   - "+" modal → muda Effort em qualquer momento
 
 import { useRef, useState } from "react";
 import type AxxaPlugin from "../main";
@@ -15,6 +13,7 @@ import { Header } from "../components/layout/Header";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
+import { StarterScreen } from "../components/chat/StarterScreen";
 import { AppContext } from "../components/_shared/AppContext";
 import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
@@ -35,16 +34,46 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const tokensIn = useChatStore((s) => s.tokensIn);
   const tokensOut = useChatStore((s) => s.tokensOut);
   const lastPromptTokens = useChatStore((s) => s.lastPromptTokens);
+  const messages = useChatStore((s) => s.messages);
+  const sessionProvider = useChatStore((s) => s.sessionProvider);
+  const sessionModel = useChatStore((s) => s.sessionModel);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Effort em React state (mirror da setting) pra re-render imediato no select
+  // Mirror em state das settings pra ter reatividade
+  // (user mexe no starter screen → updates settings + estado React)
+  const [providerSel, setProviderSel] = useState(plugin.settings.defaultProvider);
+  const [openaiModelSel, setOpenaiModelSel] = useState(plugin.settings.defaultModel);
+  const [anthropicModelSel, setAnthropicModelSel] = useState(plugin.settings.anthropicModel);
   const [effort, setEffort] = useState(plugin.settings.defaultEffort);
-  // Plus modal abre/fecha
   const [plusOpen, setPlusOpen] = useState(false);
 
+  // Provider/model EFETIVOS = locked (se travado) senão starter selection
+  const activeProviderId = sessionProvider ?? providerSel;
+  const activeProvider = getProvider(activeProviderId);
+  const activeModel =
+    sessionModel ??
+    (activeProviderId === "anthropic" ? anthropicModelSel : openaiModelSel);
+  const isLocked = sessionProvider !== null;
+
+  // Modelo mostrado/usado pelo starter screen (sempre o atual, não locked)
+  const starterModel =
+    providerSel === "anthropic" ? anthropicModelSel : openaiModelSel;
+
   const handleSend = async (text: string) => {
-    const { addMessage, removeMessage, appendToMessage, setLoading } =
-      useChatStore.getState();
+    const {
+      addMessage,
+      removeMessage,
+      appendToMessage,
+      setLoading,
+      lockSession,
+      setStreamingMessageId,
+      addUsage,
+    } = useChatStore.getState();
+
+    // Lock session na primeira mensagem
+    if (messages.length === 0) {
+      lockSession(activeProviderId, activeModel);
+    }
 
     addMessage({ type: "user", content: text });
     const commentId = addMessage({ type: "ai-comment", content: "Pensando..." });
@@ -66,29 +95,23 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           })),
       ];
 
-      // Provider, modelo e api key são lidos das settings na hora do envio
-      // — se o user mudar provider em settings, próximas mensagens já pegam o novo.
-      const providerId = plugin.settings.defaultProvider;
-      const provider = getProvider(providerId);
       const apiKey =
-        providerId === "anthropic"
+        activeProviderId === "anthropic"
           ? plugin.settings.anthropicApiKey
           : plugin.settings.openaiApiKey;
-      const model =
-        providerId === "anthropic"
-          ? plugin.settings.anthropicModel
-          : plugin.settings.defaultModel;
 
-      const { addUsage } = useChatStore.getState();
-
-      await provider.streamChat(
-        { model, messages: history, maxTokens: effortToMaxTokens(effort) },
+      await activeProvider.streamChat(
+        {
+          model: activeModel,
+          messages: history,
+          maxTokens: effortToMaxTokens(effort),
+        },
         apiKey,
         (token) => {
           if (responseId === null) {
-            // primeiro token — substitui "Pensando..." pela resposta real
             removeMessage(commentId);
             responseId = addMessage({ type: "ai-response", content: token });
+            setStreamingMessageId(responseId);
           } else {
             appendToMessage(responseId, token);
           }
@@ -99,37 +122,29 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         controller.signal
       );
 
-      // Stream terminou sem token? Limpa o "Pensando..." de qualquer jeito
       if (responseId === null) {
         removeMessage(commentId);
         addMessage({
           type: "ai-response",
-          content: "[Resposta vazia recebida da OpenAI]",
+          content: "[Resposta vazia recebida]",
         });
       }
     } catch (err) {
-      // AbortError = usuário clicou em Stop. Mantém o que já apareceu, sem erro.
       if (err instanceof DOMException && err.name === "AbortError") {
-        if (responseId === null) {
-          removeMessage(commentId);
-        }
+        if (responseId === null) removeMessage(commentId);
       } else {
-        if (responseId === null) {
-          removeMessage(commentId);
-        }
+        if (responseId === null) removeMessage(commentId);
         const errorMsg =
           err instanceof ProviderError
             ? err.message
             : err instanceof Error
               ? err.message
               : "Erro desconhecido.";
-        addMessage({
-          type: "ai-response",
-          content: `[Erro] ${errorMsg}`,
-        });
+        addMessage({ type: "ai-response", content: `[Erro] ${errorMsg}` });
       }
     } finally {
       setLoading(false);
+      setStreamingMessageId(null);
       abortRef.current = null;
     }
   };
@@ -138,16 +153,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     abortRef.current?.abort();
   };
 
-  // Lê provider/modelo das settings a cada render — quando o user mudar em
-  // Settings, próximo re-render do AxxaApp já mostra o atualizado.
-  const providerId = plugin.settings.defaultProvider;
-  const providerName = getProvider(providerId).name;
-  const modelName =
-    providerId === "anthropic"
-      ? plugin.settings.anthropicModel
-      : plugin.settings.defaultModel;
-
-  // Abre as Settings do plugin direto na aba do AXXA OS (clique no gear)
   const handleOpenSettings = () => {
     const app = plugin.app as unknown as {
       setting: { open: () => void; openTabById: (id: string) => void };
@@ -156,7 +161,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     app.setting.openTabById("axxa-os-ai-agent");
   };
 
-  // Plus modal handlers
+  // Plus modal
   const handlePlusClick = () => setPlusOpen(true);
   const handlePlusClose = () => setPlusOpen(false);
   const handleSelectEffort = async (level: EffortLevel) => {
@@ -165,6 +170,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await plugin.saveSettings();
   };
 
+  // Starter screen handlers
+  const handleStarterProvider = async (p: string) => {
+    setProviderSel(p);
+    plugin.settings.defaultProvider = p;
+    await plugin.saveSettings();
+  };
+  const handleStarterModel = async (m: string) => {
+    if (providerSel === "anthropic") {
+      setAnthropicModelSel(m);
+      plugin.settings.anthropicModel = m;
+    } else {
+      setOpenaiModelSel(m);
+      plugin.settings.defaultModel = m;
+    }
+    await plugin.saveSettings();
+  };
+
+  const isEmpty = messages.length === 0;
+
   return (
     <AppContext.Provider value={plugin.app}>
       <div className="axxa-root">
@@ -172,18 +196,30 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           version={plugin.manifest.version}
           onOpenSettings={handleOpenSettings}
         />
-        <ChatArea />
+        {isEmpty ? (
+          <StarterScreen
+            provider={providerSel}
+            model={starterModel}
+            effort={effort}
+            onProviderChange={handleStarterProvider}
+            onModelChange={handleStarterModel}
+            onEffortChange={handleSelectEffort}
+          />
+        ) : (
+          <ChatArea />
+        )}
         <Composer
           onSend={handleSend}
           onStop={handleStop}
           onPlusClick={handlePlusClick}
           streaming={isLoading}
-          providerName={providerName}
-          modelName={modelName}
+          providerName={activeProvider.name}
+          modelName={activeModel}
           effort={effort}
           tokensIn={tokensIn}
           tokensOut={tokensOut}
           contextUsed={lastPromptTokens}
+          locked={isLocked}
         />
         {plusOpen && (
           <PlusModal

@@ -1,19 +1,20 @@
 // src/components/chat/ChatArea.tsx
-// Container scrollável que renderiza a lista de mensagens com day separators
-// automáticos ("Hoje" / "Ontem" / "12 de junho") sempre que o dia muda.
-//
-// Sticky-bottom scroll (estilo ChatGPT):
-//   - Por padrão, auto-scrola pra base a cada novo token/mensagem
-//   - Se o user scrolar pra cima, desativa o auto-scroll
-//   - Se o user voltar à base manualmente, reativa o auto-scroll
-// Implementado via ref (shouldStickRef) atualizado em scroll events.
+// Container scrollável com:
+//   - Day separators automáticos
+//   - Sticky-bottom scroll inteligente (ChatGPT-style):
+//       * Padrão: auto-scrola pra base a cada novo token/msg
+//       * User scrolla pra cima: desativa auto-scroll
+//       * User volta à base: reativa auto-scroll
+//       * User manda nova mensagem (qualquer estado): FORÇA reativação
+//   - Botão flutuante "back to bottom" quando navegação tá acima
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useChatStore } from "../../store/chat";
 import { UserBubble, AIResponse, AIComment, AIOptions } from "./Messages";
 import { dayKey, formatDayLabel } from "../_shared/timestamps";
+import { Icon } from "../_shared/Icon";
 
-const SCROLL_BOTTOM_THRESHOLD = 30; // px — distância considerada "na base"
+const SCROLL_BOTTOM_THRESHOLD = 30; // px
 
 function DaySeparator({ label }: { label: string }) {
   return (
@@ -26,11 +27,10 @@ function DaySeparator({ label }: { label: string }) {
 export function ChatArea() {
   const messages = useChatStore((s) => s.messages);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // true = user quer ficar grudado na base (auto-scroll ativo)
-  // false = user scrollou pra cima e quer ler (auto-scroll pausado)
   const shouldStickRef = useRef(true);
+  const [showBackToBottom, setShowBackToBottom] = useState(false);
 
-  // Listener de scroll — atualiza shouldStick com base na posição atual
+  // Listener de scroll
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -39,18 +39,35 @@ export function ChatArea() {
       const atBottom =
         el.scrollTop + el.clientHeight >= el.scrollHeight - SCROLL_BOTTOM_THRESHOLD;
       shouldStickRef.current = atBottom;
+      setShowBackToBottom(!atBottom);
     };
 
     el.addEventListener("scroll", handleScroll, { passive: true });
     return () => el.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Auto-scroll a cada mudança em messages — mas só se o user quer stick
+  // Auto-scroll quando messages muda
   useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    // Nova mensagem do USER força reativação do sticky-bottom
+    // (cobre o caso: user scrollou pra ler, mas mandou nova msg → quer ver tudo)
+    if (lastMsg?.type === "user") {
+      shouldStickRef.current = true;
+      setShowBackToBottom(false);
+    }
+
     if (!shouldStickRef.current) return;
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  const handleBackToBottom = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    shouldStickRef.current = true;
+    setShowBackToBottom(false);
+  };
 
   // Monta items com day separators
   const items: ReactNode[] = [];
@@ -79,20 +96,21 @@ export function ChatArea() {
     }
   }
 
-  // Mesma <div> em ambos os estados (vazio vs com mensagens) — assim o ref do
-  // scroll listener não muda entre re-renders. Empty state alterna via classe.
-  const isEmpty = messages.length === 0;
   return (
-    <div
-      ref={scrollRef}
-      className={"axxa-chat-area" + (isEmpty ? " axxa-chat-empty" : "")}
-    >
-      {isEmpty ? (
-        <p className="axxa-empty-hint">
-          Comece uma conversa — digite uma mensagem abaixo.
-        </p>
-      ) : (
-        items
+    <div className="axxa-chat-area-wrapper">
+      <div ref={scrollRef} className="axxa-chat-area">
+        {items}
+      </div>
+      {showBackToBottom && (
+        <button
+          type="button"
+          className="axxa-back-to-bottom"
+          onClick={handleBackToBottom}
+          aria-label="Voltar pra base"
+          title="Voltar pra base"
+        >
+          <Icon name="arrow-down" />
+        </button>
       )}
     </div>
   );

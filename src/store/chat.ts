@@ -59,6 +59,11 @@ interface ChatState {
   tokensOut: number;
   /** Última snapshot de prompt_tokens (usado pra estimar "contexto usado") */
   lastPromptTokens: number;
+  /** Id da mensagem que tá sendo streamada agora (pra esconder footer durante stream). */
+  streamingMessageId: string | null;
+  /** Provider/model TRAVADOS após primeira mensagem (session lock). null = não travado. */
+  sessionProvider: string | null;
+  sessionModel: string | null;
   addMessage: (msg: NewMessageInput) => string;
   removeMessage: (id: string) => void;
   appendToMessage: (id: string, text: string) => void;
@@ -67,6 +72,9 @@ interface ChatState {
   setLoading: (loading: boolean) => void;
   addUsage: (input: number, output: number) => void;
   resetUsage: () => void;
+  setStreamingMessageId: (id: string | null) => void;
+  lockSession: (provider: string, model: string) => void;
+  unlockSession: () => void;
 }
 
 function makeId(): string {
@@ -84,6 +92,9 @@ export const useChatStore = create<ChatState>((set) => ({
   tokensIn: 0,
   tokensOut: 0,
   lastPromptTokens: 0,
+  streamingMessageId: null,
+  sessionProvider: null,
+  sessionModel: null,
   addMessage: (msg) => {
     const id = makeId();
     set((state) => ({
@@ -118,15 +129,26 @@ export const useChatStore = create<ChatState>((set) => ({
       ),
     })),
   clearMessages: () =>
-    set({ messages: [], isLoading: false, tokensIn: 0, tokensOut: 0, lastPromptTokens: 0 }),
+    set({
+      messages: [],
+      isLoading: false,
+      tokensIn: 0,
+      tokensOut: 0,
+      lastPromptTokens: 0,
+      streamingMessageId: null,
+      sessionProvider: null,
+      sessionModel: null,
+    }),
   setLoading: (loading) => set({ isLoading: loading }),
   addUsage: (input, output) =>
     set((state) => ({
       tokensIn: state.tokensIn + input,
       tokensOut: state.tokensOut + output,
-      // lastPromptTokens reflete o prompt_tokens da ULTIMA chamada
-      // (usado pra estimar "contexto usado atualmente").
       lastPromptTokens: input > 0 ? input : state.lastPromptTokens,
     })),
   resetUsage: () => set({ tokensIn: 0, tokensOut: 0, lastPromptTokens: 0 }),
+  setStreamingMessageId: (id) => set({ streamingMessageId: id }),
+  lockSession: (provider, model) =>
+    set({ sessionProvider: provider, sessionModel: model }),
+  unlockSession: () => set({ sessionProvider: null, sessionModel: null }),
 }));

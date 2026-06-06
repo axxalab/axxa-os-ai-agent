@@ -106,10 +106,10 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 > Objetivo: Todos os 4 providers do alpha funcionando
 
 ### 2.1 Session Modal
-- ⬜ Modal abre antes do primeiro chat
-- ⬜ Seleção de: Provider, Modelo, Modo, Effort
-- ⬜ Configuração trava ao iniciar a sessão
-- ⬜ Indicador visual do estado travado no header
+- ✅ Starter screen embedded antes do primeiro chat (não modal, mas tela cheia)
+- ✅ Seleção de: Provider, Modelo, Effort (Modo virá com mais modos no futuro)
+- ✅ Configuração trava ao iniciar a sessão (`sessionProvider`, `sessionModel` no store)
+- ✅ Indicador visual do estado travado (ícone `lock` no chip do model)
 
 ### 2.2 Providers adicionais
 - ✅ `providers/anthropic.ts` — Claude models (chat + streamChat via fetch SSE; x-api-key + anthropic-version + anthropic-dangerous-direct-browser-access)
