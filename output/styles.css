@@ -7,47 +7,18 @@
  */
 
 /* =====================================================
- * View-content padding — modelo Copilot
- * Substitui o reset simples por um cálculo que considera
- * safe-area do iOS, clearance da navbar mobile e size tokens
- * do Obsidian. Lateral SEMPRE 0 (chat ocupa sidebar inteiro).
+ * View-content: padding ZERO em todas as condições.
+ * Decisão do dev: chat ocupa 100% da área disponível,
+ * sem safe-area / sem navbar compensation.
+ *
+ * A lógica de captação do teclado (MutationObserver no
+ * AxxaView + measurement de --axxa-status-bar-clearance)
+ * CONTINUA ATIVA — é usada pelo bloco abaixo pra esconder
+ * elementos do drawer durante a digitação.
  * ===================================================== */
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  /* Nukar TODO padding do Obsidian (top, left, right, bottom) */
   padding: 0 !important;
-  /* Re-adiciona apenas o bottom calculado (Copilot pattern) */
-  padding-bottom: calc(
-    var(--safe-area-inset-bottom, 0px) +
-    var(--axxa-status-bar-clearance, 0px) +
-    var(--size-4-1)
-  ) !important;
-}
-
-/* Mobile dentro de tab-container — padding simples
- * (a navbar já está fora da nossa área neste contexto) */
-body.is-mobile
-.workspace-tab-container
-.workspace-leaf-content[data-type="axxa-os-ai-agent"]
-.view-content {
-  padding-bottom: var(--size-4-1) !important;
-}
-
-/* Quando a navbar mobile está visível, compensa altura dela */
-@supports selector(body:has(*)) {
-  body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
-  .workspace-tab-container
-  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  .view-content {
-    padding-bottom: calc(
-      var(--navbar-height, 50px) +
-      max(
-        var(--safe-area-inset-bottom, 0px),
-        var(--size-4-3)
-      ) +
-      var(--size-4-1)
-    ) !important;
-  }
 }
 
 /* Drawer + teclado aberto → esconde header e tab options do drawer
