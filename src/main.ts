@@ -2,7 +2,7 @@
 // Entry point do plugin. O Obsidian instancia AxxaPlugin ao carregar o plugin.
 // É como o "componente raiz" no Figma — todo o resto é montado a partir daqui.
 
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { Plugin, WorkspaceLeaf, Platform } from "obsidian";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 
@@ -62,10 +62,45 @@ export default class AxxaPlugin extends Plugin {
     // Settings tab — aparece em Settings -> Community Plugins -> AXXA OS.
     this.addSettingTab(new AxxaSettingsTab(this.app, this));
 
+    // Mede a navbar mobile pra compensar layout (--axxa-status-bar-clearance)
+    this.setupStatusBarClearance();
+
     // Abre na sidebar direita quando o Obsidian termina de montar o layout.
     this.app.workspace.onLayoutReady(() => {
       this.activateView();
     });
+  }
+
+  onunload() {
+    // Limpa a variável CSS pra não vazar entre reloads
+    document.documentElement.style.removeProperty("--axxa-status-bar-clearance");
+  }
+
+  /**
+   * Mede a altura da mobile-navbar do Obsidian e expõe via CSS variable
+   * `--axxa-status-bar-clearance`. O CSS usa essa variável pra compensar
+   * o padding-bottom da view, evitando que conteúdo fique escondido
+   * atrás de barras inferiores.
+   *
+   * Re-medido em mudanças de layout / resize (orientação, popout, etc).
+   */
+  private setupStatusBarClearance() {
+    if (!Platform.isMobile) return;
+
+    const update = () => {
+      const navbar = document.querySelector(".mobile-navbar") as HTMLElement | null;
+      const clearance = navbar?.offsetHeight ?? 0;
+      document.documentElement.style.setProperty(
+        "--axxa-status-bar-clearance",
+        `${clearance}px`
+      );
+    };
+
+    update();
+
+    // Atualiza quando o layout muda (mostrar/esconder navbar, popout, etc)
+    this.registerEvent(this.app.workspace.on("layout-change", update));
+    this.registerEvent(this.app.workspace.on("resize", update));
   }
 
   async activateView() {

@@ -7,12 +7,58 @@
  */
 
 /* =====================================================
- * Reset do view-content do Obsidian pra nossa view
- * (chat ocupa o sidebar inteiro, sem bordas claras)
+ * View-content padding — modelo Copilot
+ * Substitui o reset simples por um cálculo que considera
+ * safe-area do iOS, clearance da navbar mobile e size tokens
+ * do Obsidian. Lateral SEMPRE 0 (chat ocupa sidebar inteiro).
  * ===================================================== */
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  padding: 0;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: calc(
+    var(--safe-area-inset-bottom, 0px) +
+    var(--axxa-status-bar-clearance, 0px) +
+    var(--size-4-1)
+  ) !important;
+}
+
+/* Mobile dentro de tab-container — padding simples
+ * (a navbar já está fora da nossa área neste contexto) */
+body.is-mobile
+.workspace-tab-container
+.workspace-leaf-content[data-type="axxa-os-ai-agent"]
+.view-content {
+  padding-bottom: var(--size-4-1) !important;
+}
+
+/* Quando a navbar mobile está visível, compensa altura dela */
+@supports selector(body:has(*)) {
+  body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
+  .workspace-tab-container
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+    padding-bottom: calc(
+      var(--navbar-height, 50px) +
+      max(
+        var(--safe-area-inset-bottom, 0px),
+        var(--size-4-3)
+      ) +
+      var(--size-4-1)
+    ) !important;
+  }
+}
+
+/* Drawer + teclado aberto → esconde header e tab options do drawer
+ * pra dar mais espaço pro chat durante a digitação.
+ * A classe .axxa-keyboard-open é toggleada via JS (AxxaView). */
+body.is-mobile
+.workspace-drawer.axxa-keyboard-open
+.workspace-drawer-header,
+body.is-mobile
+.workspace-drawer.axxa-keyboard-open
+.workspace-drawer-tab-options {
+  display: none !important;
 }
 
 /* =====================================================
@@ -321,12 +367,6 @@
   padding: 10px 12px;
   border-top: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
-  /*
-   * Quando o teclado abre, o browser autoscrola pra deixar o
-   * elemento focado visível. Esse scroll-margin diz "deixe 8cm
-   * acima do composer livre" → chat content fica visível em cima.
-   */
-  scroll-margin-block-start: 8cm;
 }
 
 .axxa-composer-pill {

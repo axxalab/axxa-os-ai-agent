@@ -76,9 +76,6 @@ export function Composer({ onSend }: ComposerProps) {
           ".cm-content": {
             caretColor: "var(--text-normal)",
             padding: "4px 0",
-            // Mesma regra do .axxa-composer: scroll-margin garante 8cm
-            // de espaço acima do elemento focado quando o teclado abre.
-            scrollMarginBlockStart: "8cm",
           },
           ".cm-line": {
             padding: "0",
