@@ -1,12 +1,12 @@
 // src/components/composer/Composer.tsx
-// Composer pill — "+" à esquerda, CodeMirror no meio, send/mic/stop externo à direita.
-// O botão da direita tem 3 estados:
-//   1. Não streaming + campo vazio  → mic (futuro: gravar áudio)
-//   2. Não streaming + campo cheio  → arrow-up (enviar)
-//   3. Streaming                    → square (parar geração)
+// Composer com Status Line embutida (dot + provider · model) acima da pill.
+// O container externo é transparente — só a pill tem visible bg.
+// Status é clicável: abre as Settings do plugin.
 //
-// CodeMirror é o MESMO editor que o Obsidian usa nas notas — herda tema, atalhos,
-// markdown e comportamento de teclado virtual.
+// Botão da direita tem 3 estados:
+//   vazio + idle      → mic
+//   tem texto + idle  → arrow-up (enviar)
+//   streaming         → square (parar geração)
 
 import { useEffect, useRef, useState } from "react";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
@@ -17,27 +17,33 @@ import { Icon } from "../_shared/Icon";
 interface ComposerProps {
   onSend: (text: string) => void;
   onStop?: () => void;
+  onOpenSettings?: () => void;
   streaming?: boolean;
+  providerName: string;
+  modelName: string;
 }
 
-export function Composer({ onSend, onStop, streaming = false }: ComposerProps) {
+export function Composer({
+  onSend,
+  onStop,
+  onOpenSettings,
+  streaming = false,
+  providerName,
+  modelName,
+}: ComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const sendRef = useRef(onSend);
   sendRef.current = onSend;
-  // streamingRef permite que o keymap consulte o valor atual sem precisar
-  // recriar o EditorView toda vez que streaming muda
   const streamingRef = useRef(streaming);
   streamingRef.current = streaming;
 
-  // Controla se o campo está vazio — pra alternar ícone do botão da direita
   const [isEmpty, setIsEmpty] = useState(true);
 
   useEffect(() => {
     if (!editorRef.current) return;
 
     function sendCurrent(view: EditorView): boolean {
-      // Se está em streaming, Enter não faz nada (precisa parar primeiro)
       if (streamingRef.current) return false;
       const text = view.state.doc.toString().trim();
       if (!text) return false;
@@ -129,7 +135,6 @@ export function Composer({ onSend, onStop, streaming = false }: ComposerProps) {
     onStop?.();
   };
 
-  // Determina o ícone e a ação do botão direito
   let iconName: string;
   let onClick: () => void;
   let label: string;
@@ -150,27 +155,45 @@ export function Composer({ onSend, onStop, streaming = false }: ComposerProps) {
 
   return (
     <div className="axxa-composer">
-      <div className="axxa-composer-pill">
-        <button
-          type="button"
-          className="axxa-composer-plus"
-          aria-label="Mais opções"
-          title="Mais opções (em breve)"
-          disabled
-        >
-          <Icon name="plus" />
-        </button>
-        <div ref={editorRef} className="axxa-composer-editor" />
-      </div>
       <button
         type="button"
-        className={"axxa-composer-send" + (streaming ? " axxa-composer-stop" : "")}
-        onClick={onClick}
-        aria-label={label}
-        title={label}
+        className="axxa-composer-status"
+        onClick={onOpenSettings}
+        aria-label="Abrir configurações"
+        title="Abrir configurações"
       >
-        <Icon name={iconName} />
+        <span
+          className={
+            "axxa-status-dot" + (streaming ? " axxa-status-dot-active" : "")
+          }
+        />
+        <span className="axxa-composer-status-text">
+          {providerName} · {modelName}
+        </span>
       </button>
+      <div className="axxa-composer-row">
+        <div className="axxa-composer-pill">
+          <button
+            type="button"
+            className="axxa-composer-plus"
+            aria-label="Mais opções"
+            title="Mais opções (em breve)"
+            disabled
+          >
+            <Icon name="plus" />
+          </button>
+          <div ref={editorRef} className="axxa-composer-editor" />
+        </div>
+        <button
+          type="button"
+          className={"axxa-composer-send" + (streaming ? " axxa-composer-stop" : "")}
+          onClick={onClick}
+          aria-label={label}
+          title={label}
+        >
+          <Icon name={iconName} />
+        </button>
+      </div>
     </div>
   );
 }

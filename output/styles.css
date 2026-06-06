@@ -85,8 +85,6 @@ body.is-mobile
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--background-modifier-border);
 }
@@ -95,7 +93,6 @@ body.is-mobile
   display: flex;
   align-items: baseline;
   gap: 8px;
-  min-width: 0;
 }
 
 .axxa-header-name {
@@ -109,23 +106,8 @@ body.is-mobile
   color: var(--text-faint);
 }
 
-/* Status line — dot + provider · model */
-.axxa-header-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--text-faint);
-  font-size: var(--font-ui-smaller);
-}
-
-.axxa-header-meta {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
-}
-
+/* Status dot — usado pelo Status Line do composer (e potencialmente
+   em outros lugares no futuro). */
 .axxa-status-dot {
   flex: 0 0 auto;
   width: 8px;
@@ -528,11 +510,55 @@ body.is-mobile
 .axxa-composer {
   flex: 0 0 auto;
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  /* Background TRANSPARENTE — decisão do dev (0% opacidade).
+     A pill interna tem seu próprio bg, então o campo de texto continua
+     visualmente delimitado. */
+  background: transparent;
+}
+
+/* Status line do composer — dot + provider · model, clicável (abre Settings) */
+.axxa-composer-status,
+.axxa-composer-status:hover,
+.axxa-composer-status:focus,
+.axxa-composer-status:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-composer-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color 0.15s;
+  border-radius: 999px;
+}
+
+.axxa-composer-status:hover {
+  color: var(--text-muted);
+}
+
+.axxa-composer-status-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.axxa-composer-row {
+  display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--background-modifier-border);
-  background: var(--background-primary);
 }
 
 .axxa-composer-pill {

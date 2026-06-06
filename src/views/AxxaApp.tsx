@@ -132,17 +132,28 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       ? plugin.settings.anthropicModel
       : plugin.settings.defaultModel;
 
+  // Abre as Settings do plugin direto na aba do AXXA OS (clique no status line)
+  const handleOpenSettings = () => {
+    const app = plugin.app as unknown as {
+      setting: { open: () => void; openTabById: (id: string) => void };
+    };
+    app.setting.open();
+    app.setting.openTabById("axxa-os-ai-agent");
+  };
+
   return (
     <AppContext.Provider value={plugin.app}>
       <div className="axxa-root">
-        <Header
-          version={plugin.manifest.version}
+        <Header version={plugin.manifest.version} />
+        <ChatArea />
+        <Composer
+          onSend={handleSend}
+          onStop={handleStop}
+          onOpenSettings={handleOpenSettings}
+          streaming={isLoading}
           providerName={providerName}
           modelName={modelName}
-          streaming={isLoading}
         />
-        <ChatArea />
-        <Composer onSend={handleSend} onStop={handleStop} streaming={isLoading} />
       </div>
     </AppContext.Provider>
   );
