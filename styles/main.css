@@ -18,17 +18,15 @@
 
 /* =====================================================
  * Layout raiz da view
- * max-height: 100dvh = viewport dinâmico que SHRINKA com
- * o teclado virtual aberto (composer fica visível)
+ * Layout simples: height 100% + min-height 0 (suficiente
+ * pro Obsidian mobile handle o teclado virtual)
  * ===================================================== */
 
 .axxa-root {
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-height: 100dvh;
   min-height: 0;
-  overflow: hidden;
   background: var(--background-primary);
   color: var(--text-normal);
   font-family: var(--font-interface);
@@ -69,7 +67,7 @@
  * ===================================================== */
 
 .axxa-chat-area {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -113,12 +111,12 @@
 }
 
 /* =====================================================
- * User bubble (direita) — pill full
+ * User bubble (direita) — radius suave (não pill total)
  * ===================================================== */
 
 .axxa-bubble {
-  padding: 10px 16px;
-  border-radius: 999px;
+  padding: 10px 14px;
+  border-radius: 18px;
   max-width: 85%;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -130,8 +128,6 @@
   color: var(--text-on-accent);
   font-size: var(--font-ui-medium);
 }
-
-/* Bubbles com texto longo (multi-linha) viram "stadium" naturalmente */
 
 /* =====================================================
  * AI Comment — sem moldura, texto menor, ícone animado
@@ -324,7 +320,6 @@
   align-items: flex-end;
   gap: 8px;
   padding: 10px 12px;
-  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
   border-top: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
 }
