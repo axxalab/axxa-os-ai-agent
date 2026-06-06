@@ -16,7 +16,7 @@ import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { AppContext } from "../components/_shared/AppContext";
 import { useChatStore } from "../store/chat";
-import { openaiProvider } from "../providers/openai";
+import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage } from "../providers/base";
 
 interface AxxaAppProps {
@@ -56,12 +56,22 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           })),
       ];
 
-      await openaiProvider.streamChat(
-        {
-          model: plugin.settings.defaultModel,
-          messages: history,
-        },
-        plugin.settings.openaiApiKey,
+      // Provider, modelo e api key são lidos das settings na hora do envio
+      // — se o user mudar provider em settings, próximas mensagens já pegam o novo.
+      const providerId = plugin.settings.defaultProvider;
+      const provider = getProvider(providerId);
+      const apiKey =
+        providerId === "anthropic"
+          ? plugin.settings.anthropicApiKey
+          : plugin.settings.openaiApiKey;
+      const model =
+        providerId === "anthropic"
+          ? plugin.settings.anthropicModel
+          : plugin.settings.defaultModel;
+
+      await provider.streamChat(
+        { model, messages: history },
+        apiKey,
         (token) => {
           if (responseId === null) {
             // primeiro token — substitui "Pensando..." pela resposta real

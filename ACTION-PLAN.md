@@ -110,10 +110,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ⬜ Indicador visual do estado travado no header
 
 ### 2.2 Providers adicionais
-- ⬜ `providers/anthropic.ts` — Claude models
+- ✅ `providers/anthropic.ts` — Claude models (chat + streamChat via fetch SSE; x-api-key + anthropic-version + anthropic-dangerous-direct-browser-access)
 - ⬜ `providers/openrouter.ts` — proxy multi-model
 - ⬜ `providers/ollama.ts` — local LLM
-- ⬜ `providers/base.ts` — interface comum para todos
+- ✅ `providers/base.ts` — interface comum (chat + streamChat obrigatórios)
+- ✅ `providers/index.ts` — registry + getProvider(id)
 
 ### 2.3 Obsidian Settings Tab
 - ⬜ `AxxaSettingsTab.ts` registrado no Obsidian

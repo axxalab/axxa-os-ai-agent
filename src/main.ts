@@ -12,7 +12,10 @@ interface AxxaSettings {
   openrouterApiKey: string;
   ollamaEndpoint: string;
   defaultProvider: string;
+  /** Modelo usado pelo provider OpenAI (ex: gpt-4o, gpt-4o-mini) */
   defaultModel: string;
+  /** Modelo usado pelo provider Anthropic (ex: claude-sonnet-4-6, claude-opus-4-8) */
+  anthropicModel: string;
   defaultMode: string;
   defaultEffort: string;
   chatsPath: string;
@@ -27,6 +30,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ollamaEndpoint: "http://localhost:11434",
   defaultProvider: "openai",
   defaultModel: "gpt-4o",
+  anthropicModel: "claude-sonnet-4-6",
   defaultMode: "chat",
   defaultEffort: "med",
   chatsPath: ".axxa/chats",

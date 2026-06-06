@@ -7,12 +7,9 @@
 // em alguns contextos. OpenAI permite CORS via Bearer auth, então fetch funciona.
 
 import { requestUrl } from "obsidian";
-import { Provider, ProviderError, ProviderRequest, ProviderResponse } from "./base";
+import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandler } from "./base";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
-
-/** Callback que recebe cada delta de token vindo do streaming. */
-export type TokenHandler = (token: string) => void;
 
 export class OpenAIProvider implements Provider {
   id = "openai";

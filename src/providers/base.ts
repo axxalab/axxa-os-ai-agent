@@ -18,10 +18,19 @@ export interface ProviderResponse {
   content: string;
 }
 
+/** Callback que recebe cada delta de token vindo do streaming. */
+export type TokenHandler = (token: string) => void;
+
 export interface Provider {
   id: string;
   name: string;
   chat(request: ProviderRequest, apiKey: string): Promise<ProviderResponse>;
+  streamChat(
+    request: ProviderRequest,
+    apiKey: string,
+    onToken: TokenHandler,
+    signal?: AbortSignal
+  ): Promise<void>;
 }
 
 /**
