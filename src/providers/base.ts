@@ -21,6 +21,15 @@ export interface ProviderResponse {
 /** Callback que recebe cada delta de token vindo do streaming. */
 export type TokenHandler = (token: string) => void;
 
+/** Usage tokens (prompt+completion) — vem no final do stream / no response. */
+export interface Usage {
+  input: number;
+  output: number;
+}
+
+/** Callback opcional pra receber usage quando o provider informar. */
+export type UsageHandler = (usage: Usage) => void;
+
 export interface Provider {
   id: string;
   name: string;
@@ -29,6 +38,7 @@ export interface Provider {
     request: ProviderRequest,
     apiKey: string,
     onToken: TokenHandler,
+    onUsage?: UsageHandler,
     signal?: AbortSignal
   ): Promise<void>;
 }

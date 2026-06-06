@@ -54,12 +54,19 @@ export type NewMessageInput = DistributiveOmit<ChatMessage, "id" | "timestamp">;
 interface ChatState {
   messages: ChatMessage[];
   isLoading: boolean;
+  /** Tokens acumulados da sessão atual (in = prompt, out = completion). */
+  tokensIn: number;
+  tokensOut: number;
+  /** Última snapshot de prompt_tokens (usado pra estimar "contexto usado") */
+  lastPromptTokens: number;
   addMessage: (msg: NewMessageInput) => string;
   removeMessage: (id: string) => void;
   appendToMessage: (id: string, text: string) => void;
   selectOption: (messageId: string, optionIndex: number) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
+  addUsage: (input: number, output: number) => void;
+  resetUsage: () => void;
 }
 
 function makeId(): string {
@@ -74,6 +81,9 @@ function makeId(): string {
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   isLoading: false,
+  tokensIn: 0,
+  tokensOut: 0,
+  lastPromptTokens: 0,
   addMessage: (msg) => {
     const id = makeId();
     set((state) => ({
@@ -107,6 +117,16 @@ export const useChatStore = create<ChatState>((set) => ({
           : m
       ),
     })),
-  clearMessages: () => set({ messages: [], isLoading: false }),
+  clearMessages: () =>
+    set({ messages: [], isLoading: false, tokensIn: 0, tokensOut: 0, lastPromptTokens: 0 }),
   setLoading: (loading) => set({ isLoading: loading }),
+  addUsage: (input, output) =>
+    set((state) => ({
+      tokensIn: state.tokensIn + input,
+      tokensOut: state.tokensOut + output,
+      // lastPromptTokens reflete o prompt_tokens da ULTIMA chamada
+      // (usado pra estimar "contexto usado atualmente").
+      lastPromptTokens: input > 0 ? input : state.lastPromptTokens,
+    })),
+  resetUsage: () => set({ tokensIn: 0, tokensOut: 0, lastPromptTokens: 0 }),
 }));

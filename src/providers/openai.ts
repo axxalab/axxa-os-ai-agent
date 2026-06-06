@@ -7,9 +7,10 @@
 // em alguns contextos. OpenAI permite CORS via Bearer auth, então fetch funciona.
 
 import { requestUrl } from "obsidian";
-import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandler } from "./base";
+import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandler, UsageHandler } from "./base";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+const OPENAI_MODELS_ENDPOINT = "https://api.openai.com/v1/models";
 
 export class OpenAIProvider implements Provider {
   id = "openai";
@@ -81,6 +82,7 @@ export class OpenAIProvider implements Provider {
     req: ProviderRequest,
     apiKey: string,
     onToken: TokenHandler,
+    onUsage?: UsageHandler,
     signal?: AbortSignal
   ): Promise<void> {
     if (!apiKey || !apiKey.trim()) {
@@ -102,6 +104,8 @@ export class OpenAIProvider implements Provider {
           model: req.model,
           messages: req.messages,
           stream: true,
+          // include_usage faz a OpenAI mandar um chunk final com `usage`
+          stream_options: { include_usage: true },
           max_completion_tokens: req.maxTokens ?? 2000,
         }),
         signal,
@@ -166,12 +170,64 @@ export class OpenAIProvider implements Provider {
           if (typeof token === "string" && token.length > 0) {
             onToken(token);
           }
+          // Último chunk vem com `usage` (graças ao include_usage)
+          if (json?.usage && onUsage) {
+            onUsage({
+              input: json.usage.prompt_tokens ?? 0,
+              output: json.usage.completion_tokens ?? 0,
+            });
+          }
         } catch {
           // chunk JSON inválido — pula
         }
       }
     }
   }
+
+  /**
+   * Lista modelos relevantes (modernos) da OpenAI.
+   * Filtra legacy / audio / embeddings / etc.
+   */
+  async listModels(apiKey: string): Promise<string[]> {
+    if (!apiKey || !apiKey.trim()) {
+      throw new ProviderError("API key da OpenAI não configurada.", "no-key");
+    }
+    const res = await requestUrl({
+      url: OPENAI_MODELS_ENDPOINT,
+      method: "GET",
+      headers: { Authorization: `Bearer ${apiKey.trim()}` },
+      throw: false,
+    });
+    if (res.status === 401) {
+      throw new ProviderError("API key inválida.", "invalid-key");
+    }
+    if (res.status < 200 || res.status >= 300) {
+      throw new ProviderError(`OpenAI: HTTP ${res.status}`, "unknown");
+    }
+    const all: string[] = (res.json?.data ?? []).map((m: { id: string }) => m.id);
+    return all.filter(isRelevantOpenAIModel).sort();
+  }
+}
+
+/** Mantém só os modelos modernos de chat — sem legacy, sem áudio/embedding/tools. */
+function isRelevantOpenAIModel(id: string): boolean {
+  const allowedPrefixes = ["gpt-4o", "gpt-5", "o1", "o3", "o4"];
+  if (!allowedPrefixes.some((p) => id.startsWith(p))) return false;
+  const excludeKeywords = [
+    "audio",
+    "realtime",
+    "transcribe",
+    "tts",
+    "search",
+    "embed",
+    "preview",
+    "vision",
+    "instruct",
+    "moderation",
+    "image",
+  ];
+  if (excludeKeywords.some((kw) => id.includes(kw))) return false;
+  return true;
 }
 
 export const openaiProvider = new OpenAIProvider();

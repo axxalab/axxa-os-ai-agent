@@ -61,6 +61,20 @@ body.is-mobile
 }
 
 /* =====================================================
+ * DARK MODE FIX: força o bg do view-content matchar
+ * o bg do .axxa-root (--background-primary).
+ * Sem isso, a área da safe-area / clearance mostra
+ * uma cor diferente em dark mode (Obsidian usa
+ * uma var diferente no view-content por padrão).
+ * BLOCO SEPARADO do CSS locked do dev — não modifica
+ * o calc do padding, só adiciona background.
+ * ===================================================== */
+
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+  background: var(--background-primary);
+}
+
+/* =====================================================
  * Layout raiz da view
  * Layout simples: height 100% + min-height 0 (suficiente
  * pro Obsidian mobile handle o teclado virtual)
@@ -85,6 +99,8 @@ body.is-mobile
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--background-modifier-border);
 }
@@ -93,6 +109,7 @@ body.is-mobile
   display: flex;
   align-items: baseline;
   gap: 8px;
+  min-width: 0;
 }
 
 .axxa-header-name {
@@ -104,6 +121,36 @@ body.is-mobile
 .axxa-header-version {
   font-size: var(--font-ui-smaller);
   color: var(--text-faint);
+}
+
+/* Botão gear no header — abre Settings */
+.axxa-header-gear,
+.axxa-header-gear:hover,
+.axxa-header-gear:focus,
+.axxa-header-gear:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-header-gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.axxa-header-gear:hover {
+  color: var(--text-normal);
 }
 
 /* Status dot — usado pelo Status Line do composer (e potencialmente
@@ -513,46 +560,8 @@ body.is-mobile
   flex-direction: column;
   gap: 4px;
   padding: 8px 12px;
-  /* Background TRANSPARENTE — decisão do dev (0% opacidade).
-     A pill interna tem seu próprio bg, então o campo de texto continua
-     visualmente delimitado. */
+  /* Background TRANSPARENTE — decisão do dev (0% opacidade). */
   background: transparent;
-}
-
-/* Status line do composer — dot + provider · model, clicável (abre Settings) */
-.axxa-composer-status,
-.axxa-composer-status:hover,
-.axxa-composer-status:focus,
-.axxa-composer-status:active {
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent !important;
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.axxa-composer-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 4px;
-  font-size: var(--font-ui-smaller);
-  color: var(--text-faint);
-  cursor: pointer;
-  transition: color 0.15s;
-  border-radius: 999px;
-}
-
-.axxa-composer-status:hover {
-  color: var(--text-muted);
-}
-
-.axxa-composer-status-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 240px;
 }
 
 .axxa-composer-row {
@@ -561,17 +570,52 @@ body.is-mobile
   gap: 8px;
 }
 
+/* Tokens line abaixo do composer — bem pequena, só texto, não clicável */
+.axxa-composer-tokens {
+  font-size: 10px;
+  color: var(--text-faint);
+  text-align: right;
+  padding: 0 6px;
+  line-height: 1.4;
+  user-select: none;
+}
+
 .axxa-composer-pill {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  gap: 2px;
   background: var(--background-modifier-form-field);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 999px;
-  padding: 4px 14px 4px 4px;
+  border-radius: 22px;
+  padding: 6px 14px 6px 6px;
   transition: border-color 0.15s;
+}
+
+/* Info box dentro da pill — model · effort · context_used/total */
+.axxa-pill-info {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 10px;
+  color: var(--text-faint);
+  line-height: 1.4;
+  user-select: none;
+}
+
+.axxa-pill-info-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Row interno da pill: [+] + editor */
+.axxa-pill-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .axxa-composer-pill:focus-within {
@@ -679,6 +723,53 @@ body.is-mobile
 
 /* =====================================================
  * Icon helper — tamanhos contextuais
+ * ===================================================== */
+
+/* =====================================================
+ * Settings com tabs (Providers / Outros)
+ * ===================================================== */
+
+.axxa-settings-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0 16px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.axxa-tab-btn,
+.axxa-tab-btn:hover,
+.axxa-tab-btn:focus,
+.axxa-tab-btn:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-tab-btn {
+  padding: 8px 14px;
+  border-radius: 999px 999px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s;
+  margin-bottom: -1px;
+}
+
+.axxa-tab-btn:hover {
+  color: var(--text-normal);
+}
+
+.axxa-tab-active {
+  color: var(--text-accent) !important;
+  border-bottom: 2px solid var(--interactive-accent) !important;
+}
+
+/* =====================================================
+ * Icon helper
  * ===================================================== */
 
 .axxa-icon {

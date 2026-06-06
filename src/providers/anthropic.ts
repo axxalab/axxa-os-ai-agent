@@ -12,7 +12,7 @@
 //   - SSE events: tipos diferentes (content_block_delta com delta.text)
 
 import { requestUrl } from "obsidian";
-import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandler } from "./base";
+import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandler, UsageHandler } from "./base";
 
 const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -104,6 +104,7 @@ export class AnthropicProvider implements Provider {
     req: ProviderRequest,
     apiKey: string,
     onToken: TokenHandler,
+    onUsage?: UsageHandler,
     signal?: AbortSignal
   ): Promise<void> {
     if (!apiKey || !apiKey.trim()) {
@@ -154,6 +155,10 @@ export class AnthropicProvider implements Provider {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    // Anthropic informa input_tokens em message_start e output_tokens em
+    // message_delta. A gente acumula localmente e dispara onUsage no fim.
+    let inputTokens = 0;
+    let outputTokens = 0;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -178,7 +183,12 @@ export class AnthropicProvider implements Provider {
             if (typeof token === "string" && token.length > 0) {
               onToken(token);
             }
+          } else if (json.type === "message_start") {
+            inputTokens = json.message?.usage?.input_tokens ?? 0;
+          } else if (json.type === "message_delta") {
+            outputTokens = json.usage?.output_tokens ?? outputTokens;
           } else if (json.type === "message_stop") {
+            if (onUsage) onUsage({ input: inputTokens, output: outputTokens });
             return;
           } else if (json.type === "error") {
             throw new ProviderError(
@@ -192,6 +202,20 @@ export class AnthropicProvider implements Provider {
         }
       }
     }
+
+    // Stream encerrou sem message_stop — dispara usage com o que temos
+    if (onUsage && (inputTokens > 0 || outputTokens > 0)) {
+      onUsage({ input: inputTokens, output: outputTokens });
+    }
+  }
+
+  /** Lista hardcoded — Anthropic não tem endpoint público de models. */
+  async listModels(_apiKey: string): Promise<string[]> {
+    return [
+      "claude-opus-4-8",
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5-20251001",
+    ];
   }
 }
 

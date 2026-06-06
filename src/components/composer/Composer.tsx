@@ -1,35 +1,41 @@
 // src/components/composer/Composer.tsx
-// Composer com Status Line embutida (dot + provider · model) acima da pill.
-// O container externo é transparente — só a pill tem visible bg.
-// Status é clicável: abre as Settings do plugin.
+// Composer com:
+//   - Info box DENTRO da pill (topo): model · effort · context_used/total
+//   - Input row na pill (embaixo): [+] [editor]
+//   - Tokens display FORA da pill, abaixo: in/out/total (tiny, não clicável)
+//   - Send/mic/stop button externo à direita
 //
-// Botão da direita tem 3 estados:
-//   vazio + idle      → mic
-//   tem texto + idle  → arrow-up (enviar)
-//   streaming         → square (parar geração)
+// Background do composer container é TRANSPARENTE (decisão do dev).
 
 import { useEffect, useRef, useState } from "react";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { Platform } from "obsidian";
 import { Icon } from "../_shared/Icon";
+import { formatTokens, getContextWindow } from "../_shared/contextWindows";
 
 interface ComposerProps {
   onSend: (text: string) => void;
   onStop?: () => void;
-  onOpenSettings?: () => void;
   streaming?: boolean;
   providerName: string;
   modelName: string;
+  effort: string;
+  tokensIn: number;
+  tokensOut: number;
+  contextUsed: number;
 }
 
 export function Composer({
   onSend,
   onStop,
-  onOpenSettings,
   streaming = false,
   providerName,
   modelName,
+  effort,
+  tokensIn,
+  tokensOut,
+  contextUsed,
 }: ComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -82,29 +88,20 @@ export function Composer({
             maxHeight: "200px",
             overflow: "auto",
           },
-          "&.cm-focused": {
-            outline: "none",
-          },
+          "&.cm-focused": { outline: "none" },
           ".cm-content": {
             caretColor: "var(--text-normal)",
             padding: "4px 0",
           },
-          ".cm-line": {
-            padding: "0",
-          },
+          ".cm-line": { padding: "0" },
         }),
       ],
     });
 
-    const view = new EditorView({
-      state,
-      parent: editorRef.current,
-    });
+    const view = new EditorView({ state, parent: editorRef.current });
     viewRef.current = view;
 
-    if (!Platform.isMobile) {
-      view.focus();
-    }
+    if (!Platform.isMobile) view.focus();
 
     return () => {
       view.destroy();
@@ -153,36 +150,30 @@ export function Composer({
     label = "Enviar mensagem";
   }
 
+  const contextTotal = getContextWindow(modelName);
+  const tokensTotal = tokensIn + tokensOut;
+
   return (
     <div className="axxa-composer">
-      <button
-        type="button"
-        className="axxa-composer-status"
-        onClick={onOpenSettings}
-        aria-label="Abrir configurações"
-        title="Abrir configurações"
-      >
-        <span
-          className={
-            "axxa-status-dot" + (streaming ? " axxa-status-dot-active" : "")
-          }
-        />
-        <span className="axxa-composer-status-text">
-          {providerName} · {modelName}
-        </span>
-      </button>
       <div className="axxa-composer-row">
         <div className="axxa-composer-pill">
-          <button
-            type="button"
-            className="axxa-composer-plus"
-            aria-label="Mais opções"
-            title="Mais opções (em breve)"
-            disabled
-          >
-            <Icon name="plus" />
-          </button>
-          <div ref={editorRef} className="axxa-composer-editor" />
+          <div className="axxa-pill-info" aria-label={`${providerName} · ${modelName}`}>
+            <span className="axxa-pill-info-text">
+              {modelName} · {effort} · {formatTokens(contextUsed)}/{formatTokens(contextTotal)}
+            </span>
+          </div>
+          <div className="axxa-pill-input">
+            <button
+              type="button"
+              className="axxa-composer-plus"
+              aria-label="Mais opções"
+              title="Mais opções (em breve)"
+              disabled
+            >
+              <Icon name="plus" />
+            </button>
+            <div ref={editorRef} className="axxa-composer-editor" />
+          </div>
         </div>
         <button
           type="button"
@@ -193,6 +184,9 @@ export function Composer({
         >
           <Icon name={iconName} />
         </button>
+      </div>
+      <div className="axxa-composer-tokens" aria-label="Tokens da sessão">
+        in {tokensIn} · out {tokensOut} · total {tokensTotal}
       </div>
     </div>
   );

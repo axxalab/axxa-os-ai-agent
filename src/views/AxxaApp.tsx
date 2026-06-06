@@ -30,6 +30,9 @@ const SYSTEM_PROMPT =
 
 export function AxxaApp({ plugin }: AxxaAppProps) {
   const isLoading = useChatStore((s) => s.isLoading);
+  const tokensIn = useChatStore((s) => s.tokensIn);
+  const tokensOut = useChatStore((s) => s.tokensOut);
+  const lastPromptTokens = useChatStore((s) => s.lastPromptTokens);
   const abortRef = useRef<AbortController | null>(null);
 
   const handleSend = async (text: string) => {
@@ -69,6 +72,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           ? plugin.settings.anthropicModel
           : plugin.settings.defaultModel;
 
+      const { addUsage } = useChatStore.getState();
+
       await provider.streamChat(
         { model, messages: history },
         apiKey,
@@ -80,6 +85,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           } else {
             appendToMessage(responseId, token);
           }
+        },
+        (usage) => {
+          addUsage(usage.input, usage.output);
         },
         controller.signal
       );
@@ -144,15 +152,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   return (
     <AppContext.Provider value={plugin.app}>
       <div className="axxa-root">
-        <Header version={plugin.manifest.version} />
+        <Header
+          version={plugin.manifest.version}
+          onOpenSettings={handleOpenSettings}
+        />
         <ChatArea />
         <Composer
           onSend={handleSend}
           onStop={handleStop}
-          onOpenSettings={handleOpenSettings}
           streaming={isLoading}
           providerName={providerName}
           modelName={modelName}
+          effort={plugin.settings.defaultEffort}
+          tokensIn={tokensIn}
+          tokensOut={tokensOut}
+          contextUsed={lastPromptTokens}
         />
       </div>
     </AppContext.Provider>
