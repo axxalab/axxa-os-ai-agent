@@ -14,6 +14,7 @@ import type AxxaPlugin from "../main";
 import { Header } from "../components/layout/Header";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
+import { AppContext } from "../components/_shared/AppContext";
 import { useChatStore } from "../store/chat";
 import { openaiProvider } from "../providers/openai";
 import { ProviderError, type ProviderMessage } from "../providers/base";
@@ -113,10 +114,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   };
 
   return (
-    <div className="axxa-root">
-      <Header version={plugin.manifest.version} />
-      <ChatArea />
-      <Composer onSend={handleSend} onStop={handleStop} streaming={isLoading} />
-    </div>
+    <AppContext.Provider value={plugin.app}>
+      <div className="axxa-root">
+        <Header version={plugin.manifest.version} />
+        <ChatArea />
+        <Composer onSend={handleSend} onStop={handleStop} streaming={isLoading} />
+      </div>
+    </AppContext.Provider>
   );
 }

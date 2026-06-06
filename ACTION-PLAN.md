@@ -86,10 +86,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Botão stop durante geração (icone `square`, fundo inverso, `AbortController.abort()`)
 
 ### 1.5 Mensagens básicas
-- ⬜ Bubble de usuário (direita)
-- ⬜ Bubble do AI (esquerda)
-- ⬜ Timestamp em cada mensagem
-- ⬜ Day separator automático
+- ✅ Bubble de usuário (direita) — radius 18px, accent color
+- ✅ Bubble do AI (esquerda) — sem moldura (resposta), bubble pequena (comment)
+- ✅ Timestamp em cada mensagem (formato HH:mm, abaixo da mensagem)
+- ✅ Day separator automático ("Hoje" / "Ontem" / "12 de junho")
+- ✅ **Bonus:** Markdown render nas respostas da IA (MarkdownRenderer nativo do Obsidian — code blocks, listas, headers, links, callouts, syntax highlight)
 
 ### 1.6 Build de teste
 - ⬜ `npm run build` gera arquivos na pasta `/output`

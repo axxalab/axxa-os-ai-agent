@@ -1,12 +1,14 @@
 // src/components/chat/Messages.tsx
 // 4 variantes de renderização de mensagem (regras definidas no AGENTS.md/memória):
 //   - UserBubble    — bubble direita (qualquer input do user)
-//   - AIResponse    — texto puro esquerda + footer buttons (resposta padrão da IA)
+//   - AIResponse    — markdown renderizado esquerda + footer buttons (padrão da IA)
 //   - AIComment     — bubble esquerda (status / tool use — minoria dos casos)
 //   - AIOptions     — botões de seleção (igual ao componente AskUserQuestion)
 
 import { useState } from "react";
 import { Icon } from "../_shared/Icon";
+import { Markdown } from "../_shared/Markdown";
+import { formatTime } from "../_shared/timestamps";
 import { useChatStore } from "../../store/chat";
 import type {
   UserMessage,
@@ -15,10 +17,15 @@ import type {
   AIOptionsMessage,
 } from "../../store/chat";
 
+function Timestamp({ ts }: { ts: number }) {
+  return <div className="axxa-msg-timestamp">{formatTime(ts)}</div>;
+}
+
 export function UserBubble({ msg }: { msg: UserMessage }) {
   return (
     <div className="axxa-msg axxa-msg-user">
       <div className="axxa-bubble axxa-bubble-user">{msg.content}</div>
+      <Timestamp ts={msg.timestamp} />
     </div>
   );
 }
@@ -38,13 +45,11 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   };
 
   const handleRegen = () => {
-    // Stub — vai disparar uma nova chamada à IA quando o provider estiver plugado (1.3+)
-    console.log("[axxa] regen request — implementar quando provider estiver plugado");
+    console.log("[axxa] regen request — implementar quando precisar");
   };
 
   const handleLike = () => {
     setLiked((prev) => (prev === true ? null : true));
-    // Stub — feedback será persistido quando tivermos storage de mensagens (4.x)
     console.log("[axxa] like");
   };
 
@@ -55,7 +60,7 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
 
   return (
     <div className="axxa-msg axxa-msg-ai-response">
-      <div className="axxa-response-text">{msg.content}</div>
+      <Markdown content={msg.content} />
       <div className="axxa-response-footer">
         <button
           type="button"
@@ -104,6 +109,7 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
         </button>
         <span className="axxa-pro-pill" aria-label="Upgrade para PRO">PRO</span>
       </div>
+      <Timestamp ts={msg.timestamp} />
     </div>
   );
 }
