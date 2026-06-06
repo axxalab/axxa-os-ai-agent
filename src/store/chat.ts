@@ -56,6 +56,7 @@ interface ChatState {
   isLoading: boolean;
   addMessage: (msg: NewMessageInput) => string;
   removeMessage: (id: string) => void;
+  appendToMessage: (id: string, text: string) => void;
   selectOption: (messageId: string, optionIndex: number) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
@@ -86,6 +87,17 @@ export const useChatStore = create<ChatState>((set) => ({
   removeMessage: (id) =>
     set((state) => ({
       messages: state.messages.filter((m) => m.id !== id),
+    })),
+  // appendToMessage adiciona texto ao final de uma mensagem com content
+  // (user, ai-response, ai-comment). Usado no streaming pra mostrar tokens
+  // chegando um a um. Não-op em ai-options (não tem content).
+  appendToMessage: (id, text) =>
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== id) return m;
+        if (m.type === "ai-options") return m;
+        return { ...m, content: m.content + text };
+      }),
     })),
   selectOption: (messageId, optionIndex) =>
     set((state) => ({

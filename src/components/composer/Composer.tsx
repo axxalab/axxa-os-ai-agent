@@ -1,13 +1,12 @@
 // src/components/composer/Composer.tsx
-// Composer pill — "+" à esquerda, CodeMirror no meio, send/mic externo à direita.
-// O botão da direita transforma: vazio = mic (futuro: gravar áudio), com texto = enviar.
+// Composer pill — "+" à esquerda, CodeMirror no meio, send/mic/stop externo à direita.
+// O botão da direita tem 3 estados:
+//   1. Não streaming + campo vazio  → mic (futuro: gravar áudio)
+//   2. Não streaming + campo cheio  → arrow-up (enviar)
+//   3. Streaming                    → square (parar geração)
 //
 // CodeMirror é o MESMO editor que o Obsidian usa nas notas — herda tema, atalhos,
 // markdown e comportamento de teclado virtual.
-//
-// Keymap:
-//   Desktop:  Enter = enviar, Shift+Enter = nova linha
-//   Mobile:   Enter = nova linha (botão send é a única forma de enviar)
 
 import { useEffect, useRef, useState } from "react";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
@@ -17,18 +16,19 @@ import { Icon } from "../_shared/Icon";
 
 interface ComposerProps {
   onSend: (text: string) => void;
-  disabled?: boolean;
+  onStop?: () => void;
+  streaming?: boolean;
 }
 
-export function Composer({ onSend, disabled = false }: ComposerProps) {
+export function Composer({ onSend, onStop, streaming = false }: ComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const sendRef = useRef(onSend);
   sendRef.current = onSend;
-  // disabledRef permite que o keymap consulte o valor atual sem precisar
-  // recriar o EditorView toda vez que disabled muda
-  const disabledRef = useRef(disabled);
-  disabledRef.current = disabled;
+  // streamingRef permite que o keymap consulte o valor atual sem precisar
+  // recriar o EditorView toda vez que streaming muda
+  const streamingRef = useRef(streaming);
+  streamingRef.current = streaming;
 
   // Controla se o campo está vazio — pra alternar ícone do botão da direita
   const [isEmpty, setIsEmpty] = useState(true);
@@ -37,8 +37,8 @@ export function Composer({ onSend, disabled = false }: ComposerProps) {
     if (!editorRef.current) return;
 
     function sendCurrent(view: EditorView): boolean {
-      // Se tá esperando resposta da IA, não envia outra mensagem
-      if (disabledRef.current) return false;
+      // Se está em streaming, Enter não faz nada (precisa parar primeiro)
+      if (streamingRef.current) return false;
       const text = view.state.doc.toString().trim();
       if (!text) return false;
       sendRef.current(text);
@@ -61,7 +61,6 @@ export function Composer({ onSend, disabled = false }: ComposerProps) {
         keymap.of(enterKey),
         EditorView.lineWrapping,
         placeholder("Pergunte ao AXXA Agent..."),
-        // Listener pra trackear se o doc está vazio (botão muda mic ↔ send)
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const text = update.state.doc.toString().trim();
@@ -97,7 +96,6 @@ export function Composer({ onSend, disabled = false }: ComposerProps) {
     });
     viewRef.current = view;
 
-    // Não dá foco automático — no mobile isso abre o teclado e atrapalha
     if (!Platform.isMobile) {
       view.focus();
     }
@@ -110,7 +108,7 @@ export function Composer({ onSend, disabled = false }: ComposerProps) {
   }, []);
 
   const handleSendClick = () => {
-    if (disabled) return;
+    if (streaming) return;
     const view = viewRef.current;
     if (!view) return;
     const text = view.state.doc.toString().trim();
@@ -123,10 +121,32 @@ export function Composer({ onSend, disabled = false }: ComposerProps) {
   };
 
   const handleMicClick = () => {
-    if (disabled) return;
-    // Stub — áudio será implementado num módulo próprio
+    if (streaming) return;
     console.log("[axxa] mic click — gravação de áudio em breve");
   };
+
+  const handleStopClick = () => {
+    onStop?.();
+  };
+
+  // Determina o ícone e a ação do botão direito
+  let iconName: string;
+  let onClick: () => void;
+  let label: string;
+
+  if (streaming) {
+    iconName = "square";
+    onClick = handleStopClick;
+    label = "Parar geração";
+  } else if (isEmpty) {
+    iconName = "mic";
+    onClick = handleMicClick;
+    label = "Gravar áudio";
+  } else {
+    iconName = "arrow-up";
+    onClick = handleSendClick;
+    label = "Enviar mensagem";
+  }
 
   return (
     <div className="axxa-composer">
@@ -144,13 +164,12 @@ export function Composer({ onSend, disabled = false }: ComposerProps) {
       </div>
       <button
         type="button"
-        className="axxa-composer-send"
-        onClick={isEmpty ? handleMicClick : handleSendClick}
-        disabled={disabled}
-        aria-label={isEmpty ? "Gravar áudio" : "Enviar mensagem"}
-        title={isEmpty ? "Gravar áudio (em breve)" : "Enviar"}
+        className={"axxa-composer-send" + (streaming ? " axxa-composer-stop" : "")}
+        onClick={onClick}
+        aria-label={label}
+        title={label}
       >
-        <Icon name={isEmpty ? "mic" : "arrow-up"} />
+        <Icon name={iconName} />
       </button>
     </div>
   );

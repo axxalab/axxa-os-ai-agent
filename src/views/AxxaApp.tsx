@@ -1,20 +1,22 @@
 // src/views/AxxaApp.tsx
-// Layout completo do chat com integração OpenAI (Módulo 1.3).
+// Layout completo do chat com streaming OpenAI (Módulo 1.4).
 // Fluxo no send:
 //   1. Adiciona bubble do user
-//   2. Adiciona ai-comment "Pensando..." (com ícone animado)
-//   3. Trava o composer (isLoading = true)
-//   4. Chama OpenAI via provider
-//   5. Remove o "Pensando..." e adiciona a resposta da IA
-//   6. Libera o composer
+//   2. Adiciona ai-comment "Pensando..." (com sparkles animado)
+//   3. setLoading(true) → composer mostra botão Stop
+//   4. streamChat dispara, AbortController fica em ref pra abort manual
+//   5. Primeiro token: remove "Pensando...", cria ai-response com o token
+//   6. Tokens seguintes: appendToMessage no mesmo ai-response
+//   7. Stream encerra (normal ou abort): setLoading(false)
 
+import { useRef } from "react";
 import type AxxaPlugin from "../main";
 import { Header } from "../components/layout/Header";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { useChatStore } from "../store/chat";
 import { openaiProvider } from "../providers/openai";
-import type { ProviderMessage } from "../providers/base";
+import { ProviderError, type ProviderMessage } from "../providers/base";
 
 interface AxxaAppProps {
   plugin: AxxaPlugin;
@@ -27,20 +29,22 @@ const SYSTEM_PROMPT =
 
 export function AxxaApp({ plugin }: AxxaAppProps) {
   const isLoading = useChatStore((s) => s.isLoading);
+  const abortRef = useRef<AbortController | null>(null);
 
   const handleSend = async (text: string) => {
-    const { addMessage, removeMessage, setLoading } = useChatStore.getState();
+    const { addMessage, removeMessage, appendToMessage, setLoading } =
+      useChatStore.getState();
 
-    // 1. Adiciona a mensagem do user
     addMessage({ type: "user", content: text });
-
-    // 2. Adiciona o "Pensando..." (vai sumir quando a resposta chegar)
     const commentId = addMessage({ type: "ai-comment", content: "Pensando..." });
     setLoading(true);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    let responseId: string | null = null;
+
     try {
-      // Monta o histórico convertendo nossos types pros roles da OpenAI.
-      // Filtra ai-comment e ai-options (não fazem parte da conversa real).
       const history: ProviderMessage[] = [
         { role: "system", content: SYSTEM_PROMPT },
         ...useChatStore.getState().messages
@@ -51,33 +55,68 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           })),
       ];
 
-      const response = await openaiProvider.chat(
+      await openaiProvider.streamChat(
         {
           model: plugin.settings.defaultModel,
           messages: history,
         },
-        plugin.settings.openaiApiKey
+        plugin.settings.openaiApiKey,
+        (token) => {
+          if (responseId === null) {
+            // primeiro token — substitui "Pensando..." pela resposta real
+            removeMessage(commentId);
+            responseId = addMessage({ type: "ai-response", content: token });
+          } else {
+            appendToMessage(responseId, token);
+          }
+        },
+        controller.signal
       );
 
-      removeMessage(commentId);
-      addMessage({ type: "ai-response", content: response.content });
+      // Stream terminou sem token? Limpa o "Pensando..." de qualquer jeito
+      if (responseId === null) {
+        removeMessage(commentId);
+        addMessage({
+          type: "ai-response",
+          content: "[Resposta vazia recebida da OpenAI]",
+        });
+      }
     } catch (err) {
-      removeMessage(commentId);
-      const errorMsg = err instanceof Error ? err.message : "Erro desconhecido.";
-      addMessage({
-        type: "ai-response",
-        content: `[Erro] ${errorMsg}`,
-      });
+      // AbortError = usuário clicou em Stop. Mantém o que já apareceu, sem erro.
+      if (err instanceof DOMException && err.name === "AbortError") {
+        if (responseId === null) {
+          removeMessage(commentId);
+        }
+      } else {
+        if (responseId === null) {
+          removeMessage(commentId);
+        }
+        const errorMsg =
+          err instanceof ProviderError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Erro desconhecido.";
+        addMessage({
+          type: "ai-response",
+          content: `[Erro] ${errorMsg}`,
+        });
+      }
     } finally {
       setLoading(false);
+      abortRef.current = null;
     }
+  };
+
+  const handleStop = () => {
+    abortRef.current?.abort();
   };
 
   return (
     <div className="axxa-root">
       <Header version={plugin.manifest.version} />
       <ChatArea />
-      <Composer onSend={handleSend} disabled={isLoading} />
+      <Composer onSend={handleSend} onStop={handleStop} streaming={isLoading} />
     </div>
   );
 }

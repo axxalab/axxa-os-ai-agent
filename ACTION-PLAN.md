@@ -80,10 +80,10 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Tratamento de erro: `ProviderError` com códigos (no-key, invalid-key, rate-limit, network, unknown) + mensagens PT-BR
 
 ### 1.4 Streaming
-- ⬜ SSE implementado para OpenAI
-- ⬜ Texto aparecendo token a token
-- ⬜ Indicador de loading ("digitando...")
-- ⬜ Botão stop durante geração
+- ✅ SSE implementado para OpenAI (fetch + ReadableStream, parser `data:` linha a linha)
+- ✅ Texto aparecendo token a token (store.appendToMessage + auto-scroll a cada update)
+- ✅ Indicador de loading ("Pensando..." com sparkles animado via ai-comment)
+- ✅ Botão stop durante geração (icone `square`, fundo inverso, `AbortController.abort()`)
 
 ### 1.5 Mensagens básicas
 - ⬜ Bubble de usuário (direita)

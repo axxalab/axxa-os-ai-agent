@@ -459,7 +459,7 @@ body.is-mobile
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
 }
 
 .axxa-composer-send:active {
@@ -471,6 +471,17 @@ body.is-mobile
   .axxa-composer-send:hover {
     background: var(--interactive-accent-hover) !important;
   }
+}
+
+/* Estado "stop" durante streaming — cores invertidas pra sinalizar
+   que é uma ação diferente de send (parar geração). */
+.axxa-composer-send.axxa-composer-stop {
+  background: var(--text-normal) !important;
+  color: var(--background-primary) !important;
+}
+.axxa-composer-send.axxa-composer-stop:active,
+.axxa-composer-send.axxa-composer-stop:hover {
+  background: var(--text-muted) !important;
 }
 
 /* =====================================================

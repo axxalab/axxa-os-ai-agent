@@ -11,11 +11,11 @@ export function ChatArea() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Auto-scroll quando o número de mensagens aumenta.
-    // O usuário ainda pode scrollar pra cima manualmente entre updates.
+    // Auto-scroll a cada mudança em messages (tanto adicao de nova msg quanto
+    // append de token durante streaming — ambos mudam a referencia do array).
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+  }, [messages]);
 
   if (messages.length === 0) {
     return (
