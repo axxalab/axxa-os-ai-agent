@@ -113,7 +113,14 @@ body.is-mobile
   color: var(--text-faint);
 }
 
-/* Botão gear no header — abre Settings */
+/* Grupo de botões à direita do header */
+.axxa-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Botões do header (nova conversa + gear) */
 .axxa-header-gear,
 .axxa-header-gear:hover,
 .axxa-header-gear:focus,
@@ -860,6 +867,61 @@ body.is-mobile
   font-size: 11px;
   color: var(--text-faint);
   line-height: 1.5;
+}
+
+/* Recent chats list */
+.axxa-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.axxa-recent-item,
+.axxa-recent-item:focus,
+.axxa-recent-item:active {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.axxa-recent-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--background-modifier-border) !important;
+  background: var(--background-secondary) !important;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.axxa-recent-item:hover {
+  background: var(--background-modifier-hover) !important;
+  border-color: var(--interactive-accent) !important;
+}
+
+.axxa-recent-title {
+  font-weight: 500;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  width: 100%;
+}
+
+.axxa-recent-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-faint);
 }
 
 /* =====================================================

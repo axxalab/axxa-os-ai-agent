@@ -191,15 +191,16 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 > Objetivo: Chats salvos. Primeira integração real com o Vault.
 
 ### 4.1 Estrutura de pastas no Vault
-- ⬜ `.axxa/` criada automaticamente no primeiro uso
-- ⬜ Subpastas: `chats/`, `skills/`, `logs/`, `index/`
-- ⬜ Paths configuráveis nas Settings com folder picker
+- ✅ `.axxa/` criada automaticamente no primeiro save (`ensureFolder` recursivo)
+- ✅ Subpasta `chats/chat/` criada (futuras: `skills/`, `logs/`, `index/`)
+- ✅ Path configurável nas Settings → Outros (`chatsPath`, default `.axxa/chats`)
 
 ### 4.2 Chats como Markdown
-- ⬜ Cada conversa salva como `.md` em `.axxa/chats/[modo]/`
-- ⬜ Frontmatter correto: title, date, mode, provider, model, effort, tokens
-- ⬜ Histórico de mensagens formatado em Markdown
-- ⬜ Last Chats view (lista dos chats recentes)
+- ✅ Cada conversa salva como `.md` em `.axxa/chats/chat/[uuid].md`
+- ✅ Frontmatter completo: id, title, date, mode, provider, model, effort, tokens_in, tokens_out, message_count, tags
+- ✅ Body Markdown legível: `# Title` + alternância `## You` / `## Assistant`
+- ✅ Auto-save debounced 500ms a cada update de messages
+- ✅ Last Chats view (lista no starter screen) — clique reidrata mensagens + session lock
 
 ### 4.3 Vault Q&A básico (context stuffing)
 - ⬜ Modo Vault Q&A ativo no session modal

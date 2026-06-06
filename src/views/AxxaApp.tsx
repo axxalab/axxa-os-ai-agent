@@ -1,13 +1,14 @@
 // src/views/AxxaApp.tsx
-// Layout completo do chat com session lock + starter screen + scroll inteligente.
+// Layout completo com session lock + starter screen + persistência de chats.
 //
 // Fluxo:
-//   - Chat vazio → renderiza StarterScreen com provider/model/effort selectors
-//   - Primeira mensagem → lockSession() trava provider+model no store
-//   - Durante conversa → status mostra provider/model travados; só effort muda
-//   - "+" modal → muda Effort em qualquer momento
+//   - Chat vazio → StarterScreen com provider/model/effort + Recent Chats
+//   - Primeira msg → lockSession() + setCurrentChatId(uuid) + auto-save inicia
+//   - Cada update em messages → auto-save debounced (500ms) no .axxa/chats/chat/[id].md
+//   - "Nova conversa" no header → newChat() reseta tudo
+//   - Click em chat recente → loadChat() reidrata mensagens + locked session
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type AxxaPlugin from "../main";
 import { Header } from "../components/layout/Header";
 import { ChatArea } from "../components/chat/ChatArea";
@@ -19,6 +20,15 @@ import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage } from "../providers/base";
 import { effortToMaxTokens, type EffortLevel } from "../components/_shared/effort";
+import {
+  saveChat,
+  loadChat,
+  listChats,
+  generateTitle,
+  type ChatData,
+  type ChatSummary,
+} from "../components/_shared/chatPersistence";
+import type { ChatMessage, UserMessage, AIResponseMessage } from "../store/chat";
 
 interface AxxaAppProps {
   plugin: AxxaPlugin;
@@ -29,6 +39,15 @@ const SYSTEM_PROMPT =
   "Responda em português, de forma clara, direta e útil. " +
   "Quando fizer sentido, use Markdown.";
 
+const MODE = "chat";
+
+function makeId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function AxxaApp({ plugin }: AxxaAppProps) {
   const isLoading = useChatStore((s) => s.isLoading);
   const tokensIn = useChatStore((s) => s.tokensIn);
@@ -37,17 +56,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const messages = useChatStore((s) => s.messages);
   const sessionProvider = useChatStore((s) => s.sessionProvider);
   const sessionModel = useChatStore((s) => s.sessionModel);
+  const currentChatId = useChatStore((s) => s.currentChatId);
+  const currentChatTitle = useChatStore((s) => s.currentChatTitle);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Mirror em state das settings pra ter reatividade
-  // (user mexe no starter screen → updates settings + estado React)
   const [providerSel, setProviderSel] = useState(plugin.settings.defaultProvider);
   const [openaiModelSel, setOpenaiModelSel] = useState(plugin.settings.defaultModel);
   const [anthropicModelSel, setAnthropicModelSel] = useState(plugin.settings.anthropicModel);
   const [effort, setEffort] = useState(plugin.settings.defaultEffort);
   const [plusOpen, setPlusOpen] = useState(false);
+  const [recentChats, setRecentChats] = useState<ChatSummary[]>([]);
 
-  // Provider/model EFETIVOS = locked (se travado) senão starter selection
   const activeProviderId = sessionProvider ?? providerSel;
   const activeProvider = getProvider(activeProviderId);
   const activeModel =
@@ -55,10 +74,72 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     (activeProviderId === "anthropic" ? anthropicModelSel : openaiModelSel);
   const isLocked = sessionProvider !== null;
 
-  // Modelo mostrado/usado pelo starter screen (sempre o atual, não locked)
   const starterModel =
     providerSel === "anthropic" ? anthropicModelSel : openaiModelSel;
 
+  // ============================================================
+  // Carrega lista de chats recentes quando chat tá vazio
+  // ============================================================
+  const isEmpty = messages.length === 0;
+  useEffect(() => {
+    if (!isEmpty) return;
+    listChats(plugin.app, plugin.settings.chatsPath, MODE, 8)
+      .then(setRecentChats)
+      .catch((err) => {
+        console.error("[axxa] listChats falhou:", err);
+        setRecentChats([]);
+      });
+  }, [isEmpty, plugin.app, plugin.settings.chatsPath]);
+
+  // ============================================================
+  // Auto-save debounced — escreve .axxa/chats/chat/[id].md
+  // ============================================================
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (!currentChatId) return;
+    const timer = window.setTimeout(() => {
+      const userOrAi = messages.filter(
+        (m): m is UserMessage | AIResponseMessage =>
+          m.type === "user" || m.type === "ai-response"
+      );
+      if (userOrAi.length === 0) return;
+      const chat: ChatData = {
+        id: currentChatId,
+        title: currentChatTitle || generateTitle(userOrAi[0].content),
+        date: new Date().toISOString(),
+        mode: MODE,
+        provider: activeProviderId,
+        model: activeModel,
+        effort,
+        tokensIn,
+        tokensOut,
+        messages: userOrAi.map((m) => ({
+          type: m.type as "user" | "ai-response",
+          content: m.content,
+          timestamp: m.timestamp,
+        })),
+      };
+      saveChat(plugin.app, plugin.settings.chatsPath, chat).catch((err) =>
+        console.error("[axxa] saveChat falhou:", err)
+      );
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [
+    messages,
+    currentChatId,
+    currentChatTitle,
+    activeProviderId,
+    activeModel,
+    effort,
+    tokensIn,
+    tokensOut,
+    plugin.app,
+    plugin.settings.chatsPath,
+  ]);
+
+  // ============================================================
+  // Handlers
+  // ============================================================
   const handleSend = async (text: string) => {
     const {
       addMessage,
@@ -67,11 +148,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       setLoading,
       lockSession,
       setStreamingMessageId,
+      setCurrentChatId,
+      setCurrentChatTitle,
       addUsage,
     } = useChatStore.getState();
 
-    // Lock session na primeira mensagem
+    // Primeira msg da sessão → cria chat ID, gera título, trava session
     if (messages.length === 0) {
+      const newId = makeId();
+      setCurrentChatId(newId);
+      setCurrentChatTitle(generateTitle(text));
       lockSession(activeProviderId, activeModel);
     }
 
@@ -124,10 +210,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
       if (responseId === null) {
         removeMessage(commentId);
-        addMessage({
-          type: "ai-response",
-          content: "[Resposta vazia recebida]",
-        });
+        addMessage({ type: "ai-response", content: "[Resposta vazia recebida]" });
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -149,9 +232,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
-  const handleStop = () => {
-    abortRef.current?.abort();
-  };
+  const handleStop = () => abortRef.current?.abort();
 
   const handleOpenSettings = () => {
     const app = plugin.app as unknown as {
@@ -161,7 +242,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     app.setting.openTabById("axxa-os-ai-agent");
   };
 
-  // Plus modal
+  const handleNewChat = () => {
+    abortRef.current?.abort();
+    useChatStore.getState().newChat();
+  };
+
   const handlePlusClick = () => setPlusOpen(true);
   const handlePlusClose = () => setPlusOpen(false);
   const handleSelectEffort = async (level: EffortLevel) => {
@@ -170,12 +255,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await plugin.saveSettings();
   };
 
-  // Starter screen handlers
   const handleStarterProvider = async (p: string) => {
     setProviderSel(p);
     plugin.settings.defaultProvider = p;
     await plugin.saveSettings();
   };
+
   const handleStarterModel = async (m: string) => {
     if (providerSel === "anthropic") {
       setAnthropicModelSel(m);
@@ -187,7 +272,36 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await plugin.saveSettings();
   };
 
-  const isEmpty = messages.length === 0;
+  const handleLoadChat = async (chatId: string) => {
+    try {
+      const chat = await loadChat(plugin.app, plugin.settings.chatsPath, MODE, chatId);
+      const restored: ChatMessage[] = chat.messages.map((m) => ({
+        id: makeId(),
+        type: m.type,
+        content: m.content,
+        timestamp: m.timestamp,
+      })) as ChatMessage[];
+
+      const {
+        setMessages,
+        setCurrentChatId,
+        setCurrentChatTitle,
+        lockSession,
+        resetUsage,
+        addUsage,
+      } = useChatStore.getState();
+
+      setMessages(restored);
+      setCurrentChatId(chat.id);
+      setCurrentChatTitle(chat.title);
+      lockSession(chat.provider, chat.model);
+      resetUsage();
+      addUsage(chat.tokensIn, chat.tokensOut);
+      setEffort(chat.effort);
+    } catch (err) {
+      console.error("[axxa] loadChat falhou:", err);
+    }
+  };
 
   return (
     <AppContext.Provider value={plugin.app}>
@@ -195,15 +309,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         <Header
           version={plugin.manifest.version}
           onOpenSettings={handleOpenSettings}
+          onNewChat={handleNewChat}
         />
         {isEmpty ? (
           <StarterScreen
             provider={providerSel}
             model={starterModel}
             effort={effort}
+            recentChats={recentChats}
             onProviderChange={handleStarterProvider}
             onModelChange={handleStarterModel}
             onEffortChange={handleSelectEffort}
+            onLoadChat={handleLoadChat}
           />
         ) : (
           <ChatArea />

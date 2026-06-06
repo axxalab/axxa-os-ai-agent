@@ -64,6 +64,10 @@ interface ChatState {
   /** Provider/model TRAVADOS após primeira mensagem (session lock). null = não travado. */
   sessionProvider: string | null;
   sessionModel: string | null;
+  /** ID do chat atual (UUID). null antes da primeira msg. Usado pra save/load. */
+  currentChatId: string | null;
+  /** Título do chat atual (auto-gerado da primeira msg do user). */
+  currentChatTitle: string;
   addMessage: (msg: NewMessageInput) => string;
   removeMessage: (id: string) => void;
   appendToMessage: (id: string, text: string) => void;
@@ -75,6 +79,12 @@ interface ChatState {
   setStreamingMessageId: (id: string | null) => void;
   lockSession: (provider: string, model: string) => void;
   unlockSession: () => void;
+  setCurrentChatId: (id: string | null) => void;
+  setCurrentChatTitle: (title: string) => void;
+  /** Substitui o array de mensagens inteiro (usado ao carregar chat do disco). */
+  setMessages: (msgs: ChatMessage[]) => void;
+  /** Reset completo pra "Nova conversa" — limpa msgs, lock, IDs, tokens. */
+  newChat: () => void;
 }
 
 function makeId(): string {
@@ -95,6 +105,8 @@ export const useChatStore = create<ChatState>((set) => ({
   streamingMessageId: null,
   sessionProvider: null,
   sessionModel: null,
+  currentChatId: null,
+  currentChatTitle: "",
   addMessage: (msg) => {
     const id = makeId();
     set((state) => ({
@@ -151,4 +163,20 @@ export const useChatStore = create<ChatState>((set) => ({
   lockSession: (provider, model) =>
     set({ sessionProvider: provider, sessionModel: model }),
   unlockSession: () => set({ sessionProvider: null, sessionModel: null }),
+  setCurrentChatId: (id) => set({ currentChatId: id }),
+  setCurrentChatTitle: (title) => set({ currentChatTitle: title }),
+  setMessages: (msgs) => set({ messages: msgs }),
+  newChat: () =>
+    set({
+      messages: [],
+      isLoading: false,
+      tokensIn: 0,
+      tokensOut: 0,
+      lastPromptTokens: 0,
+      streamingMessageId: null,
+      sessionProvider: null,
+      sessionModel: null,
+      currentChatId: null,
+      currentChatTitle: "",
+    }),
 }));
