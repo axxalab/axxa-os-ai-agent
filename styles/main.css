@@ -60,19 +60,7 @@ body.is-mobile
   display: none !important;
 }
 
-/* =====================================================
- * DARK MODE FIX: força o bg do view-content matchar
- * o bg do .axxa-root (--background-primary).
- * Sem isso, a área da safe-area / clearance mostra
- * uma cor diferente em dark mode (Obsidian usa
- * uma var diferente no view-content por padrão).
- * BLOCO SEPARADO do CSS locked do dev — não modifica
- * o calc do padding, só adiciona background.
- * ===================================================== */
-
-.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  background: var(--background-primary);
-}
+/* Dark mode bg fix removido a pedido do dev — voltou ao default do Obsidian */
 
 /* =====================================================
  * Layout raiz da view
@@ -85,6 +73,8 @@ body.is-mobile
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  /* position: relative pro PlusModal (bottom sheet) usar inset:0 */
+  position: relative;
   background: var(--background-primary);
   color: var(--text-normal);
   font-family: var(--font-interface);
@@ -558,7 +548,7 @@ body.is-mobile
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   padding: 8px 12px;
   /* Background TRANSPARENTE — decisão do dev (0% opacidade). */
   background: transparent;
@@ -570,52 +560,54 @@ body.is-mobile
   gap: 8px;
 }
 
-/* Tokens line abaixo do composer — bem pequena, só texto, não clicável */
-.axxa-composer-tokens {
-  font-size: 10px;
-  color: var(--text-faint);
-  text-align: right;
+/* Status row abaixo do pill — model · effort · context · tokens
+   com micro-ícones coloridos. Não clicável. */
+.axxa-composer-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
   padding: 0 6px;
+  font-size: 11px;
   line-height: 1.4;
   user-select: none;
+}
+
+.axxa-info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-weight: 500;
+  /* color é setado inline (variável por chip) */
+}
+
+.axxa-info-chip .axxa-icon .svg-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.axxa-info-sep {
+  color: var(--text-faint);
+  opacity: 0.5;
+  font-size: 11px;
 }
 
 .axxa-composer-pill {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 4px;
   background: var(--background-modifier-form-field);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 22px;
-  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  padding: 4px 14px 4px 4px;
   transition: border-color 0.15s;
 }
 
-/* Info box dentro da pill — model · effort · context_used/total */
-.axxa-pill-info {
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  font-size: 10px;
-  color: var(--text-faint);
-  line-height: 1.4;
-  user-select: none;
-}
-
-.axxa-pill-info-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Row interno da pill: [+] + editor */
-.axxa-pill-input {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
+.axxa-composer-pill:focus-within {
+  border-color: var(--interactive-accent);
 }
 
 .axxa-composer-pill:focus-within {
@@ -724,6 +716,155 @@ body.is-mobile
 /* =====================================================
  * Icon helper — tamanhos contextuais
  * ===================================================== */
+
+/* =====================================================
+ * Plus Modal — bottom sheet estilo ChatGPT
+ * Sobe do rodapé com slide animation. Overlay dim.
+ * ===================================================== */
+
+.axxa-plus-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+  z-index: 1000;
+  animation: axxa-plus-fade 0.18s ease;
+}
+
+.axxa-plus-sheet {
+  width: 100%;
+  max-height: 75%;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border-radius: 22px 22px 0 0;
+  padding: 12px 16px 24px 16px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  animation: axxa-plus-slide 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.axxa-plus-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--background-modifier-border);
+  border-radius: 999px;
+  margin: 0 auto 16px auto;
+}
+
+.axxa-plus-title {
+  margin: 0 0 16px 0;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+  text-align: center;
+}
+
+.axxa-plus-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.axxa-plus-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.axxa-plus-section-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--color-orange, #ec7b3e);
+}
+
+.axxa-plus-section-icon .svg-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.axxa-plus-section-title {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.axxa-plus-section-sub {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+/* Effort grid — 5 botões em coluna com label + sub */
+.axxa-effort-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.axxa-effort-btn,
+.axxa-effort-btn:hover,
+.axxa-effort-btn:focus,
+.axxa-effort-btn:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.axxa-effort-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--background-modifier-border) !important;
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 44px;
+}
+
+.axxa-effort-btn:not(:disabled):hover {
+  border-color: var(--interactive-accent) !important;
+  background: var(--background-modifier-hover) !important;
+}
+
+.axxa-effort-label {
+  font-weight: 600;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+}
+
+.axxa-effort-sub {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.axxa-effort-active {
+  border-color: var(--interactive-accent) !important;
+  background: var(--background-modifier-hover) !important;
+}
+
+.axxa-effort-active .axxa-effort-label {
+  color: var(--text-accent);
+}
+
+@keyframes axxa-plus-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes axxa-plus-slide {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
 
 /* =====================================================
  * Settings com tabs (Providers / Outros)

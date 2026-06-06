@@ -1,13 +1,14 @@
 // src/components/composer/Composer.tsx
-// Composer com:
-//   - Info box DENTRO da pill (topo): model · effort · context_used/total
-//   - Input row na pill (embaixo): [+] [editor]
-//   - Tokens display FORA da pill, abaixo: in/out/total (tiny, não clicável)
-//   - Send/mic/stop button externo à direita
+// Composer:
+//   - Pill simples: [+] [editor]
+//   - Send/mic/stop externo à direita
+//   - Status row BELOW pill: model · effort · context · in · out · total
+//     (micro-ícones coloridos via Lucide / Obsidian)
+//   - Background transparente
 //
-// Background do composer container é TRANSPARENTE (decisão do dev).
+// "+" button abre o PlusModal (ChatGPT-style bottom sheet com Effort selector)
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { Platform } from "obsidian";
@@ -17,6 +18,7 @@ import { formatTokens, getContextWindow } from "../_shared/contextWindows";
 interface ComposerProps {
   onSend: (text: string) => void;
   onStop?: () => void;
+  onPlusClick?: () => void;
   streaming?: boolean;
   providerName: string;
   modelName: string;
@@ -26,9 +28,27 @@ interface ComposerProps {
   contextUsed: number;
 }
 
+function InfoChip({
+  icon,
+  color,
+  children,
+}: {
+  icon: string;
+  color: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="axxa-info-chip" style={{ color }}>
+      <Icon name={icon} />
+      <span>{children}</span>
+    </span>
+  );
+}
+
 export function Composer({
   onSend,
   onStop,
+  onPlusClick,
   streaming = false,
   providerName,
   modelName,
@@ -157,23 +177,16 @@ export function Composer({
     <div className="axxa-composer">
       <div className="axxa-composer-row">
         <div className="axxa-composer-pill">
-          <div className="axxa-pill-info" aria-label={`${providerName} · ${modelName}`}>
-            <span className="axxa-pill-info-text">
-              {modelName} · {effort} · {formatTokens(contextUsed)}/{formatTokens(contextTotal)}
-            </span>
-          </div>
-          <div className="axxa-pill-input">
-            <button
-              type="button"
-              className="axxa-composer-plus"
-              aria-label="Mais opções"
-              title="Mais opções (em breve)"
-              disabled
-            >
-              <Icon name="plus" />
-            </button>
-            <div ref={editorRef} className="axxa-composer-editor" />
-          </div>
+          <button
+            type="button"
+            className="axxa-composer-plus"
+            aria-label="Mais opções"
+            title="Mais opções"
+            onClick={onPlusClick}
+          >
+            <Icon name="plus" />
+          </button>
+          <div ref={editorRef} className="axxa-composer-editor" />
         </div>
         <button
           type="button"
@@ -185,8 +198,28 @@ export function Composer({
           <Icon name={iconName} />
         </button>
       </div>
-      <div className="axxa-composer-tokens" aria-label="Tokens da sessão">
-        in {tokensIn} · out {tokensOut} · total {tokensTotal}
+
+      {/* Status row abaixo do pill — micro-ícones coloridos */}
+      <div className="axxa-composer-info" aria-label="Status da sessão">
+        <InfoChip icon="cpu" color="var(--color-purple, #a370f7)">
+          {modelName}
+        </InfoChip>
+        <InfoChip icon="zap" color="var(--color-orange, #ec7b3e)">
+          {effort}
+        </InfoChip>
+        <InfoChip icon="gauge" color="var(--color-cyan, #4cc9f0)">
+          {formatTokens(contextUsed)}/{formatTokens(contextTotal)}
+        </InfoChip>
+        <span className="axxa-info-sep">·</span>
+        <InfoChip icon="arrow-down" color="var(--color-blue, #4361ee)">
+          {tokensIn}
+        </InfoChip>
+        <InfoChip icon="arrow-up" color="var(--color-green, #06d6a0)">
+          {tokensOut}
+        </InfoChip>
+        <InfoChip icon="sigma" color="var(--text-muted)">
+          {tokensTotal}
+        </InfoChip>
       </div>
     </div>
   );

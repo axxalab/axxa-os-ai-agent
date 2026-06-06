@@ -127,9 +127,10 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ⬜ Seção: Appearance (background, balloon style)
 
 ### 2.4 Effort Selector
-- ⬜ 5 níveis: Low / Med / High / xHigh / Max
-- ⬜ Mapeamento para max_tokens e temperatura por provider
-- ⬜ Visível no Status Line
+- ✅ 5 níveis: Low / Med / High / xHigh / Max (definidos em `_shared/effort.ts`)
+- ✅ Mapeamento para max_tokens (500/2000/4000/8000/16000) — temperatura per-provider vem depois
+- ✅ Visível no Status Line do composer (icon `zap` + cor laranja)
+- ✅ Selector via PlusModal (bottom sheet estilo ChatGPT — abre no "+" da pill)
 
 ### 2.5 Status Line
 - ✅ Indicador de conexão (dot accent + pulse durante streaming, faint quando ready)
