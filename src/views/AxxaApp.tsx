@@ -39,6 +39,7 @@ import {
 } from "../components/_shared/chatPersistence";
 import { searchVault, buildVaultContext } from "../components/_shared/vaultSearch";
 import { ensureFolder } from "../components/_shared/chatPersistence";
+import { embedText } from "../rag/embeddings";
 import type { ChatMessage, UserMessage, AIResponseMessage } from "../store/chat";
 
 interface AxxaAppProps {
@@ -210,29 +211,75 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     // Modo Vault Q&A: busca notas relevantes ANTES da chamada
     // topK e excerptChars escalam com effort (low=3×300 ... max=12×2000)
+    // Se índice RAG existe → busca semântica (cosine sim sobre embeddings).
+    // Senão → fallback pra busca keyword (busca por título + ocorrências).
     let vaultContextBlock = "";
     if (activeMode === "vault-qa") {
       const { topK, excerptChars } = effortToVaultLookup(effort);
+      const useRag =
+        plugin.vectorIndex !== null && plugin.vectorIndex.size > 0;
+
       addMessage({
         type: "ai-comment",
-        content: t.vault.searching(topK, effort),
+        content: useRag
+          ? `Buscando ${topK} trechos via RAG (effort: ${effort})...`
+          : t.vault.searching(topK, effort),
       });
+
       try {
-        const matches = await searchVault(plugin.app, userText, topK, excerptChars);
-        if (matches.length > 0) {
-          vaultContextBlock = buildVaultContext(matches);
-          addMessage({
-            type: "ai-comment",
-            content: t.vault.foundContext(matches.length),
-          });
+        if (useRag) {
+          // RAG path: embed query + cosine search
+          const queryVec = await embedText(
+            userText,
+            plugin.settings.openaiApiKey,
+            plugin.vectorIndex!.model
+          );
+          const results = plugin.vectorIndex!.search(queryVec, topK, 0.3);
+          if (results.length > 0) {
+            // Monta o contexto a partir dos chunks ranqueados
+            vaultContextBlock = results
+              .map((r) => {
+                const excerpt = r.entry.text.slice(0, excerptChars);
+                return `### ${r.entry.path} (sim=${r.score.toFixed(2)})\n\n${excerpt}`;
+              })
+              .join("\n\n---\n\n");
+            addMessage({
+              type: "ai-comment",
+              content: `${results.length} trecho${results.length > 1 ? "s" : ""} encontrado${results.length > 1 ? "s" : ""} via RAG (similarity ${results[0].score.toFixed(2)}–${results[results.length - 1].score.toFixed(2)})`,
+            });
+          } else {
+            addMessage({
+              type: "ai-comment",
+              content: t.vault.notFound,
+            });
+          }
         } else {
-          addMessage({
-            type: "ai-comment",
-            content: t.vault.notFound,
-          });
+          // Fallback: keyword search (sem embedding configurado/indexado)
+          const matches = await searchVault(
+            plugin.app,
+            userText,
+            topK,
+            excerptChars
+          );
+          if (matches.length > 0) {
+            vaultContextBlock = buildVaultContext(matches);
+            addMessage({
+              type: "ai-comment",
+              content: t.vault.foundContext(matches.length),
+            });
+          } else {
+            addMessage({
+              type: "ai-comment",
+              content: t.vault.notFound,
+            });
+          }
         }
       } catch (err) {
         console.error("[axxa] vault search falhou:", err);
+        addMessage({
+          type: "ai-comment",
+          content: `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`,
+        });
       }
     }
 

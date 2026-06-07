@@ -177,5 +177,40 @@ export const EN_US: Translations = {
       violet: "Violet",
       mono: "Mono",
     },
+    rag: "Vault Q&A (RAG)",
+    ragDesc:
+      "Semantic search over your notes using embeddings. Without this, Vault Q&A mode falls back to keyword search (faster but less accurate).",
+    ragProvider: "Embedding provider",
+    ragProviderDesc: "Which API generates the vectors. Only OpenAI in MVP.",
+    ragModel: "Embedding model",
+    ragModelDesc:
+      "small = cheap and fast (1536 dim, $0.02/M tokens). large = more accurate (3072 dim, $0.13/M).",
+    ragIndexPath: "Index folder",
+    ragIndexPathDesc:
+      "Where the embeddings file (.json) is saved in the Vault.",
+    ragIndexBtn: "Index vault",
+    ragReindexBtn: "Reindex (from scratch)",
+    ragClearBtn: "Clear index",
+    ragStats: (chunks: number, files: number, lastAt: string) =>
+      `${chunks} chunks in ${files} files · last: ${lastAt}`,
+    ragStatsEmpty: "Empty index. Click 'Index vault' to start.",
+    ragStatsMismatch:
+      "⚠️ Configured model differs from saved index. Reindex to use the new model.",
+    ragIndexingPhaseScanning: (done: number, total: number) =>
+      `Scanning vault: ${done}/${total}`,
+    ragIndexingPhaseEmbedding: (
+      done: number,
+      total: number,
+      chunks: number
+    ) => `Indexing: ${done}/${total} files · ${chunks} chunks embedded`,
+    ragIndexingPhaseDone: (chunks: number, tokens: number) =>
+      `Done. ${chunks} new chunks · ~${tokens} tokens used.`,
+    ragIndexingCancel: "Cancel",
+    ragIndexingCancelled: "Indexing cancelled.",
+    ragIndexingFailed: (msg: string) => `Indexing failed: ${msg}`,
+    ragNoApiKey:
+      "OpenAI API key not configured. Go to Settings → OpenAI first.",
+    ragClearConfirm:
+      "Are you sure? This deletes the index. You'll need to reindex to use Vault Q&A with embeddings again.",
   },
 };

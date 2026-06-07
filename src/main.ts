@@ -5,6 +5,7 @@
 import { Plugin, WorkspaceLeaf, Platform } from "obsidian";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
+import { VectorIndex, loadIndex } from "./rag/vectorIndex";
 
 interface AxxaSettings {
   openaiApiKey: string;
@@ -34,6 +35,13 @@ interface AxxaSettings {
   background: string;
   /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
   recordingsPath: string;
+  // ============ RAG (Sprint F — v0.1.25) ============
+  /** Pasta no Vault onde o índice vetorial é persistido. */
+  ragIndexPath: string;
+  /** Provider de embeddings (apenas "openai" no MVP). */
+  ragEmbeddingProvider: string;
+  /** Modelo de embedding (ex: text-embedding-3-small). */
+  ragEmbeddingModel: string;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -68,10 +76,16 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   language: "pt-br",
   background: "none",
   recordingsPath: "axxa-ai/recordings",
+  ragIndexPath: "axxa-ai/index",
+  ragEmbeddingProvider: "openai",
+  ragEmbeddingModel: "text-embedding-3-small",
 };
 
 export default class AxxaPlugin extends Plugin {
   settings!: AxxaSettings;
+  /** Índice vetorial RAG carregado em memória — compartilhado entre Settings
+   *  (indexação) e AxxaApp (busca). null = ainda não foi carregado/indexado. */
+  vectorIndex: VectorIndex | null = null;
   /** Listeners avisados a cada saveSettings — usados pra re-renderizar o
    *  React tree quando o user troca idioma ou outro setting reativo. */
   private settingsListeners = new Set<() => void>();
@@ -84,6 +98,17 @@ export default class AxxaPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+
+    // Carrega índice RAG do disco se já existe. Falhas são silenciosas —
+    // só significa que o user ainda não rodou "Indexar vault".
+    try {
+      this.vectorIndex = await loadIndex(
+        this.app.vault.adapter,
+        this.settings.ragIndexPath
+      );
+    } catch (err) {
+      console.error("[axxa] falha ao carregar índice RAG:", err);
+    }
 
     // Registra a view na sidebar direita.
     // É como registrar um componente custom no design system — depois pode ser instanciado.

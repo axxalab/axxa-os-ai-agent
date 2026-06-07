@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅ (3.1+3.2+3.3+3.4+3.5), 4 ✅ · próximo: Sprint F — Pre-launch checklist  
-> **Versão:** 1.0 · plugin em v0.1.24  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, **6.4 ✅ RAG MVP** (alpha adiado pra v0.3) · próximo: Sprint G — Agent Mode (6.1+6.2)  
+> **Versão:** 1.0 · plugin em v0.1.25  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -289,11 +289,16 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ⬜ Syntax highlighting no output
 - ⬜ Suporte a: .ts, .js, .py, .css, .json, .md com código
 
-### 6.4 Vault Q&A com RAG real
-- ⬜ LanceDB integrado localmente
-- ⬜ Indexação incremental automática
-- ⬜ Embeddings via OpenAI ou Ollama (local)
-- ⬜ Pasta de indexação configurável
+### 6.4 Vault Q&A com RAG real ✅ MVP (v0.1.25)
+- 🟡 LanceDB integrado localmente → adiado pra v0.2.x. MVP usa **cosine similarity em memória + JSON persistido** no vault (suporta ~10k chunks, fast enough)
+- ✅ **Indexação incremental** — hash SHA-1 por arquivo, só re-embeda o que mudou. Botão "Indexar vault" + "Reindexar (do zero)" + "Limpar índice" em Settings → Outros
+- ✅ **Embeddings via OpenAI** — text-embedding-3-small (1536d, $0.02/M) e text-embedding-3-large (3072d, $0.13/M). Batch de 16 chunks por API call
+- ⬜ Embeddings via Ollama (nomic-embed-text local) — v0.1.26+
+- ✅ Pasta de indexação configurável (`axxa-ai/index/embeddings.json` default)
+- ✅ **Chunking por parágrafo** com overlap (1500 chars/chunk, 200 overlap)
+- ✅ **Integração no Vault Q&A** — quando índice tem entries, embed query → cosine search → top K chunks como contexto. Senão fallback pra keyword
+- ✅ **Progress UI** — barra animada + label "Escaneando 145/523" → "Indexando: 87/145 arquivos · 312 chunks" → "Concluído. ~24500 tokens" + botão cancelar
+- ✅ **Stats no Settings** — "X chunks em Y arquivos · última: data" ou "Índice vazio". Aviso se modelo configurado ≠ modelo do índice
 
 ---
 
@@ -411,6 +416,12 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Sprint E (v0.1.24) — Audio recorder hold-to-record | MediaRecorder API + `getUserMedia({audio})`. Press → start, release → stop + save webm em `axxa-ai/recordings/`. Listener global `document.mouseup/touchend` pra detectar release fora do botão. Filtro de gravações <300ms (taps acidentais). Wikilink `[[path\|Áudio 0:05]]` inserido no cursor via `view.state.replaceSelection`. |
 | 07/06/2026 | Sprint E (v0.1.24) — Visual feedback de gravação | Botão vermelho pulsante (`@keyframes axxa-recording-pulse` com box-shadow ripple). Indicator chip acima do composer com bolinha vermelha pulsante + timer `0:05` em tabular-nums + hint. Vibração háptica no start E no stop. |
 | 07/06/2026 | Sprint E (v0.1.24) — `DESIGN-SYSTEM.md` na raiz | Doc consolida tokens, paleta de 6 chips coloridos, regras de radius (18px ou 999px, nada mais), animations, tipos de mensagem, convenções de naming, e seção "o que NÃO fazer". Atualizar a cada decisão visual nova. |
+| 07/06/2026 | Sprint F (v0.1.25) — RAG MVP sem LanceDB | Cosine similarity em memória + JSON persistido em vez de LanceDB. Razão: LanceDB é Rust+WASM, integração complexa no Electron. Cosine sim O(n×dim) é "fast enough" pra até ~10k chunks (target user típico). LanceDB vira upgrade pra vaults >50k chunks. |
+| 07/06/2026 | Sprint F (v0.1.25) — Chunking por parágrafo com overlap | Split em `\n\n`, agrega até 1500 chars/chunk, overlap de 200 chars entre chunks consecutivos. Trade-off: preserva contexto entre quebras mas duplica ~13% do conteúdo. Chunking semântico (por heading H2/H3) vem em v0.2.x. |
+| 07/06/2026 | Sprint F (v0.1.25) — Indexação incremental por SHA-1 | Cada entry guarda hash do conteúdo. No reindex, re-embeda só arquivos com hash diferente. Persiste a cada batch (16 chunks) pra durabilidade contra crash. Pruning automático de arquivos deletados. |
+| 07/06/2026 | Sprint F (v0.1.25) — Min score threshold 0.3 na busca | Cosine similarity < 0.3 é considerado "off-topic" e descartado. Evita injetar contexto irrelevante quando query é muito diferente das notas. |
+| 07/06/2026 | Sprint F (v0.1.25) — RAG é opcional, fallback automático | Se índice vazio ou sem API key, Vault Q&A usa keyword search (busca por título/ocorrências). Garante que o modo nunca quebra mesmo sem RAG configurado. Migrar pra RAG = só clicar "Indexar vault". |
+| 07/06/2026 | Alpha launch (Sprint F/G) adiado pra v0.3 | Decisão de produto: priorizar RAG + Agent (core differentiators) antes de publicar. Submeter ao Community Plugins só faz sentido com o produto "que vai viralizar" pronto. |
 
 ---
 

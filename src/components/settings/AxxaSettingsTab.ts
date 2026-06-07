@@ -15,6 +15,9 @@ import { anthropicProvider } from "../../providers/anthropic";
 import { openrouterProvider } from "../../providers/openrouter";
 import { ollamaProvider } from "../../providers/ollama";
 import { getTranslations, type Translations } from "../../i18n";
+import { indexVault, type IndexProgress } from "../../rag/indexer";
+import { deleteIndex } from "../../rag/vectorIndex";
+import { EMBEDDING_MODELS } from "../../rag/types";
 
 type ProviderTabId = "openai" | "anthropic" | "openrouter" | "ollama";
 type TabId = ProviderTabId | "outros";
@@ -23,6 +26,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
   private activeTab: TabId = "openai";
   private unsubscribe?: () => void;
+  /** Controller usado pra cancelar uma indexação em andamento. */
+  private indexAbortController: AbortController | null = null;
 
   constructor(app: App, plugin: AxxaPlugin) {
     super(app, plugin);
@@ -590,11 +595,249 @@ export class AxxaSettingsTab extends PluginSettingTab {
     });
     this.renderBackgroundPicker(parent, t);
 
+    // ============================================================
+    // RAG — Vault Q&A com embeddings
+    // ============================================================
+    parent.createEl("h3", { text: t.settings.rag });
+    parent.createEl("p", {
+      text: t.settings.ragDesc,
+      cls: "setting-item-description",
+    });
+    this.renderRagSection(parent, t);
+
     parent.createEl("h3", { text: t.settings.comingSoon });
     const todo = parent.createEl("ul");
     t.settings.comingSoonItems.forEach((item) => {
       todo.createEl("li", { text: item });
     });
+  }
+
+  // ============================================================
+  // RAG section — stats + indexing controls
+  // ============================================================
+  private renderRagSection(parent: HTMLElement, t: Translations) {
+    const section = parent.createDiv({ cls: "axxa-rag-section" });
+
+    // ---- Provider dropdown (só openai por enquanto) ----
+    new Setting(section)
+      .setName(t.settings.ragProvider)
+      .setDesc(t.settings.ragProviderDesc)
+      .addDropdown((dd) =>
+        dd
+          .addOption("openai", "OpenAI")
+          .setValue(this.plugin.settings.ragEmbeddingProvider)
+          .onChange(async (value) => {
+            this.plugin.settings.ragEmbeddingProvider = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // ---- Model dropdown ----
+    new Setting(section)
+      .setName(t.settings.ragModel)
+      .setDesc(t.settings.ragModelDesc)
+      .addDropdown((dd) => {
+        EMBEDDING_MODELS.filter(
+          (m) => m.provider === this.plugin.settings.ragEmbeddingProvider
+        ).forEach((m) => {
+          dd.addOption(m.model, `${m.model} (${m.dim}d, $${m.pricePerMillion}/M)`);
+        });
+        dd.setValue(this.plugin.settings.ragEmbeddingModel).onChange(
+          async (value) => {
+            this.plugin.settings.ragEmbeddingModel = value;
+            await this.plugin.saveSettings();
+            this.display();
+          }
+        );
+      });
+
+    // ---- Index path ----
+    new Setting(section)
+      .setName(t.settings.ragIndexPath)
+      .setDesc(t.settings.ragIndexPathDesc)
+      .addText((text) =>
+        text
+          .setPlaceholder("axxa-ai/index")
+          .setValue(this.plugin.settings.ragIndexPath)
+          .onChange(async (value) => {
+            this.plugin.settings.ragIndexPath = value || "axxa-ai/index";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // ---- Stats line ----
+    const statsEl = section.createDiv({ cls: "axxa-rag-stats" });
+    this.renderRagStats(statsEl, t);
+
+    // ---- Action buttons ----
+    const actionsEl = section.createDiv({ cls: "axxa-rag-actions" });
+
+    const indexBtn = actionsEl.createEl("button", {
+      cls: "axxa-rag-btn axxa-rag-btn-primary",
+      text: t.settings.ragIndexBtn,
+      attr: { type: "button" },
+    });
+    const reindexBtn = actionsEl.createEl("button", {
+      cls: "axxa-rag-btn",
+      text: t.settings.ragReindexBtn,
+      attr: { type: "button" },
+    });
+    const clearBtn = actionsEl.createEl("button", {
+      cls: "axxa-rag-btn axxa-rag-btn-danger",
+      text: t.settings.ragClearBtn,
+      attr: { type: "button" },
+    });
+
+    // ---- Progress area (escondido até começar) ----
+    const progressEl = section.createDiv({ cls: "axxa-rag-progress" });
+    progressEl.style.display = "none";
+
+    indexBtn.onclick = () => this.runIndex(false, indexBtn, reindexBtn, clearBtn, progressEl, statsEl, t);
+    reindexBtn.onclick = () => this.runIndex(true, indexBtn, reindexBtn, clearBtn, progressEl, statsEl, t);
+    clearBtn.onclick = async () => {
+      if (!confirm(t.settings.ragClearConfirm)) return;
+      try {
+        await deleteIndex(this.plugin.app.vault.adapter, this.plugin.settings.ragIndexPath);
+        this.plugin.vectorIndex = null;
+        this.renderRagStats(statsEl, t);
+        new Notice("Índice removido.");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erro";
+        new Notice(`Falha: ${msg}`);
+      }
+    };
+  }
+
+  /** Renderiza o estado atual do índice (chunks/files/data ou empty) */
+  private renderRagStats(el: HTMLElement, t: Translations) {
+    el.empty();
+    const idx = this.plugin.vectorIndex;
+    if (!idx || idx.size === 0) {
+      el.createSpan({
+        text: t.settings.ragStatsEmpty,
+        cls: "axxa-rag-stats-empty",
+      });
+      return;
+    }
+    const date = idx.lastIndexedAt
+      ? new Date(idx.lastIndexedAt).toLocaleString()
+      : "—";
+    el.createSpan({
+      text: t.settings.ragStats(idx.size, idx.fileCount, date),
+      cls: "axxa-rag-stats-line",
+    });
+    // Aviso se modelo do índice ≠ modelo configurado
+    if (idx.model !== this.plugin.settings.ragEmbeddingModel) {
+      el.createEl("br");
+      el.createSpan({
+        text: t.settings.ragStatsMismatch,
+        cls: "axxa-rag-stats-warning",
+      });
+    }
+  }
+
+  /** Roda a indexação. fresh=true → começa do zero (ignora índice prévio) */
+  private async runIndex(
+    fresh: boolean,
+    indexBtn: HTMLButtonElement,
+    reindexBtn: HTMLButtonElement,
+    clearBtn: HTMLButtonElement,
+    progressEl: HTMLElement,
+    statsEl: HTMLElement,
+    t: Translations
+  ) {
+    const apiKey = this.plugin.settings.openaiApiKey;
+    if (!apiKey || !apiKey.trim()) {
+      new Notice(t.settings.ragNoApiKey);
+      return;
+    }
+
+    // Desabilita botões durante indexação, habilita cancelamento
+    indexBtn.disabled = true;
+    reindexBtn.disabled = true;
+    clearBtn.disabled = true;
+
+    progressEl.empty();
+    progressEl.style.display = "flex";
+
+    const progressBar = progressEl.createDiv({ cls: "axxa-rag-progress-bar" });
+    const progressFill = progressBar.createDiv({ cls: "axxa-rag-progress-fill" });
+    const progressLabel = progressEl.createDiv({ cls: "axxa-rag-progress-label" });
+    const cancelBtn = progressEl.createEl("button", {
+      cls: "axxa-rag-btn axxa-rag-btn-cancel",
+      text: t.settings.ragIndexingCancel,
+      attr: { type: "button" },
+    });
+
+    this.indexAbortController = new AbortController();
+    cancelBtn.onclick = () => this.indexAbortController?.abort();
+
+    const handleProgress = (p: IndexProgress) => {
+      if (p.phase === "scanning") {
+        progressLabel.textContent = t.settings.ragIndexingPhaseScanning(
+          p.filesScanned,
+          p.filesTotal
+        );
+        const pct = p.filesTotal > 0 ? (p.filesScanned / p.filesTotal) * 50 : 0;
+        progressFill.style.width = `${pct}%`;
+      } else if (p.phase === "embedding") {
+        progressLabel.textContent = t.settings.ragIndexingPhaseEmbedding(
+          p.filesEmbedded,
+          p.filesToEmbed,
+          p.chunksEmbedded
+        );
+        const pct =
+          p.filesToEmbed > 0
+            ? 50 + (p.filesEmbedded / p.filesToEmbed) * 50
+            : 100;
+        progressFill.style.width = `${pct}%`;
+      } else if (p.phase === "done") {
+        progressLabel.textContent = t.settings.ragIndexingPhaseDone(
+          p.chunksEmbedded,
+          p.tokensUsed
+        );
+        progressFill.style.width = "100%";
+      }
+    };
+
+    try {
+      const prev = fresh ? null : this.plugin.vectorIndex;
+      const newIndex = await indexVault(prev, {
+        app: this.plugin.app,
+        apiKey,
+        model: this.plugin.settings.ragEmbeddingModel,
+        indexPath: this.plugin.settings.ragIndexPath,
+        // Não indexa pastas internas do AXXA pra não poluir o vetor
+        excludePaths: [
+          this.plugin.settings.ragIndexPath,
+          this.plugin.settings.chatsPath,
+          this.plugin.settings.recordingsPath,
+        ],
+        onProgress: handleProgress,
+        signal: this.indexAbortController.signal,
+      });
+      this.plugin.vectorIndex = newIndex;
+      this.renderRagStats(statsEl, t);
+      new Notice(
+        t.settings.ragIndexingPhaseDone(newIndex.size, 0).replace(/~\d+ /, "")
+      );
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        new Notice(t.settings.ragIndexingCancelled);
+      } else {
+        const msg = err instanceof Error ? err.message : "Erro";
+        new Notice(t.settings.ragIndexingFailed(msg));
+      }
+    } finally {
+      this.indexAbortController = null;
+      indexBtn.disabled = false;
+      reindexBtn.disabled = false;
+      clearBtn.disabled = false;
+      // Esconde progress depois de 2.5s pro user ler o status
+      window.setTimeout(() => {
+        progressEl.style.display = "none";
+      }, 2500);
+    }
   }
 
   // ============================================================
