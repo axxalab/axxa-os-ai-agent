@@ -286,9 +286,14 @@ body.is-mobile
   padding: 10px 14px;
   border-radius: 18px;
   max-width: 85%;
+  /* Travas anti scroll-x: bubble nunca rola lateralmente. URLs, code inline,
+     identifiers longos quebram em qualquer caracter. */
   word-wrap: break-word;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow-x: hidden;
   line-height: 1.5;
+  min-width: 0;
 }
 
 .axxa-bubble-user {
@@ -361,7 +366,9 @@ body.is-mobile
   line-height: 1.6;
   max-width: 100%;
   word-wrap: break-word;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .axxa-markdown > *:first-child {
@@ -413,6 +420,23 @@ body.is-mobile
   background: var(--code-background, var(--background-modifier-hover));
   border-radius: 8px;
   overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Code wrap toggle (Settings → Outros). Quando ativo, pre/code quebram
+   linhas em vez de scrollar. Default = scroll horizontal (preserva
+   formatação original do código). */
+.axxa-root.axxa-code-wrap .axxa-markdown pre {
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.axxa-root.axxa-code-wrap .axxa-markdown pre code {
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .axxa-markdown blockquote {
@@ -689,13 +713,21 @@ body.is-mobile
   }
 }
 
-/* Editor (CodeMirror) — sem bg/border, herda do pill */
+/* Editor (CodeMirror) — sem bg/border, herda do pill.
+   overflow:hidden externo reforça a trava interna do EditorView.theme:
+   campo de mensagem jamais scrolla pra direita. */
 .axxa-composer-editor {
   flex: 1 1 auto;
   min-width: 0;
   background: transparent;
   border: none;
   padding: 4px 0;
+  overflow-x: hidden;
+}
+
+.axxa-composer-editor .cm-editor,
+.axxa-composer-editor .cm-scroller {
+  overflow-x: hidden !important;
 }
 
 /* Botão send/mic externo (circular grande) */
@@ -816,13 +848,20 @@ body.theme-dark .axxa-recording-indicator {
  * ===================================================== */
 
 .axxa-starter {
-  flex: 1 1 0;
+  /* Fill container — toma TODA altura disponível entre header e composer,
+     independente do conteúdo. Sem isso, com poucas recent chats a starter
+     ficava com fundo cortado no meio da view. */
+  flex: 1 1 auto;
+  height: 100%;
   min-height: 0;
+  width: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px 16px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  box-sizing: border-box;
 }
 
 .axxa-starter-head {
@@ -1291,6 +1330,74 @@ body.theme-dark .axxa-recording-indicator {
 }
 
 /* =====================================================
+ * Sub-tabs (Providers tab → OpenAI/Anthropic/etc)
+ * Estilo segmented control: pill container + pills internos
+ * ===================================================== */
+
+.axxa-settings-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  margin: 16px 0 16px 0;
+  background: var(--background-modifier-hover);
+  border-radius: 999px;
+}
+
+.axxa-subtab-btn,
+.axxa-subtab-btn:hover,
+.axxa-subtab-btn:focus,
+.axxa-subtab-btn:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-subtab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1 1 auto;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  min-width: 80px;
+}
+
+.axxa-subtab-btn:hover {
+  color: var(--text-normal);
+}
+
+.axxa-subtab-active {
+  background: var(--background-primary) !important;
+  color: var(--text-accent) !important;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.axxa-subtab-default::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  flex-shrink: 0;
+}
+
+.axxa-settings-subcontent {
+  margin-top: 4px;
+}
+
+/* =====================================================
  * Icon helper
  * ===================================================== */
 
@@ -1397,74 +1504,140 @@ body.is-mobile .axxa-code-copy {
 }
 
 /* =====================================================
- * Backgrounds — presets de gradient sutil aplicados na
- * .axxa-root. Default = none (var(--background-primary)).
- * Cada preset overlay-a uma cor com alpha baixa pra manter
- * compat com light/dark mode de qualquer tema Obsidian.
+ * Backgrounds — presets aplicados na .axxa-root E na
+ * .axxa-settings-root (pra cobrir Settings tambem).
+ *
+ * v0.1.26: opacidades bumpadas (era sutil demais) +
+ * 3 radiais novos (Aurora / Spotlight / Nebula).
+ *
+ * Cada preset tem variante dark mode com opacity maior
+ * (cores escuras precisam de mais saturação pra aparecer).
  * ===================================================== */
 
-.axxa-root.axxa-bg-none {
-  /* Default já tá em .axxa-root — explicit pra ficar claro */
+.axxa-root.axxa-bg-none,
+.axxa-settings-root.axxa-bg-none {
   background: var(--background-primary);
 }
 
+/* ---------- LINEARES (originais, com mais opacidade) ---------- */
+
 /* Sunset — laranja → rosa quente */
-.axxa-root.axxa-bg-sunset {
+.axxa-root.axxa-bg-sunset,
+.axxa-settings-root.axxa-bg-sunset {
   background:
-    linear-gradient(135deg, rgba(255, 126, 95, 0.07), rgba(254, 180, 123, 0.04) 60%, transparent),
+    linear-gradient(135deg, rgba(255, 126, 95, 0.18), rgba(254, 180, 123, 0.10) 60%, transparent),
     var(--background-primary);
 }
-body.theme-dark .axxa-root.axxa-bg-sunset {
+body.theme-dark .axxa-root.axxa-bg-sunset,
+body.theme-dark .axxa-settings-root.axxa-bg-sunset {
   background:
-    linear-gradient(135deg, rgba(255, 126, 95, 0.12), rgba(254, 180, 123, 0.06) 60%, transparent),
+    linear-gradient(135deg, rgba(255, 126, 95, 0.26), rgba(254, 180, 123, 0.16) 60%, transparent),
     var(--background-primary);
 }
 
 /* Ocean — cyan → azul */
-.axxa-root.axxa-bg-ocean {
+.axxa-root.axxa-bg-ocean,
+.axxa-settings-root.axxa-bg-ocean {
   background:
-    linear-gradient(135deg, rgba(33, 147, 176, 0.07), rgba(109, 213, 237, 0.04) 60%, transparent),
+    linear-gradient(135deg, rgba(33, 147, 176, 0.20), rgba(109, 213, 237, 0.10) 60%, transparent),
     var(--background-primary);
 }
-body.theme-dark .axxa-root.axxa-bg-ocean {
+body.theme-dark .axxa-root.axxa-bg-ocean,
+body.theme-dark .axxa-settings-root.axxa-bg-ocean {
   background:
-    linear-gradient(135deg, rgba(33, 147, 176, 0.13), rgba(109, 213, 237, 0.06) 60%, transparent),
+    linear-gradient(135deg, rgba(33, 147, 176, 0.28), rgba(109, 213, 237, 0.16) 60%, transparent),
     var(--background-primary);
 }
 
 /* Forest — verde → teal */
-.axxa-root.axxa-bg-forest {
+.axxa-root.axxa-bg-forest,
+.axxa-settings-root.axxa-bg-forest {
   background:
-    linear-gradient(135deg, rgba(17, 153, 142, 0.07), rgba(56, 239, 125, 0.04) 60%, transparent),
+    linear-gradient(135deg, rgba(17, 153, 142, 0.20), rgba(56, 239, 125, 0.10) 60%, transparent),
     var(--background-primary);
 }
-body.theme-dark .axxa-root.axxa-bg-forest {
+body.theme-dark .axxa-root.axxa-bg-forest,
+body.theme-dark .axxa-settings-root.axxa-bg-forest {
   background:
-    linear-gradient(135deg, rgba(17, 153, 142, 0.13), rgba(56, 239, 125, 0.06) 60%, transparent),
+    linear-gradient(135deg, rgba(17, 153, 142, 0.28), rgba(56, 239, 125, 0.16) 60%, transparent),
     var(--background-primary);
 }
 
 /* Violet — roxo → magenta */
-.axxa-root.axxa-bg-violet {
+.axxa-root.axxa-bg-violet,
+.axxa-settings-root.axxa-bg-violet {
   background:
-    linear-gradient(135deg, rgba(142, 45, 226, 0.07), rgba(74, 0, 224, 0.04) 60%, transparent),
+    linear-gradient(135deg, rgba(142, 45, 226, 0.20), rgba(74, 0, 224, 0.10) 60%, transparent),
     var(--background-primary);
 }
-body.theme-dark .axxa-root.axxa-bg-violet {
+body.theme-dark .axxa-root.axxa-bg-violet,
+body.theme-dark .axxa-settings-root.axxa-bg-violet {
   background:
-    linear-gradient(135deg, rgba(142, 45, 226, 0.14), rgba(74, 0, 224, 0.07) 60%, transparent),
+    linear-gradient(135deg, rgba(142, 45, 226, 0.30), rgba(74, 0, 224, 0.18) 60%, transparent),
     var(--background-primary);
 }
 
 /* Mono — cinza neutro elegante */
-.axxa-root.axxa-bg-mono {
+.axxa-root.axxa-bg-mono,
+.axxa-settings-root.axxa-bg-mono {
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.03), transparent 50%, rgba(0, 0, 0, 0.03)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 50%, rgba(0, 0, 0, 0.08)),
     var(--background-primary);
 }
-body.theme-dark .axxa-root.axxa-bg-mono {
+body.theme-dark .axxa-root.axxa-bg-mono,
+body.theme-dark .axxa-settings-root.axxa-bg-mono {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 50%, rgba(255, 255, 255, 0.04)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 50%, rgba(255, 255, 255, 0.08)),
+    var(--background-primary);
+}
+
+/* ---------- RADIAIS (novos v0.1.26) ---------- */
+
+/* Aurora — verde topo-direita + roxo base-esquerda (mística, foco profundo) */
+.axxa-root.axxa-bg-aurora,
+.axxa-settings-root.axxa-bg-aurora {
+  background:
+    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.22), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.22), transparent 70%),
+    var(--background-primary);
+}
+body.theme-dark .axxa-root.axxa-bg-aurora,
+body.theme-dark .axxa-settings-root.axxa-bg-aurora {
+  background:
+    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.30), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.30), transparent 70%),
+    var(--background-primary);
+}
+
+/* Spotlight — círculo dourado quente no topo (acolhedor, "lendo à luz da lamparina") */
+.axxa-root.axxa-bg-spotlight,
+.axxa-settings-root.axxa-bg-spotlight {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(252, 211, 77, 0.28), transparent 65%),
+    var(--background-primary);
+}
+body.theme-dark .axxa-root.axxa-bg-spotlight,
+body.theme-dark .axxa-settings-root.axxa-bg-spotlight {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(252, 211, 77, 0.20), transparent 65%),
+    var(--background-primary);
+}
+
+/* Nebula — multi-ponto cósmico (azul / rosa / roxo) — vibe criativa */
+.axxa-root.axxa-bg-nebula,
+.axxa-settings-root.axxa-bg-nebula {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.22), transparent 50%),
+    radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.22), transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.14), transparent 70%),
+    var(--background-primary);
+}
+body.theme-dark .axxa-root.axxa-bg-nebula,
+body.theme-dark .axxa-settings-root.axxa-bg-nebula {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.30), transparent 50%),
+    radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.30), transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.20), transparent 70%),
     var(--background-primary);
 }
 
@@ -1551,6 +1724,27 @@ body.theme-dark .axxa-root.axxa-bg-mono {
 .axxa-bg-preview-mono {
   background:
     linear-gradient(180deg, rgba(128, 128, 128, 0.18), transparent 50%, rgba(128, 128, 128, 0.18)),
+    var(--background-primary);
+}
+
+.axxa-bg-preview-aurora {
+  background:
+    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.5), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.5), transparent 70%),
+    var(--background-primary);
+}
+
+.axxa-bg-preview-spotlight {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(252, 211, 77, 0.55), transparent 65%),
+    var(--background-primary);
+}
+
+.axxa-bg-preview-nebula {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.45), transparent 50%),
+    radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.45), transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.30), transparent 70%),
     var(--background-primary);
 }
 

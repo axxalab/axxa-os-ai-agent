@@ -42,6 +42,9 @@ interface AxxaSettings {
   ragEmbeddingProvider: string;
   /** Modelo de embedding (ex: text-embedding-3-small). */
   ragEmbeddingModel: string;
+  /** Code wrap em blocos de código markdown. Default false (scroll horizontal).
+   *  Quando true, aplica `.axxa-code-wrap` na .axxa-root → pre quebra linha. */
+  codeWrap: boolean;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -79,6 +82,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragIndexPath: "axxa-ai/index",
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",
+  codeWrap: false,
 };
 
 export default class AxxaPlugin extends Plugin {

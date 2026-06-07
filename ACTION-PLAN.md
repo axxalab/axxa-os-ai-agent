@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, **6.4 ✅ RAG MVP** (alpha adiado pra v0.3) · próximo: Sprint G — Agent Mode (6.1+6.2)  
-> **Versão:** 1.0 · plugin em v0.1.25  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG MVP + **v0.1.26 UX polish** (alpha adiado pra v0.3) · próximo: Sprint G — Agent Mode (6.1+6.2)  
+> **Versão:** 1.0 · plugin em v0.1.26  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -422,6 +422,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Sprint F (v0.1.25) — Min score threshold 0.3 na busca | Cosine similarity < 0.3 é considerado "off-topic" e descartado. Evita injetar contexto irrelevante quando query é muito diferente das notas. |
 | 07/06/2026 | Sprint F (v0.1.25) — RAG é opcional, fallback automático | Se índice vazio ou sem API key, Vault Q&A usa keyword search (busca por título/ocorrências). Garante que o modo nunca quebra mesmo sem RAG configurado. Migrar pra RAG = só clicar "Indexar vault". |
 | 07/06/2026 | Alpha launch (Sprint F/G) adiado pra v0.3 | Decisão de produto: priorizar RAG + Agent (core differentiators) antes de publicar. Submeter ao Community Plugins só faz sentido com o produto "que vai viralizar" pronto. |
+| 07/06/2026 | UX polish (v0.1.26) — Settings tabs aninhadas | Top-tabs: Providers / Outros (organizadas por tema). Dentro de Providers, sub-tabs estilo segmented control (pill container com pills brancas no ativo). Provider padrão vive dentro do tema "Providers" — não pollui Outros. |
+| 07/06/2026 | UX polish (v0.1.26) — backgrounds bumpados + 3 radiais | Opacidades dos 5 lineares originais subiram 2-3x (era sutil demais). Novos: Aurora (verde+roxo opostos), Spotlight (dourado top), Nebula (cosmic 3-pontos). Aplicados também na `.axxa-settings-root` — bg aparece nas Settings. |
+| 07/06/2026 | UX polish (v0.1.26) — zero scroll-x | Composer CodeMirror: `overflowX: hidden` no theme + word-break:break-word + overflow-wrap:anywhere no .cm-content. CSS externo reforça com `.cm-editor` e `.cm-scroller`. Bubbles ganharam mesmo tratamento. Code blocks mantêm scroll-x exceto quando `codeWrap` no settings. |
+| 07/06/2026 | UX polish (v0.1.26) — code wrap toggle | Novo setting `codeWrap: boolean`. Quando true, `.axxa-root.axxa-code-wrap` aplica `white-space: pre-wrap` + `word-break: break-all` nos `<pre>`. Default false (preserva formatação do código). |
+| 07/06/2026 | UX polish (v0.1.26) — StarterScreen fill | `flex: 1 1 auto` + `height: 100%` + `width: 100%` + `box-sizing: border-box`. Sem isso, com poucas recent chats a bg ficava cortada no meio. Agora ocupa 100% entre header e composer. |
 
 ---
 

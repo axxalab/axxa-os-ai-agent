@@ -1,12 +1,15 @@
 // src/components/settings/AxxaSettingsTab.ts
-// Settings tab do AXXA OS com 5 sub-tabs:
-//   OpenAI · Anthropic · OpenRouter · Ollama · Outros
+// Settings tab do AXXA OS com TABS ANINHADAS (Sprint v0.1.26):
 //
-// Provider padrão fica no topo, sempre visível (acima das tabs) — é um setting
-// global que escolhe qual API é usada por default nas conversas.
+//   Top-level: Providers · Outros
+//   ↳ Providers tem sub-tabs estilo segmented control:
+//      OpenAI · Anthropic · OpenRouter · Ollama
 //
-// Toda string vem do i18n (getTranslations) — quando user troca idioma na tab
-// Outros, plugin.saveSettings() dispara o listener e a Settings re-renderiza.
+// Provider padrão fica DENTRO da aba Providers (não global) — assim a aba
+// Outros não fica com setting sobrando que não é do tema dela.
+//
+// Background do user é aplicado também aqui (.axxa-settings-root.axxa-bg-X)
+// pra ficar consistente com a view principal.
 
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type AxxaPlugin from "../../main";
@@ -19,12 +22,15 @@ import { indexVault, type IndexProgress } from "../../rag/indexer";
 import { deleteIndex } from "../../rag/vectorIndex";
 import { EMBEDDING_MODELS } from "../../rag/types";
 
+type TopTabId = "providers" | "outros";
 type ProviderTabId = "openai" | "anthropic" | "openrouter" | "ollama";
-type TabId = ProviderTabId | "outros";
 
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
-  private activeTab: TabId = "openai";
+  /** Top-level tab (Providers / Outros) */
+  private activeTopTab: TopTabId = "providers";
+  /** Sub-tab quando topTab = providers */
+  private activeProviderTab: ProviderTabId = "openai";
   private unsubscribe?: () => void;
   /** Controller usado pra cancelar uma indexação em andamento. */
   private indexAbortController: AbortController | null = null;
@@ -40,12 +46,64 @@ export class AxxaSettingsTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass("axxa-settings-root");
 
+    // Aplica background do user (Sprint D + fix v0.1.26): permite ver o tema
+    // tanto na view principal quanto nas Settings.
+    Array.from(containerEl.classList).forEach((c) => {
+      if (c.startsWith("axxa-bg-")) containerEl.removeClass(c);
+    });
+    containerEl.addClass(
+      "axxa-bg-" + (this.plugin.settings.background || "none")
+    );
+
     containerEl.createEl("h2", { text: t.settings.title });
 
     // ============================================================
-    // Provider padrão — sempre visível no topo, acima das tabs
+    // Top-level tabs (Providers / Outros)
     // ============================================================
-    new Setting(containerEl)
+    const topTabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
+    this.createTopTabButton(topTabsEl, "providers", t.settings.topTabs.providers);
+    this.createTopTabButton(topTabsEl, "outros", t.settings.topTabs.outros);
+
+    // ============================================================
+    // Conteúdo da top-tab ativa
+    // ============================================================
+    const contentEl = containerEl.createDiv({ cls: "axxa-settings-content" });
+
+    if (this.activeTopTab === "providers") {
+      this.renderProvidersTab(contentEl, t);
+    } else {
+      this.renderOutros(contentEl, t);
+    }
+  }
+
+  hide() {
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
+  }
+
+  /** Botão de top-tab (Providers / Outros) */
+  private createTopTabButton(
+    parent: HTMLElement,
+    id: TopTabId,
+    label: string
+  ) {
+    const btn = parent.createEl("button", {
+      cls:
+        "axxa-tab-btn" + (this.activeTopTab === id ? " axxa-tab-active" : ""),
+      text: label,
+    });
+    btn.onclick = () => {
+      this.activeTopTab = id;
+      this.display();
+    };
+  }
+
+  // ============================================================
+  // Tab "Providers" — header (default + intro) + sub-tabs
+  // ============================================================
+  private renderProvidersTab(parent: HTMLElement, t: Translations) {
+    // Provider padrão — vive dentro do tema "Providers"
+    new Setting(parent)
       .setName(t.settings.defaultProvider)
       .setDesc(t.settings.defaultProviderDesc)
       .addDropdown((dd) =>
@@ -58,60 +116,51 @@ export class AxxaSettingsTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.defaultProvider = value;
             await this.plugin.saveSettings();
+            this.display();
           })
       );
 
-    // ============================================================
-    // Tabs (5 sub-tabs)
-    // ============================================================
-    const tabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
-    this.createTabButton(tabsEl, "openai", t.settings.tabs.openai);
-    this.createTabButton(tabsEl, "anthropic", t.settings.tabs.anthropic);
-    this.createTabButton(tabsEl, "openrouter", t.settings.tabs.openrouter);
-    this.createTabButton(tabsEl, "ollama", t.settings.tabs.ollama);
-    this.createTabButton(tabsEl, "outros", t.settings.tabs.outros);
+    // Sub-tabs estilo segmented control (pill container)
+    const subTabsEl = parent.createDiv({ cls: "axxa-settings-subtabs" });
+    this.createProviderSubTab(subTabsEl, "openai", t.settings.tabs.openai);
+    this.createProviderSubTab(subTabsEl, "anthropic", t.settings.tabs.anthropic);
+    this.createProviderSubTab(subTabsEl, "openrouter", t.settings.tabs.openrouter);
+    this.createProviderSubTab(subTabsEl, "ollama", t.settings.tabs.ollama);
 
-    // ============================================================
-    // Conteúdo da tab ativa
-    // ============================================================
-    const contentEl = containerEl.createDiv({ cls: "axxa-settings-content" });
-
-    switch (this.activeTab) {
+    // Conteúdo da sub-tab
+    const subContentEl = parent.createDiv({ cls: "axxa-settings-subcontent" });
+    switch (this.activeProviderTab) {
       case "openai":
-        this.renderOpenAI(contentEl, t);
+        this.renderOpenAI(subContentEl, t);
         break;
       case "anthropic":
-        this.renderAnthropic(contentEl, t);
+        this.renderAnthropic(subContentEl, t);
         break;
       case "openrouter":
-        this.renderOpenRouter(contentEl, t);
+        this.renderOpenRouter(subContentEl, t);
         break;
       case "ollama":
-        this.renderOllama(contentEl, t);
-        break;
-      case "outros":
-        this.renderOutros(contentEl, t);
+        this.renderOllama(subContentEl, t);
         break;
     }
   }
 
-  hide() {
-    this.unsubscribe?.();
-    this.unsubscribe = undefined;
-  }
-
-  private createTabButton(parent: HTMLElement, id: TabId, label: string) {
-    const isDefault =
-      id !== "outros" && id === this.plugin.settings.defaultProvider;
+  /** Botão de sub-tab dos providers (com bolinha pro default) */
+  private createProviderSubTab(
+    parent: HTMLElement,
+    id: ProviderTabId,
+    label: string
+  ) {
+    const isDefault = id === this.plugin.settings.defaultProvider;
     const btn = parent.createEl("button", {
       cls:
-        "axxa-tab-btn" +
-        (this.activeTab === id ? " axxa-tab-active" : "") +
-        (isDefault ? " axxa-tab-default" : ""),
+        "axxa-subtab-btn" +
+        (this.activeProviderTab === id ? " axxa-subtab-active" : "") +
+        (isDefault ? " axxa-subtab-default" : ""),
       text: label,
     });
     btn.onclick = () => {
-      this.activeTab = id;
+      this.activeProviderTab = id;
       this.display();
     };
   }
@@ -585,6 +634,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
+    // Code wrap toggle — quando true, code blocks quebram linhas em vez
+    // de scrollar (útil em mobile / sidebars estreitos)
+    new Setting(parent)
+      .setName(t.settings.codeWrap)
+      .setDesc(t.settings.codeWrapDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.codeWrap)
+          .onChange(async (value) => {
+            this.plugin.settings.codeWrap = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
     // ============================================================
     // Aparência — grid de swatches (5 presets + None)
     // ============================================================
@@ -851,6 +914,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "forest",
       "violet",
       "mono",
+      "aurora",
+      "spotlight",
+      "nebula",
     ];
     const current = this.plugin.settings.background || "none";
     const grid = parent.createDiv({ cls: "axxa-bg-grid" });

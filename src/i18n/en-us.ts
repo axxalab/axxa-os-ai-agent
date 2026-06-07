@@ -101,6 +101,10 @@ export const EN_US: Translations = {
 
   settings: {
     title: "AXXA OS — AI Agent",
+    topTabs: {
+      providers: "Providers",
+      outros: "Other",
+    },
     tabs: {
       openai: "OpenAI",
       anthropic: "Anthropic",
@@ -166,9 +170,12 @@ export const EN_US: Translations = {
       "Skills management — Module 7",
       "MCP Connect (Notion, ClickUp, Figma) — Module 9",
     ],
+    codeWrap: "Wrap lines in code blocks",
+    codeWrapDesc:
+      "When enabled, long code blocks wrap instead of scrolling horizontally. Useful on narrow screens (mobile).",
     appearance: "Appearance",
     appearanceDesc:
-      "Pick a background for AXXA's interface. Subtle colors that don't hurt reading.",
+      "Pick a background for AXXA's interface. Colors and gradients (linear + radial).",
     backgroundLabels: {
       none: "Default",
       sunset: "Sunset",
@@ -176,6 +183,9 @@ export const EN_US: Translations = {
       forest: "Forest",
       violet: "Violet",
       mono: "Mono",
+      aurora: "Aurora",
+      spotlight: "Spotlight",
+      nebula: "Nebula",
     },
     rag: "Vault Q&A (RAG)",
     ragDesc:

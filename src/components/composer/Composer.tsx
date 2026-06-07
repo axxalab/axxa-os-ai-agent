@@ -158,12 +158,20 @@ export function Composer({
             fontFamily: "var(--font-text)",
             fontSize: "var(--font-ui-medium)",
             maxHeight: "200px",
-            overflow: "auto",
+            // overflow-x: hidden — campo de mensagem NUNCA scrolla horizontalmente
+            // (regra: tudo respira pra baixo, jamais pra direita)
+            overflowX: "hidden",
+            overflowY: "auto",
           },
           "&.cm-focused": { outline: "none" },
+          ".cm-scroller": { overflowX: "hidden" },
           ".cm-content": {
             caretColor: "var(--text-normal)",
             padding: "4px 0",
+            // Quebra palavras longas (URLs, identifiers, etc) que lineWrapping
+            // sozinho não pega (lineWrapping só quebra em word boundary).
+            wordBreak: "break-word",
+            overflowWrap: "anywhere",
           },
           ".cm-line": { padding: "0" },
         }),

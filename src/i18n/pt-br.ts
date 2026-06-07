@@ -101,6 +101,10 @@ export const PT_BR = {
 
   settings: {
     title: "AXXA OS — AI Agent",
+    topTabs: {
+      providers: "Providers",
+      outros: "Outros",
+    },
     tabs: {
       openai: "OpenAI",
       anthropic: "Anthropic",
@@ -166,9 +170,12 @@ export const PT_BR = {
       "Skills management — Módulo 7",
       "MCP Connect (Notion, ClickUp, Figma) — Módulo 9",
     ] as string[],
+    codeWrap: "Quebrar linhas em code blocks",
+    codeWrapDesc:
+      "Quando ativo, code blocks longos quebram em vez de scrollar horizontalmente. Útil em telas estreitas (mobile).",
     appearance: "Aparência",
     appearanceDesc:
-      "Escolha um fundo pra interface do AXXA. Cores sutis pra não atrapalhar a leitura.",
+      "Escolha um fundo pra interface do AXXA. Cores e gradientes (lineares + radiais).",
     backgroundLabels: {
       none: "Padrão",
       sunset: "Pôr do sol",
@@ -176,6 +183,9 @@ export const PT_BR = {
       forest: "Floresta",
       violet: "Violeta",
       mono: "Mono",
+      aurora: "Aurora",
+      spotlight: "Spotlight",
+      nebula: "Nebula",
     },
     rag: "Vault Q&A (RAG)",
     ragDesc:
