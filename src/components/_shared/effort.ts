@@ -38,3 +38,24 @@ export function effortToMaxTokens(level: string): number {
 export function isEffortLevel(value: string): value is EffortLevel {
   return EFFORT_LEVELS.includes(value as EffortLevel);
 }
+
+// Escala do Vault Q&A por effort:
+//   topK = quantas notas o keyword-search retorna
+//   excerptChars = tamanho do trecho de cada nota injetado no system prompt
+// Total ~ topK × excerptChars chars (~ /4 tokens).
+export interface VaultLookupConfig {
+  topK: number;
+  excerptChars: number;
+}
+
+const EFFORT_VAULT_LOOKUP: Record<EffortLevel, VaultLookupConfig> = {
+  low:   { topK: 3,  excerptChars: 300  },
+  med:   { topK: 5,  excerptChars: 500  },
+  high:  { topK: 7,  excerptChars: 800  },
+  xhigh: { topK: 9,  excerptChars: 1200 },
+  max:   { topK: 12, excerptChars: 2000 },
+};
+
+export function effortToVaultLookup(level: string): VaultLookupConfig {
+  return EFFORT_VAULT_LOOKUP[level as EffortLevel] ?? EFFORT_VAULT_LOOKUP.med;
+}

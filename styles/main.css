@@ -997,6 +997,78 @@ body.is-mobile
   gap: 12px;
 }
 
+/* Espaço entre seções no PlusModal */
+.axxa-plus-section + .axxa-plus-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Seção "em breve" — opacidade menor + cursor not-allowed nos botões */
+.axxa-plus-section-soon {
+  opacity: 0.78;
+}
+
+.axxa-plus-soon-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
+/* Grid de tipos de anexo (PDF / Imagem / Nota) */
+.axxa-plus-attach-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.axxa-plus-attach-btn,
+.axxa-plus-attach-btn:hover,
+.axxa-plus-attach-btn:focus,
+.axxa-plus-attach-btn:active,
+.axxa-plus-attach-btn:disabled {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.axxa-plus-attach-btn {
+  flex: 1 1 80px;
+  min-height: 64px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border: 1px dashed var(--background-modifier-border) !important;
+  border-radius: 14px;
+  background: var(--background-secondary) !important;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.axxa-plus-attach-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.axxa-plus-attach-btn .axxa-icon .svg-icon {
+  width: 20px;
+  height: 20px;
+}
+
+
 .axxa-plus-section-head {
   display: flex;
   align-items: center;

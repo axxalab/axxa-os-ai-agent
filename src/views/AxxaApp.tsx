@@ -23,7 +23,11 @@ import {
 import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage } from "../providers/base";
-import { effortToMaxTokens, type EffortLevel } from "../components/_shared/effort";
+import {
+  effortToMaxTokens,
+  effortToVaultLookup,
+  type EffortLevel,
+} from "../components/_shared/effort";
 import {
   saveChat,
   loadChat,
@@ -193,14 +197,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     } = useChatStore.getState();
 
     // Modo Vault Q&A: busca notas relevantes ANTES da chamada
+    // topK e excerptChars escalam com effort (low=3×300 ... max=12×2000)
     let vaultContextBlock = "";
     if (activeMode === "vault-qa") {
+      const { topK, excerptChars } = effortToVaultLookup(effort);
       addMessage({
         type: "ai-comment",
-        content: "Buscando notas relevantes no vault...",
+        content: `Buscando até ${topK} notas no vault (effort: ${effort})...`,
       });
       try {
-        const matches = await searchVault(plugin.app, userText, 5);
+        const matches = await searchVault(plugin.app, userText, topK, excerptChars);
         if (matches.length > 0) {
           vaultContextBlock = buildVaultContext(matches);
           addMessage({

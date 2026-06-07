@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.2 parcial, 3.3 quase fechado), 4 🟡 (4.1+4.2+4.3 ✅) · próximo: Sprint B (Vault Q&A escalonado + attach UI)  
-> **Versão:** 1.0 · plugin em v0.1.20  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.2 quase, 3.3 quase), 4 🟡 (4.1+4.2+4.3 ✅ escalonado) · próximo: Sprint C — i18n PT/EN  
+> **Versão:** 1.0 · plugin em v0.1.21  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -160,7 +160,7 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 
 ### 3.2 Composer completo (estilo ChatGPT)
 - ✅ Textarea auto-expande com o conteúdo (CodeMirror nativo já faz, maxHeight 200px)
-- ⬜ Botão 📎 attach (placeholder visual, funcional no módulo 5)
+- ✅ Botão 📎 attach (placeholder visual no PlusModal: PDF / Imagem / Nota com "em breve" badge — funcional no Módulo 5; v0.1.21)
 - ⬜ Botão 🎤 audio recorder (hold-to-record) — mic placeholder existe, gravação pendente
 - ✅ Botão ▶ send / ⬛ stop durante geração (`arrow-up` / `square` com cor invertida)
 - ✅ Placeholder dinâmico por modo (chat / vault-qa / agent / coder via Compartment do CodeMirror — v0.1.18)
@@ -207,10 +207,10 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 
 ### 4.3 Vault Q&A básico (context stuffing)
 - ✅ Modo Vault Q&A ativo no starter screen (seletor "Chat" / "Vault Q&A")
-- ✅ Notas relevantes injetadas no contexto (busca keyword-based: título=5pts, conteúdo=1pt/ocorrência, top 5)
+- ✅ Notas relevantes injetadas no contexto (busca keyword-based: título=5pts, conteúdo=1pt/ocorrência)
 - ✅ Indicador visual: ai-comment "X notas encontradas como contexto" antes do streaming
 - ✅ Chip "vault" no status do composer quando modo ativo
-- 🟡 Limite por effort: usa excerpt 500 chars/nota, top 5 → ~2500 chars (~600 tokens). Não há lookup por effort ainda
+- ✅ **Escalonamento por effort** (v0.1.21): low=3×300 / med=5×500 / high=7×800 / xhigh=9×1200 / max=12×2000 — comment mostra topK + effort durante busca
 
 ### 4.4 Multilanguage
 - ⬜ PT-BR como padrão
@@ -394,6 +394,8 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Sprint A (v0.1.20) — Context menu + regen funcional | Right-click (desktop) e long-press 500ms (mobile) abrem Menu nativo do Obsidian em cada mensagem. Cancel critério: dedo move >10px OU touchend antes do timer. Itens vermelhos via `MenuItem.setWarning(true)`. |
 | 07/06/2026 | Refactor `streamReply()` reusável (v0.1.20) | Lógica de vault search + comment "Pensando..." + streamChat + erro extraída em função. Reutilizada por handleSend (adiciona user msg primeiro) e handleRegenerate (remove ai-response + posteriores antes). Lê history via `useChatStore.getState()` pra trabalhar com o array mutado. |
 | 07/06/2026 | `ChatActionsContext` pra evitar prop drilling (v0.1.20) | regenerate/deleteMessage são definidas no AxxaApp (closure sobre provider/settings/abortRef) e consumidas em Messages (3 níveis abaixo). Context = passar o token sem prop chain. |
+| 07/06/2026 | Sprint B (v0.1.21) — Vault Q&A escalonado por effort | `EFFORT_VAULT_LOOKUP` mapeia cada nível pra `{topK, excerptChars}`. Low=900 chars total, Max=24k chars. Comment durante busca mostra topK + effort pra transparência. |
+| 07/06/2026 | Sprint B (v0.1.21) — Attach UI no PlusModal | 3 botões dashed (PDF / Imagem / Nota) disabled com Notice "vem no Módulo 5". Seção tem badge "em breve" + opacity 0.78. Coexiste com Effort selector via border-top separator. |
 
 ---
 
