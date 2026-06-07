@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, **6.1+6.2 ✅ Agent MVP** · próximo: Sprint H — Polish + Anthropic tools + Whisper áudio  
-> **Versão:** 1.0 · plugin em v0.1.28  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, 6.1+6.2 ✅ Agent + **v0.1.29 hotfixes RAG mobile** · próximo: Sprint H  
+> **Versão:** 1.0 · plugin em v0.1.29  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -450,6 +450,10 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Sprint G (v0.1.28) — vault_edit exige string única | LLM tem que fornecer `oldStr` que aparece exatamente 1x. Se 0 = "string não encontrada", se >1 = "ambígua, use mais contexto". Anti edits acidentais que mexem na linha errada. |
 | 07/06/2026 | Sprint G (v0.1.28) — vault_delete só pasta vazia | Tool delete em pasta com conteúdo falha (safety). LLM precisa deletar arquivos um por um — confirma cada um (irreversível). Evita rm-rf acidental. |
 | 07/06/2026 | Sprint G (v0.1.28) — MAX_TURNS=10 no agent loop | Cap pra evitar LLM ficar chamando tools infinitamente. Se atingir, devolve erro pedindo refrasear. 10 cobre ~95% dos casos legítimos. |
+| 07/06/2026 | Hotfix v0.1.29 — Nemotron VL text como content-array | Bug: text input como string crua devolvia `data: []`. Fix: input vira `[{type:"text",text:"..."}]` (formato content-array que o modelo espera). Log de body+response no console em qualquer erro pra facilitar debug. |
+| 07/06/2026 | Hotfix v0.1.29 — Indexer save por arquivo, não por batch | Bug crítico mobile: salvar índice (40MB JSON) a CADA batch causava OOM no WebView do Android (S23 FE crashou). Fix: SAVE_EVERY_N_FILES=25 + sempre no final. Reduz I/O em ~25x. Trade-off: durabilidade menor (perde até 25 arquivos em crash) por estabilidade. |
+| 07/06/2026 | Hotfix v0.1.29 — Per-file try-catch + skip on error | Bug: 1 arquivo com erro de embed (rate limit, payload, etc.) derrubava o resto do batch (16 chunks). Fix: try-catch por arquivo. Lista de `failedFiles[]` logada no final pra inspeção. Continua com próximo arquivo. |
+| 07/06/2026 | Hotfix v0.1.29 — Retry 429 com 3s backoff | OpenRouter free tier tem rate limit apertado. Antes: qualquer 429 jogava erro fatal. Agora: 1 retry após 3s. Se persistir, joga ProviderError clara. |
 
 ---
 

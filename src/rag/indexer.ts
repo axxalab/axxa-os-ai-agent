@@ -74,6 +74,14 @@ function isAudioPath(path: string): boolean {
 const BATCH_SIZE = 16;
 const CHUNK_MAX_CHARS = 1500;
 const CHUNK_OVERLAP = 200;
+/**
+ * v0.1.29 fix mobile crash: salvar o índice inteiro a cada batch causava
+ * out-of-memory no WebView do Android (40MB JSON × dezenas de saves).
+ * Agora salvamos a cada N arquivos processados + sempre no final.
+ * Trade-off: durabilidade reduzida (perde até N arquivos se crashar) por
+ * estabilidade (não crasha).
+ */
+const SAVE_EVERY_N_FILES = 25;
 
 /**
  * Indexa o vault. Reutiliza entries existentes pra arquivos NÃO modificados
@@ -218,82 +226,118 @@ export async function indexVault(
   }
 
   // ============================================================
-  // Phase 2: Embed — texto em batches, imagens 1-por-1
+  // Phase 2: Embed — UM ARQUIVO POR VEZ com try-catch isolado
+  //
+  // v0.1.29 fix: antes batchávamos chunks de múltiplos arquivos juntos e
+  // salvávamos o índice (40MB+) a CADA batch — explodia o WebView no Android.
+  // Agora: processa file → embeda todos chunks dele → adiciona ao índice →
+  // salva A CADA N arquivos. Erros em 1 arquivo não derrubam o resto.
   // ============================================================
   let filesEmbedded = 0;
   let chunksEmbedded = 0;
   let imagesEmbedded = 0;
   let tokensUsed = 0;
-
-  // PendingChunk = unidade atômica de embed (1 chunk de texto OU 1 imagem)
-  type PendingChunk = {
-    input: EmbedInput;
-    file: TFile;
-    chunkIndex: number;
-    chunkCount: number;
-    hash: string;
-    isImage: boolean;
-    /** Texto pra preservar no entry (pro display em search results). */
-    storedText: string;
-  };
-  let pending: PendingChunk[] = [];
+  let filesSinceLastSave = 0;
+  const failedFiles: { path: string; error: string }[] = [];
 
   for (const item of toEmbed) {
     if (signal?.aborted) throw new DOMException("cancelled", "AbortError");
 
-    if (item.kind === "text") {
-      const chunks = chunkText(item.content, CHUNK_MAX_CHARS, CHUNK_OVERLAP);
-      for (let i = 0; i < chunks.length; i++) {
-        pending.push({
-          input: { kind: "text", text: chunks[i] },
-          file: item.file,
-          chunkIndex: i,
-          chunkCount: chunks.length,
+    try {
+      const fileEntries: VectorEntry[] = [];
+
+      if (item.kind === "text") {
+        // Chunkifica e embeda em batches (texto pode ter N chunks por arquivo)
+        const chunks = chunkText(item.content, CHUNK_MAX_CHARS, CHUNK_OVERLAP);
+        for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+          if (signal?.aborted) throw new DOMException("cancelled", "AbortError");
+          const slice = chunks.slice(i, i + BATCH_SIZE);
+          const inputs: EmbedInput[] = slice.map((c) => ({
+            kind: "text",
+            text: c,
+          }));
+          const embeddings = await embedItems(inputs, creds, model);
+          for (let j = 0; j < slice.length; j++) {
+            fileEntries.push({
+              path: item.file.path,
+              hash: item.hash,
+              chunkIndex: i + j,
+              chunkCount: chunks.length,
+              text: slice[j],
+              embedding: embeddings[j],
+              kind: "text",
+            });
+            tokensUsed += estimateTokens(slice[j]);
+          }
+        }
+      } else {
+        // Imagem: 1 entry, 1 request
+        const embeddings = await embedItems(
+          [{ kind: "image", dataUrl: item.dataUrl }],
+          creds,
+          model
+        );
+        fileEntries.push({
+          path: item.file.path,
           hash: item.hash,
-          isImage: false,
-          storedText: chunks[i],
+          chunkIndex: 0,
+          chunkCount: 1,
+          text: `Image: ${item.file.name}`,
+          embedding: embeddings[0],
+          kind: "image",
         });
+        imagesEmbedded++;
       }
-    } else {
-      // Imagem: 1 chunk só, sem chunking
-      pending.push({
-        input: { kind: "image", dataUrl: item.dataUrl },
-        file: item.file,
-        chunkIndex: 0,
-        chunkCount: 1,
-        hash: item.hash,
-        isImage: true,
-        storedText: `Image: ${item.file.name}`,
+
+      // Substitui (ou adiciona) as entries deste arquivo no índice
+      index.replaceFile(item.file.path, fileEntries);
+      chunksEmbedded += fileEntries.length;
+      filesEmbedded++;
+      filesSinceLastSave++;
+
+      // Save periódico — controla o I/O em vez de salvar cada batch
+      if (filesSinceLastSave >= SAVE_EVERY_N_FILES) {
+        await saveIndex(app, indexPath, index);
+        filesSinceLastSave = 0;
+      }
+
+      onProgress?.({
+        phase: "embedding",
+        filesScanned: filesTotal,
+        filesTotal,
+        filesToEmbed: toEmbed.length,
+        filesEmbedded,
+        chunksEmbedded,
+        imagesEmbedded,
+        audioSkipped,
+        tokensUsed,
+        currentFile: item.file.path,
       });
+    } catch (err) {
+      // Skip arquivo com erro, log, continua próximo
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[axxa/rag] file failed: ${item.file.path}`,
+        err
+      );
+      failedFiles.push({ path: item.file.path, error: msg });
+      // Abort propagado deve parar tudo
+      if (err instanceof DOMException && err.name === "AbortError") throw err;
+      // Senão continua
     }
-
-    while (pending.length >= BATCH_SIZE) {
-      const batch = pending.splice(0, BATCH_SIZE);
-      await embedAndStore(batch);
-    }
-    filesEmbedded++;
-    onProgress?.({
-      phase: "embedding",
-      filesScanned: filesTotal,
-      filesTotal,
-      filesToEmbed: toEmbed.length,
-      filesEmbedded,
-      chunksEmbedded,
-      imagesEmbedded,
-      audioSkipped,
-      tokensUsed,
-      currentFile: item.file.path,
-    });
   }
 
-  // Flush do que sobrou
-  if (pending.length > 0) {
-    await embedAndStore(pending);
-    pending = [];
-  }
-
+  // Save final — garante que tudo que rolou tá no disco
   index.lastIndexedAt = new Date().toISOString();
   await saveIndex(app, indexPath, index);
+
+  // Log final de arquivos que falharam (pra user inspeccionar no DevTools)
+  if (failedFiles.length > 0) {
+    console.warn(
+      `[axxa/rag] ${failedFiles.length} arquivos falharam durante indexação:`,
+      failedFiles
+    );
+  }
 
   onProgress?.({
     phase: "done",
@@ -308,48 +352,4 @@ export async function indexVault(
   });
 
   return index;
-
-  // ============================================================
-  // Helper local: embeda um batch via router e adiciona ao índice
-  // ============================================================
-  async function embedAndStore(batch: PendingChunk[]) {
-    if (signal?.aborted) throw new DOMException("cancelled", "AbortError");
-    const inputs = batch.map((p) => p.input);
-    const embeddings = await embedItems(inputs, creds, model);
-
-    const byFile = new Map<string, VectorEntry[]>();
-    for (let i = 0; i < batch.length; i++) {
-      const p = batch[i];
-      const entry: VectorEntry = {
-        path: p.file.path,
-        hash: p.hash,
-        chunkIndex: p.chunkIndex,
-        chunkCount: p.chunkCount,
-        text: p.storedText,
-        embedding: embeddings[i],
-        kind: p.isImage ? "image" : "text",
-      };
-      if (!byFile.has(p.file.path)) byFile.set(p.file.path, []);
-      byFile.get(p.file.path)!.push(entry);
-      if (p.isImage) {
-        imagesEmbedded++;
-      } else {
-        tokensUsed += estimateTokens(p.storedText);
-      }
-    }
-
-    for (const [path, entries] of byFile) {
-      const alreadyTouched = index.entries.some(
-        (e) => e.path === path && e.hash === entries[0].hash
-      );
-      if (alreadyTouched) {
-        index.entries.push(...entries);
-      } else {
-        index.replaceFile(path, entries);
-      }
-    }
-
-    chunksEmbedded += batch.length;
-    await saveIndex(app, indexPath, index);
-  }
 }

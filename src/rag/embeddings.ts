@@ -146,26 +146,31 @@ interface OpenRouterEmbeddingResponse {
   usage?: { prompt_tokens?: number; total_tokens?: number };
 }
 
-/** Constrói o body do OpenRouter pra UM input (texto ou imagem). */
-function buildOpenRouterInputItem(item: EmbedInput): unknown {
+/**
+ * Constrói o body do OpenRouter pra UM input (texto ou imagem).
+ *
+ * v0.1.29 fix: Nemotron VL espera content-array MESMO pra texto.
+ * Antes mandávamos string simples e devolvia `data: []`. Agora:
+ *   - Texto: [{type:"text", text:"..."}]
+ *   - Imagem: [{type:"image_url", image_url:{url:"data:..."}}]
+ */
+function buildOpenRouterInput(item: EmbedInput): unknown {
   if (item.kind === "text") {
-    // OpenAI-style: input pode ser string simples
-    return item.text;
+    return [{ type: "text", text: item.text }];
   }
-  // Imagem: usa o formato multimodal de content array
-  return [
-    {
-      type: "image_url",
-      image_url: { url: item.dataUrl },
-    },
-  ];
+  return [{ type: "image_url", image_url: { url: item.dataUrl } }];
+}
+
+/** Pausa em ms — usado pra backoff entre retries de rate limit. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 /**
  * Embeda um batch via OpenRouter (Nemotron VL multimodal).
- * IMPORTANTE: OpenRouter pode não aceitar batches mistos texto/imagem no
- * mesmo request. Pra simplicidade, mandamos 1 request por item — slower mas
- * confiável. Otimização (batch homogêneo) vem se isso for gargalo.
+ * 1 request por item (Nemotron VL não tem batching nativo em embeddings).
+ *
+ * Retries: 1 tentativa extra após 3s se receber 429 (rate limit do free tier).
  */
 export async function embedBatchOpenRouter(
   items: EmbedInput[],
@@ -184,45 +189,65 @@ export async function embedBatchOpenRouter(
   for (const item of items) {
     const body = {
       model,
-      input: buildOpenRouterInputItem(item),
+      input: buildOpenRouterInput(item),
     };
     let res;
-    try {
-      res = await requestUrl({
-        url: OPENROUTER_EMBEDDINGS_ENDPOINT,
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://axxa.lab",
-          "X-Title": "AXXA OS",
-        },
-        body: JSON.stringify(body),
-        throw: false,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro de rede.";
-      throw new ProviderError(
-        `Falha ao chamar OpenRouter embeddings: ${msg}`,
-        "network"
-      );
+    let attempt = 0;
+    const MAX_ATTEMPTS = 2;
+    while (true) {
+      attempt++;
+      try {
+        res = await requestUrl({
+          url: OPENROUTER_EMBEDDINGS_ENDPOINT,
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://axxa.lab",
+            "X-Title": "AXXA OS",
+          },
+          body: JSON.stringify(body),
+          throw: false,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erro de rede.";
+        throw new ProviderError(
+          `Falha ao chamar OpenRouter embeddings: ${msg}`,
+          "network"
+        );
+      }
+      // Retry só pra 429
+      if (res.status === 429 && attempt < MAX_ATTEMPTS) {
+        console.warn(
+          `[axxa/rag] OpenRouter 429 — esperando 3s antes do retry ${attempt + 1}/${MAX_ATTEMPTS}`
+        );
+        await sleep(3000);
+        continue;
+      }
+      break;
     }
 
     if (res.status === 401) {
-      throw new ProviderError(
-        "API key do OpenRouter inválida.",
-        "invalid-key"
-      );
+      throw new ProviderError("API key do OpenRouter inválida.", "invalid-key");
     }
     if (res.status === 429) {
       throw new ProviderError(
-        "Rate limit do OpenRouter excedido (modelos :free têm limites apertados). Aguarde e tente de novo.",
+        "Rate limit do OpenRouter persistiu após retry. Aguarde 1 min e tente de novo.",
         "rate-limit"
       );
     }
     if (res.status >= 400) {
+      // Log COMPLETO no console pra debug (resposta + body enviado)
+      console.error(
+        `[axxa/rag] OpenRouter ${res.status} — body enviado:`,
+        JSON.stringify(body).slice(0, 400)
+      );
+      console.error(
+        `[axxa/rag] OpenRouter ${res.status} — resposta:`,
+        res.text?.slice(0, 500)
+      );
       throw new ProviderError(
-        `OpenRouter embeddings retornou ${res.status}: ${res.text?.slice(0, 300) ?? ""}`,
+        `OpenRouter embeddings retornou ${res.status}. Veja console.`,
         "unknown"
       );
     }
@@ -232,13 +257,27 @@ export async function embedBatchOpenRouter(
       parsed = res.json as OpenRouterEmbeddingResponse;
     } catch {
       throw new ProviderError(
-        "Resposta de OpenRouter embeddings inválida.",
+        "Resposta de OpenRouter embeddings inválida (não é JSON).",
         "unknown"
       );
     }
     if (!parsed.data || parsed.data.length === 0) {
+      // CASO DO BUG ORIGINAL — vamos logar tudo pra inspeção
+      console.error(
+        "[axxa/rag] Nemotron devolveu data vazio. Modelo:",
+        model
+      );
+      console.error(
+        "[axxa/rag] Body enviado:",
+        JSON.stringify(body).slice(0, 400)
+      );
+      console.error(
+        "[axxa/rag] Resposta inteira:",
+        res.text?.slice(0, 800)
+      );
       throw new ProviderError(
-        "OpenRouter embeddings devolveu data vazio.",
+        `Nemotron devolveu data vazio. Possíveis causas: (1) payload incompatível, ` +
+          `(2) rate limit silencioso, (3) modelo offline. Veja console.`,
         "unknown"
       );
     }
