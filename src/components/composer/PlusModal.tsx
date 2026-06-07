@@ -14,6 +14,7 @@ import {
   EFFORT_DESCRIPTIONS,
   type EffortLevel,
 } from "../_shared/effort";
+import { useT } from "../../i18n";
 
 interface PlusModalProps {
   currentEffort: string;
@@ -22,6 +23,7 @@ interface PlusModalProps {
 }
 
 export function PlusModal({ currentEffort, onSelectEffort, onClose }: PlusModalProps) {
+  const t = useT();
   // Fecha com Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -37,11 +39,11 @@ export function PlusModal({ currentEffort, onSelectEffort, onClose }: PlusModalP
         className="axxa-plus-sheet"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Opções da conversa"
+        aria-label={t.plus.dialogLabel}
       >
         <div className="axxa-plus-handle" />
 
-        <h3 className="axxa-plus-title">Opções da conversa</h3>
+        <h3 className="axxa-plus-title">{t.plus.title}</h3>
 
         {/* Anexar arquivo — UI placeholder, funcional no Módulo 5 */}
         <div className="axxa-plus-section axxa-plus-section-soon">
@@ -49,12 +51,10 @@ export function PlusModal({ currentEffort, onSelectEffort, onClose }: PlusModalP
             <Icon name="paperclip" className="axxa-plus-section-icon" />
             <div>
               <div className="axxa-plus-section-title">
-                Anexar arquivo
-                <span className="axxa-plus-soon-badge">em breve</span>
+                {t.plus.attachTitle}
+                <span className="axxa-plus-soon-badge">{t.plus.attachSoonBadge}</span>
               </div>
-              <div className="axxa-plus-section-sub">
-                PDFs, imagens, notas do vault — virão no Módulo 5
-              </div>
+              <div className="axxa-plus-section-sub">{t.plus.attachSub}</div>
             </div>
           </div>
           <div className="axxa-plus-attach-grid">
@@ -62,31 +62,31 @@ export function PlusModal({ currentEffort, onSelectEffort, onClose }: PlusModalP
               type="button"
               className="axxa-plus-attach-btn"
               disabled
-              title="Em breve — anexar PDF"
-              onClick={() => new Notice("Anexar PDF vem no Módulo 5")}
+              title={t.plus.attachPdfNotice}
+              onClick={() => new Notice(t.plus.attachPdfNotice)}
             >
               <Icon name="file-text" />
-              <span>PDF</span>
+              <span>{t.plus.attachPdf}</span>
             </button>
             <button
               type="button"
               className="axxa-plus-attach-btn"
               disabled
-              title="Em breve — anexar imagem"
-              onClick={() => new Notice("Anexar imagem vem no Módulo 5")}
+              title={t.plus.attachImageNotice}
+              onClick={() => new Notice(t.plus.attachImageNotice)}
             >
               <Icon name="image" />
-              <span>Imagem</span>
+              <span>{t.plus.attachImage}</span>
             </button>
             <button
               type="button"
               className="axxa-plus-attach-btn"
               disabled
-              title="Em breve — referenciar nota do vault"
-              onClick={() => new Notice("Referenciar nota vem no Módulo 5")}
+              title={t.plus.attachNoteNotice}
+              onClick={() => new Notice(t.plus.attachNoteNotice)}
             >
               <Icon name="file" />
-              <span>Nota</span>
+              <span>{t.plus.attachNote}</span>
             </button>
           </div>
         </div>
@@ -95,10 +95,8 @@ export function PlusModal({ currentEffort, onSelectEffort, onClose }: PlusModalP
           <div className="axxa-plus-section-head">
             <Icon name="zap" className="axxa-plus-section-icon" />
             <div>
-              <div className="axxa-plus-section-title">Effort</div>
-              <div className="axxa-plus-section-sub">
-                Intensidade do processamento — afeta max_tokens
-              </div>
+              <div className="axxa-plus-section-title">{t.plus.effortTitle}</div>
+              <div className="axxa-plus-section-sub">{t.plus.effortSub}</div>
             </div>
           </div>
 

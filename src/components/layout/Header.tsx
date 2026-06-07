@@ -2,6 +2,7 @@
 // Header com título, versão, "nova conversa" e gear de Settings.
 
 import { Icon } from "../_shared/Icon";
+import { useT } from "../../i18n";
 
 interface HeaderProps {
   version: string;
@@ -10,6 +11,7 @@ interface HeaderProps {
 }
 
 export function Header({ version, onOpenSettings, onNewChat }: HeaderProps) {
+  const t = useT();
   return (
     <header className="axxa-header">
       <div className="axxa-header-title">
@@ -21,8 +23,8 @@ export function Header({ version, onOpenSettings, onNewChat }: HeaderProps) {
           type="button"
           className="axxa-header-gear"
           onClick={onNewChat}
-          aria-label="Nova conversa"
-          title="Nova conversa"
+          aria-label={t.header.newChat}
+          title={t.header.newChat}
         >
           <Icon name="message-square-plus" />
         </button>
@@ -30,8 +32,8 @@ export function Header({ version, onOpenSettings, onNewChat }: HeaderProps) {
           type="button"
           className="axxa-header-gear"
           onClick={onOpenSettings}
-          aria-label="Abrir configurações"
-          title="Configurações"
+          aria-label={t.header.openSettings}
+          title={t.header.openSettings}
         >
           <Icon name="settings" />
         </button>

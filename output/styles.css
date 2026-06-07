@@ -1176,8 +1176,9 @@ body.is-mobile
 
 .axxa-settings-tabs {
   display: flex;
-  gap: 4px;
-  margin: 12px 0 16px 0;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 16px 0 16px 0;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
@@ -1194,6 +1195,9 @@ body.is-mobile
 }
 
 .axxa-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 8px 14px;
   border-radius: 999px 999px 0 0;
   color: var(--text-muted);
@@ -1202,6 +1206,7 @@ body.is-mobile
   cursor: pointer;
   transition: color 0.15s;
   margin-bottom: -1px;
+  position: relative;
 }
 
 .axxa-tab-btn:hover {
@@ -1211,6 +1216,17 @@ body.is-mobile
 .axxa-tab-active {
   color: var(--text-accent) !important;
   border-bottom: 2px solid var(--interactive-accent) !important;
+}
+
+/* Indicador do provider padrão — bolinha à esquerda do nome do tab */
+.axxa-tab-default::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  flex-shrink: 0;
 }
 
 /* =====================================================

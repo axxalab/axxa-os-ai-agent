@@ -13,6 +13,7 @@ import {
 } from "../_shared/effort";
 import type { ChatSummary } from "../_shared/chatPersistence";
 import { formatTokens } from "../_shared/contextWindows";
+import { useT } from "../../i18n";
 
 const PROVIDERS = [
   { id: "openai", name: "OpenAI", icon: "sparkles" },
@@ -37,9 +38,10 @@ interface StarterScreenProps {
   onLoadChat: (chatId: string) => void;
 }
 
-const MODES = [
-  { id: "chat", name: "Chat", icon: "message-square", description: "Conversa direta" },
-  { id: "vault-qa", name: "Vault Q&A", icon: "library", description: "Busca notas como contexto" },
+// MODES_ICONS — só os ícones e ids ficam aqui. Nomes/descrições vêm do i18n.
+const MODES_META = [
+  { id: "chat" as const, icon: "message-square" },
+  { id: "vault-qa" as const, icon: "library" },
 ];
 
 function formatRelativeDate(iso: string): string {
@@ -74,21 +76,26 @@ export function StarterScreen({
   onModeChange,
   onLoadChat,
 }: StarterScreenProps) {
+  const t = useT();
   const modelOptions = activeModels[provider] ?? [];
+
+  // Resolve name/desc dos modos via i18n (chat / vault-qa).
+  const modeLabel = (id: string) =>
+    id === "vault-qa" ? t.modes.vaultQa : t.modes.chat;
+  const modeDesc = (id: string) =>
+    id === "vault-qa" ? t.modes.vaultQaDesc : t.modes.chatDesc;
 
   return (
     <div className="axxa-starter">
       <div className="axxa-starter-head">
-        <h2 className="axxa-starter-title">Nova conversa</h2>
-        <p className="axxa-starter-subtitle">
-          Configure antes de começar — provider e modelo travam ao mandar a primeira mensagem.
-        </p>
+        <h2 className="axxa-starter-title">{t.starter.title}</h2>
+        <p className="axxa-starter-subtitle">{t.starter.subtitle}</p>
       </div>
 
       <div className="axxa-starter-section">
-        <label className="axxa-starter-label">Modo</label>
+        <label className="axxa-starter-label">{t.starter.modeLabel}</label>
         <div className="axxa-starter-providers">
-          {MODES.map((m) => (
+          {MODES_META.map((m) => (
             <button
               key={m.id}
               type="button"
@@ -97,17 +104,17 @@ export function StarterScreen({
                 (m.id === mode ? " axxa-starter-provider-active" : "")
               }
               onClick={() => onModeChange(m.id)}
-              title={m.description}
+              title={modeDesc(m.id)}
             >
               <Icon name={m.icon} />
-              <span>{m.name}</span>
+              <span>{modeLabel(m.id)}</span>
             </button>
           ))}
         </div>
       </div>
 
       <div className="axxa-starter-section">
-        <label className="axxa-starter-label">Provider</label>
+        <label className="axxa-starter-label">{t.starter.providerLabel}</label>
         <div className="axxa-starter-providers">
           {PROVIDERS.map((p) => (
             <button
@@ -127,7 +134,7 @@ export function StarterScreen({
       </div>
 
       <div className="axxa-starter-section">
-        <label className="axxa-starter-label">Modelo</label>
+        <label className="axxa-starter-label">{t.starter.modelLabel}</label>
         <select
           className="dropdown axxa-starter-model"
           value={model}
@@ -145,7 +152,7 @@ export function StarterScreen({
       </div>
 
       <div className="axxa-starter-section">
-        <label className="axxa-starter-label">Effort</label>
+        <label className="axxa-starter-label">{t.starter.effortLabel}</label>
         <div className="axxa-starter-effort">
           {EFFORT_LEVELS.map((level) => {
             const active = level === effort;
@@ -168,7 +175,7 @@ export function StarterScreen({
 
       {recentChats.length > 0 && (
         <div className="axxa-starter-section">
-          <label className="axxa-starter-label">Conversas recentes</label>
+          <label className="axxa-starter-label">{t.starter.recentChatsLabel}</label>
           <div className="axxa-recent-list">
             {recentChats.map((c) => (
               <button
@@ -193,9 +200,7 @@ export function StarterScreen({
         </div>
       )}
 
-      <p className="axxa-starter-hint">
-        Mande a primeira mensagem pra começar. Provider e modelo travam — só Effort pode mudar depois (via "+").
-      </p>
+      <p className="axxa-starter-hint">{t.starter.hint}</p>
     </div>
   );
 }

@@ -1,9 +1,12 @@
 // src/components/settings/AxxaSettingsTab.ts
-// Settings tab do AXXA OS com UI tabbed:
-//   - Providers — OpenAI + Anthropic (chave, modelo, fetch da lista de modelos)
-//   - Outros — paths, language, appearance (em breve)
+// Settings tab do AXXA OS com 5 sub-tabs:
+//   OpenAI · Anthropic · OpenRouter · Ollama · Outros
 //
-// O fetch de modelos filtra legacy/audio/embeddings e mantém só os modernos.
+// Provider padrão fica no topo, sempre visível (acima das tabs) — é um setting
+// global que escolhe qual API é usada por default nas conversas.
+//
+// Toda string vem do i18n (getTranslations) — quando user troca idioma na tab
+// Outros, plugin.saveSettings() dispara o listener e a Settings re-renderiza.
 
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type AxxaPlugin from "../../main";
@@ -11,12 +14,15 @@ import { openaiProvider } from "../../providers/openai";
 import { anthropicProvider } from "../../providers/anthropic";
 import { openrouterProvider } from "../../providers/openrouter";
 import { ollamaProvider } from "../../providers/ollama";
+import { getTranslations, type Translations } from "../../i18n";
 
-type TabId = "providers" | "outros";
+type ProviderTabId = "openai" | "anthropic" | "openrouter" | "ollama";
+type TabId = ProviderTabId | "outros";
 
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
-  private activeTab: TabId = "providers";
+  private activeTab: TabId = "openai";
+  private unsubscribe?: () => void;
 
   constructor(app: App, plugin: AxxaPlugin) {
     super(app, plugin);
@@ -24,54 +30,21 @@ export class AxxaSettingsTab extends PluginSettingTab {
   }
 
   display(): void {
+    const t = getTranslations(this.plugin.settings.language);
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("axxa-settings-root");
 
-    containerEl.createEl("h2", { text: "AXXA OS — AI Agent" });
+    containerEl.createEl("h2", { text: t.settings.title });
 
-    // Tabs
-    const tabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
-    this.createTabButton(tabsEl, "providers", "Providers");
-    this.createTabButton(tabsEl, "outros", "Outros");
-
-    // Content
-    const contentEl = containerEl.createDiv({ cls: "axxa-settings-content" });
-    if (this.activeTab === "providers") {
-      this.renderProviders(contentEl);
-    } else {
-      this.renderOutros(contentEl);
-    }
-  }
-
-  private createTabButton(parent: HTMLElement, id: TabId, label: string) {
-    const btn = parent.createEl("button", {
-      cls: "axxa-tab-btn" + (this.activeTab === id ? " axxa-tab-active" : ""),
-      text: label,
-    });
-    btn.onclick = () => {
-      this.activeTab = id;
-      this.display();
-    };
-  }
-
-  // ============================================================
-  // Tab: Providers
-  // ============================================================
-  private renderProviders(parent: HTMLElement) {
-    parent.createEl("p", {
-      text:
-        "Escolha o provider padrão e configure a API key correspondente. " +
-        "Use 'Buscar modelos' pra carregar a lista atual da API.",
-      cls: "setting-item-description",
-    });
-
-    // Provider seletor
-    new Setting(parent)
-      .setName("Provider padrão")
-      .setDesc("Qual API usar nas conversas")
-      .addDropdown((dropdown) =>
-        dropdown
+    // ============================================================
+    // Provider padrão — sempre visível no topo, acima das tabs
+    // ============================================================
+    new Setting(containerEl)
+      .setName(t.settings.defaultProvider)
+      .setDesc(t.settings.defaultProviderDesc)
+      .addDropdown((dd) =>
+        dd
           .addOption("openai", "OpenAI")
           .addOption("anthropic", "Anthropic (Claude)")
           .addOption("openrouter", "OpenRouter")
@@ -83,12 +56,73 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
-    // OpenAI
-    parent.createEl("h3", { text: "OpenAI" });
+    // ============================================================
+    // Tabs (5 sub-tabs)
+    // ============================================================
+    const tabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
+    this.createTabButton(tabsEl, "openai", t.settings.tabs.openai);
+    this.createTabButton(tabsEl, "anthropic", t.settings.tabs.anthropic);
+    this.createTabButton(tabsEl, "openrouter", t.settings.tabs.openrouter);
+    this.createTabButton(tabsEl, "ollama", t.settings.tabs.ollama);
+    this.createTabButton(tabsEl, "outros", t.settings.tabs.outros);
+
+    // ============================================================
+    // Conteúdo da tab ativa
+    // ============================================================
+    const contentEl = containerEl.createDiv({ cls: "axxa-settings-content" });
+
+    switch (this.activeTab) {
+      case "openai":
+        this.renderOpenAI(contentEl, t);
+        break;
+      case "anthropic":
+        this.renderAnthropic(contentEl, t);
+        break;
+      case "openrouter":
+        this.renderOpenRouter(contentEl, t);
+        break;
+      case "ollama":
+        this.renderOllama(contentEl, t);
+        break;
+      case "outros":
+        this.renderOutros(contentEl, t);
+        break;
+    }
+  }
+
+  hide() {
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
+  }
+
+  private createTabButton(parent: HTMLElement, id: TabId, label: string) {
+    const isDefault =
+      id !== "outros" && id === this.plugin.settings.defaultProvider;
+    const btn = parent.createEl("button", {
+      cls:
+        "axxa-tab-btn" +
+        (this.activeTab === id ? " axxa-tab-active" : "") +
+        (isDefault ? " axxa-tab-default" : ""),
+      text: label,
+    });
+    btn.onclick = () => {
+      this.activeTab = id;
+      this.display();
+    };
+  }
+
+  // ============================================================
+  // Tab: OpenAI
+  // ============================================================
+  private renderOpenAI(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.providerIntro,
+      cls: "setting-item-description",
+    });
 
     new Setting(parent)
-      .setName("API Key")
-      .setDesc("sk-... — armazenada localmente no vault.")
+      .setName(t.settings.apiKey)
+      .setDesc(t.settings.apiKeyDescOpenai)
       .addText((text) => {
         text
           .setPlaceholder("sk-...")
@@ -103,6 +137,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     this.createModelField(
       parent,
+      t,
       "OpenAI",
       this.plugin.settings.defaultModel,
       async (value) => {
@@ -115,18 +150,26 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     this.createActiveModelsField(
       parent,
+      t,
       "OpenAI",
       "openai",
       () => openaiProvider.listModels(this.plugin.settings.openaiApiKey),
       "gpt-3.5-turbo"
     );
+  }
 
-    // Anthropic
-    parent.createEl("h3", { text: "Anthropic (Claude)" });
+  // ============================================================
+  // Tab: Anthropic
+  // ============================================================
+  private renderAnthropic(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.providerIntro,
+      cls: "setting-item-description",
+    });
 
     new Setting(parent)
-      .setName("API Key")
-      .setDesc("sk-ant-... — armazenada localmente.")
+      .setName(t.settings.apiKey)
+      .setDesc(t.settings.apiKeyDescAnthropic)
       .addText((text) => {
         text
           .setPlaceholder("sk-ant-...")
@@ -141,6 +184,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     this.createModelField(
       parent,
+      t,
       "Anthropic",
       this.plugin.settings.anthropicModel,
       async (value) => {
@@ -153,24 +197,26 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     this.createActiveModelsField(
       parent,
+      t,
       "Anthropic",
       "anthropic",
       () => anthropicProvider.listModels(this.plugin.settings.anthropicApiKey),
       "claude-2.1"
     );
+  }
 
-    // ============================================================
-    // OpenRouter
-    // ============================================================
-    parent.createEl("h3", { text: "OpenRouter" });
+  // ============================================================
+  // Tab: OpenRouter
+  // ============================================================
+  private renderOpenRouter(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
-      text: "Proxy multi-modelo. Modelos prefixados por provider (ex: anthropic/claude-3.5-sonnet).",
+      text: t.settings.openrouterIntro,
       cls: "setting-item-description",
     });
 
     new Setting(parent)
-      .setName("API Key")
-      .setDesc("sk-or-... — armazenada localmente.")
+      .setName(t.settings.apiKey)
+      .setDesc(t.settings.apiKeyDescOpenrouter)
       .addText((text) => {
         text
           .setPlaceholder("sk-or-...")
@@ -185,6 +231,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     this.createModelField(
       parent,
+      t,
       "OpenRouter",
       this.plugin.settings.openrouterModel,
       async (value) => {
@@ -198,24 +245,26 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     this.createActiveModelsField(
       parent,
+      t,
       "OpenRouter",
       "openrouter",
       () => openrouterProvider.listModels(this.plugin.settings.openrouterApiKey),
       "openai/gpt-3.5-turbo"
     );
+  }
 
-    // ============================================================
-    // Ollama
-    // ============================================================
-    parent.createEl("h3", { text: "Ollama (local)" });
+  // ============================================================
+  // Tab: Ollama
+  // ============================================================
+  private renderOllama(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
-      text: "LLMs locais. Precisa do servidor Ollama rodando (https://ollama.com).",
+      text: t.settings.ollamaIntro,
       cls: "setting-item-description",
     });
 
     new Setting(parent)
-      .setName("Endpoint")
-      .setDesc("URL do servidor Ollama (default: http://localhost:11434)")
+      .setName(t.settings.ollamaEndpoint)
+      .setDesc(t.settings.ollamaEndpointDesc)
       .addText((text) =>
         text
           .setPlaceholder("http://localhost:11434")
@@ -229,6 +278,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     this.createModelField(
       parent,
+      t,
       "Ollama",
       this.plugin.settings.ollamaModel,
       async (value) => {
@@ -241,6 +291,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     this.createActiveModelsField(
       parent,
+      t,
       "Ollama",
       "ollama",
       () => ollamaProvider.listModels(this.plugin.settings.ollamaEndpoint),
@@ -248,12 +299,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
     );
   }
 
-  /**
-   * Campo de modelo com botão "Buscar modelos" — fetch via API e abre dropdown.
-   * Os modelos que aparecem são FILTRADOS (sem legacy / áudio / embeddings).
-   */
+  // ============================================================
+  // Modelo padrão — input + Buscar
+  // ============================================================
   private createModelField(
     parent: HTMLElement,
+    t: Translations,
     providerLabel: string,
     currentValue: string,
     onSave: (value: string) => Promise<void>,
@@ -261,8 +312,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
     placeholder: string
   ) {
     const setting = new Setting(parent)
-      .setName("Modelo")
-      .setDesc(`Modelo padrão do ${providerLabel}. Use 'Buscar' pra ver os disponíveis.`);
+      .setName(t.settings.model)
+      .setDesc(t.settings.modelDesc(providerLabel));
 
     setting.addText((text) => {
       text
@@ -276,14 +327,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
     setting.addButton((btn) =>
       btn
         .setIcon("refresh-cw")
-        .setTooltip("Buscar modelos via API")
+        .setTooltip(t.settings.modelFetchTooltip)
         .onClick(async () => {
           btn.setDisabled(true);
-          new Notice(`Buscando modelos do ${providerLabel}...`);
+          new Notice(t.settings.modelSearchingNotice(providerLabel));
           try {
             const models = await fetchModels();
             if (!models.length) {
-              new Notice(`Nenhum modelo retornado pelo ${providerLabel}.`);
+              new Notice(t.settings.modelNoneNotice(providerLabel));
               return;
             }
             // Substitui o text input por um dropdown com os modelos
@@ -297,12 +348,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
             }
             dropdown.onchange = async () => {
               await onSave(dropdown.value);
-              new Notice(`Modelo definido: ${dropdown.value}`);
+              new Notice(t.settings.modelSetNotice(dropdown.value));
             };
-            new Notice(`${models.length} modelos carregados.`);
+            new Notice(t.settings.modelLoadedNotice(models.length));
           } catch (err) {
-            const msg = err instanceof Error ? err.message : "Erro desconhecido";
-            new Notice(`Falha ao buscar modelos: ${msg}`);
+            const msg = err instanceof Error ? err.message : t.ai.unknownError;
+            new Notice(t.settings.modelFailedNotice(msg));
           } finally {
             btn.setDisabled(false);
           }
@@ -310,15 +361,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
     );
   }
 
-  /**
-   * Seção "Modelos ativos" — lista curada de modelos que aparecem no
-   * seletor da StarterScreen. Permite:
-   *   - Remover modelos existentes (pills com X)
-   *   - Adicionar manualmente (útil pra legacy: gpt-3.5-turbo, claude-2.1, etc)
-   *   - Buscar da API e marcar via checkboxes (sem precisar rolar lista gigante)
-   */
+  // ============================================================
+  // Modelos ativos — pills removíveis + input + Buscar (checkboxes)
+  // ============================================================
   private createActiveModelsField(
     parent: HTMLElement,
+    t: Translations,
     providerLabel: string,
     providerId: string,
     fetchModels: () => Promise<string[]>,
@@ -327,13 +375,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const section = parent.createDiv({ cls: "axxa-active-models-section" });
 
     new Setting(section)
-      .setName("Modelos ativos")
-      .setDesc(
-        `Quais modelos do ${providerLabel} aparecem no seletor da tela inicial. ` +
-          `Adicione manualmente pra incluir modelos legacy.`
-      );
+      .setName(t.settings.activeModels)
+      .setDesc(t.settings.activeModelsDesc(providerLabel));
 
-    // Lista de pills (modelos ativos)
     const listEl = section.createDiv({ cls: "axxa-active-models-list" });
 
     const renderList = () => {
@@ -341,7 +385,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       const models = this.plugin.settings.activeModels[providerId] ?? [];
       if (models.length === 0) {
         listEl.createEl("p", {
-          text: "Nenhum modelo ativo. Adicione abaixo.",
+          text: t.settings.activeModelsEmpty,
           cls: "axxa-active-models-empty",
         });
         return;
@@ -353,8 +397,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
           cls: "axxa-active-model-remove",
           text: "×",
           attr: {
-            "aria-label": `Remover ${m}`,
-            title: "Remover",
+            "aria-label": `${t.settings.activeModelsRemoveTitle} ${m}`,
+            title: t.settings.activeModelsRemoveTitle,
             type: "button",
           },
         });
@@ -372,20 +416,19 @@ export class AxxaSettingsTab extends PluginSettingTab {
     };
     renderList();
 
-    // Row: input + "Adicionar" + "Buscar da API"
     const addRow = section.createDiv({ cls: "axxa-active-models-add" });
     const input = addRow.createEl("input", {
       type: "text",
-      placeholder: `ex: ${placeholderExample}`,
+      placeholder: t.settings.activeModelsAddPlaceholder(placeholderExample),
       cls: "axxa-active-models-input",
     });
     const addBtn = addRow.createEl("button", {
-      text: "Adicionar",
+      text: t.settings.activeModelsAddBtn,
       cls: "axxa-active-models-add-btn",
       attr: { type: "button" },
     });
     const fetchBtn = addRow.createEl("button", {
-      text: "Buscar da API",
+      text: t.settings.activeModelsFetchBtn,
       cls: "axxa-active-models-fetch-btn",
       attr: { type: "button" },
     });
@@ -395,7 +438,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       if (!v) return;
       const list = this.plugin.settings.activeModels[providerId] ?? [];
       if (list.includes(v)) {
-        new Notice(`"${v}" já está na lista.`);
+        new Notice(t.settings.activeModelsAlready(v));
         return;
       }
       list.push(v);
@@ -403,7 +446,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       await this.plugin.saveSettings();
       input.value = "";
       renderList();
-      new Notice(`Modelo "${v}" adicionado.`);
+      new Notice(t.settings.activeModelsAdded(v));
     };
     addBtn.onclick = doAdd;
     input.onkeydown = (e: KeyboardEvent) => {
@@ -413,22 +456,21 @@ export class AxxaSettingsTab extends PluginSettingTab {
       }
     };
 
-    // Área onde aparece a lista de checkboxes após "Buscar da API"
     const checkboxesEl = section.createDiv({ cls: "axxa-active-models-checkboxes" });
 
     fetchBtn.onclick = async () => {
       fetchBtn.setAttr("disabled", "true");
-      const originalText = fetchBtn.textContent ?? "Buscar da API";
-      fetchBtn.textContent = "Buscando...";
+      const originalText = fetchBtn.textContent ?? t.settings.activeModelsFetchBtn;
+      fetchBtn.textContent = t.settings.activeModelsFetchingBtn;
       try {
         const fetched = await fetchModels();
         if (!fetched.length) {
-          new Notice(`Nenhum modelo retornado pelo ${providerLabel}.`);
+          new Notice(t.settings.modelNoneNotice(providerLabel));
           return;
         }
         checkboxesEl.empty();
         checkboxesEl.createEl("p", {
-          text: `${fetched.length} modelos disponíveis. Marque os que devem aparecer no seletor:`,
+          text: t.settings.activeModelsAvailable(fetched.length),
           cls: "axxa-active-models-checkboxes-head",
         });
         fetched.forEach((m) => {
@@ -457,7 +499,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
             renderList();
           };
           row.onclick = (e: MouseEvent) => {
-            // Clicar na linha (fora do checkbox) também alterna
             if (e.target !== cb) {
               cb.checked = !cb.checked;
               cb.dispatchEvent(new Event("change"));
@@ -465,8 +506,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
           };
         });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erro desconhecido";
-        new Notice(`Falha ao buscar modelos: ${msg}`);
+        const msg = err instanceof Error ? err.message : t.ai.unknownError;
+        new Notice(t.settings.modelFailedNotice(msg));
       } finally {
         fetchBtn.removeAttribute("disabled");
         fetchBtn.textContent = originalText;
@@ -475,59 +516,60 @@ export class AxxaSettingsTab extends PluginSettingTab {
   }
 
   // ============================================================
-  // Tab: Outros
+  // Tab: Outros (idioma, paths, em breve)
   // ============================================================
-  private renderOutros(parent: HTMLElement) {
+  private renderOutros(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
-      text: "Configurações gerais — paths, idioma, aparência.",
+      text: t.settings.outrosIntro,
       cls: "setting-item-description",
     });
 
     new Setting(parent)
-      .setName("Idioma")
-      .setDesc("Linguagem do plugin (sistema de i18n vem no Módulo 4)")
+      .setName(t.settings.language)
+      .setDesc(t.settings.languageDesc)
       .addDropdown((dropdown) =>
         dropdown
-          .addOption("pt-br", "Português (Brasil)")
-          .addOption("en-us", "English (US)")
+          .addOption("pt-br", t.settings.languagePtBr)
+          .addOption("en-us", t.settings.languageEnUs)
           .setValue(this.plugin.settings.language)
           .onChange(async (value) => {
             this.plugin.settings.language = value;
             await this.plugin.saveSettings();
+            // Re-render Settings em si pra refletir o novo idioma na hora
+            this.display();
           })
       );
 
     new Setting(parent)
-      .setName("Pasta dos chats")
-      .setDesc("Onde os chats serão salvos no Vault (sistema de chats vem no Módulo 4)")
+      .setName(t.settings.chatsPath)
+      .setDesc(t.settings.chatsPathDesc)
       .addText((text) =>
         text
-          .setPlaceholder(".axxa/chats")
+          .setPlaceholder("axxa-ai/chats")
           .setValue(this.plugin.settings.chatsPath)
           .onChange(async (value) => {
-            this.plugin.settings.chatsPath = value || ".axxa/chats";
+            this.plugin.settings.chatsPath = value || "axxa-ai/chats";
             await this.plugin.saveSettings();
           })
       );
 
     new Setting(parent)
-      .setName("Pasta das skills")
-      .setDesc("Onde as skills serão salvas no Vault (sistema de skills vem no Módulo 7)")
+      .setName(t.settings.skillsPath)
+      .setDesc(t.settings.skillsPathDesc)
       .addText((text) =>
         text
-          .setPlaceholder(".axxa/skills")
+          .setPlaceholder("axxa-ai/skills")
           .setValue(this.plugin.settings.skillsPath)
           .onChange(async (value) => {
-            this.plugin.settings.skillsPath = value || ".axxa/skills";
+            this.plugin.settings.skillsPath = value || "axxa-ai/skills";
             await this.plugin.saveSettings();
           })
       );
 
-    parent.createEl("h3", { text: "Em breve" });
+    parent.createEl("h3", { text: t.settings.comingSoon });
     const todo = parent.createEl("ul");
-    todo.createEl("li", { text: "Appearance (background, balloon) — Módulo 3" });
-    todo.createEl("li", { text: "Vault Q&A (RAG) — Módulo 4.3" });
-    todo.createEl("li", { text: "Agent Mode (file ops) — Módulo 6" });
-    todo.createEl("li", { text: "Skills management — Módulo 7" });
+    t.settings.comingSoonItems.forEach((item) => {
+      todo.createEl("li", { text: item });
+    });
   }
 }

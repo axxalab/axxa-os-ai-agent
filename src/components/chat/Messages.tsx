@@ -16,6 +16,7 @@ import { formatTime } from "../_shared/timestamps";
 import { useChatStore } from "../../store/chat";
 import { useChatActions } from "./ChatActionsContext";
 import { useMessageContextMenu, type MessageMenuItem } from "./useMessageContextMenu";
+import { useT } from "../../i18n";
 import type {
   UserMessage,
   AIResponseMessage,
@@ -29,6 +30,7 @@ function Timestamp({ ts }: { ts: number }) {
 
 export function UserBubble({ msg }: { msg: UserMessage }) {
   const actions = useChatActions();
+  const t = useT();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(msg.content).catch((err) =>
@@ -38,9 +40,9 @@ export function UserBubble({ msg }: { msg: UserMessage }) {
 
   const menuHandlers = useMessageContextMenu(() => {
     const items: MessageMenuItem[] = [
-      { title: "Copiar", icon: "copy", onClick: handleCopy },
+      { title: t.menu.copy, icon: "copy", onClick: handleCopy },
       {
-        title: "Deletar",
+        title: t.menu.delete,
         icon: "trash-2",
         onClick: () => actions.deleteMessage(msg.id),
         destructive: true,
@@ -59,6 +61,7 @@ export function UserBubble({ msg }: { msg: UserMessage }) {
 
 export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   const actions = useChatActions();
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState<null | boolean>(null);
   // Esconde footer enquanto essa msg específica tá sendo streamada
@@ -93,10 +96,10 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
 
   const menuHandlers = useMessageContextMenu(() => {
     const items: MessageMenuItem[] = [
-      { title: "Copiar", icon: "copy", onClick: handleCopy },
-      { title: "Regenerar", icon: "refresh-cw", onClick: handleRegen },
+      { title: t.menu.copy, icon: "copy", onClick: handleCopy },
+      { title: t.menu.regenerate, icon: "refresh-cw", onClick: handleRegen },
       {
-        title: "Deletar",
+        title: t.menu.delete,
         icon: "trash-2",
         onClick: handleDelete,
         destructive: true,

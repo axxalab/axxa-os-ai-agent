@@ -65,6 +65,15 @@ const DEFAULT_SETTINGS: AxxaSettings = {
 
 export default class AxxaPlugin extends Plugin {
   settings!: AxxaSettings;
+  /** Listeners avisados a cada saveSettings — usados pra re-renderizar o
+   *  React tree quando o user troca idioma ou outro setting reativo. */
+  private settingsListeners = new Set<() => void>();
+
+  /** Inscreve um callback chamado a cada saveSettings. Retorna unsubscribe. */
+  onSettingsChange(cb: () => void): () => void {
+    this.settingsListeners.add(cb);
+    return () => this.settingsListeners.delete(cb);
+  }
 
   async onload() {
     await this.loadSettings();
@@ -161,5 +170,13 @@ export default class AxxaPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+    // Avisa quem tá escutando (ex.: AxxaApp pra re-renderizar com novo idioma)
+    this.settingsListeners.forEach((cb) => {
+      try {
+        cb();
+      } catch (err) {
+        console.error("[axxa] settings listener falhou:", err);
+      }
+    });
   }
 }

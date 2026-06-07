@@ -14,6 +14,7 @@ import { EditorState, Compartment } from "@codemirror/state";
 import { Platform } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { formatTokens, getContextWindow } from "../_shared/contextWindows";
+import { useT } from "../../i18n";
 
 interface ComposerProps {
   onSend: (text: string) => void;
@@ -64,8 +65,11 @@ export function Composer({
   contextUsed,
   locked = false,
   mode = "chat",
-  placeholder = "Pergunte ao AXXA Agent...",
+  placeholder,
 }: ComposerProps) {
+  const t = useT();
+  // Fallback se nenhum placeholder for passado — usa o default do dicionário
+  const placeholderText = placeholder ?? t.composer.placeholderChat;
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const sendRef = useRef(onSend);
@@ -105,7 +109,7 @@ export function Composer({
       extensions: [
         keymap.of(enterKey),
         EditorView.lineWrapping,
-        placeholderCompartment.of(cmPlaceholder(placeholder)),
+        placeholderCompartment.of(cmPlaceholder(placeholderText)),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const text = update.state.doc.toString().trim();
@@ -144,14 +148,15 @@ export function Composer({
   }, []);
 
   // Reconfigura placeholder em runtime sem recriar o editor
-  // (ex.: usuário muda do modo chat → vault-qa antes de mandar a 1ª msg)
+  // (ex.: usuário muda do modo chat → vault-qa antes de mandar a 1ª msg,
+  // OU usuário muda de idioma nas Settings)
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
     view.dispatch({
-      effects: placeholderCompartment.reconfigure(cmPlaceholder(placeholder)),
+      effects: placeholderCompartment.reconfigure(cmPlaceholder(placeholderText)),
     });
-  }, [placeholder, placeholderCompartment]);
+  }, [placeholderText, placeholderCompartment]);
 
   const handleSendClick = () => {
     if (streaming) return;
@@ -182,15 +187,15 @@ export function Composer({
   if (streaming) {
     iconName = "square";
     onClick = handleStopClick;
-    label = "Parar geração";
+    label = t.composer.stopLabel;
   } else if (isEmpty) {
     iconName = "mic";
     onClick = handleMicClick;
-    label = "Gravar áudio";
+    label = t.composer.micLabel;
   } else {
     iconName = "arrow-up";
     onClick = handleSendClick;
-    label = "Enviar mensagem";
+    label = t.composer.sendLabel;
   }
 
   const contextTotal = getContextWindow(modelName);
@@ -203,8 +208,8 @@ export function Composer({
           <button
             type="button"
             className="axxa-composer-plus"
-            aria-label="Mais opções"
-            title="Mais opções"
+            aria-label={t.composer.plusLabel}
+            title={t.composer.plusLabel}
             onClick={onPlusClick}
           >
             <Icon name="plus" />
@@ -223,7 +228,7 @@ export function Composer({
       </div>
 
       {/* Status row abaixo do pill — micro-ícones coloridos */}
-      <div className="axxa-composer-info" aria-label="Status da sessão">
+      <div className="axxa-composer-info">
         {mode !== "chat" && (
           <InfoChip icon="library" color="var(--color-pink, #f472b6)">
             {mode === "vault-qa" ? "vault" : mode}

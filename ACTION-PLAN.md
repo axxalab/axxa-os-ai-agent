@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.2 quase, 3.3 quase), 4 🟡 (4.1+4.2+4.3 ✅ escalonado) · próximo: Sprint C — i18n PT/EN  
-> **Versão:** 1.0 · plugin em v0.1.21  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.2 quase, 3.3 quase), 4 ✅ (4.4 i18n PT/EN) · próximo: Sprint D — Backgrounds + tema  
+> **Versão:** 1.0 · plugin em v0.1.22  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -119,7 +119,8 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ `providers/index.ts` — registry + getProvider(id) com 4 providers registrados
 
 ### 2.3 Obsidian Settings Tab
-- ✅ `AxxaSettingsTab.ts` registrado no Obsidian (com UI tabbed: "Providers" / "Outros")
+- ✅ `AxxaSettingsTab.ts` registrado no Obsidian (**5 sub-tabs: OpenAI/Anthropic/OpenRouter/Ollama/Outros** — v0.1.22)
+- ✅ Provider padrão sempre visível acima das tabs + bolinha colorida no tab do padrão
 - ✅ Seção API Keys (OpenAI ✅, Anthropic ✅, OpenRouter ✅) + botão "↻ Buscar modelos" via API
 - ✅ Ollama endpoint configurável + listModels via `/api/tags`
 - ✅ Defaults: provider (dropdown 4 opções), model (por provider), effort (placeholder via PlusModal), mode (via StarterScreen)
@@ -212,11 +213,12 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Chip "vault" no status do composer quando modo ativo
 - ✅ **Escalonamento por effort** (v0.1.21): low=3×300 / med=5×500 / high=7×800 / xhigh=9×1200 / max=12×2000 — comment mostra topK + effort durante busca
 
-### 4.4 Multilanguage
-- ⬜ PT-BR como padrão
-- ⬜ EN-US disponível
-- ⬜ Strings externalizadas em arquivos de locale
-- ⬜ Detecção automática pelo locale do sistema
+### 4.4 Multilanguage ✅
+- ✅ PT-BR como padrão (`src/i18n/pt-br.ts` — source of truth, type inferido daqui)
+- ✅ EN-US disponível (`src/i18n/en-us.ts` — mirror tipado de PT-BR)
+- ✅ Strings externalizadas: composer, menu, header, starter, modes, plus, vault, ai, systemPrompt, settings
+- ⬜ Detecção automática pelo locale do sistema (manual switch via Settings → Outros por enquanto)
+- ✅ **Bonus:** UI atualiza ao vivo quando user troca idioma (`plugin.onSettingsChange` → React re-render)
 
 ### 4.5 Build de teste
 - ⬜ Chats verificados no Vault após uso
@@ -396,6 +398,9 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | `ChatActionsContext` pra evitar prop drilling (v0.1.20) | regenerate/deleteMessage são definidas no AxxaApp (closure sobre provider/settings/abortRef) e consumidas em Messages (3 níveis abaixo). Context = passar o token sem prop chain. |
 | 07/06/2026 | Sprint B (v0.1.21) — Vault Q&A escalonado por effort | `EFFORT_VAULT_LOOKUP` mapeia cada nível pra `{topK, excerptChars}`. Low=900 chars total, Max=24k chars. Comment durante busca mostra topK + effort pra transparência. |
 | 07/06/2026 | Sprint B (v0.1.21) — Attach UI no PlusModal | 3 botões dashed (PDF / Imagem / Nota) disabled com Notice "vem no Módulo 5". Seção tem badge "em breve" + opacity 0.78. Coexiste com Effort selector via border-top separator. |
+| 07/06/2026 | Sprint C (v0.1.22) — i18n PT-BR/EN-US tipado | `src/i18n/pt-br.ts` é a fonte (type `Translations = typeof PT_BR`); `en-us.ts: Translations` é forçado pelo TS a ter o mesmo shape. `useT()` hook + `TranslationsContext.Provider` no AxxaApp. Strings com placeholder usam functions tipadas (`vault.searching(topK, effort)`). |
+| 07/06/2026 | Sprint C (v0.1.22) — Settings com 5 sub-tabs | Tabs OpenAI/Anthropic/OpenRouter/Ollama/Outros — cada provider isolado pra facilitar navegação. Provider padrão sempre visível acima das tabs + bolinha de cor no tab matching. flex-wrap pra mobile (5 tabs cabem). |
+| 07/06/2026 | Sprint C (v0.1.22) — Settings listener reativo | `plugin.onSettingsChange(cb)` chamado a cada saveSettings. AxxaApp registra listener no mount → forceRender no callback → re-pega `t` na hora. Idioma muda sem precisar reabrir a aba. |
 
 ---
 

@@ -20,6 +20,7 @@ import {
   ChatActionsContext,
   type ChatActions,
 } from "../components/chat/ChatActionsContext";
+import { TranslationsContext, getTranslations } from "../i18n";
 import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage } from "../providers/base";
@@ -43,16 +44,6 @@ interface AxxaAppProps {
   plugin: AxxaPlugin;
 }
 
-const SYSTEM_PROMPT =
-  "Você é o AXXA Agent, um assistente integrado ao Obsidian. " +
-  "Responda em português, de forma clara, direta e útil. " +
-  "Quando fizer sentido, use Markdown.";
-
-const VAULT_QA_SUFFIX =
-  "\n\nO usuário está no modo Vault Q&A — abaixo seguem notas relevantes " +
-  "extraídas do vault dele. Use elas como fonte principal pra responder, " +
-  "e cite o título da nota quando referenciar.\n\nNotas:\n\n";
-
 function makeId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -62,20 +53,40 @@ function makeId(): string {
 
 // Placeholder do composer varia pelo modo da sessão — feedback visual de
 // que o "papel" do AXXA muda (assistente geral vs. focado no vault, etc.)
-function placeholderForMode(mode: string): string {
+// Strings vêm do dicionário i18n (PT-BR / EN-US) — `t.composer.placeholderXxx`.
+function placeholderForMode(
+  mode: string,
+  composer: {
+    placeholderChat: string;
+    placeholderVaultQa: string;
+    placeholderAgent: string;
+    placeholderCoder: string;
+  }
+): string {
   switch (mode) {
     case "vault-qa":
-      return "Pergunte sobre seu Vault...";
+      return composer.placeholderVaultQa;
     case "agent":
-      return "Peça pro Agent organizar seu vault...";
+      return composer.placeholderAgent;
     case "coder":
-      return "Cole código ou pergunte como debugar...";
+      return composer.placeholderCoder;
     default:
-      return "Pergunte ao AXXA Agent...";
+      return composer.placeholderChat;
   }
 }
 
 export function AxxaApp({ plugin }: AxxaAppProps) {
+  // Subscreve a saveSettings — quando user troca idioma (ou qualquer setting
+  // reativo) re-renderiza pegando os novos valores do plugin.settings.
+  const [, forceRender] = useState(0);
+  useEffect(() => {
+    const unsub = plugin.onSettingsChange(() => forceRender((n) => n + 1));
+    return unsub;
+  }, [plugin]);
+
+  // Lê traduções na hora — atualiza no próximo render (após forceRender acima)
+  const t = getTranslations(plugin.settings.language);
+
   const isLoading = useChatStore((s) => s.isLoading);
   const tokensIn = useChatStore((s) => s.tokensIn);
   const tokensOut = useChatStore((s) => s.tokensOut);
@@ -203,7 +214,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       const { topK, excerptChars } = effortToVaultLookup(effort);
       addMessage({
         type: "ai-comment",
-        content: `Buscando até ${topK} notas no vault (effort: ${effort})...`,
+        content: t.vault.searching(topK, effort),
       });
       try {
         const matches = await searchVault(plugin.app, userText, topK, excerptChars);
@@ -211,12 +222,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           vaultContextBlock = buildVaultContext(matches);
           addMessage({
             type: "ai-comment",
-            content: `${matches.length} nota${matches.length > 1 ? "s" : ""} encontrada${matches.length > 1 ? "s" : ""} como contexto`,
+            content: t.vault.foundContext(matches.length),
           });
         } else {
           addMessage({
             type: "ai-comment",
-            content: "Nenhuma nota relevante encontrada — respondendo sem contexto do vault",
+            content: t.vault.notFound,
           });
         }
       } catch (err) {
@@ -224,7 +235,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       }
     }
 
-    const commentId = addMessage({ type: "ai-comment", content: "Pensando..." });
+    const commentId = addMessage({ type: "ai-comment", content: t.ai.thinking });
     setLoading(true);
 
     const controller = new AbortController();
@@ -235,8 +246,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     try {
       const fullSystem =
         vaultContextBlock.length > 0
-          ? SYSTEM_PROMPT + VAULT_QA_SUFFIX + vaultContextBlock
-          : SYSTEM_PROMPT;
+          ? t.systemPrompt.base + t.systemPrompt.vaultQaSuffix + vaultContextBlock
+          : t.systemPrompt.base;
 
       const history: ProviderMessage[] = [
         { role: "system", content: fullSystem },
@@ -288,7 +299,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
       if (responseId === null) {
         removeMessage(commentId);
-        addMessage({ type: "ai-response", content: "[Resposta vazia recebida]" });
+        addMessage({ type: "ai-response", content: t.ai.emptyResponse });
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -300,8 +311,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             ? err.message
             : err instanceof Error
               ? err.message
-              : "Erro desconhecido.";
-        addMessage({ type: "ai-response", content: `[Erro] ${errorMsg}` });
+              : t.ai.unknownError;
+        addMessage({
+          type: "ai-response",
+          content: `${t.ai.errorPrefix} ${errorMsg}`,
+        });
       }
     } finally {
       setLoading(false);
@@ -463,7 +477,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   return (
     <AppContext.Provider value={plugin.app}>
-      <ChatActionsContext.Provider value={chatActions}>
+      <TranslationsContext.Provider value={t}>
+        <ChatActionsContext.Provider value={chatActions}>
         <div className="axxa-root">
           <Header
             version={plugin.manifest.version}
@@ -500,7 +515,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           contextUsed={lastPromptTokens}
           locked={isLocked}
           mode={activeMode}
-          placeholder={placeholderForMode(activeMode)}
+          placeholder={placeholderForMode(activeMode, t.composer)}
         />
           {plusOpen && (
             <PlusModal
@@ -510,7 +525,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             />
           )}
         </div>
-      </ChatActionsContext.Provider>
+        </ChatActionsContext.Provider>
+      </TranslationsContext.Provider>
     </AppContext.Provider>
   );
 }
