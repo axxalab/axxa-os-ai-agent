@@ -4,12 +4,18 @@
 //   - AIResponse    — markdown renderizado esquerda + footer buttons (padrão da IA)
 //   - AIComment     — bubble esquerda (status / tool use — minoria dos casos)
 //   - AIOptions     — botões de seleção (igual ao componente AskUserQuestion)
+//
+// UserBubble e AIResponse abrem um Menu nativo do Obsidian em right-click
+// (desktop) ou long-press 500ms (mobile) — ações: Copiar, Regenerar (só AI),
+// Deletar. Regen e Delete vêm do ChatActionsContext (lógica no AxxaApp).
 
 import { useState } from "react";
 import { Icon } from "../_shared/Icon";
 import { Markdown } from "../_shared/Markdown";
 import { formatTime } from "../_shared/timestamps";
 import { useChatStore } from "../../store/chat";
+import { useChatActions } from "./ChatActionsContext";
+import { useMessageContextMenu, type MessageMenuItem } from "./useMessageContextMenu";
 import type {
   UserMessage,
   AIResponseMessage,
@@ -22,8 +28,29 @@ function Timestamp({ ts }: { ts: number }) {
 }
 
 export function UserBubble({ msg }: { msg: UserMessage }) {
+  const actions = useChatActions();
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(msg.content).catch((err) =>
+      console.error("[axxa] copy user msg falhou:", err)
+    );
+  };
+
+  const menuHandlers = useMessageContextMenu(() => {
+    const items: MessageMenuItem[] = [
+      { title: "Copiar", icon: "copy", onClick: handleCopy },
+      {
+        title: "Deletar",
+        icon: "trash-2",
+        onClick: () => actions.deleteMessage(msg.id),
+        destructive: true,
+      },
+    ];
+    return items;
+  });
+
   return (
-    <div className="axxa-msg axxa-msg-user">
+    <div className="axxa-msg axxa-msg-user" {...menuHandlers}>
       <div className="axxa-bubble axxa-bubble-user">{msg.content}</div>
       <Timestamp ts={msg.timestamp} />
     </div>
@@ -31,6 +58,7 @@ export function UserBubble({ msg }: { msg: UserMessage }) {
 }
 
 export function AIResponse({ msg }: { msg: AIResponseMessage }) {
+  const actions = useChatActions();
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState<null | boolean>(null);
   // Esconde footer enquanto essa msg específica tá sendo streamada
@@ -48,21 +76,37 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   };
 
   const handleRegen = () => {
-    console.log("[axxa] regen request — implementar quando precisar");
+    actions.regenerate(msg.id);
+  };
+
+  const handleDelete = () => {
+    actions.deleteMessage(msg.id);
   };
 
   const handleLike = () => {
     setLiked((prev) => (prev === true ? null : true));
-    console.log("[axxa] like");
   };
 
   const handleDislike = () => {
     setLiked((prev) => (prev === false ? null : false));
-    console.log("[axxa] dislike");
   };
 
+  const menuHandlers = useMessageContextMenu(() => {
+    const items: MessageMenuItem[] = [
+      { title: "Copiar", icon: "copy", onClick: handleCopy },
+      { title: "Regenerar", icon: "refresh-cw", onClick: handleRegen },
+      {
+        title: "Deletar",
+        icon: "trash-2",
+        onClick: handleDelete,
+        destructive: true,
+      },
+    ];
+    return items;
+  });
+
   return (
-    <div className="axxa-msg axxa-msg-ai-response">
+    <div className="axxa-msg axxa-msg-ai-response" {...menuHandlers}>
       <Markdown content={msg.content} />
       {!isStreaming && (
         <div className="axxa-response-footer">

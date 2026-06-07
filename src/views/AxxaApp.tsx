@@ -16,6 +16,10 @@ import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
 import { StarterScreen } from "../components/chat/StarterScreen";
 import { AppContext } from "../components/_shared/AppContext";
+import {
+  ChatActionsContext,
+  type ChatActions,
+} from "../components/chat/ChatActionsContext";
 import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage } from "../providers/base";
@@ -173,28 +177,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // ============================================================
   // Handlers
   // ============================================================
-  const handleSend = async (text: string) => {
+
+  // streamReply: parte reusável do fluxo de envio — vault search → comment
+  // "Pensando..." → streamChat → trata erro/abort.
+  // Lê a história ATUAL do store (não captura via closure) pra funcionar
+  // tanto no handleSend quanto no handleRegenerate (que mutou o array antes).
+  const streamReply = async (userText: string) => {
     const {
       addMessage,
       removeMessage,
       appendToMessage,
       setLoading,
-      lockSession,
       setStreamingMessageId,
-      setCurrentChatId,
-      setCurrentChatTitle,
       addUsage,
     } = useChatStore.getState();
-
-    // Primeira msg da sessão → cria chat ID, gera título, trava session
-    if (messages.length === 0) {
-      const newId = makeId();
-      setCurrentChatId(newId);
-      setCurrentChatTitle(generateTitle(text));
-      lockSession(activeProviderId, activeModel, activeMode);
-    }
-
-    addMessage({ type: "user", content: text });
 
     // Modo Vault Q&A: busca notas relevantes ANTES da chamada
     let vaultContextBlock = "";
@@ -204,7 +200,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         content: "Buscando notas relevantes no vault...",
       });
       try {
-        const matches = await searchVault(plugin.app, text, 5);
+        const matches = await searchVault(plugin.app, userText, 5);
         if (matches.length > 0) {
           vaultContextBlock = buildVaultContext(matches);
           addMessage({
@@ -231,7 +227,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     let responseId: string | null = null;
 
     try {
-      // Monta system prompt: base + contexto do vault (se vault-qa)
       const fullSystem =
         vaultContextBlock.length > 0
           ? SYSTEM_PROMPT + VAULT_QA_SUFFIX + vaultContextBlock
@@ -307,6 +302,70 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       setStreamingMessageId(null);
       abortRef.current = null;
     }
+  };
+
+  const handleSend = async (text: string) => {
+    const { addMessage, lockSession, setCurrentChatId, setCurrentChatTitle } =
+      useChatStore.getState();
+
+    // Primeira msg da sessão → cria chat ID, gera título, trava session
+    if (messages.length === 0) {
+      const newId = makeId();
+      setCurrentChatId(newId);
+      setCurrentChatTitle(generateTitle(text));
+      lockSession(activeProviderId, activeModel, activeMode);
+    }
+
+    addMessage({ type: "user", content: text });
+    await streamReply(text);
+  };
+
+  // Regenerar: remove o ai-response (e qualquer msg posterior) e re-roda
+  // streamReply usando a user-msg que precedia. Ignora se já tá streamando.
+  const handleRegenerate = async (aiMessageId: string) => {
+    if (useChatStore.getState().isLoading) return;
+    const current = useChatStore.getState().messages;
+    const aiIdx = current.findIndex(
+      (m) => m.id === aiMessageId && m.type === "ai-response"
+    );
+    if (aiIdx < 0) return;
+
+    // Acha a user-msg imediatamente anterior
+    let userIdx = aiIdx - 1;
+    while (userIdx >= 0 && current[userIdx].type !== "user") userIdx--;
+    if (userIdx < 0) return;
+
+    const userMsg = current[userIdx];
+    if (userMsg.type !== "user") return;
+
+    // Remove tudo de aiIdx em diante (ai-response + qualquer ai-comment posterior)
+    useChatStore.getState().setMessages(current.slice(0, aiIdx));
+
+    await streamReply(userMsg.content);
+  };
+
+  // Deletar: remove msg. Se for user-msg, remove também o ai-response
+  // imediatamente a seguir (manter o par alinhado).
+  const handleDeleteMessage = (messageId: string) => {
+    const current = useChatStore.getState().messages;
+    const idx = current.findIndex((m) => m.id === messageId);
+    if (idx < 0) return;
+    const msg = current[idx];
+    if (msg.type === "user") {
+      const next = current[idx + 1];
+      if (next && next.type === "ai-response") {
+        useChatStore
+          .getState()
+          .setMessages([...current.slice(0, idx), ...current.slice(idx + 2)]);
+        return;
+      }
+    }
+    useChatStore.getState().removeMessage(messageId);
+  };
+
+  const chatActions: ChatActions = {
+    regenerate: handleRegenerate,
+    deleteMessage: handleDeleteMessage,
   };
 
   const handleStop = () => abortRef.current?.abort();
@@ -398,12 +457,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   return (
     <AppContext.Provider value={plugin.app}>
-      <div className="axxa-root">
-        <Header
-          version={plugin.manifest.version}
-          onOpenSettings={handleOpenSettings}
-          onNewChat={handleNewChat}
-        />
+      <ChatActionsContext.Provider value={chatActions}>
+        <div className="axxa-root">
+          <Header
+            version={plugin.manifest.version}
+            onOpenSettings={handleOpenSettings}
+            onNewChat={handleNewChat}
+          />
         {isEmpty ? (
           <StarterScreen
             provider={providerSel}
@@ -436,14 +496,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           mode={activeMode}
           placeholder={placeholderForMode(activeMode)}
         />
-        {plusOpen && (
-          <PlusModal
-            currentEffort={effort}
-            onSelectEffort={handleSelectEffort}
-            onClose={handlePlusClose}
-          />
-        )}
-      </div>
+          {plusOpen && (
+            <PlusModal
+              currentEffort={effort}
+              onSelectEffort={handleSelectEffort}
+              onClose={handlePlusClose}
+            />
+          )}
+        </div>
+      </ChatActionsContext.Provider>
     </AppContext.Provider>
   );
 }

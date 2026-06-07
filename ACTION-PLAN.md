@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅ (+modelos ativos), 3 🟡 (3.2+3.3 parciais), 4 🟡 (4.1+4.2+4.3 ✅) · próximo: Módulo 3 — UI de Produção  
-> **Versão:** 1.0 · plugin em v0.1.19  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.2 parcial, 3.3 quase fechado), 4 🟡 (4.1+4.2+4.3 ✅) · próximo: Sprint B (Vault Q&A escalonado + attach UI)  
+> **Versão:** 1.0 · plugin em v0.1.20  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -169,8 +169,8 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Markdown renderizado no output do AI (feito no 1.5 via `MarkdownRenderer.render` do Obsidian)
 - ✅ Code blocks com syntax highlighting (via Obsidian MarkdownRenderer — vem nativo)
 - ✅ Botão "copiar" em code blocks (pós-processamento DOM no Markdown.tsx, hover desktop / semi-visível mobile — v0.1.18)
-- ⬜ Long press / hover menu (copiar, favoritar, reenviar, deletar)
-- 🟡 Footer buttons básicos: copy ✅, regen 🟡 (stub), like/dislike 🟡 (toggle local sem persistência), ... 🟡 (placeholder)
+- ✅ **Context menu (right-click desktop + long-press 500ms mobile)** via Menu nativo do Obsidian — UserBubble: Copiar/Deletar; AIResponse: Copiar/Regenerar/Deletar (vermelho em destrutivo via `setWarning`) — v0.1.20
+- 🟡 Footer buttons básicos: copy ✅, **regen ✅ (funcional: rewind até user msg, re-streamReply)**, like/dislike 🟡 (toggle local sem persistência), ... 🟡 (placeholder)
 
 ### 3.4 Mobile
 - ⬜ Drawer lateral responsivo
@@ -391,6 +391,9 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | `output/` removido do `.gitignore` (v0.1.19) | Os 3 arquivos do build (`main.js`, `manifest.json`, `styles.css`) já eram tracked. Alinhar o gitignore com a realidade evita warnings em todo commit. |
 | 07/06/2026 | Composer info chips com truncate + tamanho reduzido (v0.1.19) | Nomes longos de modelo (ex: `anthropic/claude-3.5-sonnet-20241022`) estouravam a largura. Solução: `max-width:100%` + `min-width:0` + `text-overflow:ellipsis` no `<span>` interno, font 11→10px, ícones 12→11px. |
 | 07/06/2026 | `activeModels: Record<string, string[]>` nas Settings (v0.1.19) | Lista curada por provider — sai do hardcoded MODELS na StarterScreen e vira config do user. Permite incluir legacy (gpt-3.5-turbo, claude-2.1) e evita rolar lista gigante do fetch. `loadSettings` faz merge per-provider pra preservar defaults nos providers não tocados. |
+| 07/06/2026 | Sprint A (v0.1.20) — Context menu + regen funcional | Right-click (desktop) e long-press 500ms (mobile) abrem Menu nativo do Obsidian em cada mensagem. Cancel critério: dedo move >10px OU touchend antes do timer. Itens vermelhos via `MenuItem.setWarning(true)`. |
+| 07/06/2026 | Refactor `streamReply()` reusável (v0.1.20) | Lógica de vault search + comment "Pensando..." + streamChat + erro extraída em função. Reutilizada por handleSend (adiciona user msg primeiro) e handleRegenerate (remove ai-response + posteriores antes). Lê history via `useChatStore.getState()` pra trabalhar com o array mutado. |
+| 07/06/2026 | `ChatActionsContext` pra evitar prop drilling (v0.1.20) | regenerate/deleteMessage são definidas no AxxaApp (closure sobre provider/settings/abortRef) e consumidas em Messages (3 níveis abaixo). Context = passar o token sem prop chain. |
 
 ---
 
