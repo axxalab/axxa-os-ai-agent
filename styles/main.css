@@ -1881,6 +1881,15 @@ body.is-mobile .axxa-code-copy {
   background: var(--background-primary);
 }
 
+/* Settings tab: garante que o scroll funciona sempre.
+   `overflow-y: auto` permite scroll, `overflow-x: hidden` evita
+   barra horizontal de tabs/conteúdo largo. */
+.axxa-settings-root {
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ---------- LINEARES (originais, com mais opacidade) ---------- */
 
 /* Sunset — laranja → rosa quente */
@@ -2013,9 +2022,11 @@ body.theme-dark .axxa-settings-root.axxa-bg-nebula {
  * (já tem) + overflow:hidden (vou garantir).
  * ===================================================== */
 
-/* Pulse — radial central pulsante */
-.axxa-root.axxa-bg-pulse,
-.axxa-settings-root.axxa-bg-pulse {
+/* Pulse — radial central pulsante.
+   NOTA: backgrounds animados NÃO se aplicam a .axxa-settings-root porque
+   overflow:hidden quebra o scroll da Settings. Em Settings esses bgs
+   resolvem só pra var(--background-primary) (sem animação). */
+.axxa-root.axxa-bg-pulse {
   background: var(--background-primary);
   position: relative;
   overflow: hidden;
@@ -2054,8 +2065,7 @@ body.theme-dark .axxa-root.axxa-bg-pulse::before {
 }
 
 /* Flow — linear gradient correndo diagonal */
-.axxa-root.axxa-bg-flow,
-.axxa-settings-root.axxa-bg-flow {
+.axxa-root.axxa-bg-flow {
   background: var(--background-primary);
   position: relative;
   overflow: hidden;
@@ -2100,8 +2110,7 @@ body.theme-dark .axxa-root.axxa-bg-flow::before {
 }
 
 /* Aurora Live — 2 radials se cruzando (translate) */
-.axxa-root.axxa-bg-aurora-live,
-.axxa-settings-root.axxa-bg-aurora-live {
+.axxa-root.axxa-bg-aurora-live {
   background: var(--background-primary);
   position: relative;
   overflow: hidden;
@@ -2574,6 +2583,45 @@ body.theme-dark .axxa-root.axxa-bg-aurora-live::after {
 
 .axxa-confirm-irreversible:hover {
   background: #dc2626 !important;
+}
+
+/* =====================================================
+ * Modal keyboard-aware (mobile)
+ * Quando o teclado virtual abre (.axxa-keyboard-open),
+ * o modal nosso (marcado com .axxa-modal-keyboard-aware)
+ * sobe pra não ficar atrás do teclado.
+ *
+ * Mesma lógica do composer: usa `--keyboard-height` que o
+ * handler estilo Copilot mede e seta no documentElement.
+ * ===================================================== */
+
+body.is-mobile.axxa-keyboard-open .modal-container:has(.axxa-modal-keyboard-aware) {
+  align-items: flex-start !important;
+  padding-top: 16px;
+}
+
+body.is-mobile.axxa-keyboard-open
+  .modal-container:has(.axxa-modal-keyboard-aware)
+  .modal {
+  margin-top: 0;
+  /* Limita altura pra não cobrir o teclado */
+  max-height: calc(100vh - var(--keyboard-height, 50vh) - 32px);
+  overflow-y: auto;
+}
+
+/* Fallback pra browsers sem :has() — esconder backdrop blur que pode
+   confundir layout, mas modal já fica visível por causa do align top */
+@supports not (selector(body:has(*))) {
+  body.is-mobile.axxa-keyboard-open .modal-container {
+    align-items: flex-start !important;
+    padding-top: 16px;
+  }
+}
+
+/* PlusModal (bottom sheet) também precisa subir com keyboard.
+   Já tá alinhado a flex-end, então só compensa com padding-bottom. */
+body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
+  padding-bottom: var(--keyboard-height, 0);
 }
 
 /* =====================================================

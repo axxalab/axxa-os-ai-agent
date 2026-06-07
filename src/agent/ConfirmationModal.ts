@@ -45,6 +45,9 @@ export class ConfirmationModal extends Modal {
     const { contentEl, opts } = this;
     contentEl.empty();
     contentEl.addClass("axxa-confirm-modal");
+    // Marca o modal pra CSS poder reposicionar quando teclado virtual abre.
+    // (mobile: sem isso, modal central fica atrás do teclado)
+    this.modalEl.addClass("axxa-modal-keyboard-aware");
 
     const isIrreversible = !!opts.definition.irreversible;
     const title = isIrreversible

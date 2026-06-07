@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, 6.1+6.2 ✅ Agent + **v0.1.31 fixes UX + 3 bgs animados** · próximo: Anthropic tools / Whisper áudio / Agent log  
-> **Versão:** 1.0 · plugin em v0.1.31  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, 6.1+6.2 ✅ Agent multi-provider (**OpenAI ✅, Anthropic ✅, OpenRouter ✅**) · próximo: Ollama tools + Whisper áudio  
+> **Versão:** 1.0 · plugin em v0.1.32  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -276,8 +276,9 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ **Delete SEMPRE confirma** independente do nível (`tool.irreversible` flag)
 - ⬜ Log em `.axxa/logs/agent.md` — adiar pra v0.1.29 (só console.log por enquanto)
 
-### 6.2 Agent Mode ✅ MVP (v0.1.28)
+### 6.2 Agent Mode ✅ Multi-provider (v0.1.28 + v0.1.32)
 - ✅ Modo "Agent" na StarterScreen (3º opção ao lado de Chat / Vault Q&A) com ícone bot
+- ✅ **Tool calling providers**: OpenAI ✅ function calling, **Anthropic ✅ tool use** (v0.1.32), **OpenRouter ✅** (OpenAI-compat, v0.1.32). Ollama 🟡 (modelos recentes suportam; falta wiring)
 - ✅ **7 tools** implementadas em `src/agent/tools.ts`:
   - `vault_list` — lista pasta
   - `vault_read` — lê arquivo (cap 200KB)
@@ -463,6 +464,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Fix v0.1.31 — search input com 1px | Obsidian colapsa height de inputs filhos de flex. Fix: `min-height: 24px` + `line-height: 1.5` + `height: auto !important` + `padding: 4px 0` no input. Pai `.axxa-conversations-search` ganhou `min-height: 40px`. |
 | 07/06/2026 | v0.1.31 — Filtros + sort na ConversationsList | 5 sort options (data desc/asc, título, msgs, tokens). Provider filter chips horizontal scroll (all/openai/anthropic/openrouter/ollama). Quando sort != data, agrupa em lista plana (sem header de dia). |
 | 07/06/2026 | v0.1.31 — 3 backgrounds animados reativos | `Pulse` (radial pulsante) / `Flow` (linear gradient correndo) / `Aurora Live` (2 radials cruzando via translate). Animação via `::before`/`::after` pseudo-elementos. Classe `.axxa-bg-active` adicionada quando `isLoading=true` → animation-duration acelera 3-4x. |
+| 07/06/2026 | Hotfix v0.1.32 — Settings scroll quebrado | Causa: `.axxa-settings-root.axxa-bg-pulse/flow/aurora-live` herdava `overflow:hidden` (necessário pra animação caber no .axxa-root). Fix: removo .axxa-settings-root dos seletores animados + adiciono `overflow-y: auto !important` explícito na .axxa-settings-root. Settings sempre scrolla. |
+| 07/06/2026 | Hotfix v0.1.32 — Modal escondido atrás do teclado mobile | Causa: ConfirmationModal ficava centralizado, teclado virtual cobria. Fix: AxxaView agora marca `body.axxa-keyboard-open` também (antes só drawer). Modal nosso ganha classe `.axxa-modal-keyboard-aware` em onOpen. CSS com `:has()` reposiciona modal pro top quando body tem .axxa-keyboard-open + limita max-height pra não cobrir teclado. PlusModal (bottom sheet) ganha `padding-bottom: var(--keyboard-height)`. |
+| 07/06/2026 | v0.1.32 — Anthropic tool use | Provider Anthropic agora `supportsTools=true`. Implementação: converter `toAnthropicPayload()` mapeia ProviderMessage[] pro formato content-array (assistant com tool_calls vira content blocks text+tool_use; role "tool" vira role "user" com tool_result block). Tool_results consecutivos viram 1 user msg com content[] mergeado (Anthropic exige alternância). Body com `tools[]` no formato `{name, description, input_schema}`. Parse de content array no response separa text + tool_use blocks. |
+| 07/06/2026 | v0.1.32 — OpenRouter tool use (proxy) | `supportsTools=true`. Reutiliza `toOpenAIMessages()` (exportada do openai.ts) — OpenRouter é 100% OpenAI-compat no endpoint chat. Modelos que suportam: Claude (3.5-sonnet, 3.7, opus), GPT-4o family, Llama 3.1+, Gemini, Qwen 2.5+. Modelos antigos ignoram tools silenciosamente — agent vai falhar com erro do LLM ("não chamei tool"). |
+| 07/06/2026 | Caminho pra Ollama tools (TODO v0.1.33+) | Ollama ≥0.3 suporta tool calling em modelos compatíveis (llama3.1, llama3.2, qwen2.5, mistral-large). Formato é OpenAI-compat — basta replicar o que fiz no openrouter.ts: importar `toOpenAIMessages`, adicionar `tools` ao body, parsear `tool_calls`, setar `supportsTools=true`. Diferença é que Ollama NÃO usa `tool_choice` (ignora). Pra v0.1.33. |
 
 ---
 

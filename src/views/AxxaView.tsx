@@ -78,10 +78,12 @@ export class AxxaView extends ItemView {
         docEl.style.getPropertyValue("--keyboard-height") || "0"
       );
 
-      drawer.classList.toggle(
-        "axxa-keyboard-open",
-        active && keyboardHeight > 0
-      );
+      const isOpen = active && keyboardHeight > 0;
+      drawer.classList.toggle("axxa-keyboard-open", isOpen);
+      // Marca também o body pra modais (que ficam FORA do drawer) poderem
+      // se reposicionar quando teclado virtual abre. Sem isso, modal
+      // central no mobile fica atrás do teclado.
+      this.containerEl.doc.body.classList.toggle("axxa-keyboard-open", isOpen);
     };
 
     // Check inicial — cobre o caso do teclado já estar aberto na hora da view abrir
@@ -104,5 +106,6 @@ export class AxxaView extends ItemView {
     // com o teclado ainda aberto
     const drawer = this.containerEl.closest(".workspace-drawer");
     drawer?.classList.remove("axxa-keyboard-open");
+    this.containerEl.doc.body.classList.remove("axxa-keyboard-open");
   }
 }

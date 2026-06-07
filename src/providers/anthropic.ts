@@ -1,7 +1,7 @@
 // src/providers/anthropic.ts
 // Provider Anthropic (Claude) — duas modalidades:
-//   chat()       — não-streaming via requestUrl
-//   streamChat() — streaming SSE via fetch
+//   chat()       — não-streaming via requestUrl, com TOOL USE (Agent mode)
+//   streamChat() — streaming SSE via fetch (chat mode)
 //
 // Diferenças em relação a OpenAI:
 //   - Auth: header `x-api-key` (não Bearer)
@@ -10,39 +10,164 @@
 //   - System prompt: campo SEPARADO no body (não dentro de messages)
 //   - max_tokens: OBRIGATÓRIO (vs opcional na OpenAI)
 //   - SSE events: tipos diferentes (content_block_delta com delta.text)
+//
+// Tool use (v0.1.32):
+//   - Tools: `{ name, description, input_schema }` (vs `{ type:"function", function:{...} }`)
+//   - Assistant w/ tools: content = array de blocks [text, tool_use]
+//   - Tool result: vira role "user" com content array `[{ type:"tool_result", tool_use_id, content }]`
+//   - Anthropic exige alternância user/assistant — tool_results consecutivos viram 1 user msg
 
 import { requestUrl } from "obsidian";
-import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandler, UsageHandler } from "./base";
+import {
+  Provider,
+  ProviderError,
+  ProviderRequest,
+  ProviderResponse,
+  ProviderMessage,
+  ProviderToolCall,
+  TokenHandler,
+  UsageHandler,
+} from "./base";
 
 const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 
+// ============================================================
+// Content blocks — formato Anthropic
+// ============================================================
+
+interface TextBlock {
+  type: "text";
+  text: string;
+}
+interface ToolUseBlock {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+interface ToolResultBlock {
+  type: "tool_result";
+  tool_use_id: string;
+  content: string;
+}
+type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
+
+interface AnthropicMessage {
+  role: "user" | "assistant";
+  content: string | ContentBlock[];
+}
+
+interface AnthropicTool {
+  name: string;
+  description: string;
+  input_schema: object;
+}
+
 interface AnthropicBody {
   model: string;
   max_tokens: number;
-  messages: { role: "user" | "assistant"; content: string }[];
+  messages: AnthropicMessage[];
   stream?: boolean;
   system?: string;
+  tools?: AnthropicTool[];
+}
+
+/**
+ * Converte ProviderMessage[] pro formato wire-level do Anthropic.
+ * - system → extraído em campo separado
+ * - role "tool" → vira role "user" com content array contendo tool_result block
+ * - role "assistant" com toolCalls → content array com text + tool_use blocks
+ * - tool_results consecutivos viram 1 user msg com content[] mergeado
+ *   (Anthropic exige alternância user/assistant)
+ */
+function toAnthropicPayload(messages: ProviderMessage[]): {
+  system: string | undefined;
+  messages: AnthropicMessage[];
+} {
+  let system: string | undefined;
+  const converted: AnthropicMessage[] = [];
+
+  for (const m of messages) {
+    if (m.role === "system") {
+      // Concatena se tiver vários systems (raro mas seguro)
+      system = system ? system + "\n\n" + m.content : m.content;
+      continue;
+    }
+
+    if (m.role === "tool") {
+      converted.push({
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: m.toolCallId ?? "",
+            content: m.content,
+          },
+        ],
+      });
+      continue;
+    }
+
+    if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
+      const blocks: ContentBlock[] = [];
+      if (m.content) blocks.push({ type: "text", text: m.content });
+      for (const tc of m.toolCalls) {
+        blocks.push({
+          type: "tool_use",
+          id: tc.id,
+          name: tc.name,
+          input: tc.arguments,
+        });
+      }
+      converted.push({ role: "assistant", content: blocks });
+      continue;
+    }
+
+    // User normal ou assistant text-only
+    converted.push({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    });
+  }
+
+  // Merge user msgs consecutivos (Anthropic exige roles alternados)
+  const merged: AnthropicMessage[] = [];
+  for (const m of converted) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === m.role && m.role === "user") {
+      // Garante que ambos viram arrays pra mergear
+      const lastArr = Array.isArray(last.content)
+        ? last.content
+        : [{ type: "text" as const, text: last.content }];
+      const curArr = Array.isArray(m.content)
+        ? m.content
+        : [{ type: "text" as const, text: m.content }];
+      last.content = [...lastArr, ...curArr];
+    } else {
+      merged.push({ ...m });
+    }
+  }
+
+  return { system, messages: merged };
 }
 
 function buildBody(req: ProviderRequest, stream: boolean): AnthropicBody {
-  // Separa o system prompt do resto das mensagens (Anthropic exige isso)
-  const systemMsg = req.messages.find((m) => m.role === "system");
-  const otherMsgs = req.messages
-    .filter((m) => m.role !== "system")
-    .map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
+  const { system, messages } = toAnthropicPayload(req.messages);
 
   const body: AnthropicBody = {
     model: req.model,
     max_tokens: req.maxTokens ?? 2000,
-    messages: otherMsgs,
+    messages,
     stream,
   };
-  if (systemMsg?.content) {
-    body.system = systemMsg.content;
+  if (system) body.system = system;
+  if (req.tools && req.tools.length > 0) {
+    body.tools = req.tools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.parameters,
+    }));
   }
   return body;
 }
@@ -58,6 +183,7 @@ function authHeaders(apiKey: string): Record<string, string> {
 export class AnthropicProvider implements Provider {
   id = "anthropic";
   name = "Anthropic";
+  supportsTools = true;
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
@@ -92,12 +218,46 @@ export class AnthropicProvider implements Provider {
       throw new ProviderError(`Anthropic: ${msg}`, "unknown");
     }
 
-    // Anthropic retorna content como array de blocks tipados
-    const content = res.json?.content?.[0]?.text;
-    if (typeof content !== "string" || !content.length) {
+    // Anthropic devolve content como array de blocks tipados (text + tool_use)
+    const content = res.json?.content;
+    if (!Array.isArray(content)) {
       throw new ProviderError("Resposta vazia da Anthropic.", "unknown");
     }
-    return { content };
+
+    let text = "";
+    const toolCalls: ProviderToolCall[] = [];
+    for (const block of content) {
+      if (block.type === "text" && typeof block.text === "string") {
+        text += block.text;
+      } else if (block.type === "tool_use") {
+        toolCalls.push({
+          id: block.id,
+          name: block.name,
+          arguments: (block.input as Record<string, unknown>) ?? {},
+        });
+      }
+    }
+
+    if (!text && toolCalls.length === 0) {
+      throw new ProviderError(
+        "Resposta vazia da Anthropic (sem texto nem tool_use).",
+        "unknown"
+      );
+    }
+
+    const result: ProviderResponse = { content: text };
+    if (toolCalls.length > 0) result.toolCalls = toolCalls;
+
+    // Usage tokens
+    const usage = res.json?.usage;
+    if (usage) {
+      result.usage = {
+        input: usage.input_tokens ?? 0,
+        output: usage.output_tokens ?? 0,
+      };
+    }
+
+    return result;
   }
 
   async streamChat(

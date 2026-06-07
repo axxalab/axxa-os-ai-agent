@@ -10,7 +10,16 @@
 //   X-Title:      nome legível
 
 import { requestUrl } from "obsidian";
-import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandler, UsageHandler } from "./base";
+import {
+  Provider,
+  ProviderError,
+  ProviderRequest,
+  ProviderResponse,
+  ProviderToolCall,
+  TokenHandler,
+  UsageHandler,
+} from "./base";
+import { toOpenAIMessages } from "./openai";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODELS_ENDPOINT = "https://openrouter.ai/api/v1/models";
@@ -23,10 +32,32 @@ const APP_HEADERS = {
 export class OpenRouterProvider implements Provider {
   id = "openrouter";
   name = "OpenRouter";
+  // OpenRouter é OpenAI-compatible. Tool calling FUNCIONA pra modelos que
+  // suportam (Claude, GPT-4o, Gemini, Llama 3.1+, etc). Modelos antigos
+  // ignoram tools silenciosamente — agent vai falhar com erro do LLM.
+  supportsTools = true;
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError("API key OpenRouter não configurada.", "no-key");
+    }
+
+    // Body OpenAI-compat — reusa o converter de mensagens do openai.ts
+    const body: Record<string, unknown> = {
+      model: req.model,
+      messages: toOpenAIMessages(req.messages),
+      max_tokens: req.maxTokens ?? 2000,
+    };
+    if (req.tools && req.tools.length > 0) {
+      body.tools = req.tools.map((t) => ({
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      }));
+      body.tool_choice = "auto";
     }
 
     let res;
@@ -39,11 +70,7 @@ export class OpenRouterProvider implements Provider {
           Authorization: `Bearer ${apiKey.trim()}`,
           ...APP_HEADERS,
         },
-        body: JSON.stringify({
-          model: req.model,
-          messages: req.messages,
-          max_tokens: req.maxTokens ?? 2000,
-        }),
+        body: JSON.stringify(body),
         throw: false,
       });
     } catch (err) {
@@ -60,11 +87,44 @@ export class OpenRouterProvider implements Provider {
       const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
       throw new ProviderError(`OpenRouter: ${msg}`, "unknown");
     }
-    const content = res.json?.choices?.[0]?.message?.content;
-    if (typeof content !== "string" || !content.length) {
-      throw new ProviderError("Resposta vazia.", "unknown");
+
+    const message = res.json?.choices?.[0]?.message;
+    if (!message) throw new ProviderError("Resposta vazia.", "unknown");
+
+    // Parseia tool_calls (formato OpenAI) se vieram
+    let toolCalls: ProviderToolCall[] | undefined;
+    if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+      toolCalls = message.tool_calls
+        .filter((tc: { type: string }) => tc.type === "function")
+        .map((tc: { id: string; function: { name: string; arguments: string } }) => {
+          let parsedArgs: Record<string, unknown> = {};
+          try {
+            parsedArgs = JSON.parse(tc.function.arguments);
+          } catch {
+            parsedArgs = { _raw: tc.function.arguments };
+          }
+          return { id: tc.id, name: tc.function.name, arguments: parsedArgs };
+        });
     }
-    return { content };
+
+    const content = typeof message.content === "string" ? message.content : "";
+    if (!toolCalls && !content) {
+      throw new ProviderError(
+        "Resposta vazia da OpenRouter (sem texto nem tool_calls).",
+        "unknown"
+      );
+    }
+
+    const result: ProviderResponse = { content };
+    if (toolCalls) result.toolCalls = toolCalls;
+    const usage = res.json?.usage;
+    if (usage) {
+      result.usage = {
+        input: usage.prompt_tokens ?? 0,
+        output: usage.completion_tokens ?? 0,
+      };
+    }
+    return result;
   }
 
   async streamChat(

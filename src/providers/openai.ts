@@ -18,7 +18,7 @@ const OPENAI_MODELS_ENDPOINT = "https://api.openai.com/v1/models";
  *   - assistant com toolCalls vira { role:"assistant", tool_calls: [...] }
  *   - tool result vira { role:"tool", tool_call_id, content }
  */
-function toOpenAIMessages(
+export function toOpenAIMessages(
   messages: import("./base").ProviderMessage[]
 ): unknown[] {
   return messages.map((m) => {
