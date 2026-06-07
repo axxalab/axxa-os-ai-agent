@@ -904,7 +904,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           className={
             "axxa-root axxa-bg-" +
             (plugin.settings.background || "none") +
-            (plugin.settings.codeWrap ? " axxa-code-wrap" : "")
+            (plugin.settings.codeWrap ? " axxa-code-wrap" : "") +
+            (isLoading ? " axxa-bg-active" : "")
           }
         >
           <Header

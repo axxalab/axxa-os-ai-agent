@@ -975,6 +975,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "aurora",
       "spotlight",
       "nebula",
+      "pulse",
+      "flow",
+      "aurora-live",
     ];
     const current = this.plugin.settings.background || "none";
     const grid = parent.createDiv({ cls: "axxa-bg-grid" });

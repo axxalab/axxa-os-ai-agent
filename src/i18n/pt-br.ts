@@ -44,6 +44,12 @@ export const PT_BR = {
     searchPlaceholder: "Buscar por título, modelo ou provider...",
     emptyAll: "Nenhuma conversa salva ainda. Mande sua primeira mensagem!",
     emptySearch: "Nenhuma conversa encontrada pra essa busca.",
+    sortDateDesc: "Mais recentes",
+    sortDateAsc: "Mais antigas",
+    sortTitleAsc: "Título A-Z",
+    sortMsgsDesc: "Mais mensagens",
+    sortTokensDesc: "Mais tokens",
+    filterAll: "Todos",
   },
 
   starter: {
@@ -212,6 +218,9 @@ export const PT_BR = {
       aurora: "Aurora",
       spotlight: "Spotlight",
       nebula: "Nebula",
+      pulse: "Pulse · live",
+      flow: "Flow · live",
+      "aurora-live": "Aurora · live",
     },
     rag: "Vault Q&A (RAG)",
     ragDesc:

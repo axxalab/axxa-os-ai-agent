@@ -44,6 +44,12 @@ export const EN_US: Translations = {
     searchPlaceholder: "Search by title, model or provider...",
     emptyAll: "No saved conversations yet. Send your first message!",
     emptySearch: "No conversations found for that search.",
+    sortDateDesc: "Newest first",
+    sortDateAsc: "Oldest first",
+    sortTitleAsc: "Title A-Z",
+    sortMsgsDesc: "Most messages",
+    sortTokensDesc: "Most tokens",
+    filterAll: "All",
   },
 
   starter: {
@@ -212,6 +218,9 @@ export const EN_US: Translations = {
       aurora: "Aurora",
       spotlight: "Spotlight",
       nebula: "Nebula",
+      pulse: "Pulse · live",
+      flow: "Flow · live",
+      "aurora-live": "Aurora · live",
     },
     rag: "Vault Q&A (RAG)",
     ragDesc:

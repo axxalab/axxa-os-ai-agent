@@ -18,6 +18,16 @@ interface ConversationsListProps {
   onClose: () => void;
 }
 
+type SortKey =
+  | "date-desc"
+  | "date-asc"
+  | "title-asc"
+  | "msgs-desc"
+  | "tokens-desc";
+
+const PROVIDER_FILTERS = ["all", "openai", "anthropic", "openrouter", "ollama"] as const;
+type ProviderFilter = (typeof PROVIDER_FILTERS)[number];
+
 function formatGroupDate(iso: string): string {
   if (!iso) return "—";
   try {
@@ -67,29 +77,63 @@ export function ConversationsList({
 }: ConversationsListProps) {
   const t = useT();
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("date-desc");
+  const [providerFilter, setProviderFilter] = useState<ProviderFilter>("all");
 
-  // Filtra por título/model (case-insensitive)
+  // Filtra: search + provider chip
   const filtered = useMemo(() => {
-    if (!search.trim()) return chats;
     const q = search.toLowerCase().trim();
-    return chats.filter(
-      (c) =>
+    return chats.filter((c) => {
+      if (providerFilter !== "all" && c.provider !== providerFilter) return false;
+      if (!q) return true;
+      return (
         c.title.toLowerCase().includes(q) ||
         c.model.toLowerCase().includes(q) ||
         c.provider.toLowerCase().includes(q)
-    );
-  }, [chats, search]);
+      );
+    });
+  }, [chats, search, providerFilter]);
 
-  // Agrupa por dia (a lista já vem ordenada desc do listChats)
+  // Sort baseado na key escolhida
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    switch (sortKey) {
+      case "date-asc":
+        arr.sort((a, b) => a.date.localeCompare(b.date));
+        break;
+      case "title-asc":
+        arr.sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+        break;
+      case "msgs-desc":
+        arr.sort((a, b) => b.messageCount - a.messageCount);
+        break;
+      case "tokens-desc":
+        arr.sort(
+          (a, b) => b.tokensIn + b.tokensOut - (a.tokensIn + a.tokensOut)
+        );
+        break;
+      case "date-desc":
+      default:
+        arr.sort((a, b) => b.date.localeCompare(a.date));
+    }
+    return arr;
+  }, [filtered, sortKey]);
+
+  // Quando o sort não é por data, não agrupa (mostra lista plana)
   const groups = useMemo(() => {
     const map = new Map<string, ChatSummary[]>();
-    for (const c of filtered) {
-      const key = formatGroupDate(c.date);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(c);
+    if (sortKey === "date-desc" || sortKey === "date-asc") {
+      for (const c of sorted) {
+        const key = formatGroupDate(c.date);
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(c);
+      }
+    } else {
+      // Sort não-data: 1 grupo só sem header
+      if (sorted.length > 0) map.set("", sorted);
     }
     return Array.from(map.entries());
-  }, [filtered]);
+  }, [sorted, sortKey]);
 
   return (
     <div className="axxa-conversations">
@@ -129,6 +173,50 @@ export function ConversationsList({
         )}
       </div>
 
+      {/* Sort + provider filter chips */}
+      <div className="axxa-conversations-controls">
+        <div className="axxa-conversations-sort">
+          <Icon name="arrow-up-down" />
+          <select
+            className="dropdown"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+          >
+            <option value="date-desc">{t.conversations.sortDateDesc}</option>
+            <option value="date-asc">{t.conversations.sortDateAsc}</option>
+            <option value="title-asc">{t.conversations.sortTitleAsc}</option>
+            <option value="msgs-desc">{t.conversations.sortMsgsDesc}</option>
+            <option value="tokens-desc">
+              {t.conversations.sortTokensDesc}
+            </option>
+          </select>
+        </div>
+
+        <div className="axxa-conversations-filters">
+          {PROVIDER_FILTERS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={
+                "axxa-filter-chip" +
+                (providerFilter === id ? " axxa-filter-chip-active" : "")
+              }
+              onClick={() => setProviderFilter(id)}
+            >
+              {id === "all"
+                ? t.conversations.filterAll
+                : id === "openai"
+                  ? "OpenAI"
+                  : id === "anthropic"
+                    ? "Anthropic"
+                    : id === "openrouter"
+                      ? "OpenRouter"
+                      : "Ollama"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="axxa-conversations-list">
         {groups.length === 0 && (
           <div className="axxa-conversations-empty">
@@ -141,8 +229,10 @@ export function ConversationsList({
           </div>
         )}
         {groups.map(([dayLabel, items]) => (
-          <div key={dayLabel} className="axxa-conversations-group">
-            <div className="axxa-conversations-group-head">{dayLabel}</div>
+          <div key={dayLabel || "flat"} className="axxa-conversations-group">
+            {dayLabel && (
+              <div className="axxa-conversations-group-head">{dayLabel}</div>
+            )}
             {items.map((c) => (
               <button
                 key={c.id}

@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, 6.1+6.2 ✅ Agent + **v0.1.30 wikilinks + conversations list + UX polish** · próximo: Sprint I — Anthropic tools + agent log  
-> **Versão:** 1.0 · plugin em v0.1.30  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, 6.1+6.2 ✅ Agent + **v0.1.31 fixes UX + 3 bgs animados** · próximo: Anthropic tools / Whisper áudio / Agent log  
+> **Versão:** 1.0 · plugin em v0.1.31  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -459,6 +459,10 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Sprint H (v0.1.30) — / commands no Composer | 9 comandos MVP: /new /clear /regen /stop /conversations /settings /mode-chat /mode-vault-qa /mode-agent. Apply CUSTOM: dispatch limpa o texto + executa action em microtask. Não insere literal — vira UX rico (slash commands ChatGPT-style). |
 | 07/06/2026 | Sprint H (v0.1.30) — CSS polish starter + recent chats | Ícones nos buttons de provider/mode: 18px → 14px. Separador `·` virou bolinhas reais (`.axxa-recent-meta-dot`). flex-wrap + gap horizontal melhor no meta. Spacing geral mais arejado. |
 | 07/06/2026 | Sprint H (v0.1.30) — modal audit | ConfirmationModal usa `Modal` nativo do Obsidian ✅. PlusModal é bottom sheet custom (ChatGPT-style mobile) — intencional, fica como está. Decisão documentada. |
+| 07/06/2026 | Fix v0.1.31 — autocomplete dropdown clipado | `overflow-x: hidden` no .cm-editor cortava o popup do autocomplete. Fix: `tooltips({ position: "fixed", parent: document.body })` do `@codemirror/view`. Renderiza o popup direto no body, escapa do clip, CodeMirror posiciona acima ou abaixo do cursor conforme espaço. CSS adicional pra estilo do `.cm-tooltip-autocomplete`. |
+| 07/06/2026 | Fix v0.1.31 — search input com 1px | Obsidian colapsa height de inputs filhos de flex. Fix: `min-height: 24px` + `line-height: 1.5` + `height: auto !important` + `padding: 4px 0` no input. Pai `.axxa-conversations-search` ganhou `min-height: 40px`. |
+| 07/06/2026 | v0.1.31 — Filtros + sort na ConversationsList | 5 sort options (data desc/asc, título, msgs, tokens). Provider filter chips horizontal scroll (all/openai/anthropic/openrouter/ollama). Quando sort != data, agrupa em lista plana (sem header de dia). |
+| 07/06/2026 | v0.1.31 — 3 backgrounds animados reativos | `Pulse` (radial pulsante) / `Flow` (linear gradient correndo) / `Aurora Live` (2 radials cruzando via translate). Animação via `::before`/`::after` pseudo-elementos. Classe `.axxa-bg-active` adicionada quando `isLoading=true` → animation-duration acelera 3-4x. |
 
 ---
 

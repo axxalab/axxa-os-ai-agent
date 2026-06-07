@@ -9,7 +9,12 @@
 // "+" button abre o PlusModal (ChatGPT-style bottom sheet com Effort selector)
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { EditorView, keymap, placeholder as cmPlaceholder } from "@codemirror/view";
+import {
+  EditorView,
+  keymap,
+  placeholder as cmPlaceholder,
+  tooltips,
+} from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
 import { autocompletion } from "@codemirror/autocomplete";
 import { Notice, Platform } from "obsidian";
@@ -170,6 +175,13 @@ export function Composer({
           ],
           activateOnTyping: true,
           maxRenderedOptions: 30,
+        }),
+        // Renderiza o popup do autocomplete COMO position:fixed no document.body,
+        // escapando do overflow:hidden do composer pill. Sem isso o dropdown
+        // ficava clipado dentro do text field e não aparecia.
+        tooltips({
+          position: "fixed",
+          parent: document.body,
         }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
