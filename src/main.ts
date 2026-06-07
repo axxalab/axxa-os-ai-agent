@@ -32,6 +32,8 @@ interface AxxaSettings {
   /** ID do background preset (none / sunset / ocean / forest / violet / mono).
    *  Aplicado como classe `axxa-bg-<id>` na .axxa-root. */
   background: string;
+  /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
+  recordingsPath: string;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -65,6 +67,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   skillsPath: "axxa-ai/skills",
   language: "pt-br",
   background: "none",
+  recordingsPath: "axxa-ai/recordings",
 };
 
 export default class AxxaPlugin extends Plugin {

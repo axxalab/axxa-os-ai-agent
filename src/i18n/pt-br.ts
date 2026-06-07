@@ -12,8 +12,18 @@ export const PT_BR = {
     placeholderCoder: "Cole código ou pergunte como debugar...",
     sendLabel: "Enviar mensagem",
     stopLabel: "Parar geração",
-    micLabel: "Gravar áudio",
+    micLabel: "Segure pra gravar áudio",
+    micRecording: "Solte pra parar",
     plusLabel: "Mais opções",
+  },
+
+  recording: {
+    micDenied: "Permissão de microfone negada — habilite nas configurações do sistema.",
+    micUnsupported: "Microfone não suportado nesse dispositivo.",
+    saved: (duration: string) => `Áudio salvo (${duration})`,
+    saveFailed: "Erro ao salvar o áudio.",
+    cancelled: "Gravação cancelada.",
+    alias: (duration: string) => `Áudio ${duration}`,
   },
 
   menu: {
@@ -147,6 +157,8 @@ export const PT_BR = {
     chatsPathDesc: "Onde os chats serão salvos no Vault",
     skillsPath: "Pasta das skills",
     skillsPathDesc: "Onde as skills serão salvas no Vault (vem no Módulo 7)",
+    recordingsPath: "Pasta das gravações",
+    recordingsPathDesc: "Onde os áudios gravados pelo botão de mic serão salvos",
     comingSoon: "Em breve",
     comingSoonItems: [
       "Audio recorder (mic) — Sprint E",

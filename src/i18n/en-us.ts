@@ -12,8 +12,18 @@ export const EN_US: Translations = {
     placeholderCoder: "Paste code or ask a dev question...",
     sendLabel: "Send message",
     stopLabel: "Stop generation",
-    micLabel: "Record audio",
+    micLabel: "Hold to record audio",
+    micRecording: "Release to stop",
     plusLabel: "More options",
+  },
+
+  recording: {
+    micDenied: "Microphone permission denied — enable it in system settings.",
+    micUnsupported: "Microphone not supported on this device.",
+    saved: (duration: string) => `Audio saved (${duration})`,
+    saveFailed: "Failed to save audio.",
+    cancelled: "Recording cancelled.",
+    alias: (duration: string) => `Audio ${duration}`,
   },
 
   menu: {
@@ -147,6 +157,8 @@ export const EN_US: Translations = {
     chatsPathDesc: "Where chats are saved in the Vault",
     skillsPath: "Skills folder",
     skillsPathDesc: "Where skills are saved in the Vault (coming in Module 7)",
+    recordingsPath: "Recordings folder",
+    recordingsPathDesc: "Where audio recordings from the mic button are saved",
     comingSoon: "Coming soon",
     comingSoonItems: [
       "Audio recorder (mic) — Sprint E",

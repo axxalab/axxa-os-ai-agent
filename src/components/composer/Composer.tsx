@@ -11,10 +11,17 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { EditorView, keymap, placeholder as cmPlaceholder } from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
-import { Platform } from "obsidian";
+import { Notice, Platform } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { formatTokens, getContextWindow } from "../_shared/contextWindows";
 import { useT } from "../../i18n";
+
+function formatRecordingDuration(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 interface ComposerProps {
   onSend: (text: string) => void;
@@ -33,6 +40,8 @@ interface ComposerProps {
   mode?: string;
   /** Texto do placeholder do editor — varia por modo */
   placeholder?: string;
+  /** Salva o áudio gravado no vault e devolve o path relativo (ou null se falhou). */
+  onSaveAudio?: (blob: Blob, durationMs: number) => Promise<string | null>;
 }
 
 function InfoChip({
@@ -66,6 +75,7 @@ export function Composer({
   locked = false,
   mode = "chat",
   placeholder,
+  onSaveAudio,
 }: ComposerProps) {
   const t = useT();
   // Fallback se nenhum placeholder for passado — usa o default do dicionário
@@ -82,6 +92,31 @@ export function Composer({
   const [placeholderCompartment] = useState(() => new Compartment());
 
   const [isEmpty, setIsEmpty] = useState(true);
+
+  // ============================================================
+  // Audio recording state — hold-to-record com MediaRecorder
+  // ============================================================
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingMs, setRecordingMs] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef(0);
+  const recordingTimerRef = useRef<number | null>(null);
+  // Flag: se true, descarta o áudio em vez de salvar (sliding-finger-off)
+  const cancelRecordingRef = useRef(false);
+
+  // Cleanup do MediaRecorder no unmount (libera o mic se ainda tava ativo)
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current !== null) {
+        window.clearInterval(recordingTimerRef.current);
+      }
+      const rec = mediaRecorderRef.current;
+      if (rec && rec.state !== "inactive") {
+        rec.stream.getTracks().forEach((tr) => tr.stop());
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -171,38 +206,164 @@ export function Composer({
     view.focus();
   };
 
-  const handleMicClick = () => {
-    if (streaming) return;
-    console.log("[axxa] mic click — gravação de áudio em breve");
-  };
-
   const handleStopClick = () => {
     onStop?.();
   };
 
+  // ============================================================
+  // Gravação de áudio — hold-to-record
+  // ============================================================
+  const startRecording = async () => {
+    if (isRecording || streaming) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      new Notice(t.recording.micUnsupported);
+      return;
+    }
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      console.error("[axxa] mic permission falhou:", err);
+      new Notice(t.recording.micDenied);
+      return;
+    }
+
+    let recorder: MediaRecorder;
+    try {
+      recorder = new MediaRecorder(stream);
+    } catch (err) {
+      console.error("[axxa] MediaRecorder não suportado:", err);
+      stream.getTracks().forEach((tr) => tr.stop());
+      new Notice(t.recording.micUnsupported);
+      return;
+    }
+
+    recordedChunksRef.current = [];
+    cancelRecordingRef.current = false;
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+    };
+    recorder.onstop = async () => {
+      stream.getTracks().forEach((tr) => tr.stop());
+      const ms = Date.now() - recordingStartRef.current;
+      const chunks = recordedChunksRef.current;
+      recordedChunksRef.current = [];
+
+      if (cancelRecordingRef.current) {
+        new Notice(t.recording.cancelled);
+        return;
+      }
+      // Ignora gravações muito curtas (<300ms — provavelmente tap acidental)
+      if (chunks.length === 0 || ms < 300) {
+        return;
+      }
+      const blob = new Blob(chunks, {
+        type: recorder.mimeType || "audio/webm",
+      });
+      const path = await onSaveAudio?.(blob, ms);
+      const durationStr = formatRecordingDuration(ms);
+      if (!path) {
+        new Notice(t.recording.saveFailed);
+        return;
+      }
+      new Notice(t.recording.saved(durationStr));
+      // Insere wikilink no composer no cursor atual
+      const view = viewRef.current;
+      if (view) {
+        const wikilink = `[[${path}|${t.recording.alias(durationStr)}]] `;
+        view.dispatch(view.state.replaceSelection(wikilink));
+        view.focus();
+      }
+    };
+
+    mediaRecorderRef.current = recorder;
+    recorder.start();
+    recordingStartRef.current = Date.now();
+    setIsRecording(true);
+    setRecordingMs(0);
+
+    // Atualiza o contador a cada 200ms — suficiente pra UX, leve no CPU
+    recordingTimerRef.current = window.setInterval(() => {
+      setRecordingMs(Date.now() - recordingStartRef.current);
+    }, 200);
+
+    navigator.vibrate?.(30);
+  };
+
+  const stopRecording = (cancel = false) => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || !isRecording) return;
+    cancelRecordingRef.current = cancel;
+    if (recordingTimerRef.current !== null) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    setIsRecording(false);
+    setRecordingMs(0);
+    if (recorder.state !== "inactive") recorder.stop();
+    mediaRecorderRef.current = null;
+    navigator.vibrate?.(30);
+  };
+
+  // Handler global: se user solta o mouse FORA do botão durante a gravação,
+  // pega o release no document e para mesmo assim. Necessário porque
+  // onMouseLeave do botão é disparado antes do onMouseUp em alguns navegadores.
+  useEffect(() => {
+    if (!isRecording) return;
+    const onUp = () => stopRecording(false);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("touchend", onUp);
+    document.addEventListener("touchcancel", onUp);
+    return () => {
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchend", onUp);
+      document.removeEventListener("touchcancel", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRecording]);
+
+  // O botão à direita tem 3 modos: send (texto digitado) / stop (streaming) / mic (vazio).
+  // Em "mic", o press inicia gravação e release para (hold-to-record).
+  // Em "send" e "stop", click normal.
+  const isMicMode = !streaming && isEmpty;
+
   let iconName: string;
-  let onClick: () => void;
   let label: string;
+  let onClick: (() => void) | undefined;
 
   if (streaming) {
     iconName = "square";
-    onClick = handleStopClick;
     label = t.composer.stopLabel;
+    onClick = handleStopClick;
   } else if (isEmpty) {
     iconName = "mic";
-    onClick = handleMicClick;
-    label = t.composer.micLabel;
+    label = isRecording ? t.composer.micRecording : t.composer.micLabel;
+    onClick = undefined; // mic é controlado por press/release, não click
   } else {
     iconName = "arrow-up";
-    onClick = handleSendClick;
     label = t.composer.sendLabel;
+    onClick = handleSendClick;
   }
+
+  // Press/release só são "armados" no modo mic — em send/stop, undefined
+  const onMicPressStart = isMicMode ? () => startRecording() : undefined;
+  const onMicPressEnd = isMicMode ? () => stopRecording(false) : undefined;
 
   const contextTotal = getContextWindow(modelName);
   const tokensTotal = tokensIn + tokensOut;
 
   return (
     <div className="axxa-composer">
+      {isRecording && (
+        <div className="axxa-recording-indicator" aria-live="polite">
+          <span className="axxa-recording-dot" aria-hidden="true" />
+          <span className="axxa-recording-timer">
+            {formatRecordingDuration(recordingMs)}
+          </span>
+          <span className="axxa-recording-hint">{t.composer.micRecording}</span>
+        </div>
+      )}
       <div className="axxa-composer-row">
         <div className="axxa-composer-pill">
           <button
@@ -218,8 +379,28 @@ export function Composer({
         </div>
         <button
           type="button"
-          className={"axxa-composer-send" + (streaming ? " axxa-composer-stop" : "")}
+          className={
+            "axxa-composer-send" +
+            (streaming ? " axxa-composer-stop" : "") +
+            (isRecording ? " axxa-composer-recording" : "")
+          }
           onClick={onClick}
+          onMouseDown={onMicPressStart}
+          onTouchStart={(e) => {
+            if (onMicPressStart) {
+              // Previne click depois — em mobile, touch dispara click sintético
+              e.preventDefault();
+              onMicPressStart();
+            }
+          }}
+          onMouseUp={onMicPressEnd}
+          onTouchEnd={(e) => {
+            if (onMicPressEnd) {
+              e.preventDefault();
+              onMicPressEnd();
+            }
+          }}
+          onTouchCancel={onMicPressEnd}
           aria-label={label}
           title={label}
         >

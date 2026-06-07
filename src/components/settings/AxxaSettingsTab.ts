@@ -566,6 +566,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
+    new Setting(parent)
+      .setName(t.settings.recordingsPath)
+      .setDesc(t.settings.recordingsPathDesc)
+      .addText((text) =>
+        text
+          .setPlaceholder("axxa-ai/recordings")
+          .setValue(this.plugin.settings.recordingsPath)
+          .onChange(async (value) => {
+            this.plugin.settings.recordingsPath =
+              value || "axxa-ai/recordings";
+            await this.plugin.saveSettings();
+          })
+      );
+
     // ============================================================
     // Aparência — grid de swatches (5 presets + None)
     // ============================================================

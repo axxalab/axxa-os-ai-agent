@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.5 ✅, 3.2 quase, 3.3 quase), 4 ✅ · próximo: Sprint E — Polish + audio recorder  
-> **Versão:** 1.0 · plugin em v0.1.23  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅ (3.1+3.2+3.3+3.4+3.5), 4 ✅ · próximo: Sprint F — Pre-launch checklist  
+> **Versão:** 1.0 · plugin em v0.1.24  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -153,16 +153,17 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 ## MÓDULO 3 — UI de Produção
 > Objetivo: Visual que vai viralizar. Parece feature nativa do Obsidian.
 
-### 3.1 Design System
-- ⬜ CSS variables baseadas no tema Obsidian ativo
-- ⬜ Paleta de cores própria não conflitante
-- ⬜ Tipografia definida
-- ⬜ Dark/light mode funcionando automaticamente
+### 3.1 Design System ✅
+- ✅ CSS variables baseadas no tema Obsidian ativo (todas as cores via `var(--*)`)
+- ✅ Paleta de cores própria não conflitante (6 chips coloridos com fallback hex)
+- ✅ Tipografia definida (`--font-interface`, `--font-text`, `--font-monospace`)
+- ✅ Dark/light mode automático (CSS vars + `body.theme-dark` quando necessário)
+- ✅ **`DESIGN-SYSTEM.md` na raiz** documenta tokens, regras de radius, animações, mobile, e o que NÃO fazer (v0.1.24)
 
-### 3.2 Composer completo (estilo ChatGPT)
+### 3.2 Composer completo (estilo ChatGPT) ✅
 - ✅ Textarea auto-expande com o conteúdo (CodeMirror nativo já faz, maxHeight 200px)
 - ✅ Botão 📎 attach (placeholder visual no PlusModal: PDF / Imagem / Nota com "em breve" badge — funcional no Módulo 5; v0.1.21)
-- ⬜ Botão 🎤 audio recorder (hold-to-record) — mic placeholder existe, gravação pendente
+- ✅ **Botão 🎤 audio recorder (hold-to-record)** — MediaRecorder API, salva `.webm` em `axxa-ai/recordings/`, insere wikilink no composer com duração no alias, indicator vermelho pulsante + timer (v0.1.24)
 - ✅ Botão ▶ send / ⬛ stop durante geração (`arrow-up` / `square` com cor invertida)
 - ✅ Placeholder dinâmico por modo (chat / vault-qa / agent / coder via Compartment do CodeMirror — v0.1.18)
 
@@ -174,11 +175,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ **Feedback háptico** (`navigator.vibrate(30)`) quando long-press dispara — v0.1.23
 - 🟡 Footer buttons básicos: copy ✅, **regen ✅ (funcional: rewind até user msg, re-streamReply)**, like/dislike 🟡 (toggle local sem persistência), ... 🟡 (placeholder)
 
-### 3.4 Mobile
-- ⬜ Drawer lateral responsivo
-- ⬜ Toda interação testada com toque
-- ⬜ Teclado virtual não quebra o layout
-- ⬜ Scroll funcional no histórico
+### 3.4 Mobile ✅
+- ✅ Drawer lateral responsivo (validado em mobile pelo dev em prints v0.1.7+)
+- ✅ Toda interação testada com toque (long-press 500ms + vibração háptica + back-to-bottom flutuante)
+- ✅ Teclado virtual não quebra o layout (handler estilo Copilot — `--keyboard-height` + `.axxa-keyboard-open`)
+- ✅ Scroll funcional no histórico (sticky-bottom inteligente estilo ChatGPT)
 
 ### 3.5 Backgrounds e temas ✅
 - ✅ **Background configurável** — 6 presets (None / Sunset / Ocean / Forest / Violet / Mono) via Settings → Outros → Aparência (v0.1.23)
@@ -407,6 +408,9 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Sprint D (v0.1.23) — Vibração no long-press | `navigator.vibrate?.(30)` dentro do setTimeout do long-press. Android vibra, iOS Safari ignora silenciosamente (`?.`). 30ms é o "tap háptico" canônico — mais que isso vira buzz. |
 | 07/06/2026 | Sprint D (v0.1.23) — Backgrounds via classe na .axxa-root | 5 presets de gradient (Sunset/Ocean/Forest/Violet/Mono) + None default. Cada preset tem variante `body.theme-dark` pra adaptação automática. Aplicado via `axxa-bg-<id>` na .axxa-root — gradient overlay sobre `var(--background-primary)` mantém compat com qualquer tema. |
 | 07/06/2026 | Sprint D (v0.1.23) — Background picker como swatch grid | Grid auto-fill 108px com preview real do gradient (não swatch sintético). `outline: 2px var(--interactive-accent)` no ativo. Inspirado em ChatGPT themes panel. |
+| 07/06/2026 | Sprint E (v0.1.24) — Audio recorder hold-to-record | MediaRecorder API + `getUserMedia({audio})`. Press → start, release → stop + save webm em `axxa-ai/recordings/`. Listener global `document.mouseup/touchend` pra detectar release fora do botão. Filtro de gravações <300ms (taps acidentais). Wikilink `[[path\|Áudio 0:05]]` inserido no cursor via `view.state.replaceSelection`. |
+| 07/06/2026 | Sprint E (v0.1.24) — Visual feedback de gravação | Botão vermelho pulsante (`@keyframes axxa-recording-pulse` com box-shadow ripple). Indicator chip acima do composer com bolinha vermelha pulsante + timer `0:05` em tabular-nums + hint. Vibração háptica no start E no stop. |
+| 07/06/2026 | Sprint E (v0.1.24) — `DESIGN-SYSTEM.md` na raiz | Doc consolida tokens, paleta de 6 chips coloridos, regras de radius (18px ou 999px, nada mais), animations, tipos de mensagem, convenções de naming, e seção "o que NÃO fazer". Atualizar a cada decisão visual nova. |
 
 ---
 

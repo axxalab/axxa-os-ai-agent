@@ -38,6 +38,7 @@ import {
   type ChatSummary,
 } from "../components/_shared/chatPersistence";
 import { searchVault, buildVaultContext } from "../components/_shared/vaultSearch";
+import { ensureFolder } from "../components/_shared/chatPersistence";
 import type { ChatMessage, UserMessage, AIResponseMessage } from "../store/chat";
 
 interface AxxaAppProps {
@@ -390,6 +391,36 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   const handleStop = () => abortRef.current?.abort();
 
+  // Salva o áudio gravado pelo hold-to-record no Vault e devolve o path
+  // relativo (pra usar como wikilink no composer). Cria a pasta se não existir.
+  const handleSaveAudio = async (
+    blob: Blob,
+    _durationMs: number
+  ): Promise<string | null> => {
+    try {
+      const folder = plugin.settings.recordingsPath || "axxa-ai/recordings";
+      await ensureFolder(plugin.app.vault.adapter, folder);
+      // Nome: timestamp ISO-safe + extensão guess do mime
+      const ext = blob.type.includes("ogg")
+        ? "ogg"
+        : blob.type.includes("mp4")
+          ? "m4a"
+          : "webm";
+      const ts = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .replace("T", "_")
+        .slice(0, 19);
+      const path = `${folder}/${ts}.${ext}`;
+      const buffer = await blob.arrayBuffer();
+      await plugin.app.vault.adapter.writeBinary(path, buffer);
+      return path;
+    } catch (err) {
+      console.error("[axxa] save audio falhou:", err);
+      return null;
+    }
+  };
+
   const handleOpenSettings = () => {
     const app = plugin.app as unknown as {
       setting: { open: () => void; openTabById: (id: string) => void };
@@ -516,6 +547,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           locked={isLocked}
           mode={activeMode}
           placeholder={placeholderForMode(activeMode, t.composer)}
+          onSaveAudio={handleSaveAudio}
         />
           {plusOpen && (
             <PlusModal
