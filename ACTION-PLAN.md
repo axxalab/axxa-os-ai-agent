@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.2 quase, 3.3 quase), 4 ✅ (4.4 i18n PT/EN) · próximo: Sprint D — Backgrounds + tema  
-> **Versão:** 1.0 · plugin em v0.1.22  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.5 ✅, 3.2 quase, 3.3 quase), 4 ✅ · próximo: Sprint E — Polish + audio recorder  
+> **Versão:** 1.0 · plugin em v0.1.23  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -171,6 +171,7 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Code blocks com syntax highlighting (via Obsidian MarkdownRenderer — vem nativo)
 - ✅ Botão "copiar" em code blocks (pós-processamento DOM no Markdown.tsx, hover desktop / semi-visível mobile — v0.1.18)
 - ✅ **Context menu (right-click desktop + long-press 500ms mobile)** via Menu nativo do Obsidian — UserBubble: Copiar/Deletar; AIResponse: Copiar/Regenerar/Deletar (vermelho em destrutivo via `setWarning`) — v0.1.20
+- ✅ **Feedback háptico** (`navigator.vibrate(30)`) quando long-press dispara — v0.1.23
 - 🟡 Footer buttons básicos: copy ✅, **regen ✅ (funcional: rewind até user msg, re-streamReply)**, like/dislike 🟡 (toggle local sem persistência), ... 🟡 (placeholder)
 
 ### 3.4 Mobile
@@ -179,10 +180,12 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ⬜ Teclado virtual não quebra o layout
 - ⬜ Scroll funcional no histórico
 
-### 3.5 Backgrounds e temas
-- ⬜ Background configurável (sólido / gradiente)
-- ⬜ Compatibilidade verificada com tema Minimal
-- ⬜ Compatibilidade verificada com tema default Obsidian
+### 3.5 Backgrounds e temas ✅
+- ✅ **Background configurável** — 6 presets (None / Sunset / Ocean / Forest / Violet / Mono) via Settings → Outros → Aparência (v0.1.23)
+- ✅ Cada preset com variante light/dark via `body.theme-dark` — funciona em qualquer tema Obsidian
+- ✅ Compatibilidade verificada com tema default Obsidian (gradient overlay layered sobre `var(--background-primary)`)
+- ✅ Grid de swatches com preview real do gradient — clica e troca, igual ChatGPT themes
+- 🟡 Compat formal com tema Minimal — testar manualmente (CSS usa só vars padrão, deve funcionar out-of-the-box)
 
 ### 3.6 Build de teste
 - ⬜ Screenshots tiradas para uso no lançamento
@@ -401,6 +404,9 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Sprint C (v0.1.22) — i18n PT-BR/EN-US tipado | `src/i18n/pt-br.ts` é a fonte (type `Translations = typeof PT_BR`); `en-us.ts: Translations` é forçado pelo TS a ter o mesmo shape. `useT()` hook + `TranslationsContext.Provider` no AxxaApp. Strings com placeholder usam functions tipadas (`vault.searching(topK, effort)`). |
 | 07/06/2026 | Sprint C (v0.1.22) — Settings com 5 sub-tabs | Tabs OpenAI/Anthropic/OpenRouter/Ollama/Outros — cada provider isolado pra facilitar navegação. Provider padrão sempre visível acima das tabs + bolinha de cor no tab matching. flex-wrap pra mobile (5 tabs cabem). |
 | 07/06/2026 | Sprint C (v0.1.22) — Settings listener reativo | `plugin.onSettingsChange(cb)` chamado a cada saveSettings. AxxaApp registra listener no mount → forceRender no callback → re-pega `t` na hora. Idioma muda sem precisar reabrir a aba. |
+| 07/06/2026 | Sprint D (v0.1.23) — Vibração no long-press | `navigator.vibrate?.(30)` dentro do setTimeout do long-press. Android vibra, iOS Safari ignora silenciosamente (`?.`). 30ms é o "tap háptico" canônico — mais que isso vira buzz. |
+| 07/06/2026 | Sprint D (v0.1.23) — Backgrounds via classe na .axxa-root | 5 presets de gradient (Sunset/Ocean/Forest/Violet/Mono) + None default. Cada preset tem variante `body.theme-dark` pra adaptação automática. Aplicado via `axxa-bg-<id>` na .axxa-root — gradient overlay sobre `var(--background-primary)` mantém compat com qualquer tema. |
+| 07/06/2026 | Sprint D (v0.1.23) — Background picker como swatch grid | Grid auto-fill 108px com preview real do gradient (não swatch sintético). `outline: 2px var(--interactive-accent)` no ativo. Inspirado em ChatGPT themes panel. |
 
 ---
 

@@ -1336,6 +1336,176 @@ body.is-mobile .axxa-code-copy {
 }
 
 /* =====================================================
+ * Backgrounds — presets de gradient sutil aplicados na
+ * .axxa-root. Default = none (var(--background-primary)).
+ * Cada preset overlay-a uma cor com alpha baixa pra manter
+ * compat com light/dark mode de qualquer tema Obsidian.
+ * ===================================================== */
+
+.axxa-root.axxa-bg-none {
+  /* Default já tá em .axxa-root — explicit pra ficar claro */
+  background: var(--background-primary);
+}
+
+/* Sunset — laranja → rosa quente */
+.axxa-root.axxa-bg-sunset {
+  background:
+    linear-gradient(135deg, rgba(255, 126, 95, 0.07), rgba(254, 180, 123, 0.04) 60%, transparent),
+    var(--background-primary);
+}
+body.theme-dark .axxa-root.axxa-bg-sunset {
+  background:
+    linear-gradient(135deg, rgba(255, 126, 95, 0.12), rgba(254, 180, 123, 0.06) 60%, transparent),
+    var(--background-primary);
+}
+
+/* Ocean — cyan → azul */
+.axxa-root.axxa-bg-ocean {
+  background:
+    linear-gradient(135deg, rgba(33, 147, 176, 0.07), rgba(109, 213, 237, 0.04) 60%, transparent),
+    var(--background-primary);
+}
+body.theme-dark .axxa-root.axxa-bg-ocean {
+  background:
+    linear-gradient(135deg, rgba(33, 147, 176, 0.13), rgba(109, 213, 237, 0.06) 60%, transparent),
+    var(--background-primary);
+}
+
+/* Forest — verde → teal */
+.axxa-root.axxa-bg-forest {
+  background:
+    linear-gradient(135deg, rgba(17, 153, 142, 0.07), rgba(56, 239, 125, 0.04) 60%, transparent),
+    var(--background-primary);
+}
+body.theme-dark .axxa-root.axxa-bg-forest {
+  background:
+    linear-gradient(135deg, rgba(17, 153, 142, 0.13), rgba(56, 239, 125, 0.06) 60%, transparent),
+    var(--background-primary);
+}
+
+/* Violet — roxo → magenta */
+.axxa-root.axxa-bg-violet {
+  background:
+    linear-gradient(135deg, rgba(142, 45, 226, 0.07), rgba(74, 0, 224, 0.04) 60%, transparent),
+    var(--background-primary);
+}
+body.theme-dark .axxa-root.axxa-bg-violet {
+  background:
+    linear-gradient(135deg, rgba(142, 45, 226, 0.14), rgba(74, 0, 224, 0.07) 60%, transparent),
+    var(--background-primary);
+}
+
+/* Mono — cinza neutro elegante */
+.axxa-root.axxa-bg-mono {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.03), transparent 50%, rgba(0, 0, 0, 0.03)),
+    var(--background-primary);
+}
+body.theme-dark .axxa-root.axxa-bg-mono {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 50%, rgba(255, 255, 255, 0.04)),
+    var(--background-primary);
+}
+
+/* =====================================================
+ * Background picker (Settings → Outros → Aparência)
+ * Grid de swatches com preview do gradient real
+ * ===================================================== */
+
+.axxa-bg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 10px;
+  margin: 8px 0 16px 0;
+}
+
+.axxa-bg-option,
+.axxa-bg-option:hover,
+.axxa-bg-option:focus,
+.axxa-bg-option:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-bg-option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.axxa-bg-option:hover {
+  background: var(--background-modifier-hover) !important;
+}
+
+.axxa-bg-option-active {
+  background: var(--background-modifier-hover) !important;
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+.axxa-bg-preview {
+  height: 64px;
+  border-radius: 10px;
+  border: 1px solid var(--background-modifier-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.axxa-bg-preview-none {
+  background: var(--background-primary);
+}
+
+.axxa-bg-preview-sunset {
+  background:
+    linear-gradient(135deg, rgba(255, 126, 95, 0.3), rgba(254, 180, 123, 0.18) 60%, transparent),
+    var(--background-primary);
+}
+
+.axxa-bg-preview-ocean {
+  background:
+    linear-gradient(135deg, rgba(33, 147, 176, 0.3), rgba(109, 213, 237, 0.18) 60%, transparent),
+    var(--background-primary);
+}
+
+.axxa-bg-preview-forest {
+  background:
+    linear-gradient(135deg, rgba(17, 153, 142, 0.3), rgba(56, 239, 125, 0.18) 60%, transparent),
+    var(--background-primary);
+}
+
+.axxa-bg-preview-violet {
+  background:
+    linear-gradient(135deg, rgba(142, 45, 226, 0.3), rgba(74, 0, 224, 0.18) 60%, transparent),
+    var(--background-primary);
+}
+
+.axxa-bg-preview-mono {
+  background:
+    linear-gradient(180deg, rgba(128, 128, 128, 0.18), transparent 50%, rgba(128, 128, 128, 0.18)),
+    var(--background-primary);
+}
+
+.axxa-bg-option-label {
+  text-align: center;
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.axxa-bg-option-active .axxa-bg-option-label {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+/* =====================================================
  * Settings — Modelos ativos (curadoria por provider)
  * Pills removíveis + input pra adicionar + checkboxes
  * pós-fetch da API. Pill radius 999px (regra geral).

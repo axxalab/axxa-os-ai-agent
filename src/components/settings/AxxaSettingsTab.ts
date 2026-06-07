@@ -566,10 +566,60 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
+    // ============================================================
+    // Aparência — grid de swatches (5 presets + None)
+    // ============================================================
+    parent.createEl("h3", { text: t.settings.appearance });
+    parent.createEl("p", {
+      text: t.settings.appearanceDesc,
+      cls: "setting-item-description",
+    });
+    this.renderBackgroundPicker(parent, t);
+
     parent.createEl("h3", { text: t.settings.comingSoon });
     const todo = parent.createEl("ul");
     t.settings.comingSoonItems.forEach((item) => {
       todo.createEl("li", { text: item });
+    });
+  }
+
+  // ============================================================
+  // Background picker — grid de swatches com preview do gradient
+  // ============================================================
+  private renderBackgroundPicker(parent: HTMLElement, t: Translations) {
+    const ids: Array<keyof typeof t.settings.backgroundLabels> = [
+      "none",
+      "sunset",
+      "ocean",
+      "forest",
+      "violet",
+      "mono",
+    ];
+    const current = this.plugin.settings.background || "none";
+    const grid = parent.createDiv({ cls: "axxa-bg-grid" });
+
+    ids.forEach((id) => {
+      const isActive = id === current;
+      const btn = grid.createEl("button", {
+        cls:
+          "axxa-bg-option" + (isActive ? " axxa-bg-option-active" : ""),
+        attr: {
+          type: "button",
+          "aria-label": t.settings.backgroundLabels[id],
+          "aria-pressed": String(isActive),
+        },
+      });
+      btn.createDiv({ cls: "axxa-bg-preview axxa-bg-preview-" + id });
+      btn.createSpan({
+        cls: "axxa-bg-option-label",
+        text: t.settings.backgroundLabels[id],
+      });
+      btn.onclick = async () => {
+        this.plugin.settings.background = id;
+        await this.plugin.saveSettings();
+        // Re-render Settings pra atualizar qual swatch tá ativo
+        this.display();
+      };
     });
   }
 }

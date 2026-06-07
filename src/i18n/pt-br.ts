@@ -149,11 +149,22 @@ export const PT_BR = {
     skillsPathDesc: "Onde as skills serão salvas no Vault (vem no Módulo 7)",
     comingSoon: "Em breve",
     comingSoonItems: [
-      "Appearance (background, balloon) — Módulo 3",
+      "Audio recorder (mic) — Sprint E",
       "Agent Mode (file ops) — Módulo 6",
       "Skills management — Módulo 7",
       "MCP Connect (Notion, ClickUp, Figma) — Módulo 9",
     ] as string[],
+    appearance: "Aparência",
+    appearanceDesc:
+      "Escolha um fundo pra interface do AXXA. Cores sutis pra não atrapalhar a leitura.",
+    backgroundLabels: {
+      none: "Padrão",
+      sunset: "Pôr do sol",
+      ocean: "Oceano",
+      forest: "Floresta",
+      violet: "Violeta",
+      mono: "Mono",
+    },
   },
 };
 

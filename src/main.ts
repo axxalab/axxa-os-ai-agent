@@ -29,6 +29,9 @@ interface AxxaSettings {
   chatsPath: string;
   skillsPath: string;
   language: string;
+  /** ID do background preset (none / sunset / ocean / forest / violet / mono).
+   *  Aplicado como classe `axxa-bg-<id>` na .axxa-root. */
+  background: string;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -61,6 +64,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   chatsPath: "axxa-ai/chats",
   skillsPath: "axxa-ai/skills",
   language: "pt-br",
+  background: "none",
 };
 
 export default class AxxaPlugin extends Plugin {

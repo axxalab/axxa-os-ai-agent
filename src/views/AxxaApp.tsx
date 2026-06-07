@@ -479,7 +479,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     <AppContext.Provider value={plugin.app}>
       <TranslationsContext.Provider value={t}>
         <ChatActionsContext.Provider value={chatActions}>
-        <div className="axxa-root">
+        <div className={"axxa-root axxa-bg-" + (plugin.settings.background || "none")}>
           <Header
             version={plugin.manifest.version}
             onOpenSettings={handleOpenSettings}

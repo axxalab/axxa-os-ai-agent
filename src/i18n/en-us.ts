@@ -149,10 +149,21 @@ export const EN_US: Translations = {
     skillsPathDesc: "Where skills are saved in the Vault (coming in Module 7)",
     comingSoon: "Coming soon",
     comingSoonItems: [
-      "Appearance (background, balloon) — Module 3",
+      "Audio recorder (mic) — Sprint E",
       "Agent Mode (file ops) — Module 6",
       "Skills management — Module 7",
       "MCP Connect (Notion, ClickUp, Figma) — Module 9",
     ],
+    appearance: "Appearance",
+    appearanceDesc:
+      "Pick a background for AXXA's interface. Subtle colors that don't hurt reading.",
+    backgroundLabels: {
+      none: "Default",
+      sunset: "Sunset",
+      ocean: "Ocean",
+      forest: "Forest",
+      violet: "Violet",
+      mono: "Mono",
+    },
   },
 };

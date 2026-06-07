@@ -1,7 +1,7 @@
 // src/components/chat/useMessageContextMenu.ts
 // Hook que retorna handlers React pra abrir o Menu nativo do Obsidian em:
 //   - Right-click (desktop)
-//   - Long-press 500ms (mobile)
+//   - Long-press 500ms (mobile) + vibração háptica de 30ms ao disparar
 //
 // Cancelar critério: dedo se move >10px OU touchend antes do timer.
 //
@@ -63,7 +63,12 @@ export function useMessageContextMenu(getItems: () => MessageMenuItem[]) {
       const t = e.touches[0];
       startRef.current = { x: t.clientX, y: t.clientY };
       timerRef.current = window.setTimeout(() => {
-        if (startRef.current) showMenu(startRef.current.x, startRef.current.y);
+        if (startRef.current) {
+          // Feedback háptico — confirma que o long-press foi reconhecido.
+          // Android nativo: vibra. iOS Safari: ignora silenciosamente.
+          navigator.vibrate?.(30);
+          showMenu(startRef.current.x, startRef.current.y);
+        }
         cancel();
       }, LONG_PRESS_MS);
     },
