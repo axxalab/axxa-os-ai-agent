@@ -16,6 +16,10 @@ interface AxxaSettings {
   defaultModel: string;
   /** Modelo usado pelo provider Anthropic (ex: claude-sonnet-4-6, claude-opus-4-8) */
   anthropicModel: string;
+  /** Modelo usado pelo OpenRouter (ex: anthropic/claude-3.5-sonnet) */
+  openrouterModel: string;
+  /** Modelo usado pelo Ollama (instalado localmente, ex: llama3.2, qwen2.5) */
+  ollamaModel: string;
   defaultMode: string;
   defaultEffort: string;
   chatsPath: string;
@@ -31,10 +35,12 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   defaultProvider: "openai",
   defaultModel: "gpt-4o",
   anthropicModel: "claude-sonnet-4-6",
+  openrouterModel: "anthropic/claude-3.5-sonnet",
+  ollamaModel: "llama3.2",
   defaultMode: "chat",
   defaultEffort: "med",
-  chatsPath: ".axxa/chats",
-  skillsPath: ".axxa/skills",
+  chatsPath: "axxa-ai/chats",
+  skillsPath: "axxa-ai/skills",
   language: "pt-br",
 };
 

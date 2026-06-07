@@ -617,10 +617,6 @@ body.is-mobile
   border-color: var(--interactive-accent);
 }
 
-.axxa-composer-pill:focus-within {
-  border-color: var(--interactive-accent);
-}
-
 /* Botão "+" interno (circular, sem fundo) */
 .axxa-composer-plus,
 .axxa-composer-plus:hover,

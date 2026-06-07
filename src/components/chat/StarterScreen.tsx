@@ -17,6 +17,8 @@ import { formatTokens } from "../_shared/contextWindows";
 const PROVIDERS = [
   { id: "openai", name: "OpenAI", icon: "sparkles" },
   { id: "anthropic", name: "Anthropic", icon: "bot" },
+  { id: "openrouter", name: "OpenRouter", icon: "shuffle" },
+  { id: "ollama", name: "Ollama", icon: "hard-drive" },
 ];
 
 const MODELS: Record<string, string[]> = {
@@ -26,6 +28,13 @@ const MODELS: Record<string, string[]> = {
     "claude-sonnet-4-6",
     "claude-haiku-4-5-20251001",
   ],
+  openrouter: [
+    "anthropic/claude-3.5-sonnet",
+    "openai/gpt-4o",
+    "meta-llama/llama-3.3-70b-instruct",
+    "google/gemini-2.0-flash-001",
+  ],
+  ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
 };
 
 interface StarterScreenProps {

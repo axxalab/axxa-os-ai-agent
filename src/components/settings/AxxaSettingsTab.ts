@@ -9,6 +9,8 @@ import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type AxxaPlugin from "../../main";
 import { openaiProvider } from "../../providers/openai";
 import { anthropicProvider } from "../../providers/anthropic";
+import { openrouterProvider } from "../../providers/openrouter";
+import { ollamaProvider } from "../../providers/ollama";
 
 type TabId = "providers" | "outros";
 
@@ -72,6 +74,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
         dropdown
           .addOption("openai", "OpenAI")
           .addOption("anthropic", "Anthropic (Claude)")
+          .addOption("openrouter", "OpenRouter")
+          .addOption("ollama", "Ollama (local)")
           .setValue(this.plugin.settings.defaultProvider)
           .onChange(async (value) => {
             this.plugin.settings.defaultProvider = value;
@@ -137,6 +141,78 @@ export class AxxaSettingsTab extends PluginSettingTab {
       },
       () => anthropicProvider.listModels(this.plugin.settings.anthropicApiKey),
       "claude-sonnet-4-6"
+    );
+
+    // ============================================================
+    // OpenRouter
+    // ============================================================
+    parent.createEl("h3", { text: "OpenRouter" });
+    parent.createEl("p", {
+      text: "Proxy multi-modelo. Modelos prefixados por provider (ex: anthropic/claude-3.5-sonnet).",
+      cls: "setting-item-description",
+    });
+
+    new Setting(parent)
+      .setName("API Key")
+      .setDesc("sk-or-... — armazenada localmente.")
+      .addText((text) => {
+        text
+          .setPlaceholder("sk-or-...")
+          .setValue(this.plugin.settings.openrouterApiKey)
+          .onChange(async (value) => {
+            this.plugin.settings.openrouterApiKey = value.trim();
+            await this.plugin.saveSettings();
+          });
+        text.inputEl.type = "password";
+        text.inputEl.autocomplete = "off";
+      });
+
+    this.createModelField(
+      parent,
+      "OpenRouter",
+      this.plugin.settings.openrouterModel,
+      async (value) => {
+        this.plugin.settings.openrouterModel =
+          value || "anthropic/claude-3.5-sonnet";
+        await this.plugin.saveSettings();
+      },
+      () => openrouterProvider.listModels(this.plugin.settings.openrouterApiKey),
+      "anthropic/claude-3.5-sonnet"
+    );
+
+    // ============================================================
+    // Ollama
+    // ============================================================
+    parent.createEl("h3", { text: "Ollama (local)" });
+    parent.createEl("p", {
+      text: "LLMs locais. Precisa do servidor Ollama rodando (https://ollama.com).",
+      cls: "setting-item-description",
+    });
+
+    new Setting(parent)
+      .setName("Endpoint")
+      .setDesc("URL do servidor Ollama (default: http://localhost:11434)")
+      .addText((text) =>
+        text
+          .setPlaceholder("http://localhost:11434")
+          .setValue(this.plugin.settings.ollamaEndpoint)
+          .onChange(async (value) => {
+            this.plugin.settings.ollamaEndpoint =
+              value.trim() || "http://localhost:11434";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    this.createModelField(
+      parent,
+      "Ollama",
+      this.plugin.settings.ollamaModel,
+      async (value) => {
+        this.plugin.settings.ollamaModel = value || "llama3.2";
+        await this.plugin.saveSettings();
+      },
+      () => ollamaProvider.listModels(this.plugin.settings.ollamaEndpoint),
+      "llama3.2"
     );
   }
 
@@ -253,9 +329,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     parent.createEl("h3", { text: "Em breve" });
     const todo = parent.createEl("ul");
-    todo.createEl("li", { text: "Effort selector (Low → Max) — Módulo 2.4" });
-    todo.createEl("li", { text: "OpenRouter e Ollama providers — Módulo 2.2" });
     todo.createEl("li", { text: "Appearance (background, balloon) — Módulo 3" });
-    todo.createEl("li", { text: "Session modal (lock provider/model/effort) — Módulo 2.1" });
+    todo.createEl("li", { text: "Vault Q&A (RAG) — Módulo 4.3" });
+    todo.createEl("li", { text: "Agent Mode (file ops) — Módulo 6" });
+    todo.createEl("li", { text: "Skills management — Módulo 7" });
   }
 }

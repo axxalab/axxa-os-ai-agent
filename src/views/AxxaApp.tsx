@@ -63,19 +63,28 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [providerSel, setProviderSel] = useState(plugin.settings.defaultProvider);
   const [openaiModelSel, setOpenaiModelSel] = useState(plugin.settings.defaultModel);
   const [anthropicModelSel, setAnthropicModelSel] = useState(plugin.settings.anthropicModel);
+  const [openrouterModelSel, setOpenrouterModelSel] = useState(plugin.settings.openrouterModel);
+  const [ollamaModelSel, setOllamaModelSel] = useState(plugin.settings.ollamaModel);
   const [effort, setEffort] = useState(plugin.settings.defaultEffort);
   const [plusOpen, setPlusOpen] = useState(false);
   const [recentChats, setRecentChats] = useState<ChatSummary[]>([]);
 
+  // Mapeia provider id → modelo correspondente
+  const modelFor = (providerId: string): string => {
+    switch (providerId) {
+      case "anthropic": return anthropicModelSel;
+      case "openrouter": return openrouterModelSel;
+      case "ollama": return ollamaModelSel;
+      default: return openaiModelSel;
+    }
+  };
+
   const activeProviderId = sessionProvider ?? providerSel;
   const activeProvider = getProvider(activeProviderId);
-  const activeModel =
-    sessionModel ??
-    (activeProviderId === "anthropic" ? anthropicModelSel : openaiModelSel);
+  const activeModel = sessionModel ?? modelFor(activeProviderId);
   const isLocked = sessionProvider !== null;
 
-  const starterModel =
-    providerSel === "anthropic" ? anthropicModelSel : openaiModelSel;
+  const starterModel = modelFor(providerSel);
 
   // ============================================================
   // Carrega lista de chats recentes quando chat tá vazio
@@ -181,10 +190,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           })),
       ];
 
-      const apiKey =
-        activeProviderId === "anthropic"
-          ? plugin.settings.anthropicApiKey
-          : plugin.settings.openaiApiKey;
+      // Para Ollama, "apiKey" carrega o endpoint (provider trata como URL)
+      let apiKey: string;
+      switch (activeProviderId) {
+        case "anthropic":
+          apiKey = plugin.settings.anthropicApiKey;
+          break;
+        case "openrouter":
+          apiKey = plugin.settings.openrouterApiKey;
+          break;
+        case "ollama":
+          apiKey = plugin.settings.ollamaEndpoint;
+          break;
+        default:
+          apiKey = plugin.settings.openaiApiKey;
+      }
 
       await activeProvider.streamChat(
         {
@@ -262,12 +282,22 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   };
 
   const handleStarterModel = async (m: string) => {
-    if (providerSel === "anthropic") {
-      setAnthropicModelSel(m);
-      plugin.settings.anthropicModel = m;
-    } else {
-      setOpenaiModelSel(m);
-      plugin.settings.defaultModel = m;
+    switch (providerSel) {
+      case "anthropic":
+        setAnthropicModelSel(m);
+        plugin.settings.anthropicModel = m;
+        break;
+      case "openrouter":
+        setOpenrouterModelSel(m);
+        plugin.settings.openrouterModel = m;
+        break;
+      case "ollama":
+        setOllamaModelSel(m);
+        plugin.settings.ollamaModel = m;
+        break;
+      default:
+        setOpenaiModelSel(m);
+        plugin.settings.defaultModel = m;
     }
     await plugin.saveSettings();
   };

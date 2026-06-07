@@ -113,10 +113,10 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 
 ### 2.2 Providers adicionais
 - ✅ `providers/anthropic.ts` — Claude models (chat + streamChat via fetch SSE; x-api-key + anthropic-version + anthropic-dangerous-direct-browser-access)
-- ⬜ `providers/openrouter.ts` — proxy multi-model
-- ⬜ `providers/ollama.ts` — local LLM
+- ✅ `providers/openrouter.ts` — proxy multi-model (OpenAI-compatible; bearer auth + HTTP-Referer + X-Title; listModels filtra free/auto)
+- ✅ `providers/ollama.ts` — local LLM (NDJSON streaming via /api/chat, listModels via /api/tags, sem auth)
 - ✅ `providers/base.ts` — interface comum (chat + streamChat obrigatórios)
-- ✅ `providers/index.ts` — registry + getProvider(id)
+- ✅ `providers/index.ts` — registry + getProvider(id) com 4 providers registrados
 
 ### 2.3 Obsidian Settings Tab
 - ⬜ `AxxaSettingsTab.ts` registrado no Obsidian
