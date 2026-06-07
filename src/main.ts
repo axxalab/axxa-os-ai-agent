@@ -20,6 +20,10 @@ interface AxxaSettings {
   openrouterModel: string;
   /** Modelo usado pelo Ollama (instalado localmente, ex: llama3.2, qwen2.5) */
   ollamaModel: string;
+  /** Modelos ativos por provider — só esses aparecem no seletor da StarterScreen.
+   *  Curado pelo user nas Settings (manual + fetch da API). Permite incluir
+   *  modelos legacy que não aparecem no /v1/models moderno. */
+  activeModels: Record<string, string[]>;
   defaultMode: string;
   defaultEffort: string;
   chatsPath: string;
@@ -37,6 +41,21 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   anthropicModel: "claude-sonnet-4-6",
   openrouterModel: "anthropic/claude-3.5-sonnet",
   ollamaModel: "llama3.2",
+  activeModels: {
+    openai: ["gpt-4o", "gpt-4o-mini", "o1", "o3", "gpt-5"],
+    anthropic: [
+      "claude-opus-4-8",
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5-20251001",
+    ],
+    openrouter: [
+      "anthropic/claude-3.5-sonnet",
+      "openai/gpt-4o",
+      "meta-llama/llama-3.3-70b-instruct",
+      "google/gemini-2.0-flash-001",
+    ],
+    ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
+  },
   defaultMode: "chat",
   defaultEffort: "med",
   chatsPath: "axxa-ai/chats",
@@ -130,7 +149,14 @@ export default class AxxaPlugin extends Plugin {
 
   async loadSettings() {
     // loadData() lê do arquivo do plugin no vault — substitui localStorage.
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const saved = (await this.loadData()) ?? {};
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, saved);
+    // Object.assign é shallow — pra activeModels (Record por provider),
+    // mescla por provider: providers não tocados pelo user mantêm defaults.
+    this.settings.activeModels = {
+      ...DEFAULT_SETTINGS.activeModels,
+      ...(saved.activeModels ?? {}),
+    };
   }
 
   async saveSettings() {

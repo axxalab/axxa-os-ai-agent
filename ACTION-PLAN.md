@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.2+3.3 parciais), 4 🟡 (4.1+4.2+4.3 ✅) · próximo: Módulo 3 — UI de Produção  
-> **Versão:** 1.0 · plugin em v0.1.18  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅ (+modelos ativos), 3 🟡 (3.2+3.3 parciais), 4 🟡 (4.1+4.2+4.3 ✅) · próximo: Módulo 3 — UI de Produção  
+> **Versão:** 1.0 · plugin em v0.1.19  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -124,6 +124,7 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Ollama endpoint configurável + listModels via `/api/tags`
 - ✅ Defaults: provider (dropdown 4 opções), model (por provider), effort (placeholder via PlusModal), mode (via StarterScreen)
 - ✅ Vault paths (chatsPath, skillsPath na tab Outros)
+- ✅ **Modelos ativos por provider** — curadoria de qual modelo aparece no seletor da StarterScreen. Pills removíveis + input manual (suporta legacy) + "Buscar API" com checkboxes (v0.1.19)
 - ⬜ Seção Appearance (background, balloon style) — Módulo 3
 
 ### 2.4 Effort Selector
@@ -387,6 +388,9 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | `.axxa-chat-area-wrapper` precisa `flex-direction:column` | Sem isso, chat-area sem altura constraint quebra layout (composer some). Bug recorrente — fixado em v0.1.17 |
 | 07/06/2026 | Placeholder via `Compartment` do CodeMirror (v0.1.18) | Reconfigura placeholder sem destruir o editor — usuário não perde texto ao trocar de modo. Helper `placeholderForMode(mode)` no AxxaApp. |
 | 07/06/2026 | Copy button em code blocks via DOM post-process (v0.1.18) | MarkdownRenderer não tem hook de "afterRender" pra blocos específicos. Solução: aguardar Promise do render e fazer `querySelectorAll("pre")` injetando o botão. Idempotente (`:scope > .axxa-code-copy` check). |
+| 07/06/2026 | `output/` removido do `.gitignore` (v0.1.19) | Os 3 arquivos do build (`main.js`, `manifest.json`, `styles.css`) já eram tracked. Alinhar o gitignore com a realidade evita warnings em todo commit. |
+| 07/06/2026 | Composer info chips com truncate + tamanho reduzido (v0.1.19) | Nomes longos de modelo (ex: `anthropic/claude-3.5-sonnet-20241022`) estouravam a largura. Solução: `max-width:100%` + `min-width:0` + `text-overflow:ellipsis` no `<span>` interno, font 11→10px, ícones 12→11px. |
+| 07/06/2026 | `activeModels: Record<string, string[]>` nas Settings (v0.1.19) | Lista curada por provider — sai do hardcoded MODELS na StarterScreen e vira config do user. Permite incluir legacy (gpt-3.5-turbo, claude-2.1) e evita rolar lista gigante do fetch. `loadSettings` faz merge per-provider pra preservar defaults nos providers não tocados. |
 
 ---
 

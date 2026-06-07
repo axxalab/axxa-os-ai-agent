@@ -21,28 +21,15 @@ const PROVIDERS = [
   { id: "ollama", name: "Ollama", icon: "hard-drive" },
 ];
 
-const MODELS: Record<string, string[]> = {
-  openai: ["gpt-4o", "gpt-4o-mini", "o1", "o3", "gpt-5"],
-  anthropic: [
-    "claude-opus-4-8",
-    "claude-sonnet-4-6",
-    "claude-haiku-4-5-20251001",
-  ],
-  openrouter: [
-    "anthropic/claude-3.5-sonnet",
-    "openai/gpt-4o",
-    "meta-llama/llama-3.3-70b-instruct",
-    "google/gemini-2.0-flash-001",
-  ],
-  ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
-};
-
 interface StarterScreenProps {
   provider: string;
   model: string;
   effort: string;
   mode: string;
   recentChats: ChatSummary[];
+  /** Modelos ativos por provider — curado pelo user nas Settings.
+   *  Substitui a lista hardcoded antiga: agora é o user que define o que aparece aqui. */
+  activeModels: Record<string, string[]>;
   onProviderChange: (provider: string) => void;
   onModelChange: (model: string) => void;
   onEffortChange: (level: EffortLevel) => void;
@@ -80,13 +67,14 @@ export function StarterScreen({
   effort,
   mode,
   recentChats,
+  activeModels,
   onProviderChange,
   onModelChange,
   onEffortChange,
   onModeChange,
   onLoadChat,
 }: StarterScreenProps) {
-  const modelOptions = MODELS[provider] ?? [];
+  const modelOptions = activeModels[provider] ?? [];
 
   return (
     <div className="axxa-starter">

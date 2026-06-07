@@ -411,6 +411,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             effort={effort}
             mode={mode}
             recentChats={recentChats}
+            activeModels={plugin.settings.activeModels}
             onProviderChange={handleStarterProvider}
             onModelChange={handleStarterModel}
             onEffortChange={handleSelectEffort}

@@ -21,8 +21,8 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
-# Build output (vai pro Vault local, não pro git)
-output/
+# Build output — TRACKED no git (necessário pra distribuição do plugin)
+# Não ignorar: output/main.js, output/manifest.json, output/styles.css
 
 # Config local (vault path do dev, etc.)
 .axxa.local.json

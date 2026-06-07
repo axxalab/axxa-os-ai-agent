@@ -113,6 +113,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "gpt-4o"
     );
 
+    this.createActiveModelsField(
+      parent,
+      "OpenAI",
+      "openai",
+      () => openaiProvider.listModels(this.plugin.settings.openaiApiKey),
+      "gpt-3.5-turbo"
+    );
+
     // Anthropic
     parent.createEl("h3", { text: "Anthropic (Claude)" });
 
@@ -141,6 +149,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       },
       () => anthropicProvider.listModels(this.plugin.settings.anthropicApiKey),
       "claude-sonnet-4-6"
+    );
+
+    this.createActiveModelsField(
+      parent,
+      "Anthropic",
+      "anthropic",
+      () => anthropicProvider.listModels(this.plugin.settings.anthropicApiKey),
+      "claude-2.1"
     );
 
     // ============================================================
@@ -180,6 +196,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "anthropic/claude-3.5-sonnet"
     );
 
+    this.createActiveModelsField(
+      parent,
+      "OpenRouter",
+      "openrouter",
+      () => openrouterProvider.listModels(this.plugin.settings.openrouterApiKey),
+      "openai/gpt-3.5-turbo"
+    );
+
     // ============================================================
     // Ollama
     // ============================================================
@@ -213,6 +237,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       },
       () => ollamaProvider.listModels(this.plugin.settings.ollamaEndpoint),
       "llama3.2"
+    );
+
+    this.createActiveModelsField(
+      parent,
+      "Ollama",
+      "ollama",
+      () => ollamaProvider.listModels(this.plugin.settings.ollamaEndpoint),
+      "llama2"
     );
   }
 
@@ -276,6 +308,170 @@ export class AxxaSettingsTab extends PluginSettingTab {
           }
         })
     );
+  }
+
+  /**
+   * Seção "Modelos ativos" — lista curada de modelos que aparecem no
+   * seletor da StarterScreen. Permite:
+   *   - Remover modelos existentes (pills com X)
+   *   - Adicionar manualmente (útil pra legacy: gpt-3.5-turbo, claude-2.1, etc)
+   *   - Buscar da API e marcar via checkboxes (sem precisar rolar lista gigante)
+   */
+  private createActiveModelsField(
+    parent: HTMLElement,
+    providerLabel: string,
+    providerId: string,
+    fetchModels: () => Promise<string[]>,
+    placeholderExample: string
+  ) {
+    const section = parent.createDiv({ cls: "axxa-active-models-section" });
+
+    new Setting(section)
+      .setName("Modelos ativos")
+      .setDesc(
+        `Quais modelos do ${providerLabel} aparecem no seletor da tela inicial. ` +
+          `Adicione manualmente pra incluir modelos legacy.`
+      );
+
+    // Lista de pills (modelos ativos)
+    const listEl = section.createDiv({ cls: "axxa-active-models-list" });
+
+    const renderList = () => {
+      listEl.empty();
+      const models = this.plugin.settings.activeModels[providerId] ?? [];
+      if (models.length === 0) {
+        listEl.createEl("p", {
+          text: "Nenhum modelo ativo. Adicione abaixo.",
+          cls: "axxa-active-models-empty",
+        });
+        return;
+      }
+      models.forEach((m) => {
+        const pill = listEl.createDiv({ cls: "axxa-active-model-pill" });
+        pill.createSpan({ text: m, cls: "axxa-active-model-name" });
+        const removeBtn = pill.createEl("button", {
+          cls: "axxa-active-model-remove",
+          text: "×",
+          attr: {
+            "aria-label": `Remover ${m}`,
+            title: "Remover",
+            type: "button",
+          },
+        });
+        removeBtn.onclick = async () => {
+          const list = this.plugin.settings.activeModels[providerId] ?? [];
+          const idx = list.indexOf(m);
+          if (idx >= 0) {
+            list.splice(idx, 1);
+            this.plugin.settings.activeModels[providerId] = list;
+            await this.plugin.saveSettings();
+            renderList();
+          }
+        };
+      });
+    };
+    renderList();
+
+    // Row: input + "Adicionar" + "Buscar da API"
+    const addRow = section.createDiv({ cls: "axxa-active-models-add" });
+    const input = addRow.createEl("input", {
+      type: "text",
+      placeholder: `ex: ${placeholderExample}`,
+      cls: "axxa-active-models-input",
+    });
+    const addBtn = addRow.createEl("button", {
+      text: "Adicionar",
+      cls: "axxa-active-models-add-btn",
+      attr: { type: "button" },
+    });
+    const fetchBtn = addRow.createEl("button", {
+      text: "Buscar da API",
+      cls: "axxa-active-models-fetch-btn",
+      attr: { type: "button" },
+    });
+
+    const doAdd = async () => {
+      const v = input.value.trim();
+      if (!v) return;
+      const list = this.plugin.settings.activeModels[providerId] ?? [];
+      if (list.includes(v)) {
+        new Notice(`"${v}" já está na lista.`);
+        return;
+      }
+      list.push(v);
+      this.plugin.settings.activeModels[providerId] = list;
+      await this.plugin.saveSettings();
+      input.value = "";
+      renderList();
+      new Notice(`Modelo "${v}" adicionado.`);
+    };
+    addBtn.onclick = doAdd;
+    input.onkeydown = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        doAdd();
+      }
+    };
+
+    // Área onde aparece a lista de checkboxes após "Buscar da API"
+    const checkboxesEl = section.createDiv({ cls: "axxa-active-models-checkboxes" });
+
+    fetchBtn.onclick = async () => {
+      fetchBtn.setAttr("disabled", "true");
+      const originalText = fetchBtn.textContent ?? "Buscar da API";
+      fetchBtn.textContent = "Buscando...";
+      try {
+        const fetched = await fetchModels();
+        if (!fetched.length) {
+          new Notice(`Nenhum modelo retornado pelo ${providerLabel}.`);
+          return;
+        }
+        checkboxesEl.empty();
+        checkboxesEl.createEl("p", {
+          text: `${fetched.length} modelos disponíveis. Marque os que devem aparecer no seletor:`,
+          cls: "axxa-active-models-checkboxes-head",
+        });
+        fetched.forEach((m) => {
+          const row = checkboxesEl.createDiv({
+            cls: "axxa-active-models-checkbox-row",
+          });
+          const cb = row.createEl("input", {
+            type: "checkbox",
+            cls: "axxa-active-models-checkbox",
+          });
+          cb.checked = (
+            this.plugin.settings.activeModels[providerId] ?? []
+          ).includes(m);
+          row.createSpan({ text: m });
+          cb.onchange = async () => {
+            const current =
+              this.plugin.settings.activeModels[providerId] ?? [];
+            if (cb.checked && !current.includes(m)) {
+              current.push(m);
+            } else if (!cb.checked) {
+              const idx = current.indexOf(m);
+              if (idx >= 0) current.splice(idx, 1);
+            }
+            this.plugin.settings.activeModels[providerId] = current;
+            await this.plugin.saveSettings();
+            renderList();
+          };
+          row.onclick = (e: MouseEvent) => {
+            // Clicar na linha (fora do checkbox) também alterna
+            if (e.target !== cb) {
+              cb.checked = !cb.checked;
+              cb.dispatchEvent(new Event("change"));
+            }
+          };
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erro desconhecido";
+        new Notice(`Falha ao buscar modelos: ${msg}`);
+      } finally {
+        fetchBtn.removeAttribute("disabled");
+        fetchBtn.textContent = originalText;
+      }
+    };
   }
 
   // ============================================================
