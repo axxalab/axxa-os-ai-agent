@@ -681,17 +681,27 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private renderRagSection(parent: HTMLElement, t: Translations) {
     const section = parent.createDiv({ cls: "axxa-rag-section" });
 
-    // ---- Provider dropdown (só openai por enquanto) ----
+    // ---- Provider dropdown ----
     new Setting(section)
       .setName(t.settings.ragProvider)
       .setDesc(t.settings.ragProviderDesc)
       .addDropdown((dd) =>
         dd
-          .addOption("openai", "OpenAI")
+          .addOption("openai", "OpenAI (texto)")
+          .addOption("openrouter", "OpenRouter (multimodal free)")
           .setValue(this.plugin.settings.ragEmbeddingProvider)
           .onChange(async (value) => {
             this.plugin.settings.ragEmbeddingProvider = value;
+            // Quando troca provider, escolhe automaticamente o 1º model dele
+            // (senão fica modelo openai com provider openrouter — inválido)
+            const firstModel = EMBEDDING_MODELS.find(
+              (m) => m.provider === value
+            );
+            if (firstModel) {
+              this.plugin.settings.ragEmbeddingModel = firstModel.model;
+            }
             await this.plugin.saveSettings();
+            this.display();
           })
       );
 
@@ -703,7 +713,19 @@ export class AxxaSettingsTab extends PluginSettingTab {
         EMBEDDING_MODELS.filter(
           (m) => m.provider === this.plugin.settings.ragEmbeddingProvider
         ).forEach((m) => {
-          dd.addOption(m.model, `${m.model} (${m.dim}d, $${m.pricePerMillion}/M)`);
+          // Label: model + dim + price + badges (free / multimodal)
+          const badges: string[] = [];
+          if (m.free) badges.push("FREE");
+          if (m.supportsImage) badges.push("🖼️");
+          const badgeStr = badges.length > 0 ? ` [${badges.join(" ")}]` : "";
+          const priceStr =
+            m.pricePerMillion === 0
+              ? ""
+              : ` · $${m.pricePerMillion}/M`;
+          dd.addOption(
+            m.model,
+            `${m.model} (${m.dim}d${priceStr})${badgeStr}`
+          );
         });
         dd.setValue(this.plugin.settings.ragEmbeddingModel).onChange(
           async (value) => {
@@ -809,10 +831,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
     statsEl: HTMLElement,
     t: Translations
   ) {
-    const apiKey = this.plugin.settings.openaiApiKey;
-    if (!apiKey || !apiKey.trim()) {
-      new Notice(t.settings.ragNoApiKey);
-      return;
+    // Valida API key correta com base no provider do modelo escolhido
+    const modelSpec = EMBEDDING_MODELS.find(
+      (m) => m.model === this.plugin.settings.ragEmbeddingModel
+    );
+    if (modelSpec?.provider === "openrouter") {
+      if (!this.plugin.settings.openrouterApiKey.trim()) {
+        new Notice(t.settings.ragNoOpenRouterKey);
+        return;
+      }
+    } else {
+      if (!this.plugin.settings.openaiApiKey.trim()) {
+        new Notice(t.settings.ragNoApiKey);
+        return;
+      }
     }
 
     // Desabilita botões durante indexação, habilita cancelamento
@@ -844,21 +876,30 @@ export class AxxaSettingsTab extends PluginSettingTab {
         const pct = p.filesTotal > 0 ? (p.filesScanned / p.filesTotal) * 50 : 0;
         progressFill.style.width = `${pct}%`;
       } else if (p.phase === "embedding") {
-        progressLabel.textContent = t.settings.ragIndexingPhaseEmbedding(
-          p.filesEmbedded,
-          p.filesToEmbed,
-          p.chunksEmbedded
-        );
+        // Mostra imagens separadas pra ficar claro o que tá rolando
+        const imgPart =
+          p.imagesEmbedded > 0 ? ` · 🖼️ ${p.imagesEmbedded}` : "";
+        progressLabel.textContent =
+          t.settings.ragIndexingPhaseEmbedding(
+            p.filesEmbedded,
+            p.filesToEmbed,
+            p.chunksEmbedded
+          ) + imgPart;
         const pct =
           p.filesToEmbed > 0
             ? 50 + (p.filesEmbedded / p.filesToEmbed) * 50
             : 100;
         progressFill.style.width = `${pct}%`;
       } else if (p.phase === "done") {
-        progressLabel.textContent = t.settings.ragIndexingPhaseDone(
-          p.chunksEmbedded,
-          p.tokensUsed
-        );
+        const extras: string[] = [];
+        if (p.imagesEmbedded > 0)
+          extras.push(`🖼️ ${p.imagesEmbedded} imagens`);
+        if (p.audioSkipped > 0)
+          extras.push(`🎙️ ${p.audioSkipped} áudios pulados`);
+        const extra = extras.length > 0 ? ` · ${extras.join(" · ")}` : "";
+        progressLabel.textContent =
+          t.settings.ragIndexingPhaseDone(p.chunksEmbedded, p.tokensUsed) +
+          extra;
         progressFill.style.width = "100%";
       }
     };
@@ -867,7 +908,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
       const prev = fresh ? null : this.plugin.vectorIndex;
       const newIndex = await indexVault(prev, {
         app: this.plugin.app,
-        apiKey,
+        openaiApiKey: this.plugin.settings.openaiApiKey,
+        openrouterApiKey: this.plugin.settings.openrouterApiKey,
         model: this.plugin.settings.ragEmbeddingModel,
         indexPath: this.plugin.settings.ragIndexPath,
         // Não indexa pastas internas do AXXA pra não poluir o vetor

@@ -1,15 +1,60 @@
 // src/rag/embeddings.ts
-// Wrapper das APIs de embedding. MVP: só OpenAI text-embedding-3-{small,large}.
-// Ollama (nomic-embed-text local) vem em v0.1.26+.
+// Wrapper das APIs de embedding.
+//
+// Providers suportados:
+//   - openai: text-embedding-3-{small,large} — texto only
+//   - openrouter: nvidia/llama-nemotron-embed-vl-1b-v2:free — TEXTO + IMAGEM (free)
+//
+// Router `embedItems()` despacha pra função correta com base em getEmbeddingSpec().
+// Embedding de áudio NÃO é suportado por nenhum desses (modelos VL, não VLA) —
+// pra áudio precisaria pipeline Whisper → texto → embed.
 
 import { requestUrl } from "obsidian";
 import { ProviderError } from "../providers/base";
+import { getEmbeddingSpec } from "./types";
 
 const OPENAI_EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings";
+const OPENROUTER_EMBEDDINGS_ENDPOINT =
+  "https://openrouter.ai/api/v1/embeddings";
 
 interface OpenAIEmbeddingResponse {
   data: { embedding: number[]; index: number }[];
   usage: { prompt_tokens: number; total_tokens: number };
+}
+
+// ============================================================
+// EmbedInput — input unificado: texto ou imagem (data URL)
+// ============================================================
+
+/** Input pra embedding — texto puro OU imagem (como data URL base64). */
+export type EmbedInput =
+  | { kind: "text"; text: string }
+  | { kind: "image"; dataUrl: string; alt?: string };
+
+/** API keys necessárias (passamos juntas pra rota escolher). */
+export interface EmbedCredentials {
+  openaiApiKey: string;
+  openrouterApiKey: string;
+}
+
+/**
+ * Converte ArrayBuffer de imagem em data URL base64 (`data:image/png;base64,...`).
+ * Usado pelo indexer pra mandar imagem binária via JSON.
+ */
+export function arrayBufferToDataUrl(
+  buffer: ArrayBuffer,
+  mimeType: string
+): string {
+  // btoa não aceita string com bytes >127 direto — convertemos pelo Uint8Array.
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000; // 32K — evita stack overflow com strings gigantes
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, Array.from(chunk));
+  }
+  const b64 = btoa(binary);
+  return `data:${mimeType};base64,${b64}`;
 }
 
 /**
@@ -86,6 +131,162 @@ export async function embedText(
   model?: string
 ): Promise<number[]> {
   const [vec] = await embedBatch([text], apiKey, model);
+  return vec;
+}
+
+// ============================================================
+// OpenRouter (Nemotron VL) — multimodal: texto + imagem
+// ============================================================
+// API é OpenAI-compatible mas aceita também o formato multimodal:
+//   { input: [{ type: "text"|"image_url", ... }] } ou { input: "text simples" }
+// Nemotron VL devolve embeddings com dim=2048.
+
+interface OpenRouterEmbeddingResponse {
+  data: { embedding: number[]; index: number }[];
+  usage?: { prompt_tokens?: number; total_tokens?: number };
+}
+
+/** Constrói o body do OpenRouter pra UM input (texto ou imagem). */
+function buildOpenRouterInputItem(item: EmbedInput): unknown {
+  if (item.kind === "text") {
+    // OpenAI-style: input pode ser string simples
+    return item.text;
+  }
+  // Imagem: usa o formato multimodal de content array
+  return [
+    {
+      type: "image_url",
+      image_url: { url: item.dataUrl },
+    },
+  ];
+}
+
+/**
+ * Embeda um batch via OpenRouter (Nemotron VL multimodal).
+ * IMPORTANTE: OpenRouter pode não aceitar batches mistos texto/imagem no
+ * mesmo request. Pra simplicidade, mandamos 1 request por item — slower mas
+ * confiável. Otimização (batch homogêneo) vem se isso for gargalo.
+ */
+export async function embedBatchOpenRouter(
+  items: EmbedInput[],
+  apiKey: string,
+  model: string
+): Promise<number[][]> {
+  if (!apiKey || !apiKey.trim()) {
+    throw new ProviderError(
+      "API key do OpenRouter não configurada. Necessária pra embeddings VL (multimodal).",
+      "no-key"
+    );
+  }
+  if (items.length === 0) return [];
+
+  const results: number[][] = [];
+  for (const item of items) {
+    const body = {
+      model,
+      input: buildOpenRouterInputItem(item),
+    };
+    let res;
+    try {
+      res = await requestUrl({
+        url: OPENROUTER_EMBEDDINGS_ENDPOINT,
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://axxa.lab",
+          "X-Title": "AXXA OS",
+        },
+        body: JSON.stringify(body),
+        throw: false,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro de rede.";
+      throw new ProviderError(
+        `Falha ao chamar OpenRouter embeddings: ${msg}`,
+        "network"
+      );
+    }
+
+    if (res.status === 401) {
+      throw new ProviderError(
+        "API key do OpenRouter inválida.",
+        "invalid-key"
+      );
+    }
+    if (res.status === 429) {
+      throw new ProviderError(
+        "Rate limit do OpenRouter excedido (modelos :free têm limites apertados). Aguarde e tente de novo.",
+        "rate-limit"
+      );
+    }
+    if (res.status >= 400) {
+      throw new ProviderError(
+        `OpenRouter embeddings retornou ${res.status}: ${res.text?.slice(0, 300) ?? ""}`,
+        "unknown"
+      );
+    }
+
+    let parsed: OpenRouterEmbeddingResponse;
+    try {
+      parsed = res.json as OpenRouterEmbeddingResponse;
+    } catch {
+      throw new ProviderError(
+        "Resposta de OpenRouter embeddings inválida.",
+        "unknown"
+      );
+    }
+    if (!parsed.data || parsed.data.length === 0) {
+      throw new ProviderError(
+        "OpenRouter embeddings devolveu data vazio.",
+        "unknown"
+      );
+    }
+    results.push(parsed.data[0].embedding);
+  }
+  return results;
+}
+
+// ============================================================
+// Router unificado: embedItems
+// ============================================================
+// Escolhe a função correta com base no spec do modelo:
+//   - openai → embedBatch (texto only, batch nativo)
+//   - openrouter → embedBatchOpenRouter (multimodal, 1 request por item)
+//
+// Se o modelo NÃO suporta imagem mas o batch tem imagem, dá erro claro.
+
+/** Embeda items (texto e/ou imagem) usando o provider do modelo. */
+export async function embedItems(
+  items: EmbedInput[],
+  creds: EmbedCredentials,
+  model: string
+): Promise<number[][]> {
+  const spec = getEmbeddingSpec(model);
+  const hasImage = items.some((i) => i.kind === "image");
+
+  if (hasImage && !spec.supportsImage) {
+    throw new ProviderError(
+      `O modelo ${model} não suporta embeddings de imagem. Use nvidia/llama-nemotron-embed-vl-1b-v2:free (OpenRouter, free) pra multimodal.`,
+      "unknown"
+    );
+  }
+
+  if (spec.provider === "openrouter") {
+    return embedBatchOpenRouter(items, creds.openrouterApiKey, model);
+  }
+  // OpenAI path — extrai só os textos
+  const texts = items.map((i) => (i.kind === "text" ? i.text : ""));
+  return embedBatch(texts, creds.openaiApiKey, model);
+}
+
+/** Helper: embeda 1 texto usando o provider do modelo. */
+export async function embedQuery(
+  text: string,
+  creds: EmbedCredentials,
+  model: string
+): Promise<number[]> {
+  const [vec] = await embedItems([{ kind: "text", text }], creds, model);
   return vec;
 }
 

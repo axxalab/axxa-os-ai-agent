@@ -39,7 +39,7 @@ import {
 } from "../components/_shared/chatPersistence";
 import { searchVault, buildVaultContext } from "../components/_shared/vaultSearch";
 import { ensureFolder } from "../components/_shared/chatPersistence";
-import { embedText } from "../rag/embeddings";
+import { embedQuery } from "../rag/embeddings";
 import type { ChatMessage, UserMessage, AIResponseMessage } from "../store/chat";
 
 interface AxxaAppProps {
@@ -228,10 +228,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
       try {
         if (useRag) {
-          // RAG path: embed query + cosine search
-          const queryVec = await embedText(
+          // RAG path: embed query (router escolhe provider OpenAI/OpenRouter)
+          const queryVec = await embedQuery(
             userText,
-            plugin.settings.openaiApiKey,
+            {
+              openaiApiKey: plugin.settings.openaiApiKey,
+              openrouterApiKey: plugin.settings.openrouterApiKey,
+            },
             plugin.vectorIndex!.model
           );
           const results = plugin.vectorIndex!.search(queryVec, topK, 0.3);

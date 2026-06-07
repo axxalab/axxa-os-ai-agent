@@ -191,10 +191,11 @@ export const PT_BR = {
     ragDesc:
       "Busca semântica nas suas notas usando embeddings. Sem isso, o modo Vault Q&A usa busca keyword (mais rápido, menos preciso).",
     ragProvider: "Provider de embedding",
-    ragProviderDesc: "Qual API gera os vetores. OpenAI é o único suportado no MVP.",
+    ragProviderDesc:
+      "OpenAI = texto only (pago). OpenRouter Nemotron VL = texto + imagem (free, rate limit apertado).",
     ragModel: "Modelo de embedding",
     ragModelDesc:
-      "small = barato e rápido (1536 dim, $0.02/M tokens). large = mais preciso (3072 dim, $0.13/M).",
+      "Badges: [FREE] sem custo, [🖼️] aceita imagens. Áudio não é suportado por nenhum modelo VL — pra áudio precisaria Whisper API (sprint próprio).",
     ragIndexPath: "Pasta do índice",
     ragIndexPathDesc:
       "Onde o arquivo de embeddings (.json) é salvo no Vault.",
@@ -219,7 +220,9 @@ export const PT_BR = {
     ragIndexingCancelled: "Indexação cancelada.",
     ragIndexingFailed: (msg: string) => `Falha na indexação: ${msg}`,
     ragNoApiKey:
-      "API key da OpenAI não configurada. Vá em Settings → OpenAI primeiro.",
+      "API key da OpenAI não configurada. Vá em Settings → Providers → OpenAI primeiro.",
+    ragNoOpenRouterKey:
+      "API key do OpenRouter não configurada. Vá em Settings → Providers → OpenRouter primeiro.",
     ragClearConfirm:
       "Tem certeza? Isso apaga o índice. Você vai precisar reindexar pra usar Vault Q&A com embeddings de novo.",
   },

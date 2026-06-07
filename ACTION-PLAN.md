@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG MVP + **v0.1.26 UX polish** (alpha adiado pra v0.3) · próximo: Sprint G — Agent Mode (6.1+6.2)  
-> **Versão:** 1.0 · plugin em v0.1.26  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG **multimodal** (texto + imagem) · próximo: Sprint G — Agent Mode (6.1+6.2)  
+> **Versão:** 1.0 · plugin em v0.1.27  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -289,15 +289,19 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ⬜ Syntax highlighting no output
 - ⬜ Suporte a: .ts, .js, .py, .css, .json, .md com código
 
-### 6.4 Vault Q&A com RAG real ✅ MVP (v0.1.25)
+### 6.4 Vault Q&A com RAG real ✅ Multimodal (v0.1.25 + v0.1.27)
 - 🟡 LanceDB integrado localmente → adiado pra v0.2.x. MVP usa **cosine similarity em memória + JSON persistido** no vault (suporta ~10k chunks, fast enough)
-- ✅ **Indexação incremental** — hash SHA-1 por arquivo, só re-embeda o que mudou. Botão "Indexar vault" + "Reindexar (do zero)" + "Limpar índice" em Settings → Outros
+- ✅ **Indexação incremental** — hash SHA-1 por arquivo, só re-embeda o que mudou. Botão "Indexar vault" + "Reindexar (do zero)" + "Limpar índice"
 - ✅ **Embeddings via OpenAI** — text-embedding-3-small (1536d, $0.02/M) e text-embedding-3-large (3072d, $0.13/M). Batch de 16 chunks por API call
-- ⬜ Embeddings via Ollama (nomic-embed-text local) — v0.1.26+
+- ✅ **Embeddings multimodal via OpenRouter** — `nvidia/llama-nemotron-embed-vl-1b-v2:free` (2048d, **FREE**). Texto + imagem (png/jpg/jpeg/webp/gif). v0.1.27
+- ⬜ Embeddings via Ollama (nomic-embed-text local) — futuro
+- ⬜ Áudio embedding — requer pipeline Whisper (transcrição) → texto → embed. Sprint próprio (Whisper API ou whisper.cpp local)
 - ✅ Pasta de indexação configurável (`axxa-ai/index/embeddings.json` default)
 - ✅ **Chunking por parágrafo** com overlap (1500 chars/chunk, 200 overlap)
+- ✅ **Imagens: 1 entry por arquivo** (sem chunking), preserva filename como text pro display
 - ✅ **Integração no Vault Q&A** — quando índice tem entries, embed query → cosine search → top K chunks como contexto. Senão fallback pra keyword
-- ✅ **Progress UI** — barra animada + label "Escaneando 145/523" → "Indexando: 87/145 arquivos · 312 chunks" → "Concluído. ~24500 tokens" + botão cancelar
+- ✅ **Router `embedItems`** — escolhe provider/endpoint baseado no spec do modelo. OpenAI = batch nativo, OpenRouter Nemotron = 1 request por item
+- ✅ **Progress UI** — barra + label com contadores separados: "Indexando: 87/145 arquivos · 312 chunks · 🖼️ 24" → "Concluído · 🖼️ 24 imagens · 🎙️ 3 áudios pulados"
 - ✅ **Stats no Settings** — "X chunks em Y arquivos · última: data" ou "Índice vazio". Aviso se modelo configurado ≠ modelo do índice
 
 ---
@@ -427,6 +431,10 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | UX polish (v0.1.26) — zero scroll-x | Composer CodeMirror: `overflowX: hidden` no theme + word-break:break-word + overflow-wrap:anywhere no .cm-content. CSS externo reforça com `.cm-editor` e `.cm-scroller`. Bubbles ganharam mesmo tratamento. Code blocks mantêm scroll-x exceto quando `codeWrap` no settings. |
 | 07/06/2026 | UX polish (v0.1.26) — code wrap toggle | Novo setting `codeWrap: boolean`. Quando true, `.axxa-root.axxa-code-wrap` aplica `white-space: pre-wrap` + `word-break: break-all` nos `<pre>`. Default false (preserva formatação do código). |
 | 07/06/2026 | UX polish (v0.1.26) — StarterScreen fill | `flex: 1 1 auto` + `height: 100%` + `width: 100%` + `box-sizing: border-box`. Sem isso, com poucas recent chats a bg ficava cortada no meio. Agora ocupa 100% entre header e composer. |
+| 07/06/2026 | RAG multimodal (v0.1.27) — Nemotron VL :free no OpenRouter | `nvidia/llama-nemotron-embed-vl-1b-v2:free` (2048d, FREE). Adicionado provider `openrouter` aos types. Endpoint `https://openrouter.ai/api/v1/embeddings`. 1 request por item (sem batch nativo). Imagem via base64 data URL + content array `[{type:"image_url"}]`. |
+| 07/06/2026 | RAG multimodal (v0.1.27) — router `embedItems` | Função única que aceita `EmbedInput[]` (texto OU imagem), olha o spec do modelo e despacha pra `embedBatch` (OpenAI text) ou `embedBatchOpenRouter` (multimodal). Erro claro se modelo não-VL recebe imagem. |
+| 07/06/2026 | RAG multimodal (v0.1.27) — indexer walks imagem + skip áudio | `getFiles()` em vez de só `getMarkdownFiles()`. Filtra extensão pra png/jpg/jpeg/webp/gif. Áudio (mp3/wav/m4a/ogg/flac) detectado e contado mas pulado — modelo VL atual não embeda áudio (precisaria Whisper). |
+| 07/06/2026 | RAG multimodal (v0.1.27) — `arrayBufferToDataUrl` | Helper pra converter binário → base64 data URL em chunks de 32K (evita stack overflow do `String.fromCharCode.apply` com bytes >32K). |
 
 ---
 
