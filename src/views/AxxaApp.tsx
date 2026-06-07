@@ -15,6 +15,7 @@ import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
 import { StarterScreen } from "../components/chat/StarterScreen";
+import { ConversationsList } from "../components/chat/ConversationsList";
 import { AppContext } from "../components/_shared/AppContext";
 import {
   ChatActionsContext,
@@ -40,6 +41,7 @@ import {
 import { searchVault, buildVaultContext } from "../components/_shared/vaultSearch";
 import { ensureFolder } from "../components/_shared/chatPersistence";
 import { embedQuery } from "../rag/embeddings";
+import type { AxxaCommand } from "../components/composer/completions";
 import { TOOL_DEFINITIONS, getToolDefinition } from "../agent/toolSchemas";
 import { TOOL_REGISTRY } from "../agent/tools";
 import { evaluatePermission } from "../agent/permissions";
@@ -132,6 +134,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const currentChatId = useChatStore((s) => s.currentChatId);
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
   const abortRef = useRef<AbortController | null>(null);
+
+  // View state: chat (default) ou conversations (tela cheia de todas conversas)
+  const [view, setView] = useState<"chat" | "conversations">("chat");
+  const [allChats, setAllChats] = useState<ChatSummary[]>([]);
 
   const [providerSel, setProviderSel] = useState(plugin.settings.defaultProvider);
   const [openaiModelSel, setOpenaiModelSel] = useState(plugin.settings.defaultModel);
@@ -730,6 +736,28 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const handleNewChat = () => {
     abortRef.current?.abort();
     useChatStore.getState().newChat();
+    setView("chat");
+  };
+
+  // Carrega TODAS as conversas e abre a tela cheia
+  const handleOpenConversations = async () => {
+    try {
+      // limit alto pra trazer todas — se vault tiver 10k+ conversas isso pode
+      // pesar; nesse caso paginar fica como próximo polish
+      const all = await listChats(plugin.app, plugin.settings.chatsPath, "chat", 1000);
+      setAllChats(all);
+      setView("conversations");
+    } catch (err) {
+      console.error("[axxa] listChats (full) falhou:", err);
+      setAllChats([]);
+      setView("conversations");
+    }
+  };
+
+  // Quando user clica numa conversa da lista cheia, carrega + volta pro chat
+  const handleLoadChatFromList = async (chatId: string) => {
+    await handleLoadChat(chatId);
+    setView("chat");
   };
 
   const handlePlusClick = () => setPlusOpen(true);
@@ -804,6 +832,70 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
+  // ============================================================
+  // Slash commands — disponíveis no Composer via /comando
+  // ============================================================
+  const axxaCommands: AxxaCommand[] = [
+    {
+      id: "new",
+      label: "new",
+      description: "Nova conversa",
+      execute: () => handleNewChat(),
+    },
+    {
+      id: "clear",
+      label: "clear",
+      description: "Limpar conversa atual",
+      execute: () => useChatStore.getState().newChat(),
+    },
+    {
+      id: "regen",
+      label: "regen",
+      description: "Regenerar última resposta",
+      execute: () => {
+        const msgs = useChatStore.getState().messages;
+        const lastAI = [...msgs].reverse().find((m) => m.type === "ai-response");
+        if (lastAI) chatActions.regenerate(lastAI.id);
+      },
+    },
+    {
+      id: "stop",
+      label: "stop",
+      description: "Parar geração em andamento",
+      execute: () => handleStop(),
+    },
+    {
+      id: "conversations",
+      label: "conversations",
+      description: "Ver todas as conversas salvas",
+      execute: () => handleOpenConversations(),
+    },
+    {
+      id: "settings",
+      label: "settings",
+      description: "Abrir Configurações",
+      execute: () => handleOpenSettings(),
+    },
+    {
+      id: "mode-chat",
+      label: "mode chat",
+      description: "Trocar pro modo Chat (antes da primeira msg)",
+      execute: () => !isLocked && handleStarterMode("chat"),
+    },
+    {
+      id: "mode-vault",
+      label: "mode vault-qa",
+      description: "Trocar pro modo Vault Q&A (antes da primeira msg)",
+      execute: () => !isLocked && handleStarterMode("vault-qa"),
+    },
+    {
+      id: "mode-agent",
+      label: "mode agent",
+      description: "Trocar pro modo Agent (antes da primeira msg)",
+      execute: () => !isLocked && handleStarterMode("agent"),
+    },
+  ];
+
   return (
     <AppContext.Provider value={plugin.app}>
       <TranslationsContext.Provider value={t}>
@@ -819,8 +911,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             version={plugin.manifest.version}
             onOpenSettings={handleOpenSettings}
             onNewChat={handleNewChat}
+            onOpenConversations={handleOpenConversations}
           />
-        {isEmpty ? (
+        {view === "conversations" ? (
+          <ConversationsList
+            chats={allChats}
+            onLoadChat={handleLoadChatFromList}
+            onClose={() => setView("chat")}
+          />
+        ) : isEmpty ? (
           <StarterScreen
             provider={providerSel}
             model={starterModel}
@@ -837,22 +936,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         ) : (
           <ChatArea />
         )}
-        <Composer
-          onSend={handleSend}
-          onStop={handleStop}
-          onPlusClick={handlePlusClick}
-          streaming={isLoading}
-          providerName={activeProvider.name}
-          modelName={activeModel}
-          effort={effort}
-          tokensIn={tokensIn}
-          tokensOut={tokensOut}
-          contextUsed={lastPromptTokens}
-          locked={isLocked}
-          mode={activeMode}
-          placeholder={placeholderForMode(activeMode, t.composer)}
-          onSaveAudio={handleSaveAudio}
-        />
+        {view === "chat" && (
+          <Composer
+            onSend={handleSend}
+            onStop={handleStop}
+            onPlusClick={handlePlusClick}
+            streaming={isLoading}
+            providerName={activeProvider.name}
+            modelName={activeModel}
+            effort={effort}
+            tokensIn={tokensIn}
+            tokensOut={tokensOut}
+            contextUsed={lastPromptTokens}
+            locked={isLocked}
+            mode={activeMode}
+            placeholder={placeholderForMode(activeMode, t.composer)}
+            onSaveAudio={handleSaveAudio}
+            commands={axxaCommands}
+          />
+        )}
           {plusOpen && (
             <PlusModal
               currentEffort={effort}

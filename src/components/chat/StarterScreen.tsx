@@ -194,11 +194,11 @@ export function StarterScreen({
                 <div className="axxa-recent-title">{c.title}</div>
                 <div className="axxa-recent-meta">
                   <span>{formatRelativeDate(c.date)}</span>
-                  <span>·</span>
+                  <span className="axxa-recent-meta-dot" aria-hidden="true" />
                   <span>{c.model}</span>
-                  <span>·</span>
+                  <span className="axxa-recent-meta-dot" aria-hidden="true" />
                   <span>{c.messageCount} msgs</span>
-                  <span>·</span>
+                  <span className="axxa-recent-meta-dot" aria-hidden="true" />
                   <span>{formatTokens(c.tokensIn + c.tokensOut)} tokens</span>
                 </div>
               </button>

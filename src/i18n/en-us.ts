@@ -35,6 +35,15 @@ export const EN_US: Translations = {
   header: {
     newChat: "New conversation",
     openSettings: "Settings",
+    conversations: "Conversations",
+  },
+
+  conversations: {
+    title: "All conversations",
+    back: "Back",
+    searchPlaceholder: "Search by title, model or provider...",
+    emptyAll: "No saved conversations yet. Send your first message!",
+    emptySearch: "No conversations found for that search.",
   },
 
   starter: {

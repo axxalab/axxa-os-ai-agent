@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, 6.1+6.2 ✅ Agent + **v0.1.29 hotfixes RAG mobile** · próximo: Sprint H  
-> **Versão:** 1.0 · plugin em v0.1.29  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, 6.1+6.2 ✅ Agent + **v0.1.30 wikilinks + conversations list + UX polish** · próximo: Sprint I — Anthropic tools + agent log  
+> **Versão:** 1.0 · plugin em v0.1.30  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -454,6 +454,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Hotfix v0.1.29 — Indexer save por arquivo, não por batch | Bug crítico mobile: salvar índice (40MB JSON) a CADA batch causava OOM no WebView do Android (S23 FE crashou). Fix: SAVE_EVERY_N_FILES=25 + sempre no final. Reduz I/O em ~25x. Trade-off: durabilidade menor (perde até 25 arquivos em crash) por estabilidade. |
 | 07/06/2026 | Hotfix v0.1.29 — Per-file try-catch + skip on error | Bug: 1 arquivo com erro de embed (rate limit, payload, etc.) derrubava o resto do batch (16 chunks). Fix: try-catch por arquivo. Lista de `failedFiles[]` logada no final pra inspeção. Continua com próximo arquivo. |
 | 07/06/2026 | Hotfix v0.1.29 — Retry 429 com 3s backoff | OpenRouter free tier tem rate limit apertado. Antes: qualquer 429 jogava erro fatal. Agora: 1 retry após 3s. Se persistir, joga ProviderError clara. |
+| 07/06/2026 | Sprint H (v0.1.30) — ConversationsList tela cheia | Nova view: `view: "chat" \| "conversations"` state em AxxaApp. Botão no header (ícone `messages-square`) abre. Lista carrega `listChats(... limit: 1000)`. Filtro inline por título/model/provider. Agrupado por dia (Hoje/Ontem/data). |
+| 07/06/2026 | Sprint H (v0.1.30) — @ autocomplete wikilink no Composer | `wikilinkCompletionSource` em src/components/composer/completions.ts. Trigger `@`. Lista todas as notas (basename) + pastas. Apply insere `[[path]] `. Usa `autocompletion` extension nativa do CodeMirror — mesma engine do Quick Switcher do Obsidian. |
+| 07/06/2026 | Sprint H (v0.1.30) — / commands no Composer | 9 comandos MVP: /new /clear /regen /stop /conversations /settings /mode-chat /mode-vault-qa /mode-agent. Apply CUSTOM: dispatch limpa o texto + executa action em microtask. Não insere literal — vira UX rico (slash commands ChatGPT-style). |
+| 07/06/2026 | Sprint H (v0.1.30) — CSS polish starter + recent chats | Ícones nos buttons de provider/mode: 18px → 14px. Separador `·` virou bolinhas reais (`.axxa-recent-meta-dot`). flex-wrap + gap horizontal melhor no meta. Spacing geral mais arejado. |
+| 07/06/2026 | Sprint H (v0.1.30) — modal audit | ConfirmationModal usa `Modal` nativo do Obsidian ✅. PlusModal é bottom sheet custom (ChatGPT-style mobile) — intencional, fica como está. Decisão documentada. |
 
 ---
 

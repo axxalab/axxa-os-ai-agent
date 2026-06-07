@@ -896,10 +896,11 @@ body.theme-dark .axxa-recording-indicator {
   letter-spacing: 0.5px;
 }
 
-/* Provider buttons */
+/* Provider buttons — visual polish v0.1.30: ícones menores, mais ar */
 .axxa-starter-providers {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .axxa-starter-provider-btn,
@@ -910,20 +911,28 @@ body.theme-dark .axxa-recording-indicator {
 }
 
 .axxa-starter-provider-btn {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 70px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 10px 14px;
+  gap: 5px;
+  padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid var(--background-modifier-border) !important;
   background: var(--background-secondary) !important;
-  color: var(--text-normal);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
   font-weight: 500;
   cursor: pointer;
   min-height: 44px;
   transition: all 0.15s;
+}
+
+.axxa-starter-provider-btn .axxa-icon .svg-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .axxa-starter-provider-btn:hover {
@@ -998,7 +1007,198 @@ body.theme-dark .axxa-recording-indicator {
 .axxa-recent-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* =====================================================
+ * ConversationsList — tela cheia com TODAS as conversas
+ * Header sticky com back + título + count. Search inline.
+ * Items agrupados por dia (Hoje / Ontem / data).
+ * ===================================================== */
+
+.axxa-conversations {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.axxa-conversations-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 10px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex: 0 0 auto;
+}
+
+.axxa-conversations-back,
+.axxa-conversations-back:hover,
+.axxa-conversations-back:focus,
+.axxa-conversations-back:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-conversations-back {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.axxa-conversations-back:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover) !important;
+}
+
+.axxa-conversations-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+  min-width: 0;
+}
+
+.axxa-conversations-count {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.axxa-conversations-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 16px 0 16px;
+  padding: 8px 14px;
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.axxa-conversations-search:focus-within {
+  border-color: var(--interactive-accent);
+}
+
+.axxa-conversations-search .axxa-icon {
+  color: var(--text-faint);
+}
+
+.axxa-conversations-search .axxa-icon .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.axxa-conversations-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  padding: 0;
+  height: auto;
+}
+
+.axxa-conversations-search-clear,
+.axxa-conversations-search-clear:hover,
+.axxa-conversations-search-clear:focus,
+.axxa-conversations-search-clear:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-conversations-search-clear {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.axxa-conversations-search-clear:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover) !important;
+}
+
+.axxa-conversations-search-clear .svg-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.axxa-conversations-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 16px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.axxa-conversations-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.axxa-conversations-group-head {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-faint);
+  padding: 0 4px;
+}
+
+.axxa-conversations-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.axxa-conversations-empty .svg-icon {
+  width: 32px;
+  height: 32px;
+  opacity: 0.5;
+}
+
+.axxa-conversations-empty p {
+  margin: 0;
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
 }
 
 .axxa-recent-item,
@@ -1011,15 +1211,17 @@ body.theme-dark .axxa-recording-indicator {
 .axxa-recent-item {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 10px 14px;
+  align-items: stretch;
+  gap: 6px;
+  padding: 12px 14px;
   border-radius: 14px;
   border: 1px solid var(--background-modifier-border) !important;
   background: var(--background-secondary) !important;
   cursor: pointer;
   text-align: left;
   transition: background 0.15s, border-color 0.15s;
+  width: 100%;
+  min-width: 0;
 }
 
 .axxa-recent-item:hover {
@@ -1038,15 +1240,30 @@ body.theme-dark .axxa-recording-indicator {
   -webkit-box-orient: vertical;
   white-space: normal;
   width: 100%;
+  min-width: 0;
 }
 
 .axxa-recent-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 4px 10px;
   font-size: 10px;
   color: var(--text-faint);
+  min-width: 0;
+}
+
+.axxa-recent-meta > span {
+  white-space: nowrap;
+}
+
+/* Separador dot — vira ponto colorido mais visível */
+.axxa-recent-meta-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--text-faint);
+  opacity: 0.5;
 }
 
 /* =====================================================

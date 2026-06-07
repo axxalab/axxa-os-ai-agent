@@ -11,10 +11,17 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { EditorView, keymap, placeholder as cmPlaceholder } from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
+import { autocompletion } from "@codemirror/autocomplete";
 import { Notice, Platform } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { formatTokens, getContextWindow } from "../_shared/contextWindows";
 import { useT } from "../../i18n";
+import { useApp } from "../_shared/AppContext";
+import {
+  wikilinkCompletionSource,
+  commandCompletionSource,
+  type AxxaCommand,
+} from "./completions";
 
 function formatRecordingDuration(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -42,6 +49,8 @@ interface ComposerProps {
   placeholder?: string;
   /** Salva o áudio gravado no vault e devolve o path relativo (ou null se falhou). */
   onSaveAudio?: (blob: Blob, durationMs: number) => Promise<string | null>;
+  /** Lista de comandos /command disponíveis pro autocomplete do composer. */
+  commands?: AxxaCommand[];
 }
 
 function InfoChip({
@@ -76,8 +85,15 @@ export function Composer({
   mode = "chat",
   placeholder,
   onSaveAudio,
+  commands,
 }: ComposerProps) {
   const t = useT();
+  const app = useApp();
+  // Refs estáveis pros sources de autocomplete — o ref pra commands permite
+  // que mudanças na lista (ex: nova conversa altera estado) sejam refletidas
+  // sem recriar o editor.
+  const commandsRef = useRef<AxxaCommand[]>(commands ?? []);
+  commandsRef.current = commands ?? [];
   // Fallback se nenhum placeholder for passado — usa o default do dicionário
   const placeholderText = placeholder ?? t.composer.placeholderChat;
   const editorRef = useRef<HTMLDivElement>(null);
@@ -145,6 +161,16 @@ export function Composer({
         keymap.of(enterKey),
         EditorView.lineWrapping,
         placeholderCompartment.of(cmPlaceholder(placeholderText)),
+        // Autocomplete: @nota (wikilinks) + /comando (actions do AXXA).
+        // Sources delegam pra app e commandsRef — capturam ref live (não closure).
+        autocompletion({
+          override: [
+            wikilinkCompletionSource(app),
+            commandCompletionSource(commandsRef.current),
+          ],
+          activateOnTyping: true,
+          maxRenderedOptions: 30,
+        }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const text = update.state.doc.toString().trim();

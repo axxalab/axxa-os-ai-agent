@@ -35,6 +35,15 @@ export const PT_BR = {
   header: {
     newChat: "Nova conversa",
     openSettings: "Configurações",
+    conversations: "Conversas",
+  },
+
+  conversations: {
+    title: "Todas as conversas",
+    back: "Voltar",
+    searchPlaceholder: "Buscar por título, modelo ou provider...",
+    emptyAll: "Nenhuma conversa salva ainda. Mande sua primeira mensagem!",
+    emptySearch: "Nenhuma conversa encontrada pra essa busca.",
   },
 
   starter: {

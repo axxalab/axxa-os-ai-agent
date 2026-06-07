@@ -8,9 +8,15 @@ interface HeaderProps {
   version: string;
   onOpenSettings: () => void;
   onNewChat: () => void;
+  onOpenConversations: () => void;
 }
 
-export function Header({ version, onOpenSettings, onNewChat }: HeaderProps) {
+export function Header({
+  version,
+  onOpenSettings,
+  onNewChat,
+  onOpenConversations,
+}: HeaderProps) {
   const t = useT();
   return (
     <header className="axxa-header">
@@ -19,6 +25,15 @@ export function Header({ version, onOpenSettings, onNewChat }: HeaderProps) {
         <span className="axxa-header-version">v{version}</span>
       </div>
       <div className="axxa-header-actions">
+        <button
+          type="button"
+          className="axxa-header-gear"
+          onClick={onOpenConversations}
+          aria-label={t.header.conversations}
+          title={t.header.conversations}
+        >
+          <Icon name="messages-square" />
+        </button>
         <button
           type="button"
           className="axxa-header-gear"
