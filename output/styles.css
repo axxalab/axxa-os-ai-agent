@@ -1157,3 +1157,74 @@ body.is-mobile
   width: 22px;
   height: 22px;
 }
+
+/* =====================================================
+ * Code block — botão "copiar" no canto superior direito.
+ * Aparece on-hover (desktop) ou semi-visível (mobile).
+ * Radius 999px segue a regra geral (pills/buttons).
+ * ===================================================== */
+
+.axxa-markdown pre.axxa-code-block {
+  position: relative;
+}
+
+.axxa-code-copy,
+.axxa-code-copy:hover,
+.axxa-code-copy:focus,
+.axxa-code-copy:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-code-copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+
+.axxa-markdown pre.axxa-code-block:hover .axxa-code-copy {
+  opacity: 0.7;
+}
+
+.axxa-code-copy:active {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover) !important;
+  opacity: 1 !important;
+}
+
+@media (hover: hover) {
+  .axxa-code-copy:hover {
+    color: var(--text-normal);
+    background: var(--background-modifier-hover) !important;
+    opacity: 1 !important;
+  }
+}
+
+.axxa-code-copy.axxa-code-copy-active {
+  color: var(--interactive-accent) !important;
+  opacity: 1 !important;
+}
+
+.axxa-code-copy .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Mobile — sempre semi-visível (não tem hover state real) */
+body.is-mobile .axxa-code-copy {
+  opacity: 0.6;
+}

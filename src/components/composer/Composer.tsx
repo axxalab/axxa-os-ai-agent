@@ -9,8 +9,8 @@
 // "+" button abre o PlusModal (ChatGPT-style bottom sheet com Effort selector)
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { EditorView, keymap, placeholder } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
+import { EditorView, keymap, placeholder as cmPlaceholder } from "@codemirror/view";
+import { EditorState, Compartment } from "@codemirror/state";
 import { Platform } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { formatTokens, getContextWindow } from "../_shared/contextWindows";
@@ -30,6 +30,8 @@ interface ComposerProps {
   locked?: boolean;
   /** Modo atual (chat / vault-qa / agent / coder) */
   mode?: string;
+  /** Texto do placeholder do editor — varia por modo */
+  placeholder?: string;
 }
 
 function InfoChip({
@@ -62,6 +64,7 @@ export function Composer({
   contextUsed,
   locked = false,
   mode = "chat",
+  placeholder = "Pergunte ao AXXA Agent...",
 }: ComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -69,6 +72,10 @@ export function Composer({
   sendRef.current = onSend;
   const streamingRef = useRef(streaming);
   streamingRef.current = streaming;
+
+  // Compartment = "slot" reconfigurável do CodeMirror — permite trocar o
+  // placeholder em runtime (ex.: mode chat → vault-qa) sem destruir o editor.
+  const [placeholderCompartment] = useState(() => new Compartment());
 
   const [isEmpty, setIsEmpty] = useState(true);
 
@@ -98,7 +105,7 @@ export function Composer({
       extensions: [
         keymap.of(enterKey),
         EditorView.lineWrapping,
-        placeholder("Pergunte ao AXXA Agent..."),
+        placeholderCompartment.of(cmPlaceholder(placeholder)),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const text = update.state.doc.toString().trim();
@@ -135,6 +142,16 @@ export function Composer({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reconfigura placeholder em runtime sem recriar o editor
+  // (ex.: usuário muda do modo chat → vault-qa antes de mandar a 1ª msg)
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: placeholderCompartment.reconfigure(cmPlaceholder(placeholder)),
+    });
+  }, [placeholder, placeholderCompartment]);
 
   const handleSendClick = () => {
     if (streaming) return;

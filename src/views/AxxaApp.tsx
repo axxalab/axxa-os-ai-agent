@@ -52,6 +52,21 @@ function makeId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// Placeholder do composer varia pelo modo da sessão — feedback visual de
+// que o "papel" do AXXA muda (assistente geral vs. focado no vault, etc.)
+function placeholderForMode(mode: string): string {
+  switch (mode) {
+    case "vault-qa":
+      return "Pergunte sobre seu Vault...";
+    case "agent":
+      return "Peça pro Agent organizar seu vault...";
+    case "coder":
+      return "Cole código ou pergunte como debugar...";
+    default:
+      return "Pergunte ao AXXA Agent...";
+  }
+}
+
 export function AxxaApp({ plugin }: AxxaAppProps) {
   const isLoading = useChatStore((s) => s.isLoading);
   const tokensIn = useChatStore((s) => s.tokensIn);
@@ -418,6 +433,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           contextUsed={lastPromptTokens}
           locked={isLocked}
           mode={activeMode}
+          placeholder={placeholderForMode(activeMode)}
         />
         {plusOpen && (
           <PlusModal

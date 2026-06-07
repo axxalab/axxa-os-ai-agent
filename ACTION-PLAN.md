@@ -1,9 +1,9 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulo 0 ✅ · próximo: Módulo 1  
-> **Versão:** 1.0  
-> **Última revisão:** 05/06/2026  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 🟡 (3.2+3.3 parciais), 4 🟡 (4.1+4.2+4.3 ✅) · próximo: Módulo 3 — UI de Produção  
+> **Versão:** 1.0 · plugin em v0.1.18  
+> **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
 ---
@@ -36,11 +36,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ⬜ Obsidian em modo dev (Community Plugins ativo, Safe Mode OFF)
 
 ### 0.2 Repositório
-- ⬜ Repositório `axxa-os-ai-agent` criado no GitHub (público)
+- ✅ Repositório `axxa-os-ai-agent` criado no GitHub (`axxalab/axxa-os-ai-agent`)
 - ✅ Template oficial `obsidianmd/obsidian-sample-plugin` — estrutura criada via prompt mestre (configs equivalentes ao template)
 - ✅ `manifest.json` atualizado com dados do AXXA OS
 - ✅ `AGENTS.md` criado na raiz (instruções para AI agents)
-- 🟡 `README.md` inicial criado (pendente commitar)
+- ✅ `README.md` inicial commitado
 
 ### 0.3 Estrutura de pastas
 - ✅ `/src` estruturado conforme arquitetura definida (views, components, etc.)
@@ -64,7 +64,7 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ `AxxaView.tsx` — ItemView registrado no Obsidian (sidebar direita) — feito no Módulo 0
 - ✅ `AxxaApp.tsx` — React root montado dentro da view
 - ✅ Layout base: header + chat area + composer
-- 🟡 Funciona no mobile (drawer lateral) — CSS mobile-first pronto, testar localmente
+- ✅ Funciona no mobile (drawer lateral) — confirmado pelo dev (prints v0.1.7+)
 
 ### 1.2 Composer básico
 - ✅ Campo de texto funcional (CodeMirror nativo Obsidian — `@codemirror/view` + `@codemirror/state`)
@@ -119,12 +119,12 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ `providers/index.ts` — registry + getProvider(id) com 4 providers registrados
 
 ### 2.3 Obsidian Settings Tab
-- ⬜ `AxxaSettingsTab.ts` registrado no Obsidian
-- ⬜ Seção: API Keys (OpenAI, Anthropic, OpenRouter)
-- ⬜ Seção: Ollama endpoint configurável
-- ⬜ Seção: Defaults (provider, model, mode, effort)
-- ⬜ Seção: Vault paths (chats, skills, etc.)
-- ⬜ Seção: Appearance (background, balloon style)
+- ✅ `AxxaSettingsTab.ts` registrado no Obsidian (com UI tabbed: "Providers" / "Outros")
+- ✅ Seção API Keys (OpenAI ✅, Anthropic ✅, OpenRouter ✅) + botão "↻ Buscar modelos" via API
+- ✅ Ollama endpoint configurável + listModels via `/api/tags`
+- ✅ Defaults: provider (dropdown 4 opções), model (por provider), effort (placeholder via PlusModal), mode (via StarterScreen)
+- ✅ Vault paths (chatsPath, skillsPath na tab Outros)
+- ⬜ Seção Appearance (background, balloon style) — Módulo 3
 
 ### 2.4 Effort Selector
 - ✅ 5 níveis: Low / Med / High / xHigh / Max (definidos em `_shared/effort.ts`)
@@ -133,16 +133,18 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Selector via PlusModal (bottom sheet estilo ChatGPT — abre no "+" da pill)
 
 ### 2.5 Status Line
-- ✅ Indicador de conexão (dot accent + pulse durante streaming, faint quando ready)
-- ✅ Provider + Model ativos (lê das settings, atualiza a cada render do AxxaApp)
-- ⬜ Modo atual (precisa do sistema de modos primeiro — Módulo 4.x)
-- ⬜ Context window usado / total (precisa parsear usage das respostas)
-- ⬜ Tokens consumidos na sessão (precisa parsear usage das respostas)
+- ✅ Indicador de conexão (anteriormente dot pulse no header; agora ícone `lock` no chip do model quando session travada)
+- ✅ Provider + Model ativos (chip cpu/lock + cor purple no composer info)
+- ✅ Modo atual (chip 🩷 `library` + "vault" quando mode != chat)
+- ✅ Context window usado / total (chip cyan `gauge` — usa `lastPromptTokens` do store)
+- ✅ Tokens consumidos na sessão (chips blue ↓ in, green ↑ out, muted ∑ total — parseado de usage da API)
 
 ### 2.6 Build de teste
-- ⬜ Todos os providers testados com chaves reais
-- ⬜ Settings persistidas após reabrir o Obsidian
-- ⬜ **🎯 MARCO:** 4 providers funcionando com effort selector
+- ✅ Providers testados com chaves reais (OpenAI confirmado; Anthropic/OpenRouter/Ollama fechados pelo dev em 07/06/2026)
+- ✅ Settings persistidas após reabrir o Obsidian (`plugin.saveData()` no `saveSettings()`)
+- ✅ **🎯 MARCO:** 4 providers funcionando com effort selector
+
+> **Módulo 2 ✅ Concluído em 07/06/2026** — 4 providers operacionais, Settings tabbed (Providers/Outros) persistido, Status Line com chips coloridos, Effort selector via PlusModal, Session lock após primeira msg. (3.x Appearance → adiado pra Módulo 3.5 conforme já planejado.)
 
 ---
 
@@ -156,18 +158,18 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ⬜ Dark/light mode funcionando automaticamente
 
 ### 3.2 Composer completo (estilo ChatGPT)
-- ⬜ Textarea auto-expande com o conteúdo
+- ✅ Textarea auto-expande com o conteúdo (CodeMirror nativo já faz, maxHeight 200px)
 - ⬜ Botão 📎 attach (placeholder visual, funcional no módulo 5)
-- ⬜ Botão 🎤 audio recorder (hold-to-record)
-- ⬜ Botão ▶ send / ⬛ stop durante geração
-- ⬜ Placeholder dinâmico por modo ("Pergunte sobre seu Vault...", etc.)
+- ⬜ Botão 🎤 audio recorder (hold-to-record) — mic placeholder existe, gravação pendente
+- ✅ Botão ▶ send / ⬛ stop durante geração (`arrow-up` / `square` com cor invertida)
+- ✅ Placeholder dinâmico por modo (chat / vault-qa / agent / coder via Compartment do CodeMirror — v0.1.18)
 
 ### 3.3 Mensagens avançadas
-- ⬜ Markdown renderizado no output do AI
-- ⬜ Code blocks com syntax highlighting
-- ⬜ Botão "copiar" em code blocks
+- ✅ Markdown renderizado no output do AI (feito no 1.5 via `MarkdownRenderer.render` do Obsidian)
+- ✅ Code blocks com syntax highlighting (via Obsidian MarkdownRenderer — vem nativo)
+- ✅ Botão "copiar" em code blocks (pós-processamento DOM no Markdown.tsx, hover desktop / semi-visível mobile — v0.1.18)
 - ⬜ Long press / hover menu (copiar, favoritar, reenviar, deletar)
-- ⬜ Favoritar mensagem ⭐ (persistido localmente)
+- 🟡 Footer buttons básicos: copy ✅, regen 🟡 (stub), like/dislike 🟡 (toggle local sem persistência), ... 🟡 (placeholder)
 
 ### 3.4 Mobile
 - ⬜ Drawer lateral responsivo
@@ -191,12 +193,12 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 > Objetivo: Chats salvos. Primeira integração real com o Vault.
 
 ### 4.1 Estrutura de pastas no Vault
-- ✅ `.axxa/` criada automaticamente no primeiro save (`ensureFolder` recursivo)
+- ✅ `axxa-ai/` criada automaticamente no primeiro save (`ensureFolder` recursivo) — visível no vault explorer
 - ✅ Subpasta `chats/chat/` criada (futuras: `skills/`, `logs/`, `index/`)
-- ✅ Path configurável nas Settings → Outros (`chatsPath`, default `.axxa/chats`)
+- ✅ Path configurável nas Settings → Outros (`chatsPath`, default `axxa-ai/chats` — mudou de `.axxa/chats` em v0.1.16)
 
 ### 4.2 Chats como Markdown
-- ✅ Cada conversa salva como `.md` em `.axxa/chats/chat/[uuid].md`
+- ✅ Cada conversa salva como `.md` em `axxa-ai/chats/chat/[uuid].md`
 - ✅ Frontmatter completo: id, title, date, mode, provider, model, effort, tokens_in, tokens_out, message_count, tags
 - ✅ Body Markdown legível: `# Title` + alternância `## You` / `## Assistant`
 - ✅ Auto-save debounced 500ms a cada update de messages
@@ -369,6 +371,22 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 05/06/2026 | Composer com CodeMirror nativo | Em vez de `<textarea>` — herda tema/atalhos/markdown do Obsidian. Externals já configurados no esbuild |
 | 05/06/2026 | Vulnerabilidade esbuild (audit) | Afeta só modo `serve` HTTP — não usamos. Adiada pra v1.0 (upgrade pra esbuild 0.28 é breaking) |
 | 05/06/2026 | `setIcon` do Obsidian (Lucide) | Wrapper React `<Icon name="..." />` — mantém ícones consistentes com o resto do app |
+| 06/06/2026 | Mobile keyboard handler estilo Copilot | MutationObserver no `<html>` lendo `--keyboard-height`, toggle de `.axxa-keyboard-open` no drawer. Reverse-engineering do plugin Copilot. |
+| 06/06/2026 | CSS de view-content do dev é LOCKED | Bloco com `padding-bottom: calc(...)` foi hand-tuned/testado no device, não tocar sem confirmação |
+| 06/06/2026 | Scroll sticky-bottom estilo ChatGPT | `shouldStickRef` controlado por scroll events; força stick em nova msg do user; botão back-to-bottom flutuante quando scrollado pra cima |
+| 06/06/2026 | Markdown render durante streaming | `MarkdownRenderer.render` re-renderiza a cada token (Component local destruído/criado por update); fine pra UX, custo aceitável |
+| 06/06/2026 | Status info chips com cores | 6-7 chips coloridos abaixo do composer (purple/orange/cyan/blue/green/pink) com micro-ícones Lucide — visual de "dashboard" pequeno |
+| 06/06/2026 | PlusModal bottom sheet estilo ChatGPT | Effort selector via modal que sobe do bottom; ficou em PlusModal pra acomodar opções futuras (attach, screenshot, etc) |
+| 06/06/2026 | Session lock após primeira msg | Provider+model+mode travados no `store.sessionXxx` quando user manda primeira msg. Effort continua livre via "+". |
+| 06/06/2026 | Persistência: chat = arquivo .md no vault | Frontmatter YAML (id, title, date, mode, provider, model, effort, tokens) + body com `## You`/`## Assistant`. Editável pelo user no Obsidian. |
+| 06/06/2026 | Token tracking | OpenAI: `stream_options.include_usage` no body. Anthropic: parse `message_start` (input) + `message_delta` (output). Ollama: `prompt_eval_count` + `eval_count`. |
+| 07/06/2026 | OpenRouter como provider | Endpoint OpenAI-compatible; headers extras `HTTP-Referer` + `X-Title`; modelos prefixados (`anthropic/claude-3.5-sonnet`) |
+| 07/06/2026 | Ollama NDJSON parsing | Diferente de SSE — cada linha é JSON completo. `done: true` na última linha tem os counts. |
+| 07/06/2026 | Pasta `axxa-ai/` (não `.axxa/`) | Dev pediu pasta visível no vault, sem prefixo dot oculto |
+| 07/06/2026 | Vault Q&A keyword-based (MVP) | Scoring: title=5pts/keyword, content=1pt/ocorrência; top 5 notas, excerpt 500 chars. Embeddings reais virão no Módulo 6.4 |
+| 07/06/2026 | `.axxa-chat-area-wrapper` precisa `flex-direction:column` | Sem isso, chat-area sem altura constraint quebra layout (composer some). Bug recorrente — fixado em v0.1.17 |
+| 07/06/2026 | Placeholder via `Compartment` do CodeMirror (v0.1.18) | Reconfigura placeholder sem destruir o editor — usuário não perde texto ao trocar de modo. Helper `placeholderForMode(mode)` no AxxaApp. |
+| 07/06/2026 | Copy button em code blocks via DOM post-process (v0.1.18) | MarkdownRenderer não tem hook de "afterRender" pra blocos específicos. Solução: aguardar Promise do render e fazer `querySelectorAll("pre")` injetando o botão. Idempotente (`:scope > .axxa-code-copy` check). |
 
 ---
 
