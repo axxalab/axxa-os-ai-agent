@@ -12,9 +12,45 @@ import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandle
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODELS_ENDPOINT = "https://api.openai.com/v1/models";
 
+/**
+ * Converte ProviderMessage[] pro formato wire-level do OpenAI.
+ * Tratamento especial:
+ *   - assistant com toolCalls vira { role:"assistant", tool_calls: [...] }
+ *   - tool result vira { role:"tool", tool_call_id, content }
+ */
+function toOpenAIMessages(
+  messages: import("./base").ProviderMessage[]
+): unknown[] {
+  return messages.map((m) => {
+    if (m.role === "tool") {
+      return {
+        role: "tool",
+        tool_call_id: m.toolCallId,
+        content: m.content,
+      };
+    }
+    if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
+      return {
+        role: "assistant",
+        content: m.content || null,
+        tool_calls: m.toolCalls.map((tc) => ({
+          id: tc.id,
+          type: "function",
+          function: {
+            name: tc.name,
+            arguments: JSON.stringify(tc.arguments),
+          },
+        })),
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+}
+
 export class OpenAIProvider implements Provider {
   id = "openai";
   name = "OpenAI";
+  supportsTools = true;
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
@@ -22,6 +58,25 @@ export class OpenAIProvider implements Provider {
         "API key da OpenAI não configurada. Vá em Settings → AXXA OS para colar sua chave.",
         "no-key"
       );
+    }
+
+    // Monta body — tools só vai se o request pediu
+    const body: Record<string, unknown> = {
+      model: req.model,
+      messages: toOpenAIMessages(req.messages),
+      // gpt-4o e modelos mais novos exigem max_completion_tokens (max_tokens deprecado)
+      max_completion_tokens: req.maxTokens ?? 2000,
+    };
+    if (req.tools && req.tools.length > 0) {
+      body.tools = req.tools.map((t) => ({
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      }));
+      body.tool_choice = "auto";
     }
 
     let res;
@@ -33,12 +88,7 @@ export class OpenAIProvider implements Provider {
         headers: {
           Authorization: `Bearer ${apiKey.trim()}`,
         },
-        body: JSON.stringify({
-          model: req.model,
-          messages: req.messages,
-          // gpt-4o e modelos mais novos exigem max_completion_tokens (max_tokens deprecado)
-          max_completion_tokens: req.maxTokens ?? 2000,
-        }),
+        body: JSON.stringify(body),
         throw: false,
       });
     } catch (err) {
@@ -65,12 +115,50 @@ export class OpenAIProvider implements Provider {
       throw new ProviderError(`OpenAI: ${errorMsg}`, "unknown");
     }
 
-    const content = res.json?.choices?.[0]?.message?.content;
-    if (typeof content !== "string" || !content.length) {
+    const message = res.json?.choices?.[0]?.message;
+    if (!message) {
       throw new ProviderError("Resposta vazia da OpenAI.", "unknown");
     }
 
-    return { content };
+    // Parseia tool_calls se vieram
+    let toolCalls: import("./base").ProviderToolCall[] | undefined;
+    if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+      toolCalls = message.tool_calls
+        .filter((tc: { type: string }) => tc.type === "function")
+        .map((tc: { id: string; function: { name: string; arguments: string } }) => {
+          let parsedArgs: Record<string, unknown> = {};
+          try {
+            parsedArgs = JSON.parse(tc.function.arguments);
+          } catch {
+            // LLM produziu JSON inválido — devolve string raw como erro
+            parsedArgs = { _raw: tc.function.arguments };
+          }
+          return {
+            id: tc.id,
+            name: tc.function.name,
+            arguments: parsedArgs,
+          };
+        });
+    }
+
+    const content = typeof message.content === "string" ? message.content : "";
+    // Se NÃO tem toolCalls e content também é vazio, é erro
+    if (!toolCalls && !content) {
+      throw new ProviderError(
+        "Resposta vazia da OpenAI (sem texto nem tool_calls).",
+        "unknown"
+      );
+    }
+
+    // Usage (se vier)
+    const usage = res.json?.usage
+      ? {
+          input: res.json.usage.prompt_tokens ?? 0,
+          output: res.json.usage.completion_tokens ?? 0,
+        }
+      : undefined;
+
+    return { content, toolCalls, usage };
   }
 
   /**

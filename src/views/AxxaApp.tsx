@@ -40,6 +40,11 @@ import {
 import { searchVault, buildVaultContext } from "../components/_shared/vaultSearch";
 import { ensureFolder } from "../components/_shared/chatPersistence";
 import { embedQuery } from "../rag/embeddings";
+import { TOOL_DEFINITIONS, getToolDefinition } from "../agent/toolSchemas";
+import { TOOL_REGISTRY } from "../agent/tools";
+import { evaluatePermission } from "../agent/permissions";
+import { ConfirmationModal } from "../agent/ConfirmationModal";
+import type { PermissionLevel } from "../agent/types";
 import type { ChatMessage, UserMessage, AIResponseMessage } from "../store/chat";
 
 interface AxxaAppProps {
@@ -51,6 +56,33 @@ function makeId(): string {
     return crypto.randomUUID();
   }
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+// Label curto pra mostrar como ai-comment quando agent roda uma tool.
+// Inclui ícone visual (📄 criar, ✏️ editar, 🗑️ deletar, etc) + path resumido.
+function agentToolLabel(
+  toolName: string,
+  args: Record<string, unknown>
+): string {
+  const path = (args.path ?? args.from ?? args.folder ?? "") as string;
+  switch (toolName) {
+    case "vault_list":
+      return `📋 Listando: ${path || "raiz"}`;
+    case "vault_read":
+      return `👀 Lendo: ${path}`;
+    case "vault_create":
+      return `📄 Criando: ${path}`;
+    case "vault_edit":
+      return `✏️ Editando: ${path}`;
+    case "vault_move":
+      return `📦 Movendo: ${path} → ${args.to ?? "?"}`;
+    case "vault_delete":
+      return `🗑️ Deletando: ${path}`;
+    case "vault_create_folder":
+      return `📁 Criando pasta: ${path}`;
+    default:
+      return `🔧 ${toolName}`;
+  }
 }
 
 // Placeholder do composer varia pelo modo da sessão — feedback visual de
@@ -375,6 +407,216 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
+  // ============================================================
+  // Agent loop — non-streaming, com tool calls
+  //
+  // Flow:
+  //   1. Monta history com system prompt do agent + tools disponíveis
+  //   2. Chama provider.chat() (NÃO streaming — agent precisa ver resposta inteira)
+  //   3. Se tem toolCalls: pra cada uma → check permission → modal se preciso → executa
+  //   4. Adiciona tool results na history
+  //   5. Loop (até MAX_TURNS) ou para quando resposta tem só texto (final answer)
+  // ============================================================
+  const runAgentTurn = async (userText: string) => {
+    const {
+      addMessage,
+      removeMessage,
+      setLoading,
+      addUsage,
+    } = useChatStore.getState();
+
+    if (!activeProvider.supportsTools) {
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} O provider "${activeProvider.name}" não suporta tool calling. Use OpenAI (que tem function calling) pro Agent Mode.`,
+      });
+      return;
+    }
+
+    setLoading(true);
+    const commentId = addMessage({
+      type: "ai-comment",
+      content: "🤖 Agente pensando...",
+    });
+
+    const permissionLevel: PermissionLevel = (plugin.settings.agentPermissionLevel ||
+      "ask") as PermissionLevel;
+
+    // System prompt específico do agent
+    const AGENT_SYSTEM_PROMPT =
+      "Você é o AXXA Agent, um assistente integrado ao Obsidian com acesso direto " +
+      "ao vault do usuário via ferramentas (tools). Responda em português. " +
+      "Use as tools pra realizar a tarefa pedida — leia, crie, edite, mova ou delete " +
+      "arquivos quando o user pedir. Pergunte ANTES se a intenção for ambígua. " +
+      "Quando terminar, devolva uma resposta de texto resumindo o que fez. " +
+      "Pra editar arquivos, SEMPRE use vault_read antes pra ver o conteúdo exato.";
+
+    // Constrói history inicial — pega só user/assistant do store (chat anterior),
+    // depois acrescenta a nova user msg que acabou de ser enviada
+    const conversationHistory: ProviderMessage[] = useChatStore
+      .getState()
+      .messages.filter((m) => m.type === "user" || m.type === "ai-response")
+      .map((m) => ({
+        role: (m.type === "user" ? "user" : "assistant") as "user" | "assistant",
+        content: (m as { content: string }).content,
+      }));
+
+    const history: ProviderMessage[] = [
+      { role: "system", content: AGENT_SYSTEM_PROMPT },
+      ...conversationHistory,
+    ];
+
+    // Tools no formato do provider base (que OpenAI provider converte pro wire)
+    const tools = TOOL_DEFINITIONS.map((td) => ({
+      name: td.name,
+      description: td.description,
+      parameters: td.parameters,
+    }));
+
+    let apiKey: string;
+    switch (activeProviderId) {
+      case "anthropic":
+        apiKey = plugin.settings.anthropicApiKey;
+        break;
+      case "openrouter":
+        apiKey = plugin.settings.openrouterApiKey;
+        break;
+      case "ollama":
+        apiKey = plugin.settings.ollamaEndpoint;
+        break;
+      default:
+        apiKey = plugin.settings.openaiApiKey;
+    }
+
+    const MAX_TURNS = 10; // safety cap pra evitar loop infinito
+    let turn = 0;
+    let firstTurn = true;
+
+    try {
+      while (turn < MAX_TURNS) {
+        turn++;
+        const response = await activeProvider.chat(
+          {
+            model: activeModel,
+            messages: history,
+            maxTokens: effortToMaxTokens(effort),
+            tools,
+          },
+          apiKey
+        );
+        if (response.usage) addUsage(response.usage.input, response.usage.output);
+
+        // Caso 1: provider devolveu só texto = resposta final, sai do loop
+        if (!response.toolCalls || response.toolCalls.length === 0) {
+          if (firstTurn) removeMessage(commentId);
+          addMessage({
+            type: "ai-response",
+            content: response.content || t.ai.emptyResponse,
+          });
+          return;
+        }
+
+        // Caso 2: tem tool_calls — adiciona msg do assistant na history e executa
+        if (firstTurn) {
+          removeMessage(commentId);
+          firstTurn = false;
+        }
+        history.push({
+          role: "assistant",
+          content: response.content ?? "",
+          toolCalls: response.toolCalls,
+        });
+
+        for (const call of response.toolCalls) {
+          const def = getToolDefinition(call.name);
+          if (!def) {
+            addMessage({
+              type: "ai-comment",
+              content: `⚠️ Tool desconhecida: ${call.name}`,
+            });
+            history.push({
+              role: "tool",
+              toolCallId: call.id,
+              content: `Tool "${call.name}" não existe.`,
+            });
+            continue;
+          }
+
+          // Decide se executa direto ou pede confirmação
+          const decision = evaluatePermission(def, permissionLevel);
+          let approved = decision.autoApprove;
+          if (!approved) {
+            const modal = new ConfirmationModal(plugin.app, {
+              toolCall: call,
+              definition: def,
+            });
+            approved = await modal.openAndWait();
+          }
+
+          if (!approved) {
+            addMessage({
+              type: "ai-comment",
+              content: `🚫 Negado: ${call.name}`,
+            });
+            history.push({
+              role: "tool",
+              toolCallId: call.id,
+              content: "User negou esta ação. Considere outra abordagem ou pergunte ao user.",
+            });
+            continue;
+          }
+
+          // Executa
+          addMessage({
+            type: "ai-comment",
+            content: agentToolLabel(call.name, call.arguments),
+          });
+          const executor = TOOL_REGISTRY[call.name];
+          try {
+            const result = await executor(plugin.app, call.arguments);
+            history.push({
+              role: "tool",
+              toolCallId: call.id,
+              content: result,
+            });
+          } catch (err) {
+            const msg =
+              err instanceof Error ? err.message : "Erro desconhecido.";
+            addMessage({
+              type: "ai-comment",
+              content: `❌ ${call.name} falhou: ${msg}`,
+            });
+            history.push({
+              role: "tool",
+              toolCallId: call.id,
+              content: `ERRO: ${msg}`,
+            });
+          }
+        }
+        // Continua o loop pro provider ver os resultados das tools
+      }
+      // Atingiu MAX_TURNS sem resposta final
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} Agente atingiu o limite de ${MAX_TURNS} turnos sem terminar. Tente refrasear a tarefa.`,
+      });
+    } catch (err) {
+      if (firstTurn) removeMessage(commentId);
+      const errorMsg =
+        err instanceof ProviderError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : t.ai.unknownError;
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${errorMsg}`,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSend = async (text: string) => {
     const { addMessage, lockSession, setCurrentChatId, setCurrentChatTitle } =
       useChatStore.getState();
@@ -388,7 +630,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
 
     addMessage({ type: "user", content: text });
-    await streamReply(text);
+
+    // Dispatch baseado no modo: agent usa loop com tools, demais usa streamReply
+    if (activeMode === "agent") {
+      await runAgentTurn(text);
+    } else {
+      await streamReply(text);
+    }
   };
 
   // Regenerar: remove o ai-response (e qualquer msg posterior) e re-roda

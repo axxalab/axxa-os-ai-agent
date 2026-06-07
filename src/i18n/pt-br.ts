@@ -8,7 +8,7 @@ export const PT_BR = {
   composer: {
     placeholderChat: "Pergunte ao AXXA Agent...",
     placeholderVaultQa: "Pergunte sobre seu Vault...",
-    placeholderAgent: "Peça pro Agent organizar seu vault...",
+    placeholderAgent: "Peça pro Agent (ex: 'crie uma nota sobre X', 'organize a pasta Y')...",
     placeholderCoder: "Cole código ou pergunte como debugar...",
     sendLabel: "Enviar mensagem",
     stopLabel: "Parar geração",
@@ -54,6 +54,23 @@ export const PT_BR = {
     chatDesc: "Conversa direta",
     vaultQa: "Vault Q&A",
     vaultQaDesc: "Busca notas como contexto",
+    agent: "Agent",
+    agentDesc: "Lê, cria, edita e organiza arquivos do vault",
+  },
+
+  agent: {
+    thinking: "🤖 Agente pensando...",
+    needsOpenAI:
+      "Agent Mode requer OpenAI (provider com function calling). Troque o provider na StarterScreen.",
+    deniedAction: "🚫 Ação negada pelo usuário",
+    maxTurnsReached: (n: number) =>
+      `Agente atingiu o limite de ${n} turnos sem terminar. Tente refrasear a tarefa.`,
+    permissionLevel: "Nível de permissão do Agent",
+    permissionLevelDesc:
+      "Quanto controle o Agent tem sobre o vault. Delete sempre pede confirmação independente do nível.",
+    permissionAsk: "Ask — confirma cada ação que modifica arquivo",
+    permissionVault: "Vault — read/write livre, só delete pergunta",
+    permissionYolo: "YOLO — zero modais, exceto delete (irreversível)",
   },
 
   plus: {

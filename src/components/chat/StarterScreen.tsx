@@ -42,6 +42,7 @@ interface StarterScreenProps {
 const MODES_META = [
   { id: "chat" as const, icon: "message-square" },
   { id: "vault-qa" as const, icon: "library" },
+  { id: "agent" as const, icon: "bot" },
 ];
 
 function formatRelativeDate(iso: string): string {
@@ -79,11 +80,17 @@ export function StarterScreen({
   const t = useT();
   const modelOptions = activeModels[provider] ?? [];
 
-  // Resolve name/desc dos modos via i18n (chat / vault-qa).
-  const modeLabel = (id: string) =>
-    id === "vault-qa" ? t.modes.vaultQa : t.modes.chat;
-  const modeDesc = (id: string) =>
-    id === "vault-qa" ? t.modes.vaultQaDesc : t.modes.chatDesc;
+  // Resolve name/desc dos modos via i18n (chat / vault-qa / agent).
+  const modeLabel = (id: string) => {
+    if (id === "vault-qa") return t.modes.vaultQa;
+    if (id === "agent") return t.modes.agent;
+    return t.modes.chat;
+  };
+  const modeDesc = (id: string) => {
+    if (id === "vault-qa") return t.modes.vaultQaDesc;
+    if (id === "agent") return t.modes.agentDesc;
+    return t.modes.chatDesc;
+  };
 
   return (
     <div className="axxa-starter">

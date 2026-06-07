@@ -648,6 +648,22 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
+    // Agent Mode permission level (Sprint G — v0.1.28)
+    new Setting(parent)
+      .setName(t.agent.permissionLevel)
+      .setDesc(t.agent.permissionLevelDesc)
+      .addDropdown((dd) =>
+        dd
+          .addOption("ask", t.agent.permissionAsk)
+          .addOption("vault", t.agent.permissionVault)
+          .addOption("yolo", t.agent.permissionYolo)
+          .setValue(this.plugin.settings.agentPermissionLevel || "ask")
+          .onChange(async (value) => {
+            this.plugin.settings.agentPermissionLevel = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
     // ============================================================
     // Aparência — grid de swatches (5 presets + None)
     // ============================================================

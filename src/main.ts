@@ -45,6 +45,11 @@ interface AxxaSettings {
   /** Code wrap em blocos de código markdown. Default false (scroll horizontal).
    *  Quando true, aplica `.axxa-code-wrap` na .axxa-root → pre quebra linha. */
   codeWrap: boolean;
+  // ============ Agent Mode (Sprint G — v0.1.28) ============
+  /** Nível de permissão do Agent Mode: "ask" | "vault" | "yolo".
+   *  Ask = confirma cada destrutiva. Vault = só delete pergunta. Yolo = só
+   *  irreversível pergunta. Default "ask" (mais conservador). */
+  agentPermissionLevel: string;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -83,6 +88,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",
   codeWrap: false,
+  agentPermissionLevel: "ask",
 };
 
 export default class AxxaPlugin extends Plugin {

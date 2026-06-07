@@ -1890,6 +1890,101 @@ body.theme-dark .axxa-settings-root.axxa-bg-nebula {
 }
 
 /* =====================================================
+ * Agent — ConfirmationModal
+ * Modal que aparece quando agent quer rodar tool destrutiva
+ * ===================================================== */
+
+.axxa-confirm-modal {
+  padding: 4px;
+}
+
+.axxa-confirm-summary {
+  margin: 12px 0 16px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--background-modifier-hover);
+  border-left: 4px solid var(--interactive-accent);
+}
+
+.axxa-confirm-tool-name {
+  font-family: var(--font-monospace);
+  font-weight: 600;
+  font-size: var(--font-ui-medium);
+  color: var(--text-accent);
+  margin-bottom: 4px;
+}
+
+.axxa-confirm-tool-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.axxa-confirm-args {
+  margin: 16px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--background-secondary);
+}
+
+.axxa-confirm-args h4 {
+  margin: 0 0 10px 0;
+  font-size: var(--font-ui-smaller);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-faint);
+}
+
+.axxa-confirm-arg-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.axxa-confirm-arg-row:last-child {
+  margin-bottom: 0;
+}
+
+.axxa-confirm-arg-key {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+.axxa-confirm-arg-val {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--code-background, var(--background-primary));
+  border: 1px solid var(--background-modifier-border);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  color: var(--text-normal);
+}
+
+.axxa-confirm-deny {
+  color: var(--text-muted) !important;
+}
+
+/* Aprovar destrutivo irreversível = vermelho pra dar o "tem certeza?" */
+.axxa-confirm-irreversible {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+}
+
+.axxa-confirm-irreversible:hover {
+  background: #dc2626 !important;
+}
+
+/* =====================================================
  * Settings — Modelos ativos (curadoria por provider)
  * Pills removíveis + input pra adicionar + checkboxes
  * pós-fetch da API. Pill radius 999px (regra geral).

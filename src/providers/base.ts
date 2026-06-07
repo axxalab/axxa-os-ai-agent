@@ -3,19 +3,43 @@
 // Quando adicionarmos mais providers no Módulo 2, todos implementam esse contrato.
 // Pensa nele como o "design token" do sistema de providers — quem encaixa aqui é compatível.
 
+/** Tool definition genérica — providers convertem pro seu formato wire-level. */
+export interface ProviderToolDefinition {
+  name: string;
+  description: string;
+  parameters: object;
+}
+
+/** Chamada de tool que o LLM produziu na resposta. */
+export interface ProviderToolCall {
+  /** ID único — volta como tool_call_id no result. */
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
 export interface ProviderMessage {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
+  /** Set em role="assistant" quando o LLM chamou tools. */
+  toolCalls?: ProviderToolCall[];
+  /** Set em role="tool" — conecta o resultado à tool_call original. */
+  toolCallId?: string;
 }
 
 export interface ProviderRequest {
   model: string;
   messages: ProviderMessage[];
   maxTokens?: number;
+  /** Tools disponíveis pro LLM. Agent mode envia, modos texto deixam vazio. */
+  tools?: ProviderToolDefinition[];
 }
 
 export interface ProviderResponse {
   content: string;
+  /** Set se LLM decidiu chamar tools em vez de devolver texto direto. */
+  toolCalls?: ProviderToolCall[];
+  usage?: { input: number; output: number };
 }
 
 /** Callback que recebe cada delta de token vindo do streaming. */
@@ -33,6 +57,8 @@ export type UsageHandler = (usage: Usage) => void;
 export interface Provider {
   id: string;
   name: string;
+  /** true se este provider suporta tool/function calling no Agent mode. */
+  supportsTools?: boolean;
   chat(request: ProviderRequest, apiKey: string): Promise<ProviderResponse>;
   streamChat(
     request: ProviderRequest,

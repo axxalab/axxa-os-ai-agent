@@ -54,6 +54,23 @@ export const EN_US: Translations = {
     chatDesc: "Direct conversation",
     vaultQa: "Vault Q&A",
     vaultQaDesc: "Search notes as context",
+    agent: "Agent",
+    agentDesc: "Reads, creates, edits and organizes vault files",
+  },
+
+  agent: {
+    thinking: "🤖 Agent thinking...",
+    needsOpenAI:
+      "Agent Mode requires OpenAI (provider with function calling). Switch provider on the StarterScreen.",
+    deniedAction: "🚫 Action denied by user",
+    maxTurnsReached: (n: number) =>
+      `Agent hit the limit of ${n} turns without finishing. Try rephrasing the task.`,
+    permissionLevel: "Agent permission level",
+    permissionLevelDesc:
+      "How much control the Agent has over the vault. Delete always asks for confirmation regardless of the level.",
+    permissionAsk: "Ask — confirm every action that modifies a file",
+    permissionVault: "Vault — free read/write, only delete asks",
+    permissionYolo: "YOLO — no modals, except delete (irreversible)",
   },
 
   plus: {

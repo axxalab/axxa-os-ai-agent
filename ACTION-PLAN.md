@@ -1,8 +1,8 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG **multimodal** (texto + imagem) · próximo: Sprint G — Agent Mode (6.1+6.2)  
-> **Versão:** 1.0 · plugin em v0.1.27  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, **6.1+6.2 ✅ Agent MVP** · próximo: Sprint H — Polish + Anthropic tools + Whisper áudio  
+> **Versão:** 1.0 · plugin em v0.1.28  
 > **Última revisão:** 07/06/2026  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -269,19 +269,28 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 ## MÓDULO 6 — Agent + Coder Mode ⏭️ v0.2
 > Ativar após estabilidade do alpha e primeiros 200 usuários
 
-### 6.1 Sistema de permissões
-- ⬜ `PermissionsManager.ts` implementado
-- ⬜ Comando `/permissions basic` — pede confirmação
-- ⬜ Comando `/permissions vault` — leitura/escrita livre
-- ⬜ Comando `/permissions yolo` — acesso total
-- ⬜ Modal de confirmação para ações destrutivas (modo basic)
-- ⬜ Log em `.axxa/logs/agent.md`
+### 6.1 Sistema de permissões ✅ MVP (v0.1.28)
+- ✅ `evaluatePermission()` no src/agent/permissions.ts implementa lógica decisória
+- ✅ 3 níveis via Settings → Outros (dropdown): **Ask** (confirma destrutivas) / **Vault** (só delete) / **YOLO** (zero exceto delete)
+- ✅ **Modal de confirmação** (`ConfirmationModal.ts`) com argumentos formatados + botão vermelho `.mod-warning` pra delete
+- ✅ **Delete SEMPRE confirma** independente do nível (`tool.irreversible` flag)
+- ⬜ Log em `.axxa/logs/agent.md` — adiar pra v0.1.29 (só console.log por enquanto)
 
-### 6.2 Agent Mode
-- ⬜ Criar, editar, mover, renomear arquivos
-- ⬜ Deletar com confirmação (sempre, independente de permissão)
-- ⬜ Criar e organizar pastas
-- ⬜ Operações semânticas ("mova todas as notas sobre X para Y")
+### 6.2 Agent Mode ✅ MVP (v0.1.28)
+- ✅ Modo "Agent" na StarterScreen (3º opção ao lado de Chat / Vault Q&A) com ícone bot
+- ✅ **7 tools** implementadas em `src/agent/tools.ts`:
+  - `vault_list` — lista pasta
+  - `vault_read` — lê arquivo (cap 200KB)
+  - `vault_create` — cria arquivo (cria pastas pai)
+  - `vault_edit` — find/replace literal (única ocorrência exigida)
+  - `vault_move` — rename/move (não sobrescreve)
+  - `vault_delete` — delete arquivo OU pasta vazia
+  - `vault_create_folder` — cria pasta
+- ✅ **Path safety**: normalização, anti `..`, anti `:`, max 32 níveis
+- ✅ **Tool loop** no AxxaApp: chat → tool_calls → permissão → executa → tool result → continua. Max 10 turns (anti loop infinito)
+- ✅ **UI feedback**: cada tool call vira ai-comment com ícone (`📄 Criando: foo.md`, `✏️ Editando`, `🗑️ Deletando`)
+- ⬜ Operações semânticas ("mova todas notas sobre X") — emerge naturalmente da combinação `vault_list` + `vault_read` + `vault_move` (LLM decide encadeamento)
+- 🟡 Suporte de tool calling: **OpenAI ✅** function calling. Anthropic tool use vem em v0.1.29
 
 ### 6.3 Coder Mode
 - ⬜ Detecta automaticamente arquivos de código
@@ -435,6 +444,12 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | RAG multimodal (v0.1.27) — router `embedItems` | Função única que aceita `EmbedInput[]` (texto OU imagem), olha o spec do modelo e despacha pra `embedBatch` (OpenAI text) ou `embedBatchOpenRouter` (multimodal). Erro claro se modelo não-VL recebe imagem. |
 | 07/06/2026 | RAG multimodal (v0.1.27) — indexer walks imagem + skip áudio | `getFiles()` em vez de só `getMarkdownFiles()`. Filtra extensão pra png/jpg/jpeg/webp/gif. Áudio (mp3/wav/m4a/ogg/flac) detectado e contado mas pulado — modelo VL atual não embeda áudio (precisaria Whisper). |
 | 07/06/2026 | RAG multimodal (v0.1.27) — `arrayBufferToDataUrl` | Helper pra converter binário → base64 data URL em chunks de 32K (evita stack overflow do `String.fromCharCode.apply` com bytes >32K). |
+| 07/06/2026 | Sprint G (v0.1.28) — Agent loop non-streaming | streamReply (chat mode) usa streamChat. Agent loop usa chat() não-streaming pra simplicidade. Agent é "stateful" (tool → result → tool) — streaming agentic é complexo e inconsistente entre providers. Streaming agent vem em v0.2.x. |
+| 07/06/2026 | Sprint G (v0.1.28) — Provider supportsTools flag | `Provider.supportsTools?: boolean` no base.ts. AxxaApp checa antes de rodar agent. OpenAI = true. Anthropic/OpenRouter/Ollama = false (por enquanto). Erro claro se user tentar usar outro provider em Agent. |
+| 07/06/2026 | Sprint G (v0.1.28) — Path safety nas tools | Toda tool normaliza: replace `\\`→`/`, remove leading `/`, bloqueia `..` (path traversal) e `:` (Windows drive), cap em 32 níveis de profundidade. Anti shell-injection: tools NUNCA executam comandos, só I/O via vault.adapter. |
+| 07/06/2026 | Sprint G (v0.1.28) — vault_edit exige string única | LLM tem que fornecer `oldStr` que aparece exatamente 1x. Se 0 = "string não encontrada", se >1 = "ambígua, use mais contexto". Anti edits acidentais que mexem na linha errada. |
+| 07/06/2026 | Sprint G (v0.1.28) — vault_delete só pasta vazia | Tool delete em pasta com conteúdo falha (safety). LLM precisa deletar arquivos um por um — confirma cada um (irreversível). Evita rm-rf acidental. |
+| 07/06/2026 | Sprint G (v0.1.28) — MAX_TURNS=10 no agent loop | Cap pra evitar LLM ficar chamando tools infinitamente. Se atingir, devolve erro pedindo refrasear. 10 cobre ~95% dos casos legítimos. |
 
 ---
 
