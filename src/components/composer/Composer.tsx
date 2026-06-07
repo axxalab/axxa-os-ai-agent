@@ -28,6 +28,8 @@ interface ComposerProps {
   contextUsed: number;
   /** Session travada (após primeira msg) — mostra ícone de cadeado no model */
   locked?: boolean;
+  /** Modo atual (chat / vault-qa / agent / coder) */
+  mode?: string;
 }
 
 function InfoChip({
@@ -59,6 +61,7 @@ export function Composer({
   tokensOut,
   contextUsed,
   locked = false,
+  mode = "chat",
 }: ComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -204,6 +207,11 @@ export function Composer({
 
       {/* Status row abaixo do pill — micro-ícones coloridos */}
       <div className="axxa-composer-info" aria-label="Status da sessão">
+        {mode !== "chat" && (
+          <InfoChip icon="library" color="var(--color-pink, #f472b6)">
+            {mode === "vault-qa" ? "vault" : mode}
+          </InfoChip>
+        )}
         <InfoChip
           icon={locked ? "lock" : "cpu"}
           color="var(--color-purple, #a370f7)"

@@ -203,10 +203,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Last Chats view (lista no starter screen) — clique reidrata mensagens + session lock
 
 ### 4.3 Vault Q&A básico (context stuffing)
-- ⬜ Modo Vault Q&A ativo no session modal
-- ⬜ Notas relevantes injetadas no contexto (busca por keywords)
-- ⬜ Indicador visual de "usando X notas como contexto"
-- ⬜ Limite de contexto respeitado por effort level
+- ✅ Modo Vault Q&A ativo no starter screen (seletor "Chat" / "Vault Q&A")
+- ✅ Notas relevantes injetadas no contexto (busca keyword-based: título=5pts, conteúdo=1pt/ocorrência, top 5)
+- ✅ Indicador visual: ai-comment "X notas encontradas como contexto" antes do streaming
+- ✅ Chip "vault" no status do composer quando modo ativo
+- 🟡 Limite por effort: usa excerpt 500 chars/nota, top 5 → ~2500 chars (~600 tokens). Não há lookup por effort ainda
 
 ### 4.4 Multilanguage
 - ⬜ PT-BR como padrão

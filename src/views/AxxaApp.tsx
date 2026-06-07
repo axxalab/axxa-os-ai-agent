@@ -28,6 +28,7 @@ import {
   type ChatData,
   type ChatSummary,
 } from "../components/_shared/chatPersistence";
+import { searchVault, buildVaultContext } from "../components/_shared/vaultSearch";
 import type { ChatMessage, UserMessage, AIResponseMessage } from "../store/chat";
 
 interface AxxaAppProps {
@@ -39,7 +40,10 @@ const SYSTEM_PROMPT =
   "Responda em português, de forma clara, direta e útil. " +
   "Quando fizer sentido, use Markdown.";
 
-const MODE = "chat";
+const VAULT_QA_SUFFIX =
+  "\n\nO usuário está no modo Vault Q&A — abaixo seguem notas relevantes " +
+  "extraídas do vault dele. Use elas como fonte principal pra responder, " +
+  "e cite o título da nota quando referenciar.\n\nNotas:\n\n";
 
 function makeId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -56,6 +60,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const messages = useChatStore((s) => s.messages);
   const sessionProvider = useChatStore((s) => s.sessionProvider);
   const sessionModel = useChatStore((s) => s.sessionModel);
+  const sessionMode = useChatStore((s) => s.sessionMode);
   const currentChatId = useChatStore((s) => s.currentChatId);
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
   const abortRef = useRef<AbortController | null>(null);
@@ -66,6 +71,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [openrouterModelSel, setOpenrouterModelSel] = useState(plugin.settings.openrouterModel);
   const [ollamaModelSel, setOllamaModelSel] = useState(plugin.settings.ollamaModel);
   const [effort, setEffort] = useState(plugin.settings.defaultEffort);
+  const [mode, setMode] = useState(
+    plugin.settings.defaultMode === "vault-qa" ? "vault-qa" : "chat"
+  );
   const [plusOpen, setPlusOpen] = useState(false);
   const [recentChats, setRecentChats] = useState<ChatSummary[]>([]);
 
@@ -82,6 +90,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const activeProviderId = sessionProvider ?? providerSel;
   const activeProvider = getProvider(activeProviderId);
   const activeModel = sessionModel ?? modelFor(activeProviderId);
+  const activeMode = sessionMode ?? mode;
   const isLocked = sessionProvider !== null;
 
   const starterModel = modelFor(providerSel);
@@ -92,7 +101,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const isEmpty = messages.length === 0;
   useEffect(() => {
     if (!isEmpty) return;
-    listChats(plugin.app, plugin.settings.chatsPath, MODE, 8)
+    listChats(plugin.app, plugin.settings.chatsPath, "chat", 8)
       .then(setRecentChats)
       .catch((err) => {
         console.error("[axxa] listChats falhou:", err);
@@ -116,7 +125,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         id: currentChatId,
         title: currentChatTitle || generateTitle(userOrAi[0].content),
         date: new Date().toISOString(),
-        mode: MODE,
+        mode: activeMode,
         provider: activeProviderId,
         model: activeModel,
         effort,
@@ -167,10 +176,37 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       const newId = makeId();
       setCurrentChatId(newId);
       setCurrentChatTitle(generateTitle(text));
-      lockSession(activeProviderId, activeModel);
+      lockSession(activeProviderId, activeModel, activeMode);
     }
 
     addMessage({ type: "user", content: text });
+
+    // Modo Vault Q&A: busca notas relevantes ANTES da chamada
+    let vaultContextBlock = "";
+    if (activeMode === "vault-qa") {
+      addMessage({
+        type: "ai-comment",
+        content: "Buscando notas relevantes no vault...",
+      });
+      try {
+        const matches = await searchVault(plugin.app, text, 5);
+        if (matches.length > 0) {
+          vaultContextBlock = buildVaultContext(matches);
+          addMessage({
+            type: "ai-comment",
+            content: `${matches.length} nota${matches.length > 1 ? "s" : ""} encontrada${matches.length > 1 ? "s" : ""} como contexto`,
+          });
+        } else {
+          addMessage({
+            type: "ai-comment",
+            content: "Nenhuma nota relevante encontrada — respondendo sem contexto do vault",
+          });
+        }
+      } catch (err) {
+        console.error("[axxa] vault search falhou:", err);
+      }
+    }
+
     const commentId = addMessage({ type: "ai-comment", content: "Pensando..." });
     setLoading(true);
 
@@ -180,8 +216,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     let responseId: string | null = null;
 
     try {
+      // Monta system prompt: base + contexto do vault (se vault-qa)
+      const fullSystem =
+        vaultContextBlock.length > 0
+          ? SYSTEM_PROMPT + VAULT_QA_SUFFIX + vaultContextBlock
+          : SYSTEM_PROMPT;
+
       const history: ProviderMessage[] = [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: fullSystem },
         ...useChatStore.getState().messages
           .filter((m) => m.type === "user" || m.type === "ai-response")
           .map((m) => ({
@@ -281,6 +323,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await plugin.saveSettings();
   };
 
+  const handleStarterMode = async (newMode: string) => {
+    setMode(newMode);
+    plugin.settings.defaultMode = newMode;
+    await plugin.saveSettings();
+  };
+
   const handleStarterModel = async (m: string) => {
     switch (providerSel) {
       case "anthropic":
@@ -304,7 +352,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   const handleLoadChat = async (chatId: string) => {
     try {
-      const chat = await loadChat(plugin.app, plugin.settings.chatsPath, MODE, chatId);
+      const chat = await loadChat(plugin.app, plugin.settings.chatsPath, "chat", chatId);
       const restored: ChatMessage[] = chat.messages.map((m) => ({
         id: makeId(),
         type: m.type,
@@ -346,10 +394,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             provider={providerSel}
             model={starterModel}
             effort={effort}
+            mode={mode}
             recentChats={recentChats}
             onProviderChange={handleStarterProvider}
             onModelChange={handleStarterModel}
             onEffortChange={handleSelectEffort}
+            onModeChange={handleStarterMode}
             onLoadChat={handleLoadChat}
           />
         ) : (
@@ -367,6 +417,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           tokensOut={tokensOut}
           contextUsed={lastPromptTokens}
           locked={isLocked}
+          mode={activeMode}
         />
         {plusOpen && (
           <PlusModal

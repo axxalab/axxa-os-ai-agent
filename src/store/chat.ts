@@ -61,9 +61,10 @@ interface ChatState {
   lastPromptTokens: number;
   /** Id da mensagem que tá sendo streamada agora (pra esconder footer durante stream). */
   streamingMessageId: string | null;
-  /** Provider/model TRAVADOS após primeira mensagem (session lock). null = não travado. */
+  /** Provider/model/mode TRAVADOS após primeira mensagem (session lock). null = não travado. */
   sessionProvider: string | null;
   sessionModel: string | null;
+  sessionMode: string | null;
   /** ID do chat atual (UUID). null antes da primeira msg. Usado pra save/load. */
   currentChatId: string | null;
   /** Título do chat atual (auto-gerado da primeira msg do user). */
@@ -77,7 +78,7 @@ interface ChatState {
   addUsage: (input: number, output: number) => void;
   resetUsage: () => void;
   setStreamingMessageId: (id: string | null) => void;
-  lockSession: (provider: string, model: string) => void;
+  lockSession: (provider: string, model: string, mode?: string) => void;
   unlockSession: () => void;
   setCurrentChatId: (id: string | null) => void;
   setCurrentChatTitle: (title: string) => void;
@@ -105,6 +106,7 @@ export const useChatStore = create<ChatState>((set) => ({
   streamingMessageId: null,
   sessionProvider: null,
   sessionModel: null,
+  sessionMode: null,
   currentChatId: null,
   currentChatTitle: "",
   addMessage: (msg) => {
@@ -150,6 +152,7 @@ export const useChatStore = create<ChatState>((set) => ({
       streamingMessageId: null,
       sessionProvider: null,
       sessionModel: null,
+      sessionMode: null,
     }),
   setLoading: (loading) => set({ isLoading: loading }),
   addUsage: (input, output) =>
@@ -160,9 +163,14 @@ export const useChatStore = create<ChatState>((set) => ({
     })),
   resetUsage: () => set({ tokensIn: 0, tokensOut: 0, lastPromptTokens: 0 }),
   setStreamingMessageId: (id) => set({ streamingMessageId: id }),
-  lockSession: (provider, model) =>
-    set({ sessionProvider: provider, sessionModel: model }),
-  unlockSession: () => set({ sessionProvider: null, sessionModel: null }),
+  lockSession: (provider, model, mode) =>
+    set({
+      sessionProvider: provider,
+      sessionModel: model,
+      sessionMode: mode ?? "chat",
+    }),
+  unlockSession: () =>
+    set({ sessionProvider: null, sessionModel: null, sessionMode: null }),
   setCurrentChatId: (id) => set({ currentChatId: id }),
   setCurrentChatTitle: (title) => set({ currentChatTitle: title }),
   setMessages: (msgs) => set({ messages: msgs }),
@@ -176,6 +184,7 @@ export const useChatStore = create<ChatState>((set) => ({
       streamingMessageId: null,
       sessionProvider: null,
       sessionModel: null,
+      sessionMode: null,
       currentChatId: null,
       currentChatTitle: "",
     }),

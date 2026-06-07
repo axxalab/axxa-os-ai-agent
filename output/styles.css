@@ -181,6 +181,17 @@ body.is-mobile
  * Chat area
  * ===================================================== */
 
+/* Wrapper do chat-area pro back-to-bottom button posicionar absolute.
+   flex-direction: column é essencial — sem ele, o chat-area sem altura
+   constraint quebra o layout (composer some / pula). */
+.axxa-chat-area-wrapper {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
 .axxa-chat-area {
   flex: 1 1 auto;
   min-height: 0;

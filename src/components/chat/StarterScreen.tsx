@@ -41,12 +41,19 @@ interface StarterScreenProps {
   provider: string;
   model: string;
   effort: string;
+  mode: string;
   recentChats: ChatSummary[];
   onProviderChange: (provider: string) => void;
   onModelChange: (model: string) => void;
   onEffortChange: (level: EffortLevel) => void;
+  onModeChange: (mode: string) => void;
   onLoadChat: (chatId: string) => void;
 }
+
+const MODES = [
+  { id: "chat", name: "Chat", icon: "message-square", description: "Conversa direta" },
+  { id: "vault-qa", name: "Vault Q&A", icon: "library", description: "Busca notas como contexto" },
+];
 
 function formatRelativeDate(iso: string): string {
   if (!iso) return "—";
@@ -71,10 +78,12 @@ export function StarterScreen({
   provider,
   model,
   effort,
+  mode,
   recentChats,
   onProviderChange,
   onModelChange,
   onEffortChange,
+  onModeChange,
   onLoadChat,
 }: StarterScreenProps) {
   const modelOptions = MODELS[provider] ?? [];
@@ -86,6 +95,27 @@ export function StarterScreen({
         <p className="axxa-starter-subtitle">
           Configure antes de começar — provider e modelo travam ao mandar a primeira mensagem.
         </p>
+      </div>
+
+      <div className="axxa-starter-section">
+        <label className="axxa-starter-label">Modo</label>
+        <div className="axxa-starter-providers">
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              className={
+                "axxa-starter-provider-btn" +
+                (m.id === mode ? " axxa-starter-provider-active" : "")
+              }
+              onClick={() => onModeChange(m.id)}
+              title={m.description}
+            >
+              <Icon name={m.icon} />
+              <span>{m.name}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="axxa-starter-section">
