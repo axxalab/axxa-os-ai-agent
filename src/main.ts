@@ -45,6 +45,9 @@ interface AxxaSettings {
    *  são salvas. Cada saída gera 2 arquivos: mídia + sidecar .md com
    *  frontmatter (prompt, model, provider, timestamp, etc). */
   generationPath: string;
+  /** Modo fullscreen mobile — sidebar direita ocupa 100vw + esconde
+   *  drawer-header/tabs nativos. Persiste entre reloads. */
+  mobileFullscreen: boolean;
   // ============ RAG (Sprint F — v0.1.25) ============
   /** Pasta no Vault onde o índice vetorial é persistido. */
   ragIndexPath: string;
@@ -132,6 +135,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   background: "none",
   recordingsPath: "axxa-ai/recordings",
   generationPath: "axxa-ai/generation",
+  mobileFullscreen: false,
   ragIndexPath: "axxa-ai/index",
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",

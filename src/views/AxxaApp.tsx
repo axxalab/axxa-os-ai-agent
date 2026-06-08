@@ -67,6 +67,56 @@ function makeId(): string {
 }
 
 /**
+ * Aplica/remove o modo fullscreen mobile.
+ *
+ * Adiciona/remove a class `axxa-fullscreen` no <body>. O CSS escopado em
+ * `body.axxa-fullscreen.is-mobile` faz o resto (sidebar 100vw, esconde
+ * tabs/headers nativos do Obsidian).
+ *
+ * Também atualiza `<meta name="theme-color">` pra que o OS pinte
+ * a status bar e a nav bar nativa com `--background-primary` —
+ * impressão de "true fullscreen" mesmo com a barra do sistema visível.
+ */
+function applyMobileFullscreen(enabled: boolean): void {
+  const body = document.body;
+  body.classList.toggle("axxa-fullscreen", enabled);
+
+  // theme-color dynamic — lê do tema ativo (resolveValue após dom mount)
+  let metaThemeColor = document.querySelector(
+    'meta[name="theme-color"]'
+  ) as HTMLMetaElement | null;
+  if (enabled) {
+    // Pega cor real do bg primário (renderizada pelo browser)
+    const cs = getComputedStyle(document.body);
+    const bg = cs.getPropertyValue("--background-primary").trim() ||
+      cs.backgroundColor ||
+      "#000000";
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement("meta");
+      metaThemeColor.name = "theme-color";
+      document.head.appendChild(metaThemeColor);
+      metaThemeColor.setAttribute("data-axxa-managed", "true");
+    }
+    // Guarda valor original pra restaurar depois
+    if (!metaThemeColor.getAttribute("data-axxa-original")) {
+      metaThemeColor.setAttribute(
+        "data-axxa-original",
+        metaThemeColor.content || ""
+      );
+    }
+    metaThemeColor.content = bg;
+  } else if (metaThemeColor?.getAttribute("data-axxa-managed") === "true") {
+    // Restaura valor original ou remove se foi criada pela gente
+    const original = metaThemeColor.getAttribute("data-axxa-original") || "";
+    if (original) {
+      metaThemeColor.content = original;
+    } else {
+      metaThemeColor.remove();
+    }
+  }
+}
+
+/**
  * Spec de activity para cada tool — define ícone Lucide + textos pending/done
  * que aparecem na timeline estilo Claude Code.
  *
@@ -210,6 +260,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const unsub = plugin.onSettingsChange(() => forceRender((n) => n + 1));
     return unsub;
   }, [plugin]);
+
+  // Aplica o modo fullscreen mobile no mount + reapplica quando settings mudar
+  useEffect(() => {
+    applyMobileFullscreen(plugin.settings.mobileFullscreen);
+    return () => {
+      // Limpa ao unmontar a view (volta drawer ao normal)
+      applyMobileFullscreen(false);
+    };
+  }, [plugin.settings.mobileFullscreen]);
 
   // Lê traduções na hora — atualiza no próximo render (após forceRender acima)
   const t = getTranslations(plugin.settings.language);
@@ -1436,6 +1495,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onNewChat={handleNewChat}
             onOpenConversations={handleOpenConversations}
             onRenameChat={handleHeaderRename}
+            fullscreen={plugin.settings.mobileFullscreen}
+            onToggleFullscreen={async () => {
+              plugin.settings.mobileFullscreen = !plugin.settings.mobileFullscreen;
+              await plugin.saveSettings();
+              applyMobileFullscreen(plugin.settings.mobileFullscreen);
+            }}
           />
         {view === "conversations" ? (
           <ConversationsList
