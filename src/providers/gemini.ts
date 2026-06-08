@@ -33,9 +33,10 @@ const GEMINI_ENDPOINT =
 const GEMINI_MODELS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/openai/models";
 // Endpoint nativo do Gemini pra image generation ("Nano Banana" e Imagen).
-// Não usa o OpenAI-compat porque image gen tem formato próprio (responseModalities).
-// Atualizado pra v1 (era v1beta) por orientação das docs oficiais (jun/2026).
-const GEMINI_NATIVE_BASE = "https://generativelanguage.googleapis.com/v1/models";
+// Usa /v1beta porque /v1 reclama "Unknown name 'responseModalities'" (não
+// suporta image gen ainda). Confirmado via ai.google.dev/api/generate-content
+// que tudo de generation passa por v1beta com fields snake_case.
+const GEMINI_NATIVE_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export class GeminiProvider implements Provider {
   id = "gemini";
@@ -306,11 +307,14 @@ export class GeminiProvider implements Provider {
       );
     }
     const url = `${GEMINI_NATIVE_BASE}/${request.model}:generateContent?key=${encodeURIComponent(apiKey.trim())}`;
+    // CRÍTICO: API v1beta exige snake_case nos campos.
+    // Erro observado: "Unknown name 'responseModalities' at 'generation_config'"
+    // → mudar pra response_modalities (snake_case) resolve.
+    // Também precisa de TEXT + IMAGE (só IMAGE retorna parts vazio).
     const body = {
       contents: [{ parts: [{ text: request.prompt }] }],
-      generationConfig: {
-        // CRÍTICO: precisa de TEXT + IMAGE — só IMAGE retorna vazio
-        responseModalities: ["TEXT", "IMAGE"],
+      generation_config: {
+        response_modalities: ["TEXT", "IMAGE"],
         ...(request.seed != null ? { seed: request.seed } : {}),
       },
     };

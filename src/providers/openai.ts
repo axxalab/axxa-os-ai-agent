@@ -391,19 +391,32 @@ export class OpenAIProvider implements Provider {
     // DALL-E 3 só gera 1 imagem por chamada
     if (isDallE3) body.n = 1;
 
+    // Retry com backoff em 500 (server-side transitório). 3 tentativas, 1s/2s/4s.
     let res;
-    try {
-      res = await requestUrl({
-        url: OPENAI_IMAGES_ENDPOINT,
-        method: "POST",
-        contentType: "application/json",
-        headers: { Authorization: `Bearer ${apiKey.trim()}` },
-        body: JSON.stringify(body),
-        throw: false,
-      });
-    } catch (err) {
-      console.error("[axxa] OpenAI image gen network error:", err);
-      throw new ProviderError("Falha de conexão na geração.", "network");
+    let attempt = 0;
+    const MAX_ATTEMPTS = 3;
+    while (attempt < MAX_ATTEMPTS) {
+      attempt++;
+      try {
+        res = await requestUrl({
+          url: OPENAI_IMAGES_ENDPOINT,
+          method: "POST",
+          contentType: "application/json",
+          headers: { Authorization: `Bearer ${apiKey.trim()}` },
+          body: JSON.stringify(body),
+          throw: false,
+        });
+      } catch (err) {
+        console.error("[axxa] OpenAI image gen network error:", err);
+        throw new ProviderError("Falha de conexão na geração.", "network");
+      }
+      if (res.status < 500 || attempt >= MAX_ATTEMPTS) break;
+      // 500/502/503 → retry com backoff exponencial
+      console.warn(`[axxa] OpenAI image gen ${res.status}, retry ${attempt}/${MAX_ATTEMPTS}`);
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+    }
+    if (!res) {
+      throw new ProviderError("OpenAI imagens: sem resposta.", "unknown");
     }
     if (res.status < 200 || res.status >= 300) {
       console.error("[axxa] OpenAI image gen failed:", res.status, res.json ?? res.text);
@@ -411,8 +424,30 @@ export class OpenAIProvider implements Provider {
     if (res.status === 401) {
       throw new ProviderError("API key inválida.", "invalid-key");
     }
+    if (res.status === 403) {
+      // Verifica se é problema de org verification (gpt-image-1)
+      const apiMsg = res.json?.error?.message ?? "";
+      const isOrgIssue = /verif|organization/i.test(apiMsg);
+      if (isOrgIssue || isGptImage) {
+        throw new ProviderError(
+          `OpenAI: organização não verificada pra ${request.model}. ` +
+            `Vá em platform.openai.com → Settings → Organization → General → "Verify Organization" ` +
+            `(precisa de telefone + ID válido). Após verificar, aguarde até 30min e tente de novo.`,
+          "invalid-key"
+        );
+      }
+      throw new ProviderError(`OpenAI: acesso negado. ${apiMsg}`, "invalid-key");
+    }
     if (res.status === 429) {
       throw new ProviderError("Rate limit OpenAI.", "rate-limit");
+    }
+    if (res.status >= 500) {
+      throw new ProviderError(
+        `OpenAI servidor com problema (${res.status}). ` +
+          `Pode ser incidente temporário — verifique status.openai.com. ` +
+          `Já tentei ${MAX_ATTEMPTS} vezes com backoff.`,
+        "unknown"
+      );
     }
     if (res.status < 200 || res.status >= 300) {
       const msg =

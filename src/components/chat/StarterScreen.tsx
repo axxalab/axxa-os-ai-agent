@@ -19,6 +19,13 @@ import {
   getModelCapabilities,
   capabilityBadges,
 } from "../../providers/modelCapabilities";
+import {
+  getModelFullInfo,
+  groupModelsByCategory,
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+} from "../../providers/modelDescriptions";
+import { formatUsd } from "../../usage/pricing";
 
 // Cores DS pra badges de capacidade — cada flag tem uma cor semântica fixa.
 const CAP_COLORS = {
@@ -39,6 +46,89 @@ const CHIP_COLORS = {
   messages: "var(--color-cyan, #4cc9f0)",
   tokens: "var(--color-green, #06d6a0)",
 } as const;
+
+/**
+ * Card de info do modelo — descrição + categoria + cost + context window +
+ * badges. Aparece abaixo do <select> da starter.
+ *
+ * Quando o modelo é desconhecido (sem card), mostra mensagem mais genérica.
+ */
+function ModelInfoCard({
+  provider,
+  model,
+}: {
+  provider: string;
+  model: string;
+}) {
+  const t = useT();
+  const info = getModelFullInfo(provider, model);
+  const { card, caps, pricing } = info;
+
+  // Linha de custo: tokens in/out OU por chamada (image), OU free
+  let costLine: string | null = null;
+  if (pricing.tier === "free") {
+    costLine = "FREE";
+  } else if (pricing.imagePerCall != null) {
+    costLine = `${formatUsd(pricing.imagePerCall)} por imagem`;
+  } else if (
+    pricing.inputPerMillion != null ||
+    pricing.outputPerMillion != null
+  ) {
+    const inS =
+      pricing.inputPerMillion != null
+        ? formatUsd(pricing.inputPerMillion)
+        : "—";
+    const outS =
+      pricing.outputPerMillion != null
+        ? formatUsd(pricing.outputPerMillion)
+        : "—";
+    costLine = `${inS} in / ${outS} out · por 1M tokens`;
+  }
+
+  return (
+    <div className="axxa-model-card">
+      <div className="axxa-model-card-head">
+        <span className="axxa-model-card-category">
+          {CATEGORY_LABELS[card.category]}
+        </span>
+        {card.contextWindow != null && (
+          <span className="axxa-model-card-ctx">
+            {formatContextWindow(card.contextWindow)} ctx
+          </span>
+        )}
+        {costLine && (
+          <span className="axxa-model-card-cost">{costLine}</span>
+        )}
+      </div>
+      <div className="axxa-model-card-desc">{card.description}</div>
+      {card.goodFor && (
+        <div className="axxa-model-card-goodfor">
+          <span className="axxa-model-card-goodfor-label">Bom pra:</span>{" "}
+          {card.goodFor}
+        </div>
+      )}
+      <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
+        {capabilityBadges(caps).map((b) => (
+          <InfoChip
+            key={b.id}
+            icon={b.icon}
+            color={CAP_COLORS[b.id]}
+            title={modelCapTooltip(b.id, t)}
+          >
+            {b.label}
+          </InfoChip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Formato compacto do context window: 128000 → "128k", 2000000 → "2M" */
+function formatContextWindow(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1) + "M";
+  if (n >= 1_000) return Math.round(n / 1_000) + "k";
+  return String(n);
+}
 
 /** Tooltip por badge — texto explicativo do que cada flag significa. */
 function modelCapTooltip(
@@ -209,25 +299,24 @@ export function StarterScreen({
           {!modelOptions.includes(model) && (
             <option value={model}>{model}</option>
           )}
-          {modelOptions.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
+          {(() => {
+            // Agrupa modelos por categoria via <optgroup>
+            const grouped = groupModelsByCategory(provider, modelOptions);
+            return CATEGORY_ORDER.filter((cat) => grouped.has(cat)).map(
+              (cat) => (
+                <optgroup key={cat} label={CATEGORY_LABELS[cat]}>
+                  {(grouped.get(cat) ?? []).map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </optgroup>
+              )
+            );
+          })()}
         </select>
-        {/* Badges de capacidade do modelo selecionado — DS chips do design system */}
-        <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
-          {capabilityBadges(getModelCapabilities(provider, model)).map((b) => (
-            <InfoChip
-              key={b.id}
-              icon={b.icon}
-              color={CAP_COLORS[b.id]}
-              title={modelCapTooltip(b.id, t)}
-            >
-              {b.label}
-            </InfoChip>
-          ))}
-        </div>
+        {/* Model card: descrição + cost + caps */}
+        <ModelInfoCard provider={provider} model={model} />
       </div>
 
       <div className="axxa-starter-section">

@@ -1179,13 +1179,77 @@ body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav) .axxa-composer::after {
   height: 12px;
 }
 
+/* Model card (StarterScreen, abaixo do <select>) — descrição + caps + cost */
+.axxa-model-card {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.axxa-model-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.axxa-model-card-category {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 700;
+  color: var(--text-accent);
+  background: var(--background-modifier-hover);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.axxa-model-card-ctx,
+.axxa-model-card-cost {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.axxa-model-card-cost {
+  color: var(--color-green, #06d6a0);
+  font-weight: 600;
+}
+
+.axxa-model-card-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-normal);
+  line-height: 1.45;
+}
+
+.axxa-model-card-goodfor {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.axxa-model-card-goodfor-label {
+  color: var(--text-faint);
+  font-weight: 600;
+  font-style: normal;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.3px;
+}
+
 /* Badges de capacidade do modelo (StarterScreen, abaixo do select).
    Reusa .axxa-info-chip mas com gap mais arejado. */
 .axxa-model-caps {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 10px;
-  margin-top: 6px;
+  margin-top: 2px;
   padding: 0 2px;
   font-size: 10px;
 }
