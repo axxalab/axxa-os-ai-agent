@@ -138,6 +138,26 @@ body.is-mobile.axxa-fullscreen .axxa-header {
   }
 }
 
+/* === Z-index defensivo (v0.1.54) ===
+   Garante que elementos do .workspace-leaf que hospedam o AXXA OS não
+   criem stacking context que sobreponha nosso composer/chat.
+   axxa-root cria stacking context próprio (z-index:1) e seus filhos
+   ficam isolados, mas alguns templates/temas do Obsidian adicionam
+   pseudo-elementos no leaf que podem furar isso. */
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] {
+  /* Sem overflow:hidden — composer absolute precisa "vazar" o conteúdo
+     pra cima quando o teclado abre / quando wrapper shrink */
+  position: relative;
+  isolation: auto;
+}
+
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+  /* view-content é o pai direto do axxa-root — garante que ele tem
+     position relative pra absolute do composer trabalhar */
+  position: relative;
+  z-index: 0;
+}
+
 /* Drawer + teclado aberto → esconde header/tab options do drawer */
 body.is-mobile
 .workspace-drawer.axxa-keyboard-open
@@ -161,6 +181,11 @@ body.is-mobile
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  /* v0.1.54: Cria stacking context novo pro AXXA OS ficar visualmente
+     ACIMA de qualquer elemento interno do .workspace-leaf do Obsidian.
+     Sem isso, em algumas situações (fullscreen / split panes) elementos
+     do leaf podem aparecer sobrepondo o composer ou chat. */
+  z-index: 1;
   /* position: relative pro PlusModal (bottom sheet) usar inset:0 */
   position: relative;
   background: var(--background-primary);
@@ -322,6 +347,10 @@ body.is-mobile
   display: flex;
   flex-direction: column;
   position: relative;
+  /* Z-index acima do .workspace-leaf default — mensagens rolam POR CIMA
+     dos elementos internos do leaf (em vez de ficarem atrás de alguma
+     overlay ou border). */
+  z-index: 5;
 }
 
 .axxa-chat-area {
@@ -375,7 +404,9 @@ body.is-mobile
   background: var(--background-secondary) !important;
   color: var(--text-normal) !important;
   cursor: pointer;
-  z-index: 48;
+  /* Entre chat-area (5) e composer (100) — fica visível acima do chat
+     mas abaixo do composer flutuante */
+  z-index: 80;
   /* Mesma sombra FAB do composer pra consistência visual */
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.12),
@@ -978,7 +1009,8 @@ body.is-mobile
   /* Mesma lógica do composer: view-content padding já handle navbar+safe.
      Banner fica composer-h + 14px acima do composer (que tá em bottom:8px) */
   bottom: calc(var(--axxa-composer-h, 80px) + 14px);
-  z-index: 49;
+  /* Acima do chat-area-wrapper (5) e logo abaixo do composer (100) */
+  z-index: 99;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1134,7 +1166,9 @@ body.is-mobile
   gap: 6px;
   padding: 8px 4px 6px;
   background: transparent;
-  z-index: 50;
+  /* Z-index alto — composer fica VISUALMENTE acima do .workspace-leaf
+     e de qualquer overlay/border interno do Obsidian. */
+  z-index: 100;
   transition: bottom 0.18s ease;
   pointer-events: auto;
 }
