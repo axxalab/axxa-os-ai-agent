@@ -26,6 +26,8 @@ import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage, type MessageAttachment } from "../providers/base";
 import { getModelCapabilities, isGenerationModel } from "../providers/modelCapabilities";
+import { checkCompatibility } from "../providers/compatibility";
+import { IncompatibleBanner } from "../components/composer/IncompatibleBanner";
 import { saveGeneration, type GenerationMediaType } from "../generation/save";
 import {
   effortToMaxTokens,
@@ -918,6 +920,27 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // local. Cada provider/modelo decide se respeita. Persistência é da sessão.
   const [plusToggles, setPlusToggles] = useState<Record<string, boolean>>({});
 
+  // Dismissed banner state — chave = `${mode}::${provider}::${model}` pra
+  // reaparecer se user mudar qualquer um dos 3. Sessão only.
+  const [dismissedBannerKey, setDismissedBannerKey] = useState<string | null>(null);
+
+  // Compatibilidade ATUAL do combo modo+provider+modelo+anexos.
+  // Recomputado a cada render (cheap — só checa flags). null se não há issue.
+  const activeModelsList =
+    plugin.settings.activeModels?.[activeProviderId] ?? [];
+  const hasImageAttachment = pendingAttachments.some(
+    (p) => p.attachment.type === "image"
+  );
+  const compatibility = checkCompatibility(
+    activeMode,
+    activeProviderId,
+    activeModel,
+    activeModelsList,
+    hasImageAttachment
+  );
+  const bannerKey = `${activeMode}::${activeProviderId}::${activeModel}`;
+  const showBanner = !compatibility.ok && dismissedBannerKey !== bannerKey;
+
   const handleSend = async (text: string) => {
     const { addMessage, lockSession, setCurrentChatId, setCurrentChatTitle } =
       useChatStore.getState();
@@ -1438,6 +1461,23 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           />
         ) : (
           <ChatArea />
+        )}
+        {view === "chat" && showBanner && (
+          <IncompatibleBanner
+            result={compatibility}
+            onSwapModel={(m) => {
+              // Se session locked (após primeira msg), não dá pra trocar — avisa.
+              if (isLocked) {
+                new Notice(
+                  `Pra trocar pra ${m}, comece uma Nova conversa (botão "+" no topo).`
+                );
+                return;
+              }
+              handleStarterModel(m);
+              setDismissedBannerKey(null);
+            }}
+            onDismiss={() => setDismissedBannerKey(bannerKey)}
+          />
         )}
         {view === "chat" && (
           <Composer
