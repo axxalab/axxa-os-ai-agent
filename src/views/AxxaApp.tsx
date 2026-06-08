@@ -473,10 +473,26 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     let responseId: string | null = null;
 
     try {
+      // Inlina notes anexadas no system prompt — não vão pro wire visual,
+      // mas o LLM "vê" o conteúdo das notas marcadas pra esta turn.
+      let noteContextBlock = "";
+      if (userAttachments) {
+        const noteAtts = userAttachments.filter(
+          (a): a is import("../providers/base").NoteAttachment =>
+            a.type === "note"
+        );
+        if (noteAtts.length > 0) {
+          noteContextBlock =
+            "\n\n[Notas anexadas pelo usuário]\n\n" +
+            noteAtts.map((n) => `### ${n.path}\n\n${n.content}`).join("\n\n---\n\n");
+        }
+      }
       const fullSystem =
-        vaultContextBlock.length > 0
-          ? t.systemPrompt.base + t.systemPrompt.vaultQaSuffix + vaultContextBlock
-          : t.systemPrompt.base;
+        t.systemPrompt.base +
+        (vaultContextBlock.length > 0
+          ? t.systemPrompt.vaultQaSuffix + vaultContextBlock
+          : "") +
+        noteContextBlock;
 
       // Pega só user/assistant do store. Última user msg ganha attachments
       // multimodais se foram passados pra essa chamada.
@@ -886,7 +902,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
-  // Imagens anexadas no composer pra próxima mensagem (limpa após envio).
+  // Anexos pendentes (multi-tipo) — limpa após envio.
   // Cada attachment ganha id estável pra UI tracking — não persiste no .md.
   interface PendingAttachmentEntry {
     id: string;
@@ -894,6 +910,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     name: string;
   }
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachmentEntry[]>([]);
+  const makeAttachmentId = () =>
+    `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const handleSend = async (text: string) => {
     const { addMessage, lockSession, setCurrentChatId, setCurrentChatTitle } =
@@ -907,12 +925,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       lockSession(activeProviderId, activeModel, activeMode);
     }
 
-    // Filtra attachments só se o modelo aceita vision — silenciosamente
-    // descarta caso contrário (UI já bloqueou attach, mas dupla checagem aqui).
+    // Prepara attachments pra envio. Filtros aplicados em streamReply/runAgentTurn:
+    //  - imagens só vão se o modelo aceita vision
+    //  - notas viram bloco de contexto markdown no system prompt
+    //  - pdf/audio passam como meta (ignorados no wire por enquanto)
     const caps = getModelCapabilities(activeProviderId, activeModel);
     const attachments =
-      caps.vision && pendingAttachments.length > 0
-        ? pendingAttachments.map((p) => p.attachment)
+      pendingAttachments.length > 0
+        ? pendingAttachments
+            .map((p) => p.attachment)
+            .filter((a) => (a.type === "image" ? caps.vision : true))
         : undefined;
 
     // User msg salva sem attachments no store (pra simplicidade do auto-save .md).
@@ -1298,14 +1320,41 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             commands={axxaCommands}
             visibleChips={plugin.settings.composerChips}
             visionEnabled={getModelCapabilities(activeProviderId, activeModel).vision}
-            pendingImages={pendingAttachments
-              .filter((p) => p.attachment.type === "image")
-              .map((p) => ({
-                id: p.id,
-                dataUrl: p.attachment.dataUrl,
-                mimeType: p.attachment.mimeType ?? "image/png",
-                name: p.name,
-              }))}
+            pendingAttachments={pendingAttachments.map((p) => {
+              const a = p.attachment;
+              switch (a.type) {
+                case "image":
+                  return {
+                    id: p.id,
+                    kind: "image" as const,
+                    dataUrl: a.dataUrl,
+                    mimeType: a.mimeType ?? "image/png",
+                    name: p.name,
+                  };
+                case "note":
+                  return {
+                    id: p.id,
+                    kind: "note" as const,
+                    path: a.path,
+                    name: p.name,
+                  };
+                case "pdf":
+                  return {
+                    id: p.id,
+                    kind: "pdf" as const,
+                    name: p.name,
+                    dataUrl: a.dataUrl,
+                  };
+                case "audio":
+                  return {
+                    id: p.id,
+                    kind: "audio" as const,
+                    path: a.path,
+                    name: p.name,
+                    durationMs: a.durationMs,
+                  };
+              }
+            })}
             onAddImage={(img) =>
               setPendingAttachments((prev) => [
                 ...prev,
@@ -1320,7 +1369,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 },
               ])
             }
-            onRemoveImage={(id) =>
+            onRemoveAttachment={(id) =>
               setPendingAttachments((prev) => prev.filter((p) => p.id !== id))
             }
           />
@@ -1330,6 +1379,47 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               currentEffort={effort}
               onSelectEffort={handleSelectEffort}
               onClose={handlePlusClose}
+              visionEnabled={
+                getModelCapabilities(activeProviderId, activeModel).vision
+              }
+              onAttachPicked={(picked) => {
+                const id = makeAttachmentId();
+                const entry: PendingAttachmentEntry = (() => {
+                  switch (picked.type) {
+                    case "note":
+                      return {
+                        id,
+                        attachment: {
+                          type: "note",
+                          path: picked.path ?? picked.name,
+                          content: picked.content ?? "",
+                        },
+                        name: picked.name,
+                      };
+                    case "pdf":
+                      return {
+                        id,
+                        attachment: {
+                          type: "pdf",
+                          dataUrl: picked.dataUrl,
+                          name: picked.name,
+                        },
+                        name: picked.name,
+                      };
+                    case "image":
+                      return {
+                        id,
+                        attachment: {
+                          type: "image",
+                          dataUrl: picked.dataUrl ?? "",
+                          mimeType: picked.mimeType,
+                        },
+                        name: picked.name,
+                      };
+                  }
+                })();
+                setPendingAttachments((prev) => [...prev, entry]);
+              }}
             />
           )}
         </div>

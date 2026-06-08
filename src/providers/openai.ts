@@ -46,15 +46,22 @@ export function toOpenAIMessages(
       };
     }
     if (m.role === "user" && m.attachments && m.attachments.length > 0) {
+      const imageAtt = m.attachments.filter(
+        (a): a is import("./base").ImageAttachment => a.type === "image"
+      );
+      // Imagens vão como content array OpenAI-vision; demais anexos (note,
+      // audio, pdf) já foram inlinados como texto antes pelo caller — não
+      // precisam ir pro wire.
+      if (imageAtt.length === 0) {
+        return { role: "user", content: m.content };
+      }
       const parts: Array<Record<string, unknown>> = [];
       if (m.content) parts.push({ type: "text", text: m.content });
-      for (const att of m.attachments) {
-        if (att.type === "image") {
-          parts.push({
-            type: "image_url",
-            image_url: { url: att.dataUrl },
-          });
-        }
+      for (const att of imageAtt) {
+        parts.push({
+          type: "image_url",
+          image_url: { url: att.dataUrl },
+        });
       }
       return { role: "user", content: parts };
     }

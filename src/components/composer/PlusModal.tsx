@@ -1,12 +1,14 @@
 // src/components/composer/PlusModal.tsx
-// Modal estilo ChatGPT mobile — bottom sheet que sobe do rodapé.
-// Seções:
-//   - Anexar arquivo (em breve — placeholder visual, funcional no Módulo 5)
-//   - Effort (intensidade do processamento)
-// Futuras: screenshot, voice note, etc.
+// Bottom sheet estilo Claude chat (iOS/Android):
+//   1. Drag handle
+//   2. Row de 3 ícones circulares grandes: Nota / PDF / Imagem
+//      — Imagem fica disabled se o modelo ativo não suporta vision
+//   3. Effort selector (5 níveis pill)
+//   4. Future: settings (max_tokens, system prompt override, etc)
 
-import { useEffect } from "react";
-import { Notice } from "obsidian";
+import { useEffect, useState } from "react";
+import { FuzzySuggestModal, Notice, TFile } from "obsidian";
+import type { App } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import {
   EFFORT_LEVELS,
@@ -15,15 +17,45 @@ import {
   type EffortLevel,
 } from "../_shared/effort";
 import { useT } from "../../i18n";
+import { useApp } from "../_shared/AppContext";
+
+export interface AttachPickResult {
+  type: "note" | "pdf" | "image";
+  /** Pra note: path vault. Pra pdf/image: filename ou similar. */
+  name: string;
+  /** Pra pdf/image: dataUrl base64. */
+  dataUrl?: string;
+  /** Pra pdf: mime type. */
+  mimeType?: string;
+  /** Pra note: conteúdo lido. */
+  content?: string;
+  /** Pra note: path no vault (referência absoluta). */
+  path?: string;
+}
 
 interface PlusModalProps {
   currentEffort: string;
   onSelectEffort: (level: EffortLevel) => void;
   onClose: () => void;
+  /** True se o modelo ativo aceita imagens. Habilita botão Imagem. */
+  visionEnabled?: boolean;
+  /** Callback quando user escolheu um anexo (nota, pdf ou imagem). */
+  onAttachPicked?: (att: AttachPickResult) => void;
 }
 
-export function PlusModal({ currentEffort, onSelectEffort, onClose }: PlusModalProps) {
+export function PlusModal({
+  currentEffort,
+  onSelectEffort,
+  onClose,
+  visionEnabled = false,
+  onAttachPicked,
+}: PlusModalProps) {
   const t = useT();
+  const app = useApp();
+  // Inputs hidden — disparados pelos botões da row
+  const [imageInput, setImageInput] = useState<HTMLInputElement | null>(null);
+  const [pdfInput, setPdfInput] = useState<HTMLInputElement | null>(null);
+
   // Fecha com Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -32,6 +64,102 @@ export function PlusModal({ currentEffort, onSelectEffort, onClose }: PlusModalP
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Helper: blob → dataUrl via FileReader
+  const blobToDataUrl = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(reader.error ?? new Error("FileReader"));
+      reader.readAsDataURL(blob);
+    });
+
+  // ===== Anexar nota (vault) =====
+  const handlePickNote = async () => {
+    // MVP: abre prompt simples com lista das primeiras 50 notas markdown.
+    // Futuro: SuggestModal nativo do Obsidian (quick switcher).
+    const files = app.vault.getMarkdownFiles().slice(0, 50);
+    if (files.length === 0) {
+      new Notice(t.plus.pickNoteEmpty);
+      return;
+    }
+    // Usa o quickSwitcher style — mais polished — via openFilePicker se disponível
+    try {
+      const path = await openVaultNotePicker(app, t);
+      if (!path) return;
+      const content = await app.vault.adapter.read(path);
+      onAttachPicked?.({
+        type: "note",
+        name: path.split("/").pop() ?? path,
+        path,
+        content,
+      });
+      onClose();
+    } catch (err) {
+      console.error("[axxa] pick note falhou:", err);
+      new Notice(
+        t.plus.pickNoteFailed(err instanceof Error ? err.message : "erro")
+      );
+    }
+  };
+
+  // ===== Anexar PDF =====
+  const handlePickPdf = () => {
+    pdfInput?.click();
+  };
+
+  const handlePdfChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      new Notice(t.plus.pickPdfWrongType);
+      return;
+    }
+    try {
+      const dataUrl = await blobToDataUrl(file);
+      onAttachPicked?.({
+        type: "pdf",
+        name: file.name,
+        dataUrl,
+        mimeType: file.type || "application/pdf",
+      });
+      onClose();
+    } catch (err) {
+      console.error("[axxa] pick pdf falhou:", err);
+      new Notice(t.plus.pickPdfFailed);
+    }
+  };
+
+  // ===== Anexar imagem =====
+  const handlePickImage = () => {
+    if (!visionEnabled) {
+      new Notice(t.composer.attachImageNoVision);
+      return;
+    }
+    imageInput?.click();
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      try {
+        const dataUrl = await blobToDataUrl(file);
+        onAttachPicked?.({
+          type: "image",
+          name: file.name,
+          dataUrl,
+          mimeType: file.type,
+        });
+      } catch (err) {
+        console.error("[axxa] pick image falhou:", err);
+        new Notice(t.composer.attachImageFailed);
+      }
+    }
+    onClose();
+  };
 
   return (
     <div className="axxa-plus-overlay" onClick={onClose}>
@@ -43,63 +171,53 @@ export function PlusModal({ currentEffort, onSelectEffort, onClose }: PlusModalP
       >
         <div className="axxa-plus-handle" />
 
-        <h3 className="axxa-plus-title">{t.plus.title}</h3>
-
-        {/* Anexar arquivo — UI placeholder, funcional no Módulo 5 */}
-        <div className="axxa-plus-section axxa-plus-section-soon">
-          <div className="axxa-plus-section-head">
-            <Icon name="paperclip" className="axxa-plus-section-icon" />
-            <div>
-              <div className="axxa-plus-section-title">
-                {t.plus.attachTitle}
-                <span className="axxa-plus-soon-badge">{t.plus.attachSoonBadge}</span>
-              </div>
-              <div className="axxa-plus-section-sub">{t.plus.attachSub}</div>
-            </div>
-          </div>
-          <div className="axxa-plus-attach-grid">
-            <button
-              type="button"
-              className="axxa-plus-attach-btn"
-              disabled
-              title={t.plus.attachPdfNotice}
-              onClick={() => new Notice(t.plus.attachPdfNotice)}
-            >
-              <Icon name="file-text" />
-              <span>{t.plus.attachPdf}</span>
-            </button>
-            <button
-              type="button"
-              className="axxa-plus-attach-btn"
-              disabled
-              title={t.plus.attachImageNotice}
-              onClick={() => new Notice(t.plus.attachImageNotice)}
-            >
-              <Icon name="image" />
-              <span>{t.plus.attachImage}</span>
-            </button>
-            <button
-              type="button"
-              className="axxa-plus-attach-btn"
-              disabled
-              title={t.plus.attachNoteNotice}
-              onClick={() => new Notice(t.plus.attachNoteNotice)}
-            >
-              <Icon name="file" />
-              <span>{t.plus.attachNote}</span>
-            </button>
-          </div>
+        {/* Row de ícones grandes — estilo Claude chat */}
+        <div className="axxa-plus-attach-row">
+          <PlusAttachButton
+            icon="file-text"
+            label={t.plus.attachNote}
+            tone="green"
+            onClick={handlePickNote}
+          />
+          <PlusAttachButton
+            icon="file"
+            label={t.plus.attachPdf}
+            tone="red"
+            onClick={handlePickPdf}
+          />
+          <PlusAttachButton
+            icon="image"
+            label={t.plus.attachImage}
+            tone="purple"
+            onClick={handlePickImage}
+            disabled={!visionEnabled}
+            disabledTitle={t.composer.attachImageNoVision}
+          />
         </div>
 
-        <div className="axxa-plus-section">
-          <div className="axxa-plus-section-head">
-            <Icon name="zap" className="axxa-plus-section-icon" />
-            <div>
-              <div className="axxa-plus-section-title">{t.plus.effortTitle}</div>
-              <div className="axxa-plus-section-sub">{t.plus.effortSub}</div>
-            </div>
-          </div>
+        {/* Hidden inputs disparados pelos botões */}
+        <input
+          ref={setImageInput}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: "none" }}
+          onChange={handleImageChange}
+        />
+        <input
+          ref={setPdfInput}
+          type="file"
+          accept="application/pdf,.pdf"
+          style={{ display: "none" }}
+          onChange={handlePdfChange}
+        />
 
+        <div className="axxa-plus-divider" />
+
+        {/* Opções: Effort selector */}
+        <div className="axxa-plus-options">
+          <div className="axxa-plus-options-label">{t.plus.effortTitle}</div>
+          <div className="axxa-plus-options-sub">{t.plus.effortSub}</div>
           <div className="axxa-effort-grid">
             {EFFORT_LEVELS.map((level) => {
               const active = level === currentEffort;
@@ -127,4 +245,94 @@ export function PlusModal({ currentEffort, onSelectEffort, onClose }: PlusModalP
       </div>
     </div>
   );
+}
+
+/**
+ * Botão de attach do row top — ícone circular grande + label embaixo.
+ * Tone controla a cor do bg do círculo (red/green/purple/etc).
+ */
+function PlusAttachButton({
+  icon,
+  label,
+  tone,
+  onClick,
+  disabled = false,
+  disabledTitle,
+}: {
+  icon: string;
+  label: string;
+  tone: "red" | "green" | "purple";
+  onClick: () => void;
+  disabled?: boolean;
+  disabledTitle?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={
+        "axxa-plus-attach-pill axxa-plus-attach-tone-" + tone +
+        (disabled ? " axxa-plus-attach-disabled" : "")
+      }
+      onClick={onClick}
+      disabled={disabled}
+      title={disabled && disabledTitle ? disabledTitle : label}
+    >
+      <span className="axxa-plus-attach-circle">
+        <Icon name={icon} />
+      </span>
+      <span className="axxa-plus-attach-label">{label}</span>
+    </button>
+  );
+}
+
+/**
+ * Picker fuzzy de notas via FuzzySuggestModal do Obsidian.
+ * UX igual ao Quick Switcher — type-ahead na lista, Enter pra escolher.
+ */
+class VaultNotePickerModal extends FuzzySuggestModal<TFile> {
+  private files: TFile[];
+  private resolver: (path: string | null) => void;
+  private resolved = false;
+
+  constructor(app: App, resolver: (path: string | null) => void) {
+    super(app);
+    this.files = app.vault.getMarkdownFiles();
+    this.resolver = resolver;
+    this.setPlaceholder("Buscar nota pra anexar...");
+  }
+
+  getItems(): TFile[] {
+    return this.files;
+  }
+
+  getItemText(item: TFile): string {
+    return item.path;
+  }
+
+  onChooseItem(item: TFile): void {
+    this.resolved = true;
+    this.resolver(item.path);
+  }
+
+  onClose(): void {
+    // Se fechou sem escolher (Escape, clique fora), resolve com null
+    if (!this.resolved) this.resolver(null);
+    super.onClose();
+  }
+}
+
+async function openVaultNotePicker(
+  app: App,
+  t: ReturnType<typeof useT>
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    const files = app.vault.getMarkdownFiles();
+    if (files.length === 0) {
+      new Notice(t.plus.pickNoteEmpty);
+      resolve(null);
+      return;
+    }
+    const modal = new VaultNotePickerModal(app, resolve);
+    modal.open();
+  });
 }

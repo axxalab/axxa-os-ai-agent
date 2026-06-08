@@ -36,12 +36,40 @@ function formatRecordingDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/** Entry de anexo no Composer — tipo discriminado por kind. */
 interface PendingImage {
   id: string;
+  kind: "image";
   dataUrl: string;
   mimeType: string;
   name: string;
 }
+interface PendingNote {
+  id: string;
+  kind: "note";
+  path: string;
+  name: string;
+}
+interface PendingPdf {
+  id: string;
+  kind: "pdf";
+  name: string;
+  /** dataUrl ou path no vault; pra MVP só name. */
+  dataUrl?: string;
+}
+interface PendingAudio {
+  id: string;
+  kind: "audio";
+  path: string;
+  name: string;
+  durationMs?: number;
+}
+
+export type PendingAttachment =
+  | PendingImage
+  | PendingNote
+  | PendingPdf
+  | PendingAudio;
 
 interface ComposerProps {
   onSend: (text: string) => void;
@@ -72,24 +100,23 @@ interface ComposerProps {
   /** True se o modelo selecionado aceita imagens. Habilita botão de attach
    *  + paste de imagem. */
   visionEnabled?: boolean;
-  /** Imagens pendentes (anexadas pra próxima msg). Renderizadas como chips
-   *  acima do composer. */
-  pendingImages?: PendingImage[];
-  /** Callback chamado quando user adiciona imagem (paste ou attach). */
+  /** Anexos pendentes (qualquer tipo). Renderizados como chips acima do composer. */
+  pendingAttachments?: PendingAttachment[];
+  /** Callback chamado quando user adiciona imagem via paste. */
   onAddImage?: (img: PendingImage) => void;
-  /** Callback chamado quando user remove imagem do pending. */
-  onRemoveImage?: (id: string) => void;
+  /** Callback chamado quando user remove um anexo do pending. */
+  onRemoveAttachment?: (id: string) => void;
 }
 
 export type { PendingImage };
 
 /**
- * Chip de anexo com placeholder shimmer estilo ChatGPT.
+ * Chip de imagem com placeholder shimmer estilo ChatGPT.
  * - Mostra placeholder cinza animado até `<img onLoad>` disparar
  * - Trocando pro thumbnail real com fade-in (opacity 0→1)
  * - Botão X pra remover do pending
  */
-function AttachmentChip({
+function AttachmentImageChip({
   img,
   onRemove,
   removeLabel,
@@ -100,7 +127,7 @@ function AttachmentChip({
 }) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <div className="axxa-attachment-chip">
+    <div className="axxa-attachment-chip axxa-attachment-chip-image">
       <div className="axxa-attachment-thumb-wrap">
         {!loaded && (
           <div className="axxa-image-placeholder axxa-attachment-thumb-placeholder">
@@ -118,6 +145,42 @@ function AttachmentChip({
         />
       </div>
       <span className="axxa-attachment-name">{img.name}</span>
+      <button
+        type="button"
+        className="axxa-attachment-remove"
+        aria-label={removeLabel}
+        title={removeLabel}
+        onClick={onRemove}
+      >
+        <Icon name="x" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Chip genérico pra note/pdf/audio — ícone circular semântico + nome + remove.
+ * Cor tonal vem do tipo (green pra note, red pra pdf, blue pra audio).
+ */
+function AttachmentGenericChip({
+  icon,
+  name,
+  tone,
+  onRemove,
+  removeLabel,
+}: {
+  icon: string;
+  name: string;
+  tone: "note" | "pdf" | "audio";
+  onRemove: () => void;
+  removeLabel: string;
+}) {
+  return (
+    <div className={"axxa-attachment-chip axxa-attachment-chip-" + tone}>
+      <span className="axxa-attachment-icon-wrap">
+        <Icon name={icon} />
+      </span>
+      <span className="axxa-attachment-name">{name}</span>
       <button
         type="button"
         className="axxa-attachment-remove"
@@ -153,9 +216,9 @@ export function Composer({
   commands,
   visibleChips,
   visionEnabled = false,
-  pendingImages = [],
+  pendingAttachments = [],
   onAddImage,
-  onRemoveImage,
+  onRemoveAttachment,
 }: ComposerProps) {
   const t = useT();
   const app = useApp();
@@ -194,6 +257,7 @@ export function Composer({
         const dataUrl = String(reader.result ?? "");
         resolve({
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          kind: "image",
           dataUrl,
           mimeType: blob.type || "image/png",
           name,
@@ -223,6 +287,16 @@ export function Composer({
         console.error("[axxa] anexo de imagem falhou:", err);
         new Notice(t.composer.attachImageFailed);
       }
+    }
+  };
+
+  // Helper interno: ícone Lucide por tipo de attachment
+  const attachmentIcon = (a: PendingAttachment): string => {
+    switch (a.kind) {
+      case "note": return "file-text";
+      case "pdf": return "file";
+      case "audio": return "mic";
+      case "image": return "image";
     }
   };
 
@@ -559,19 +633,33 @@ export function Composer({
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
-      {/* Imagens pendentes (preview chips antes do envio).
-          Estilo ChatGPT: shimmer placeholder enquanto o <img> não dispara onLoad,
-          troca pra thumb final com fade-in suave. */}
-      {pendingImages.length > 0 && (
+      {/* Anexos pendentes (preview chips antes do envio).
+          Multi-tipo: image (thumbnail+shimmer), note (ícone file-text),
+          pdf (ícone file), audio (ícone mic). */}
+      {pendingAttachments.length > 0 && (
         <div className="axxa-composer-attachments" aria-label="Anexos pendentes">
-          {pendingImages.map((img) => (
-            <AttachmentChip
-              key={img.id}
-              img={img}
-              onRemove={() => onRemoveImage?.(img.id)}
-              removeLabel={t.composer.attachImageRemoveLabel}
-            />
-          ))}
+          {pendingAttachments.map((att) => {
+            if (att.kind === "image") {
+              return (
+                <AttachmentImageChip
+                  key={att.id}
+                  img={att}
+                  onRemove={() => onRemoveAttachment?.(att.id)}
+                  removeLabel={t.composer.attachImageRemoveLabel}
+                />
+              );
+            }
+            return (
+              <AttachmentGenericChip
+                key={att.id}
+                icon={attachmentIcon(att)}
+                name={att.name}
+                tone={att.kind}
+                onRemove={() => onRemoveAttachment?.(att.id)}
+                removeLabel={t.composer.attachImageRemoveLabel}
+              />
+            );
+          })}
         </div>
       )}
       <div className="axxa-composer-row">

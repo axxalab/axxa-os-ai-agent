@@ -27,7 +27,37 @@ export interface ImageAttachment {
   mimeType?: string;
 }
 
-export type MessageAttachment = ImageAttachment;
+/** Nota do vault anexada — inlinada como contexto markdown no prompt. */
+export interface NoteAttachment {
+  type: "note";
+  /** Path relativo ao vault (com extensão .md). */
+  path: string;
+  /** Conteúdo da nota lido na hora do envio (cacheado no client). */
+  content: string;
+}
+
+/** PDF — placeholder por enquanto, sem extração de texto wired ainda. */
+export interface PdfAttachment {
+  type: "pdf";
+  path?: string;
+  dataUrl?: string;
+  name: string;
+}
+
+/** Áudio gravado (webm/ogg/m4a) — wikilink ao path no vault. */
+export interface AudioAttachment {
+  type: "audio";
+  /** Path relativo ao vault. */
+  path: string;
+  /** Duração estimada em ms (mostrado no chip). */
+  durationMs?: number;
+}
+
+export type MessageAttachment =
+  | ImageAttachment
+  | NoteAttachment
+  | PdfAttachment
+  | AudioAttachment;
 
 export interface ProviderMessage {
   role: "system" | "user" | "assistant" | "tool";

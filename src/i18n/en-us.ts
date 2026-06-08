@@ -121,6 +121,12 @@ export const EN_US: Translations = {
     attachNoteNotice: "Reference note is coming in Module 5",
     effortTitle: "Effort",
     effortSub: "Processing intensity — affects max_tokens",
+    pickNoteEmpty: "No markdown notes in vault.",
+    pickNotePrompt: "Paste the note path (e.g. folder/note.md):",
+    pickNoteFailed: (msg: string) => `Failed to attach note: ${msg}`,
+    pickNoteNotFound: (path: string) => `Note not found: ${path}`,
+    pickPdfWrongType: "Select a PDF file.",
+    pickPdfFailed: "Failed to attach PDF.",
   },
 
   vault: {

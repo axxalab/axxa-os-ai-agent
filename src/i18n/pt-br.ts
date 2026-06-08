@@ -121,6 +121,14 @@ export const PT_BR = {
     attachNoteNotice: "Referenciar nota vem no Módulo 5",
     effortTitle: "Effort",
     effortSub: "Intensidade do processamento — afeta max_tokens",
+    pickNoteEmpty: "Nenhuma nota markdown no vault.",
+    pickNotePrompt:
+      "Cole o caminho da nota (ex: pasta/nota.md):",
+    pickNoteFailed: (msg: string) => `Falha ao anexar nota: ${msg}`,
+    pickNoteNotFound: (path: string) =>
+      `Nota não encontrada: ${path}`,
+    pickPdfWrongType: "Selecione um arquivo PDF.",
+    pickPdfFailed: "Falha ao anexar PDF.",
   },
 
   vault: {

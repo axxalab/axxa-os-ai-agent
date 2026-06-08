@@ -133,11 +133,16 @@ function toAnthropicPayload(messages: ProviderMessage[]): {
       continue;
     }
 
-    // User normal — pode ter attachments (imagens) em content array
-    if (m.role === "user" && m.attachments && m.attachments.length > 0) {
+    // User normal — pode ter attachments (imagens) em content array.
+    // Note/audio/pdf vêm inlinados como texto pelo caller (não wire).
+    const imageAtt =
+      m.role === "user" && m.attachments
+        ? m.attachments.filter((a) => a.type === "image")
+        : [];
+    if (m.role === "user" && imageAtt.length > 0) {
       const blocks: ContentBlock[] = [];
       if (m.content) blocks.push({ type: "text", text: m.content });
-      for (const att of m.attachments) {
+      for (const att of imageAtt) {
         if (att.type === "image") {
           // Anthropic aceita base64 inline OU URL externa
           const isDataUrl = att.dataUrl.startsWith("data:");
