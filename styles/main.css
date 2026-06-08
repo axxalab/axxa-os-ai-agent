@@ -1559,6 +1559,25 @@ body.is-mobile
   }
 }
 
+/* v0.1.65: HIDE attach buttons quando user esta digitando.
+   Todo espaco vai pro texto. Pra anexar, user vai no + (PlusModal).
+   Transicao suave com width + opacity pra evitar pulo abrupto. */
+.axxa-composer-pill .axxa-composer-attach {
+  transition: width 0.2s ease, opacity 0.15s ease, margin 0.2s ease,
+              padding 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+}
+
+.axxa-composer-pill-typing .axxa-composer-attach {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 0;
+  transform: scale(0.5);
+  pointer-events: none;
+}
+
 /* Linha de anexos pendentes — chips com thumbnail + nome + remove.
    Aparece acima do composer-row, scroll horizontal quando muitas imagens. */
 .axxa-composer-attachments {
@@ -1892,12 +1911,12 @@ body.is-mobile
 
 .axxa-composer-send {
   flex: 0 0 auto;
-  /* v0.1.64: altura herda da composer-pill via stretch flex.
-     Min-height 44 garante tamanho minimo de toque mesmo quando texto
-     1 linha so. Quando pill cresce (multi-linha), button cresce junto. */
+  /* v0.1.65: send button FIXO em 44x44, anchored bottom-end.
+     Quando pill cresce (multi-linha), button NAO cresce — fica no canto
+     inferior direito do row, alinhado com a ultima linha do texto. */
   width: 44px;
-  min-height: 44px;
-  align-self: stretch;
+  height: 44px;
+  align-self: flex-end;
   display: inline-flex;
   align-items: center;
   justify-content: center;

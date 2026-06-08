@@ -753,7 +753,12 @@ export function Composer({
         </div>
       )}
       <div className="axxa-composer-row">
-        <div className="axxa-composer-pill">
+        <div
+          className={
+            "axxa-composer-pill" +
+            (isEmpty ? "" : " axxa-composer-pill-typing")
+          }
+        >
           <button
             type="button"
             className="axxa-composer-plus"
@@ -764,8 +769,9 @@ export function Composer({
             <Icon name="plus" />
           </button>
           <div ref={editorRef} className="axxa-composer-editor" />
-          {/* Botões attach (anexo + imagem) MOVIDOS pra direita dentro do pill
-              v0.1.64: so o + fica na esquerda; demais ferramentas no fim */}
+          {/* Attach buttons (paperclip + image) — APENAS quando isEmpty
+              (composer vazio). Quando user comeca a digitar, somem e cedem
+              espaco pro texto. Pra anexar depois, user vai no + (PlusModal). */}
           <button
             type="button"
             className="axxa-composer-attach axxa-composer-attach-file"
