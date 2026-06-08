@@ -1,9 +1,9 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, **6.1+6.2 ✅ Agent 6-provider** validado, **Sprint J ✅ UX polish**, **Sprint K.1 ✅ Multimodal + Agent streaming + badges** · próximo: **Sprint K.2 — Coder Mode (6.3) + Embeddings Gemini/NIM (I.5) + Whisper áudio**  
-> **Versão:** 1.4 · plugin em **v0.1.40 (6 providers + chat/vault-qa/agent streaming + multimodal + badges DS)**  
-> **Última revisão:** 08/06/2026 (pós-Sprint K.1)  
+> **Status:** 🟡 Em andamento — Módulos 0–4 ✅, 6.1+6.2 ✅ Agent 6-provider, 6.4 ✅ RAG multimodal, Sprints J/K.1/K.2/K.3 ✅ UX + streaming + multimodal + generation infra · próximo: **Sprint K.4 — Fix image gen + Usage tab + Coder Mode (6.3)**  
+> **Versão:** 1.5 · plugin em **v0.1.43 (6 providers + 3 modos com streaming + multimodal + DS badges + activity timeline Claude Code + generation infra wire + PlusModal v3 + composer invisível)**  
+> **Última revisão:** 08/06/2026 (pós-v0.1.43)  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
 ---
@@ -378,6 +378,199 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 
 ---
 
+## SPRINT K.4 — Image Gen Fix + Usage Tab (v0.1.44+) ⬜ Próximo
+
+> **Objetivo:** Tornar a geração de imagem realmente funcional (hoje wired mas
+> quebrada em runtime) e expor a contabilidade real de gastos de tokens numa
+> tela dedicada que pode ser exportada como PDF/Markdown.
+>
+> **Status:** ⬜ Não iniciado. Especificação detalhada abaixo.
+
+### K.4.1 Fix geração de imagem (BLOCKER)
+
+#### Estado atual — o que já está pronto
+- ✅ `ModelCapabilities` tem flags `imageGen`/`audioGen`/`videoGen`
+- ✅ Provider interface tem `generateImage`/`generateAudio`/`generateVideo` opcionais
+- ✅ `runGenerationTurn` em AxxaApp roteia para o método certo quando o modelo tem `imageGen`
+- ✅ `saveGeneration` salva arquivo + sidecar `.md` com frontmatter completo em `axxa-ai/generation/{type}/`
+- ✅ OpenAI/Gemini/NIM têm `generateImage` implementado no código
+- ✅ activity timeline mostra "Gerando imagem..." e troca pra check no done
+
+#### O que tá quebrado
+1. **OpenAI `/v1/images/generations`** — usado pra DALL-E 3 e gpt-image-1
+   - Possível: `gpt-image-1` exige `response_format: "url"` (não `b64_json`)
+   - Possível: param `size` rejeitado em alguns modelos (DALL-E 3 só aceita 1024x1024, 1024x1792, 1792x1024)
+   - Validar: testar com chave real, ver erro real no DevTools
+
+2. **Gemini Nano Banana** (`gemini-2.5-flash-image`)
+   - Endpoint nativo `/v1beta/models/{model}:generateContent` — usando query param `?key=`
+   - Body com `generationConfig: { responseModalities: ["IMAGE"] }`
+   - Possível: Google mudou shape pra `responseMimeType` ou outro param
+   - Possível: Nano Banana renomeado pra `gemini-2.5-flash-image-preview` ou similar
+   - **Web fetch antes de testar** — catálogo Gemini muda direto
+
+3. **NIM Visual GenAI** (SDXL, FLUX)
+   - Endpoint `https://ai.api.nvidia.com/v1/genai/{model}` — pode ter mudado pra `/v1/inference/{model}` ou similar
+   - Body usado: `{ prompt, mode: "text-to-image", aspect_ratio, cfg_scale, steps, seed }`
+   - Cada modelo NIM Visual tem shape de body diferente — não tem padrão único
+   - Possível: precisa de endpoint dedicado por modelo (não generic)
+
+#### Plano de fix
+- ⬜ **Diagnóstico**: rodar o fluxo com cada modelo (DALL-E 3, gemini-2.5-flash-image, stable-diffusion-3-medium) e capturar o request/response REAL no DevTools
+- ⬜ **OpenAI**: testar `b64_json` vs `url` (gpt-image-1 exige `url` por default), confirmar params válidos por modelo
+- ⬜ **Gemini**: webfetch `https://ai.google.dev/gemini-api/docs/image-generation` pra ver shape atual; renomear default se necessário (não usar `gemini-2.5-flash-image` se foi descontinuado)
+- ⬜ **NIM**: webfetch `https://docs.nvidia.com/nim/visual-genai/latest/api/` pra ver endpoint atual; possível precisar de adapter por modelo (SDXL vs FLUX têm shapes diferentes)
+- ⬜ **Error handling**: cada falha hoje cai em "Resposta vazia" — surfacing do body real (igual fix do NIM chat na v0.1.42)
+- ⬜ **Smoke test**: 3 modelos × 3 prompts, confirmar arquivo salvo + sidecar válido + frontmatter parseável
+
+#### Aceite
+- ✅ Pelo menos OpenAI (DALL-E 3) gera imagem real, salva em `axxa-ai/generation/images/`, sidecar tem frontmatter completo
+- ✅ Pelo menos 1 modelo Gemini gera imagem real
+- ✅ Pelo menos 1 modelo NIM Visual gera imagem real
+- ✅ Activity vira `failed` com mensagem clara em erros (não "Falha na geração" genérico)
+
+### K.4.2 Aba Usage — contabilidade de tokens
+
+#### Estado atual
+- ✅ `chatStore` já guarda `tokensIn`, `tokensOut` da SESSÃO atual
+- ✅ Cada chat salvo em `.md` tem `tokens_in:` e `tokens_out:` no frontmatter
+- ✅ Cada chat tem `provider:`, `model:`, `mode:` no frontmatter
+- ⚠️ Custos NÃO são calculados — só contagem bruta
+
+#### O que falta
+- ⬜ **Tabela de preços** (`src/usage/pricing.ts`):
+  - 6 providers × N modelos cada
+  - Por modelo: `{ inputPerMillion: USD, outputPerMillion: USD }`
+  - Update via webfetch periódico (anotar fonte + data no arquivo)
+  - Modelos free (Gemini free tier, OpenRouter `:free`, Ollama local): `{ inputPerMillion: 0, outputPerMillion: 0 }`
+  - Generation: por imagem/segundo de áudio em vez de por token
+
+- ⬜ **Agregador** (`src/usage/aggregate.ts`):
+  - `aggregateUsage(app, chatsPath)` lê todos `.md` em `chatsPath/{chat,vault-qa,agent}/`
+  - Retorna `{ total: {in, out, cost}, byProvider: Record<id, {...}>, byModel: Record<id, {...}>, byMode: Record<id, {...}>, byDay: Record<isoDate, {...}>, byChat: Array<{id, title, ...}> }`
+  - Cache em memória (recompute ao detectar mudança via `app.metadataCache.on("changed")`)
+
+- ⬜ **Settings → Outros → Usage** (sub-tab nova):
+  - **Cards de resumo**: gasto total (USD), tokens in totais, tokens out totais, # de conversas, modelo mais usado, provider dominante
+  - **Tabela por provider**: provider | conversas | tokens in | tokens out | custo (USD) | % do total — sortable
+  - **Tabela por modelo**: model | conversas | tokens | custo — mostra os 10 mais usados, link "ver tudo"
+  - **Tabela por modo**: chat / vault-qa / agent — uso de cada um
+  - **Heatmap por dia** (últimos 30 dias) — chart simples só com divs (sem chart library, pra não inflar bundle)
+  - **Top 10 conversas mais caras** — clique abre o chat
+  - Pickers de período: "últimos 7d / 30d / 90d / todos"
+
+- ⬜ **Export PDF/Markdown**:
+  - Botão "Exportar como PDF" → gera HTML stylizado → usa Electron `printToPDF` (já disponível no Obsidian Desktop)
+  - No mobile, fallback pra "Exportar como Markdown" — formato:
+    ```markdown
+    # AXXA OS — Usage Report
+    > Período: 2026-05-01 a 2026-06-08 · gerado em 2026-06-08 15:30
+    
+    ## Resumo
+    - Gasto total: $X.XX
+    - Tokens consumidos: X in / X out
+    - Conversas: N
+    
+    ## Por provider
+    | Provider | Conversas | Tokens in | Tokens out | Custo |
+    | -------- | --------- | --------- | ---------- | ----- |
+    ...
+    ```
+  - Salva em `axxa-ai/reports/usage-{YYYY-MM-DD}.{pdf,md}`
+
+- ⬜ **i18n**: `settings.outrosTabs.usage`, labels da tabela, etc.
+
+#### Aceite
+- ✅ User entra em Settings → Outros → Usage, vê gasto real estimado (USD)
+- ✅ Breakdown por provider / modelo / modo / dia funciona
+- ✅ Botão exportar gera PDF ou MD em `axxa-ai/reports/` que abre legível
+- ✅ Modelos sem preço listado aparecem como "—" em vez de quebrar a tabela
+- ✅ Modelos free aparecem com badge "FREE" em vez de $0.00
+
+### K.4.3 Marco
+- ⬜ **🎯 MARCO:** Image gen funcional ponta-a-ponta + Usage como feature shippable
+
+### Notas técnicas
+- Calcular custo só em USD por enquanto — conversão de moeda fica como follow-up
+- Pricing.ts deve ser fácil de atualizar — talvez sourced de uma fonte externa (LiteLLM tem um JSON público com pricing de ~200 modelos: `https://github.com/BerriAI/litellm/blob/main/litellm/model_prices_and_context_window_backup.json`)
+- Não migrar dados antigos — chats salvos antes da v0.1.44 não têm o campo `cost` no frontmatter; agregador calcula on-the-fly via pricing lookup
+- PDF export usa `window.print()` com `@page` CSS — funciona em qualquer plataforma Electron. Mobile precisa do path Markdown
+
+---
+
+## SPRINT K.3 — UX polish (labels hug + PlusModal v3 + composer invisível) (v0.1.43) ✅ Concluído
+
+> **Objetivo:** Fechar feedback do usuário sobre detalhes visuais que estavam
+> causando atrito (labels cortados, ícones pequenos demais, composer com scroll
+> interno desnecessário).
+
+### K.3.1 Labels hug no StarterScreen ✅
+- ✅ `.axxa-starter-segment-btn` ganha `line-height: 1.4 !important + height: auto !important + min-height: 0 + box-sizing: border-box` (mesmo fix dos recent-items — Obsidian aplica line-height global agressivo em `<button>` que comprimia o container abaixo da altura natural do texto)
+- ✅ Label sobe pra 11px (era 10), line-height 1.3, min-height 14px, padding 1px 0, display:block — hug do texto mesmo com Obsidian global
+- ✅ Padding btn 8/4/10 + gap 6 — mais respiro entre ícone e label
+
+### K.3.2 PlusModal v3 ✅
+- ✅ Ícones MAIORES: circle 64x64 (era 56x56) + ícone interno 32px (era 26px) + stroke-width 1.8
+- ✅ Pop animation no `:active` (scale 0.93) + hover brightness 1.08
+- ✅ **Action rows** estilo iOS Settings (Web Search / Create Image / Extended Thinking):
+  - Componente `PlusToggleRow` novo: ícone tonal 40x40 + label/desc + toggle switch
+  - Toggle switch iOS-style 44x26 com thumb 20x20 deslizando 18px (cubic-bezier elastica), verde quando on
+  - Click em qualquer área da row dispara o toggle
+  - `imageGenEnabled` prop: Create Image fica disabled quando modelo não tem `imageGen` cap
+  - Tab/Enter/Space accessibility (keyboard nav)
+- ✅ **Effort selector single-line**: substituí grid 2 colunas por row horizontal de 5 pills com scroll-x quando não couber. Container pill cinza segmented (mesma estética dos segments do StarterScreen)
+- ✅ State `plusToggles` no AxxaApp (preferência da sessão, cada provider decide se respeita)
+- ✅ i18n PT/EN: `plus.webSearchTitle/Desc`, `createImageTitle/Desc/NoGen`, `extendedThinkingTitle/Desc`
+
+### K.3.3 Composer invisível ✅
+- ✅ `EditorView.theme`: removido `maxHeight: 200px` (causa do scroll interno) + `overflowY: visible`
+- ✅ `cm-content`: `height: auto !important + min-height: 0 !important` (impede CodeMirror forçar altura)
+- ✅ `.axxa-composer-editor`: `max-height: 40vh` (só clamp em viewports gigantes — texto longo continua expandindo natural)
+- ✅ `.axxa-composer-pill`: `border-radius: 22px` (era 999 redondo total), `align-items: flex-end` (botões alinham embaixo quando texto cresce), padding ajustado
+- ✅ `.axxa-composer-row`: `min-height: 0` — sem altura artificial
+
+### K.3.4 Estado final ✅
+- ✅ Composer cresce com o texto, sem scroll interno, sem container "fantasma"
+- ✅ Modal +: ícones grandes (instagram-style), 3 toggles configuráveis, effort single-line
+- ✅ Labels do StarterScreen respirando, sem texto cortado
+
+---
+
+## SPRINT K.2 — PlusModal Claude-style + multi-tipo attachments + Composer cobre safe area (v0.1.41) ✅ Concluído
+
+> **Objetivo:** Refinar o modal `+` pra estética Claude chat (3 pills coloridas
+> grandes), aceitar nota/PDF/imagem/áudio nas conversas, e fazer o composer
+> ocupar a área total do drawer cobrindo a safe-area mobile.
+
+### K.2.1 PlusModal v2 ✅
+- ✅ Row de 3 pills grandes: Nota (verde) / PDF (vermelho) / Imagem (roxo)
+- ✅ Cada pill com circle 56x56 + label
+- ✅ Imagem disabled (alpha 0.4) quando modelo não suporta vision
+- ✅ Notice clara explicando o motivo do disabled
+- ✅ Effort selector abaixo do divider
+
+### K.2.2 Attachments multi-tipo ✅
+- ✅ `ProviderMessage.attachments` aceita `NoteAttachment/PdfAttachment/AudioAttachment`
+- ✅ Providers ignoram tipos não-image no wire; notas viram contexto inline, pdf/audio passam como meta
+- ✅ Composer renderiza chips por kind: image (shimmer+thumb), note (file-text verde), pdf (file vermelho), audio (mic ciano)
+- ✅ `streamReply` inlina notes anexadas no system prompt automaticamente
+
+### K.2.3 Note picker ✅
+- ✅ `FuzzySuggestModal` nativo (igual Quick Switcher)
+- ✅ Type-ahead em todas as `.md` do vault
+
+### K.2.4 Composer cobre safe area ✅
+- ✅ `z-index: 50 + position: relative`
+- ✅ Pseudo-element `::after` estende background até cobrir `safe-area-inset-bottom + copilot-status-bar-clearance`
+- ✅ Mobile com mobile-navbar: soma `--navbar-height` (~50px)
+- ✅ Não toquei o padding-bottom hand-tuned do dev
+
+### K.2.5 Generation infra (precursor pra K.4) ✅
+- ✅ Tipos `ImageAttachment/NoteAttachment/PdfAttachment/AudioAttachment` em `base.ts`
+- ✅ `MessageAttachment` union discriminada
+
+---
+
 ## SPRINT K.1 — Multimodal + Agent Streaming + Badges (v0.1.40) ✅ Concluído
 > **Objetivo:** Trazer pra Agent/Vault-QA o mesmo streaming + sticky-bottom do Chat mode; aceitar imagens em todos os modos quando o modelo suporta vision; identificar capacidades dos modelos visualmente (DS chips) no seletor.
 > **Status:** ✅ Código entregue 08/06/2026. Smoke test (especialmente vision) pendente.
@@ -704,7 +897,7 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 
 ## Estado Atual & Handoff (08/06/2026)
 > **Lê isso primeiro se você é o próximo agente continuando o trabalho.**
-> Última sessão: v0.1.33 → v0.1.39 em 1 dia (Sprint I + Sprint J completos).
+> Última sessão: v0.1.33 → v0.1.43 em 2 dias (Sprints I + J + K.1 + K.2 + K.3 completos).
 
 ### O que tá funcionando hoje ✅
 
@@ -739,18 +932,34 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 2. **Smoke test Ollama tool calling** — exige `ollama pull llama3.1` (ou qwen2.5, mistral-large) e mode Agent. v0.1.33 adicionou o wiring; ninguém testou com modelo local rodando
 3. **NIM chat com modelo customizado** — default `meta/llama-3.3-70b-instruct` confirmado existir. Outros 4 da seed precisam validação real (já saem em "Buscar da API", então user descobre fácil)
 
-### Prioridades pro próximo sprint (Sprint K) 🎯
+### Prioridades pro próximo sprint (Sprint K.4) 🎯
 
 Em ordem de impacto:
 
-#### K.1 Coder Mode (Módulo 6.3) — ⬜ NÃO INICIADO
+#### K.4.1 Fix geração de imagem (BLOCKER) — 🔴
+- **Status:** wired ponta-a-ponta mas quebrado em runtime (OpenAI/Gemini/NIM)
+- **Diagnóstico necessário:** rodar com chave real, capturar request/response no DevTools, surfacing dos errors
+- **OpenAI** possivelmente quer `response_format: "url"` (não `b64_json`) em gpt-image-1
+- **Gemini** Nano Banana provavelmente renomeado / shape mudou — webfetch antes
+- **NIM** Visual GenAI endpoint pode ter mudado pra `/v1/inference/{model}` em vez de `/v1/genai/{model}`
+- Ver detalhes completos em **SPRINT K.4** acima
+
+#### K.4.2 Aba Usage — contabilidade de tokens — ⬜
+- Settings → Outros → Usage (nova sub-tab)
+- Pricing.ts com USD por modelo de cada provider (sourced de LiteLLM JSON público)
+- Aggregator percorre todos os `.md` em chatsPath, computa breakdown
+- Tabelas por provider / modelo / modo / dia + top 10 conversas caras
+- Export PDF (desktop via `printToPDF`) + Export Markdown (mobile)
+- Ver detalhes completos em **SPRINT K.4** acima
+
+#### K.4.3 Coder Mode (Módulo 6.3) — ⬜
 - Modo "Coder" no StarterScreen (4º opção ao lado de Chat / Vault Q&A / Agent)
 - Detecta arquivos de código nas mensagens (markdown code blocks + .ts/.js/.py/etc anexados)
 - Diff preview antes de aplicar edição (vault_edit em arquivos de código)
 - Syntax highlighting no output (já vem do Obsidian MarkdownRenderer)
 - Pode usar a mesma estrutura de tools do Agent — apenas adicionar `coder_apply_diff` e `coder_create_file`
 
-#### K.2 Embeddings Gemini + NIM (Sprint I.5 — pulado) — ⬜
+#### K.4.4 Embeddings Gemini + NIM (Sprint I.5 — pulado) — ⬜
 - Adicionar specs em `rag/types.ts`:
   - `{ provider: "gemini", model: "gemini-embedding-001", dim: 3072, maxInputTokens: 2048 }`
   - `{ provider: "nim", model: "nvidia/nv-embedqa-e5-v5", dim: 1024, maxInputTokens: 512 }`
@@ -759,7 +968,7 @@ Em ordem de impacto:
 - Settings RAG dropdown: 4 providers em vez de 2
 - **Estimativa:** 1-2h de trabalho. Embeddings da Gemini têm tier free generoso (boa default pra users sem OpenAI key)
 
-#### K.3 Whisper áudio (Módulo 6.4 follow-up) — ⬜
+#### K.4.5 Whisper áudio (Módulo 6.4 follow-up) — ⬜
 - Áudios já ficam salvos em `axxa-ai/recordings/{ts}.webm` (Sprint E v0.1.24)
 - Falta pipeline: Whisper API (OpenAI) → transcrição → injetar como texto no composer / embedar no índice RAG
 - Endpoint: `https://api.openai.com/v1/audio/transcriptions` com `multipart/form-data`
@@ -767,11 +976,11 @@ Em ordem de impacto:
   1. Botão "transcrever" no chip de áudio gravado → vira texto no composer
   2. Indexer reconhece áudios e roda Whisper → embed o texto pra busca RAG
 
-#### K.4 README polish — ⬜ pequeno
+#### K.4.6 README polish — ⬜ pequeno
 - Mencionar os 6 providers (atualmente menciona só os 4 originais)
-- Screenshot da UI nova (pills stacked + status line single-line)
+- Screenshot da UI nova (pills stacked + status line single-line + composer hug + plus modal v3)
 - Quick start: gerar API key em cada lab, colar em Settings
-- Comentário sobre Agent Mode + tool calling
+- Comentário sobre Agent Mode + tool calling + Generation
 
 ### Tech debt conhecido (não bloqueia, mas vale endereçar)
 
