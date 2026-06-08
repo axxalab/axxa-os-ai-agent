@@ -15,24 +15,57 @@ export const EFFORT_LABELS: Record<EffortLevel, string> = {
   max: "Max",
 };
 
+/** Emojis pra usar em seletores compactos (StarterScreen segmented pill). */
+export const EFFORT_EMOJIS: Record<EffortLevel, string> = {
+  low: "🐢",    // tartaruga — devagar e econômico
+  med: "⚖️",   // balança — equilibrado
+  high: "⚡",   // raio — rápido
+  xhigh: "🔥",  // fogo — intenso
+  max: "🚀",   // foguete — uncapped
+};
+
 export const EFFORT_DESCRIPTIONS: Record<EffortLevel, string> = {
-  low: "Rápido e econômico",
-  med: "Equilibrado (padrão)",
-  high: "Mais detalhado",
-  xhigh: "Profundo",
-  max: "Pensamento máximo",
+  low: "Rápido e econômico (≤512 tok)",
+  med: "Equilibrado (≤2k tok)",
+  high: "Detalhado (≤6k tok)",
+  xhigh: "Profundo (≤16k tok)",
+  max: "Sem limite (até 80% da janela de contexto)",
 };
 
+/**
+ * Rebalanced v0.1.66: max agora é UNCAPPED — limita apenas em 80% do
+ * context window (calculado dynamicamente em effortToMaxTokensSmart).
+ * Outros niveis tem valores mais agressivos pra utilizar bem o modelo.
+ */
 const EFFORT_MAX_TOKENS: Record<EffortLevel, number> = {
-  low: 500,
-  med: 2000,
-  high: 4000,
-  xhigh: 8000,
-  max: 16000,
+  low: 512,
+  med: 2048,
+  high: 6000,
+  xhigh: 16000,
+  max: 0,     // 0 = uncapped, calc dynamico
 };
 
+/** Versao legacy (sem context window). Max retorna 16k como cap razoavel. */
 export function effortToMaxTokens(level: string): number {
-  return EFFORT_MAX_TOKENS[level as EffortLevel] ?? 2000;
+  const v = EFFORT_MAX_TOKENS[level as EffortLevel] ?? 2048;
+  return v === 0 ? 16000 : v;
+}
+
+/**
+ * Versao SMART (v0.1.66): max retorna 80% do context window do modelo.
+ * Outros niveis retornam o cap fixo (low/med/high/xhigh).
+ * Usado pelo AxxaApp pra mandar max_tokens pro provider.
+ */
+export function effortToMaxTokensSmart(
+  level: string,
+  contextWindow: number
+): number {
+  const v = EFFORT_MAX_TOKENS[level as EffortLevel];
+  if (v === 0) {
+    // Max: 80% do context. Subtrai 1k pra reserva pra prompt+system.
+    return Math.max(2048, Math.floor(contextWindow * 0.8) - 1000);
+  }
+  return v ?? 2048;
 }
 
 export function isEffortLevel(value: string): value is EffortLevel {

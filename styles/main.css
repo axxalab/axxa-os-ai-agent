@@ -235,6 +235,111 @@ body.is-mobile.axxa-fullscreen .axxa-header {
   z-index: 0;
 }
 
+/* =====================================================
+ * AXXA DEBUG OVERLAY (v0.1.66)
+ *
+ * Ativa com: document.body.setAttribute('data-axxa-debug', '1')
+ * Desativa com: document.body.removeAttribute('data-axxa-debug')
+ *
+ * Desenha outlines coloridos + labels em cada elemento Obsidian
+ * suspeito de causar a "barra horizontal" embaixo. Cada cor =
+ * uma classe diferente — descobre qual elemento esta criando o problema.
+ * ===================================================== */
+
+body[data-axxa-debug] .mobile-navbar {
+  outline: 3px solid #ff3366 !important;
+  outline-offset: -3px !important;
+}
+body[data-axxa-debug] .mobile-navbar::before {
+  content: ".mobile-navbar" !important;
+  position: absolute !important;
+  top: 0; left: 0;
+  background: #ff3366 !important;
+  color: white !important;
+  padding: 2px 6px !important;
+  font-size: 9px !important;
+  z-index: 99999 !important;
+  font-family: monospace !important;
+}
+
+body[data-axxa-debug] .mobile-toolbar {
+  outline: 3px solid #ff9933 !important;
+}
+body[data-axxa-debug] .mobile-toolbar::before {
+  content: ".mobile-toolbar" !important;
+  position: absolute !important; top: 0; left: 0;
+  background: #ff9933 !important; color: white !important;
+  padding: 2px 6px !important; font-size: 9px !important;
+  z-index: 99999 !important; font-family: monospace !important;
+}
+
+body[data-axxa-debug] .workspace-drawer-footer {
+  outline: 3px solid #ffff33 !important;
+}
+body[data-axxa-debug] .workspace-drawer-footer::before {
+  content: ".workspace-drawer-footer" !important;
+  position: absolute !important; top: 0; left: 0;
+  background: #ffff33 !important; color: black !important;
+  padding: 2px 6px !important; font-size: 9px !important;
+  z-index: 99999 !important; font-family: monospace !important;
+}
+
+body[data-axxa-debug] .nav-buttons-container {
+  outline: 3px solid #33ff66 !important;
+}
+body[data-axxa-debug] .nav-buttons-container::before {
+  content: ".nav-buttons-container" !important;
+  position: absolute !important; top: 0; left: 0;
+  background: #33ff66 !important; color: black !important;
+  padding: 2px 6px !important; font-size: 9px !important;
+  z-index: 99999 !important; font-family: monospace !important;
+}
+
+body[data-axxa-debug] .status-bar {
+  outline: 3px solid #33ccff !important;
+}
+body[data-axxa-debug] .status-bar::before {
+  content: ".status-bar" !important;
+  position: absolute !important; top: 0; left: 0;
+  background: #33ccff !important; color: white !important;
+  padding: 2px 6px !important; font-size: 9px !important;
+  z-index: 99999 !important; font-family: monospace !important;
+}
+
+body[data-axxa-debug] .workspace-drawer-tab-options {
+  outline: 3px solid #cc33ff !important;
+}
+body[data-axxa-debug] .workspace-drawer-tab-options::before {
+  content: ".workspace-drawer-tab-options" !important;
+  position: absolute !important; top: 0; left: 0;
+  background: #cc33ff !important; color: white !important;
+  padding: 2px 6px !important; font-size: 9px !important;
+  z-index: 99999 !important; font-family: monospace !important;
+}
+
+body[data-axxa-debug] .titlebar {
+  outline: 3px solid #ff33cc !important;
+}
+body[data-axxa-debug] .titlebar::before {
+  content: ".titlebar" !important;
+  position: absolute !important; top: 0; left: 0;
+  background: #ff33cc !important; color: white !important;
+  padding: 2px 6px !important; font-size: 9px !important;
+  z-index: 99999 !important; font-family: monospace !important;
+}
+
+body[data-axxa-debug] .workspace-drawer-inner {
+  outline: 2px dashed #00cccc !important;
+}
+
+body[data-axxa-debug] .workspace-leaf {
+  outline: 2px dashed #aaaa00 !important;
+}
+
+body[data-axxa-debug] .view-content {
+  outline: 2px dashed #00aa55 !important;
+}
+
 /* Drawer + teclado aberto → esconde header/tab options do drawer */
 body.is-mobile
 .workspace-drawer.axxa-keyboard-open
@@ -282,22 +387,24 @@ body.is-mobile
   justify-content: space-between;
   gap: 8px;
   padding: 10px 16px;
-  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
-  /* z-index 1000 — topo absoluto, sempre visivel acima do composer/chat */
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 30%, transparent);
   position: relative;
   z-index: 1000;
-  /* v0.1.63: bg translucent + backdrop blur (mesmo padrao do composer pill).
-     Permite que o gradient/live bg do .axxa-root apareca POR BAIXO do
-     header, herdando o tema ativo. Mensagens scrollam atras com blur. */
-  background: color-mix(in srgb, var(--background-modifier-form-field) 80%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
+  /* v0.1.66: blur MINIMO e bg-primary translucent (NAO usa form-field
+     como o composer pill). Visualmente DIFERENCIADO do text area:
+     - bg: bg-primary 40% (mais transparente que o composer 80%)
+     - blur: 6px (era 20px) — minimal, so pra evitar texto borrado
+     - sem saturate (era 160%) */
+  background: color-mix(in srgb, var(--background-primary) 40%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
 /* Fallback browsers sem color-mix */
 @supports not (color: color-mix(in srgb, red, blue)) {
   .axxa-header {
-    background: var(--background-modifier-form-field);
+    background: var(--background-primary);
+    opacity: 0.95;
   }
 }
 
@@ -2221,6 +2328,7 @@ body.theme-dark .axxa-recording-indicator {
   white-space: nowrap;
   min-height: 38px;
   font-size: var(--font-ui-small);
+  transition: background 0.15s, transform 0.12s;
   transition: all 0.15s;
 }
 
@@ -2233,6 +2341,31 @@ body.theme-dark .axxa-recording-indicator {
   color: var(--text-accent) !important;
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* v0.1.66: variante emoji-based pra effort. Pill maior + emoji centered
+   + scale animation no active. */
+.axxa-starter-effort-emoji .axxa-starter-effort-btn {
+  min-height: 44px;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.axxa-starter-effort-emoji-icon {
+  font-size: 22px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.axxa-starter-effort-emoji .axxa-starter-effort-active .axxa-starter-effort-emoji-icon {
+  transform: scale(1.18);
+}
+
+.axxa-starter-effort-emoji .axxa-starter-effort-btn:active {
+  transform: scale(0.93);
 }
 
 .axxa-starter-hint {

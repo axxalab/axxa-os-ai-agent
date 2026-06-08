@@ -30,10 +30,11 @@ import { checkCompatibility } from "../providers/compatibility";
 import { IncompatibleBanner } from "../components/composer/IncompatibleBanner";
 import { saveGeneration, type GenerationMediaType } from "../generation/save";
 import {
-  effortToMaxTokens,
+  effortToMaxTokensSmart,
   effortToVaultLookup,
   type EffortLevel,
 } from "../components/_shared/effort";
+import { getContextWindow } from "../components/_shared/contextWindows";
 import {
   saveChat,
   loadChat,
@@ -602,7 +603,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         {
           model: activeModel,
           messages: history,
-          maxTokens: effortToMaxTokens(effort),
+          maxTokens: effortToMaxTokensSmart(effort, getContextWindow(activeModel)),
         },
         apiKey,
         (token) => {
@@ -799,7 +800,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           {
             model: activeModel,
             messages: history,
-            maxTokens: effortToMaxTokens(effort),
+            maxTokens: effortToMaxTokensSmart(effort, getContextWindow(activeModel)),
             tools,
           },
           apiKey,

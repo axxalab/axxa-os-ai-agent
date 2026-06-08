@@ -9,6 +9,7 @@ import { InfoChip } from "../_shared/InfoChip";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
+  EFFORT_EMOJIS,
   EFFORT_DESCRIPTIONS,
   type EffortLevel,
 } from "../_shared/effort";
@@ -321,7 +322,8 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.effortLabel}</label>
-        <div className="axxa-starter-effort">
+        {/* v0.1.66: emoji-based segmented pilled control */}
+        <div className="axxa-starter-effort axxa-starter-effort-emoji">
           {EFFORT_LEVELS.map((level) => {
             const active = level === effort;
             return (
@@ -332,9 +334,12 @@ export function StarterScreen({
                   "axxa-starter-effort-btn" + (active ? " axxa-starter-effort-active" : "")
                 }
                 onClick={() => onEffortChange(level)}
-                title={EFFORT_DESCRIPTIONS[level]}
+                title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
+                aria-label={EFFORT_LABELS[level]}
               >
-                {EFFORT_LABELS[level]}
+                <span className="axxa-starter-effort-emoji-icon">
+                  {EFFORT_EMOJIS[level]}
+                </span>
               </button>
             );
           })}
