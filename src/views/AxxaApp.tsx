@@ -34,10 +34,14 @@ import {
   saveChat,
   loadChat,
   listChats,
+  listAllChats,
+  renameChat,
   generateTitle,
   type ChatData,
   type ChatSummary,
 } from "../components/_shared/chatPersistence";
+import { RenameChatModal } from "../components/chat/RenameChatModal";
+import { Notice } from "obsidian";
 import { searchVault, buildVaultContext } from "../components/_shared/vaultSearch";
 import { ensureFolder } from "../components/_shared/chatPersistence";
 import { embedQuery } from "../rag/embeddings";
@@ -142,7 +146,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [providerSel, setProviderSel] = useState(plugin.settings.defaultProvider);
   const [openaiModelSel, setOpenaiModelSel] = useState(plugin.settings.defaultModel);
   const [anthropicModelSel, setAnthropicModelSel] = useState(plugin.settings.anthropicModel);
+  const [geminiModelSel, setGeminiModelSel] = useState(plugin.settings.geminiModel);
   const [openrouterModelSel, setOpenrouterModelSel] = useState(plugin.settings.openrouterModel);
+  const [nimModelSel, setNimModelSel] = useState(plugin.settings.nimModel);
   const [ollamaModelSel, setOllamaModelSel] = useState(plugin.settings.ollamaModel);
   const [effort, setEffort] = useState(plugin.settings.defaultEffort);
   const [mode, setMode] = useState(
@@ -155,9 +161,24 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const modelFor = (providerId: string): string => {
     switch (providerId) {
       case "anthropic": return anthropicModelSel;
+      case "gemini": return geminiModelSel;
       case "openrouter": return openrouterModelSel;
+      case "nim": return nimModelSel;
       case "ollama": return ollamaModelSel;
       default: return openaiModelSel;
+    }
+  };
+
+  // Mapeia provider id → API key (centralizado pra um lugar só).
+  // Pra Ollama, "apiKey" carrega o endpoint (provider trata como URL).
+  const apiKeyFor = (providerId: string): string => {
+    switch (providerId) {
+      case "anthropic": return plugin.settings.anthropicApiKey;
+      case "gemini": return plugin.settings.geminiApiKey;
+      case "openrouter": return plugin.settings.openrouterApiKey;
+      case "nim": return plugin.settings.nimApiKey;
+      case "ollama": return plugin.settings.ollamaEndpoint;
+      default: return plugin.settings.openaiApiKey;
     }
   };
 
@@ -170,15 +191,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const starterModel = modelFor(providerSel);
 
   // ============================================================
-  // Carrega lista de chats recentes quando chat tá vazio
+  // Carrega lista de chats recentes (todos os modos) quando chat tá vazio
   // ============================================================
   const isEmpty = messages.length === 0;
   useEffect(() => {
     if (!isEmpty) return;
-    listChats(plugin.app, plugin.settings.chatsPath, "chat", 8)
+    listAllChats(plugin.app, plugin.settings.chatsPath, 8)
       .then(setRecentChats)
       .catch((err) => {
-        console.error("[axxa] listChats falhou:", err);
+        console.error("[axxa] listAllChats falhou:", err);
         setRecentChats([]);
       });
   }, [isEmpty, plugin.app, plugin.settings.chatsPath]);
@@ -348,21 +369,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           })),
       ];
 
-      // Para Ollama, "apiKey" carrega o endpoint (provider trata como URL)
-      let apiKey: string;
-      switch (activeProviderId) {
-        case "anthropic":
-          apiKey = plugin.settings.anthropicApiKey;
-          break;
-        case "openrouter":
-          apiKey = plugin.settings.openrouterApiKey;
-          break;
-        case "ollama":
-          apiKey = plugin.settings.ollamaEndpoint;
-          break;
-        default:
-          apiKey = plugin.settings.openaiApiKey;
-      }
+      const apiKey = apiKeyFor(activeProviderId);
 
       await activeProvider.streamChat(
         {
@@ -479,20 +486,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       parameters: td.parameters,
     }));
 
-    let apiKey: string;
-    switch (activeProviderId) {
-      case "anthropic":
-        apiKey = plugin.settings.anthropicApiKey;
-        break;
-      case "openrouter":
-        apiKey = plugin.settings.openrouterApiKey;
-        break;
-      case "ollama":
-        apiKey = plugin.settings.ollamaEndpoint;
-        break;
-      default:
-        apiKey = plugin.settings.openaiApiKey;
-    }
+    const apiKey = apiKeyFor(activeProviderId);
 
     const MAX_TURNS = 10; // safety cap pra evitar loop infinito
     let turn = 0;
@@ -739,25 +733,99 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setView("chat");
   };
 
-  // Carrega TODAS as conversas e abre a tela cheia
+  // Carrega TODAS as conversas (todos os modos) e abre a tela cheia
   const handleOpenConversations = async () => {
     try {
       // limit alto pra trazer todas — se vault tiver 10k+ conversas isso pode
       // pesar; nesse caso paginar fica como próximo polish
-      const all = await listChats(plugin.app, plugin.settings.chatsPath, "chat", 1000);
+      const all = await listAllChats(plugin.app, plugin.settings.chatsPath, 1000);
       setAllChats(all);
       setView("conversations");
     } catch (err) {
-      console.error("[axxa] listChats (full) falhou:", err);
+      console.error("[axxa] listAllChats (full) falhou:", err);
       setAllChats([]);
       setView("conversations");
     }
   };
 
-  // Quando user clica numa conversa da lista cheia, carrega + volta pro chat
+  // Quando user clica numa conversa da lista cheia, descobre o modo dela
+  // pelo summary e carrega o .md correto.
   const handleLoadChatFromList = async (chatId: string) => {
-    await handleLoadChat(chatId);
+    const summary = allChats.find((c) => c.id === chatId);
+    await handleLoadChat(chatId, summary?.mode);
     setView("chat");
+  };
+
+  // Abre o modal de rename pra uma conversa qualquer (lista ou header)
+  const handleRenameChatSummary = (chat: ChatSummary) => {
+    new RenameChatModal(plugin.app, {
+      currentTitle: chat.title,
+      title: t.conversations.renameModalTitle,
+      inputLabel: t.conversations.renameInputLabel,
+      submitLabel: t.conversations.renameSubmit,
+      cancelLabel: t.conversations.renameCancel,
+      onSubmit: async (newTitle) => {
+        try {
+          await renameChat(
+            plugin.app,
+            plugin.settings.chatsPath,
+            chat.mode,
+            chat.id,
+            newTitle
+          );
+          new Notice(t.conversations.renameSuccess(newTitle));
+          // Reflete na lista atual + state se for o chat aberto
+          setAllChats((prev) =>
+            prev.map((c) => (c.id === chat.id ? { ...c, title: newTitle } : c))
+          );
+          setRecentChats((prev) =>
+            prev.map((c) => (c.id === chat.id ? { ...c, title: newTitle } : c))
+          );
+          if (currentChatId === chat.id) {
+            useChatStore.getState().setCurrentChatTitle(newTitle);
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : t.ai.unknownError;
+          new Notice(t.conversations.renameFailed(msg));
+        }
+      },
+    }).open();
+  };
+
+  // Rename direto pelo título do header (chat ativo). Reescreve o arquivo
+  // com base na sessionMode + currentChatId já conhecidos.
+  const handleHeaderRename = async (newTitle: string) => {
+    if (!currentChatId) {
+      // Sem chat salvo ainda — só atualiza local. Auto-save vai usar isso
+      // na próxima escrita.
+      useChatStore.getState().setCurrentChatTitle(newTitle);
+      return;
+    }
+    try {
+      await renameChat(
+        plugin.app,
+        plugin.settings.chatsPath,
+        activeMode,
+        currentChatId,
+        newTitle
+      );
+      useChatStore.getState().setCurrentChatTitle(newTitle);
+      // Sync nas listas em memória
+      setAllChats((prev) =>
+        prev.map((c) =>
+          c.id === currentChatId ? { ...c, title: newTitle } : c
+        )
+      );
+      setRecentChats((prev) =>
+        prev.map((c) =>
+          c.id === currentChatId ? { ...c, title: newTitle } : c
+        )
+      );
+      new Notice(t.conversations.renameSuccess(newTitle));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t.ai.unknownError;
+      new Notice(t.conversations.renameFailed(msg));
+    }
   };
 
   const handlePlusClick = () => setPlusOpen(true);
@@ -786,9 +854,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         setAnthropicModelSel(m);
         plugin.settings.anthropicModel = m;
         break;
+      case "gemini":
+        setGeminiModelSel(m);
+        plugin.settings.geminiModel = m;
+        break;
       case "openrouter":
         setOpenrouterModelSel(m);
         plugin.settings.openrouterModel = m;
+        break;
+      case "nim":
+        setNimModelSel(m);
+        plugin.settings.nimModel = m;
         break;
       case "ollama":
         setOllamaModelSel(m);
@@ -801,9 +877,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await plugin.saveSettings();
   };
 
-  const handleLoadChat = async (chatId: string) => {
+  // chatMode opcional — quando vem da ConversationsList (que conhece o modo
+  // do summary). Quando ausente, default "chat" pra compat com fluxo antigo.
+  const handleLoadChat = async (chatId: string, chatMode: string = "chat") => {
     try {
-      const chat = await loadChat(plugin.app, plugin.settings.chatsPath, "chat", chatId);
+      const chat = await loadChat(
+        plugin.app,
+        plugin.settings.chatsPath,
+        chatMode,
+        chatId
+      );
       const restored: ChatMessage[] = chat.messages.map((m) => ({
         id: makeId(),
         type: m.type,
@@ -823,7 +906,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       setMessages(restored);
       setCurrentChatId(chat.id);
       setCurrentChatTitle(chat.title);
-      lockSession(chat.provider, chat.model);
+      // lockSession agora também guarda o mode original do chat
+      lockSession(chat.provider, chat.model, chat.mode);
       resetUsage();
       addUsage(chat.tokensIn, chat.tokensOut);
       setEffort(chat.effort);
@@ -910,14 +994,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         >
           <Header
             version={plugin.manifest.version}
+            chatTitle={currentChatTitle}
             onOpenSettings={handleOpenSettings}
             onNewChat={handleNewChat}
             onOpenConversations={handleOpenConversations}
+            onRenameChat={handleHeaderRename}
           />
         {view === "conversations" ? (
           <ConversationsList
             chats={allChats}
             onLoadChat={handleLoadChatFromList}
+            onRenameChat={handleRenameChatSummary}
             onClose={() => setView("chat")}
           />
         ) : isEmpty ? (

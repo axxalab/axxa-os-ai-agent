@@ -138,6 +138,17 @@ export class NimProvider implements Provider {
     return result;
   }
 
+  /**
+   * Streaming "fake" via requestUrl (não-streaming real).
+   *
+   * **Por que não fetch real?** integrate.api.nvidia.com não devolve CORS
+   * headers liberais — o browser bloqueia o `fetch` direto com TypeError
+   * ("Falha de conexão"). requestUrl do Obsidian vai pelo módulo `net` do
+   * Electron / capacitor, bypassando CORS. Trade-off: a resposta inteira
+   * vem de uma vez. UX: o user vê o "Pensando..." e depois a resposta
+   * completa aparece num bloco só. Cancelar via AbortController não
+   * funciona pra requestUrl — checamos signal antes/depois manualmente.
+   */
   async streamChat(
     req: ProviderRequest,
     apiKey: string,
@@ -145,96 +156,20 @@ export class NimProvider implements Provider {
     onUsage?: UsageHandler,
     signal?: AbortSignal
   ): Promise<void> {
-    if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError(
-        "API key Nvidia NIM não configurada. Gere uma em build.nvidia.com.",
-        "no-key"
-      );
+    // Reusa a chat() que já vai por requestUrl e funciona em prod.
+    if (signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
     }
-
-    let res: Response;
-    try {
-      res = await fetch(NIM_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey.trim()}`,
-        },
-        body: JSON.stringify({
-          model: req.model,
-          messages: req.messages,
-          stream: true,
-          stream_options: { include_usage: true },
-          max_tokens: req.maxTokens ?? 2000,
-        }),
-        signal,
-      });
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") throw err;
-      throw new ProviderError("Falha de conexão.", "network");
+    const response = await this.chat(req, apiKey);
+    // Verifica abort no meio do caminho (depois da resposta chegar)
+    if (signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
     }
-
-    if (res.status === 401 || res.status === 403) {
-      throw new ProviderError(
-        "API key Nvidia NIM inválida. Verifique em build.nvidia.com.",
-        "invalid-key"
-      );
+    if (response.content) {
+      onToken(response.content);
     }
-    if (res.status === 429) {
-      throw new ProviderError(
-        "Rate limit Nvidia NIM. Aguarde alguns segundos.",
-        "rate-limit"
-      );
-    }
-    if (!res.ok) {
-      let msg = `HTTP ${res.status}`;
-      try {
-        const json = await res.json();
-        msg = json?.error?.message ?? msg;
-      } catch {
-        /* ignora */
-      }
-      throw new ProviderError(`NIM: ${msg}`, "unknown");
-    }
-    if (!res.body) {
-      throw new ProviderError("Stream vazio do NIM.", "unknown");
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const data = trimmed.slice(5).trim();
-        if (!data || data === "[DONE]") {
-          if (data === "[DONE]") return;
-          continue;
-        }
-        try {
-          const json = JSON.parse(data);
-          const token = json?.choices?.[0]?.delta?.content;
-          if (typeof token === "string" && token.length > 0) {
-            onToken(token);
-          }
-          if (json?.usage && onUsage) {
-            onUsage({
-              input: json.usage.prompt_tokens ?? 0,
-              output: json.usage.completion_tokens ?? 0,
-            });
-          }
-        } catch {
-          /* JSON inválido — pula */
-        }
-      }
+    if (response.usage && onUsage) {
+      onUsage(response.usage);
     }
   }
 

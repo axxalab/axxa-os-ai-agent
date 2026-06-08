@@ -36,6 +36,8 @@ export interface ChatSummary {
   id: string;
   title: string;
   date: string;
+  /** Modo da conversa (chat / vault-qa / agent). Usado pra carregar do disco. */
+  mode: string;
   provider: string;
   model: string;
   effort: string;
@@ -279,6 +281,7 @@ export async function listChats(
         id: String(fm.id ?? ""),
         title: String(fm.title ?? "Sem título"),
         date: String(fm.date ?? ""),
+        mode: String(fm.mode ?? mode),
         provider: String(fm.provider ?? ""),
         model: String(fm.model ?? ""),
         effort: String(fm.effort ?? ""),
@@ -294,4 +297,58 @@ export async function listChats(
   return summaries
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, limit);
+}
+
+/**
+ * Lista chats de TODOS os modos (chat / vault-qa / agent / etc).
+ * Walk em todas as subpastas de chatsPath e agrega. Usado pela
+ * ConversationsList (que mostra tudo) e pela StarterScreen (recent).
+ */
+export async function listAllChats(
+  app: App,
+  chatsPath: string,
+  limit: number = 1000
+): Promise<ChatSummary[]> {
+  if (!(await app.vault.adapter.exists(chatsPath))) return [];
+  // Cada subpasta do chatsPath é um "modo" (chat, vault-qa, agent, ...)
+  const root = await app.vault.adapter.list(chatsPath);
+  const all: ChatSummary[] = [];
+  for (const subfolder of root.folders) {
+    // O último segmento do path é o nome do modo
+    const mode = subfolder.split("/").pop() ?? "chat";
+    const summaries = await listChats(app, chatsPath, mode, 10_000);
+    all.push(...summaries);
+  }
+  return all
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, limit);
+}
+
+/**
+ * Renomeia o título de um chat (sem mudar o id / file path).
+ * Reescreve frontmatter `title:` e o `# Heading` do body.
+ */
+export async function renameChat(
+  app: App,
+  chatsPath: string,
+  mode: string,
+  chatId: string,
+  newTitle: string
+): Promise<void> {
+  const clean = newTitle.trim();
+  if (!clean) throw new Error("Título vazio.");
+  const path = chatFilePath(chatsPath, mode, chatId);
+  const content = await app.vault.adapter.read(path);
+  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) throw new Error("Frontmatter inválido nesse chat.");
+  // Atualiza só a linha `title:` (mantém resto do frontmatter)
+  const updatedFm = match[1].replace(
+    /^title:\s*.*$/m,
+    `title: ${yamlString(clean)}`
+  );
+  // Atualiza o primeiro `# ...` do body
+  let body = match[2];
+  body = body.replace(/^# .+$/m, `# ${clean}`);
+  const updated = `---\n${updatedFm}\n---\n${body}`;
+  await app.vault.adapter.write(path, updated);
 }

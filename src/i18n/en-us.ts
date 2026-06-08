@@ -50,6 +50,14 @@ export const EN_US: Translations = {
     sortMsgsDesc: "Most messages",
     sortTokensDesc: "Most tokens",
     filterAll: "All",
+    renameTitle: "Rename conversation",
+    renameAria: "Rename conversation",
+    renameModalTitle: "Rename conversation",
+    renameInputLabel: "New title",
+    renameSubmit: "Save",
+    renameCancel: "Cancel",
+    renameSuccess: (title: string) => `Renamed to "${title}".`,
+    renameFailed: (msg: string) => `Failed to rename: ${msg}`,
   },
 
   starter: {

@@ -1,7 +1,8 @@
 // src/components/chat/ConversationsList.tsx
-// Tela cheia mostrando TODAS as conversas salvas (não só as recentes).
-// Tem search inline + agrupa por dia (Hoje / Ontem / data). Mesmo visual
-// dos recent chats da StarterScreen — só que aqui mostra tudo.
+// Tela cheia mostrando TODAS as conversas salvas (todos os modos: chat /
+// vault-qa / agent). Tem search inline + agrupa por dia (Hoje / Ontem /
+// data) + filtros de provider E modo + sort. Mesmo visual dos recent
+// chats da StarterScreen — só que aqui mostra tudo.
 //
 // AxxaApp gerencia o state `view: "chat" | "conversations"` e injeta esse
 // componente no body quando view==="conversations".
@@ -15,6 +16,7 @@ import type { ChatSummary } from "../_shared/chatPersistence";
 interface ConversationsListProps {
   chats: ChatSummary[];
   onLoadChat: (chatId: string) => void;
+  onRenameChat: (chat: ChatSummary) => void;
   onClose: () => void;
 }
 
@@ -25,8 +27,48 @@ type SortKey =
   | "msgs-desc"
   | "tokens-desc";
 
-const PROVIDER_FILTERS = ["all", "openai", "anthropic", "openrouter", "ollama"] as const;
+const PROVIDER_FILTERS = [
+  "all",
+  "openai",
+  "anthropic",
+  "gemini",
+  "openrouter",
+  "nim",
+  "ollama",
+] as const;
 type ProviderFilter = (typeof PROVIDER_FILTERS)[number];
+
+const MODE_FILTERS = ["all", "chat", "vault-qa", "agent"] as const;
+type ModeFilter = (typeof MODE_FILTERS)[number];
+
+function providerLabel(id: ProviderFilter, allLabel: string): string {
+  switch (id) {
+    case "all": return allLabel;
+    case "openai": return "OpenAI";
+    case "anthropic": return "Anthropic";
+    case "gemini": return "Gemini";
+    case "openrouter": return "OpenRouter";
+    case "nim": return "Nvidia NIM";
+    case "ollama": return "Ollama";
+  }
+}
+
+function modeLabel(id: ModeFilter, allLabel: string): string {
+  switch (id) {
+    case "all": return allLabel;
+    case "chat": return "Chat";
+    case "vault-qa": return "Vault Q&A";
+    case "agent": return "Agent";
+  }
+}
+
+function modeIcon(mode: string): string {
+  switch (mode) {
+    case "agent": return "bot";
+    case "vault-qa": return "library";
+    default: return "message-square";
+  }
+}
 
 function formatGroupDate(iso: string): string {
   if (!iso) return "—";
@@ -73,26 +115,30 @@ function formatRelativeDate(iso: string): string {
 export function ConversationsList({
   chats,
   onLoadChat,
+  onRenameChat,
   onClose,
 }: ConversationsListProps) {
   const t = useT();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("date-desc");
   const [providerFilter, setProviderFilter] = useState<ProviderFilter>("all");
+  const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
 
-  // Filtra: search + provider chip
+  // Filtra: search + provider chip + mode chip
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return chats.filter((c) => {
       if (providerFilter !== "all" && c.provider !== providerFilter) return false;
+      if (modeFilter !== "all" && c.mode !== modeFilter) return false;
       if (!q) return true;
       return (
         c.title.toLowerCase().includes(q) ||
         c.model.toLowerCase().includes(q) ||
-        c.provider.toLowerCase().includes(q)
+        c.provider.toLowerCase().includes(q) ||
+        c.mode.toLowerCase().includes(q)
       );
     });
-  }, [chats, search, providerFilter]);
+  }, [chats, search, providerFilter, modeFilter]);
 
   // Sort baseado na key escolhida
   const sorted = useMemo(() => {
@@ -173,7 +219,7 @@ export function ConversationsList({
         )}
       </div>
 
-      {/* Sort + provider filter chips */}
+      {/* Sort + provider filter chips + mode filter chips */}
       <div className="axxa-conversations-controls">
         <div className="axxa-conversations-sort">
           <Icon name="arrow-up-down" />
@@ -193,6 +239,22 @@ export function ConversationsList({
         </div>
 
         <div className="axxa-conversations-filters">
+          {MODE_FILTERS.map((id) => (
+            <button
+              key={`mode-${id}`}
+              type="button"
+              className={
+                "axxa-filter-chip" +
+                (modeFilter === id ? " axxa-filter-chip-active" : "")
+              }
+              onClick={() => setModeFilter(id)}
+            >
+              {modeLabel(id, t.conversations.filterAll)}
+            </button>
+          ))}
+        </div>
+
+        <div className="axxa-conversations-filters">
           {PROVIDER_FILTERS.map((id) => (
             <button
               key={id}
@@ -203,15 +265,7 @@ export function ConversationsList({
               }
               onClick={() => setProviderFilter(id)}
             >
-              {id === "all"
-                ? t.conversations.filterAll
-                : id === "openai"
-                  ? "OpenAI"
-                  : id === "anthropic"
-                    ? "Anthropic"
-                    : id === "openrouter"
-                      ? "OpenRouter"
-                      : "Ollama"}
+              {providerLabel(id, t.conversations.filterAll)}
             </button>
           ))}
         </div>
@@ -234,25 +288,43 @@ export function ConversationsList({
               <div className="axxa-conversations-group-head">{dayLabel}</div>
             )}
             {items.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className="axxa-recent-item"
-                onClick={() => onLoadChat(c.id)}
-              >
-                <div className="axxa-recent-title">{c.title}</div>
-                <div className="axxa-recent-meta">
-                  <span>{formatRelativeDate(c.date)}</span>
-                  <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                  <span>{c.model}</span>
-                  <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                  <span>{c.messageCount} msgs</span>
-                  <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                  <span>
-                    {formatTokens(c.tokensIn + c.tokensOut)} tokens
-                  </span>
-                </div>
-              </button>
+              <div key={c.id} className="axxa-recent-item-row">
+                <button
+                  type="button"
+                  className="axxa-recent-item"
+                  onClick={() => onLoadChat(c.id)}
+                >
+                  <div className="axxa-recent-title-row">
+                    <Icon name={modeIcon(c.mode)} />
+                    <span className="axxa-recent-title">{c.title}</span>
+                  </div>
+                  <div className="axxa-recent-meta">
+                    <span className="axxa-recent-mode-chip">{c.mode}</span>
+                    <span className="axxa-recent-meta-dot" aria-hidden="true" />
+                    <span>{formatRelativeDate(c.date)}</span>
+                    <span className="axxa-recent-meta-dot" aria-hidden="true" />
+                    <span>{c.model}</span>
+                    <span className="axxa-recent-meta-dot" aria-hidden="true" />
+                    <span>{c.messageCount} msgs</span>
+                    <span className="axxa-recent-meta-dot" aria-hidden="true" />
+                    <span>
+                      {formatTokens(c.tokensIn + c.tokensOut)} tokens
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="axxa-recent-item-action"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRenameChat(c);
+                  }}
+                  aria-label={t.conversations.renameAria}
+                  title={t.conversations.renameTitle}
+                >
+                  <Icon name="pencil" />
+                </button>
+              </div>
             ))}
           </div>
         ))}

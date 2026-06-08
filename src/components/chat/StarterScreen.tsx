@@ -37,7 +37,7 @@ interface StarterScreenProps {
   onModelChange: (model: string) => void;
   onEffortChange: (level: EffortLevel) => void;
   onModeChange: (mode: string) => void;
-  onLoadChat: (chatId: string) => void;
+  onLoadChat: (chatId: string, chatMode: string) => void;
 }
 
 // MODES_ICONS — só os ícones e ids ficam aqui. Nomes/descrições vêm do i18n.
@@ -191,7 +191,7 @@ export function StarterScreen({
                 key={c.id}
                 type="button"
                 className="axxa-recent-item"
-                onClick={() => onLoadChat(c.id)}
+                onClick={() => onLoadChat(c.id, c.mode)}
               >
                 <div className="axxa-recent-title">{c.title}</div>
                 <div className="axxa-recent-meta">

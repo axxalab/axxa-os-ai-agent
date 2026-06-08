@@ -1,28 +1,90 @@
 // src/components/layout/Header.tsx
-// Header com título, versão, "nova conversa" e gear de Settings.
+// Header com título, versão, "nova conversa", lista de conversas e gear de
+// Settings.
+//
+// Quando há chat ativo (chatTitle truthy), substitui "AXXA OS · v..." por
+// um INPUT inline com o título da conversa atual. Click no input dá foco,
+// Enter / blur dispara onRenameChat. Pra UX clara: a versão fica na linha
+// 2 do bloco quando o título tá ativo.
 
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "../_shared/Icon";
 import { useT } from "../../i18n";
 
 interface HeaderProps {
   version: string;
+  /** Título do chat atual. String vazia = sem chat ativo (mostra "AXXA OS"). */
+  chatTitle: string;
   onOpenSettings: () => void;
   onNewChat: () => void;
   onOpenConversations: () => void;
+  /** Recebe novo título quando user edita inline. Chama mesmo se vazio? — não. */
+  onRenameChat: (newTitle: string) => void;
 }
 
 export function Header({
   version,
+  chatTitle,
   onOpenSettings,
   onNewChat,
   onOpenConversations,
+  onRenameChat,
 }: HeaderProps) {
   const t = useT();
+  const [draft, setDraft] = useState(chatTitle);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Sincroniza o draft quando o título externo muda (ex: novo chat criado,
+  // chat carregado da lista, rename feito em outro lugar).
+  useEffect(() => {
+    setDraft(chatTitle);
+  }, [chatTitle]);
+
+  const hasChat = chatTitle.trim().length > 0;
+
+  const commit = () => {
+    const clean = draft.trim();
+    if (!clean || clean === chatTitle) {
+      // sem mudança ou inválido — reverte
+      setDraft(chatTitle);
+      return;
+    }
+    onRenameChat(clean);
+  };
+
   return (
     <header className="axxa-header">
       <div className="axxa-header-title">
-        <span className="axxa-header-name">AXXA OS</span>
-        <span className="axxa-header-version">v{version}</span>
+        {hasChat ? (
+          <>
+            <input
+              ref={inputRef}
+              type="text"
+              className="axxa-header-chat-title"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  (e.target as HTMLInputElement).blur();
+                } else if (e.key === "Escape") {
+                  setDraft(chatTitle);
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              aria-label={t.conversations.renameAria}
+              title={t.conversations.renameTitle}
+              placeholder={t.conversations.renameInputLabel}
+            />
+            <span className="axxa-header-version">v{version}</span>
+          </>
+        ) : (
+          <>
+            <span className="axxa-header-name">AXXA OS</span>
+            <span className="axxa-header-version">v{version}</span>
+          </>
+        )}
       </div>
       <div className="axxa-header-actions">
         <button

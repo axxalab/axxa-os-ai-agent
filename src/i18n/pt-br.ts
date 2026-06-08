@@ -50,6 +50,14 @@ export const PT_BR = {
     sortMsgsDesc: "Mais mensagens",
     sortTokensDesc: "Mais tokens",
     filterAll: "Todos",
+    renameTitle: "Renomear conversa",
+    renameAria: "Renomear conversa",
+    renameModalTitle: "Renomear conversa",
+    renameInputLabel: "Novo título",
+    renameSubmit: "Salvar",
+    renameCancel: "Cancelar",
+    renameSuccess: (title: string) => `Renomeado para "${title}".`,
+    renameFailed: (msg: string) => `Falha ao renomear: ${msg}`,
   },
 
   starter: {
