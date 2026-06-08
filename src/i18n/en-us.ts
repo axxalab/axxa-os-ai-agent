@@ -130,6 +130,16 @@ export const EN_US: Translations = {
     pickNoteNotFound: (path: string) => `Note not found: ${path}`,
     pickPdfWrongType: "Select a PDF file.",
     pickPdfFailed: "Failed to attach PDF.",
+    webSearchTitle: "Web search",
+    webSearchDesc:
+      "Provider/model decides when to search. Enabled when needed.",
+    createImageTitle: "Create image",
+    createImageDesc: "Lets the model generate images in its response.",
+    createImageNoGen:
+      "Current model can't generate images. Pick a model with 'img-gen' badge.",
+    extendedThinkingTitle: "Extended thinking",
+    extendedThinkingDesc:
+      "Reasoning models show their thought process before answering.",
   },
 
   vault: {

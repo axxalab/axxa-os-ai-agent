@@ -132,6 +132,16 @@ export const PT_BR = {
       `Nota não encontrada: ${path}`,
     pickPdfWrongType: "Selecione um arquivo PDF.",
     pickPdfFailed: "Falha ao anexar PDF.",
+    webSearchTitle: "Busca na web",
+    webSearchDesc:
+      "Provider/modelo decide quando buscar. Pesquisa ativada quando precisar.",
+    createImageTitle: "Criar imagem",
+    createImageDesc: "Permite ao modelo gerar imagens na resposta.",
+    createImageNoGen:
+      "Modelo atual não gera imagens. Selecione um modelo com badge 'img-gen'.",
+    extendedThinkingTitle: "Raciocínio estendido",
+    extendedThinkingDesc:
+      "Modelos com reasoning visível mostram passos antes de responder.",
   },
 
   vault: {

@@ -872,6 +872,8 @@ body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav) .axxa-composer::after {
   display: flex;
   align-items: flex-end;
   gap: 8px;
+  /* Sem min-height fixo — o row cresce com a pill (que cresce com o texto) */
+  min-height: 0;
 }
 
 /* Status row abaixo do pill — model · effort · context · tokens
@@ -933,13 +935,19 @@ body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav) .axxa-composer::after {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  align-items: center;
+  /* align-items: center → alinha botões no MEIO do texto (uma linha).
+     Quando o texto cresce pra várias linhas, os botões ficam centrados
+     verticalmente em relação à pill. flex-end alternativo deixa eles
+     no fundo (estilo Claude chat). */
+  align-items: flex-end;
   gap: 4px;
   background: var(--background-modifier-form-field);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 999px;
-  padding: 4px 14px 4px 4px;
+  border-radius: 22px;
+  padding: 6px 14px 6px 6px;
   transition: border-color 0.15s;
+  /* Hug o conteúdo verticalmente — pill se ajusta ao tamanho do texto */
+  min-height: 0;
 }
 
 .axxa-composer-pill:focus-within {
@@ -1190,20 +1198,33 @@ body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav) .axxa-composer::after {
 }
 
 /* Editor (CodeMirror) — sem bg/border, herda do pill.
-   overflow:hidden externo reforça a trava interna do EditorView.theme:
-   campo de mensagem jamais scrolla pra direita. */
+   Composer "invisível": altura HUG do conteúdo (sem scroll interno).
+   Clamp suave em 40vh pra textos longos não dominarem a tela.
+   Scroll horizontal jamais. */
 .axxa-composer-editor {
   flex: 1 1 auto;
   min-width: 0;
   background: transparent;
   border: none;
-  padding: 4px 0;
+  padding: 2px 0;
   overflow-x: hidden;
+  /* Altura cresce com texto — só clamp em viewports gigantes */
+  max-height: 40vh;
+  display: flex;
+  align-items: stretch;
 }
 
 .axxa-composer-editor .cm-editor,
-.axxa-composer-editor .cm-scroller {
+.axxa-composer-editor .cm-scroller,
+.axxa-composer-editor .cm-content {
   overflow-x: hidden !important;
+  /* Height auto — sem 100% ou min-height fixo que forçaria scroll */
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.axxa-composer-editor .cm-editor {
+  width: 100%;
 }
 
 /* Placeholder SEMPRE single-line (v0.1.39). O texto do user continua
@@ -1468,19 +1489,26 @@ body.theme-dark .axxa-recording-indicator {
 }
 
 .axxa-starter-segment-btn {
-  /* Pill stacked: ícone em cima, label embaixo */
+  /* Pill stacked: ícone em cima, label embaixo.
+     line-height + height:auto + min-height:0 explícitos pra Obsidian não
+     comprimir o container abaixo da altura natural do label (bug recorrente
+     em buttons-as-card herdarem line-height global agressivo). */
   flex: 1 1 0;
   min-width: 56px;
-  padding: 6px 4px;
+  padding: 8px 4px 10px;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 6px;
   border-radius: 14px;
   color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+  line-height: 1.4 !important;
+  height: auto !important;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 .axxa-starter-segment-btn .axxa-icon {
@@ -1496,13 +1524,18 @@ body.theme-dark .axxa-recording-indicator {
 }
 
 .axxa-starter-segment-label {
-  font-size: 10px;
-  line-height: 1.1;
+  font-size: 11px;
+  line-height: 1.3;
   font-weight: 500;
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Hug content: nem o button-parent nem o Obsidian global pode achatar */
+  height: auto;
+  min-height: 14px;
+  display: block;
+  padding: 1px 0;
 }
 
 .axxa-starter-segment-btn:hover {
@@ -1981,17 +2014,17 @@ body.theme-dark .axxa-recording-indicator {
 }
 
 /* =====================================================
- * PlusModal v2 — estilo Claude chat
+ * PlusModal v3 — estilo Claude chat (icons MAIORES + rows)
  * Row de 3 pills grandes (Nota / PDF / Imagem) com ícone
- * circular grande + label embaixo.
+ * circular GRANDE + label embaixo.
  * Cores tonais por tipo (note=green, pdf=red, image=purple).
  * ===================================================== */
 
 .axxa-plus-attach-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin: 4px 0 18px 0;
+  gap: 12px;
+  margin: 8px 0 22px 0;
 }
 
 .axxa-plus-attach-pill,
@@ -2027,8 +2060,8 @@ body.theme-dark .axxa-recording-indicator {
 }
 
 .axxa-plus-attach-circle {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -2036,12 +2069,24 @@ body.theme-dark .axxa-recording-indicator {
   /* default — sobrescrito por tone */
   background: var(--background-modifier-form-field);
   color: var(--text-normal);
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, transform 0.12s;
 }
 
 .axxa-plus-attach-circle .svg-icon {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.8;
+}
+
+.axxa-plus-attach-pill:active:not(.axxa-plus-attach-disabled) .axxa-plus-attach-circle {
+  transform: scale(0.93);
+}
+
+/* Hover só desktop — opcional, mais "pop" */
+@media (hover: hover) {
+  .axxa-plus-attach-pill:hover:not(.axxa-plus-attach-disabled) .axxa-plus-attach-circle {
+    filter: brightness(1.08);
+  }
 }
 
 .axxa-plus-attach-label {
@@ -2094,6 +2139,241 @@ body.theme-dark .axxa-recording-indicator {
   background: var(--background-modifier-border);
   margin: 4px -16px 16px -16px;
   opacity: 0.6;
+}
+
+/* =====================================================
+ * Action rows do PlusModal (Web Search, Create Image, etc)
+ * Cada uma é uma linha horizontal: [ícone tonal] [texto] [toggle]
+ * Estilo iOS Settings list — clicável em qualquer ponto.
+ * ===================================================== */
+
+.axxa-plus-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.axxa-plus-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 12px;
+  border-radius: 14px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s;
+  outline: none;
+}
+
+@media (hover: hover) {
+  .axxa-plus-row:hover {
+    background: var(--background-modifier-hover);
+  }
+}
+.axxa-plus-row:focus-visible {
+  background: var(--background-modifier-hover);
+  box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+.axxa-plus-row-disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.axxa-plus-row-icon {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+}
+
+.axxa-plus-row-icon .svg-icon {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.8;
+}
+
+/* Tones — mesma paleta DS */
+.axxa-plus-row-tone-blue .axxa-plus-row-icon {
+  background: color-mix(in srgb, var(--color-blue, #4361ee) 18%, transparent);
+  color: var(--color-blue, #4361ee);
+}
+.axxa-plus-row-tone-pink .axxa-plus-row-icon {
+  background: color-mix(in srgb, var(--color-pink, #f472b6) 18%, transparent);
+  color: var(--color-pink, #f472b6);
+}
+.axxa-plus-row-tone-orange .axxa-plus-row-icon {
+  background: color-mix(in srgb, var(--color-orange, #ec7b3e) 18%, transparent);
+  color: var(--color-orange, #ec7b3e);
+}
+.axxa-plus-row-tone-green .axxa-plus-row-icon {
+  background: color-mix(in srgb, var(--color-green, #06d6a0) 18%, transparent);
+  color: var(--color-green, #06d6a0);
+}
+.axxa-plus-row-tone-purple .axxa-plus-row-icon {
+  background: color-mix(in srgb, var(--color-purple, #a370f7) 18%, transparent);
+  color: var(--color-purple, #a370f7);
+}
+.axxa-plus-row-tone-red .axxa-plus-row-icon {
+  background: color-mix(in srgb, var(--text-error, #f87171) 18%, transparent);
+  color: var(--text-error, #f87171);
+}
+
+.axxa-plus-row-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.axxa-plus-row-label {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+  line-height: 1.3;
+}
+
+.axxa-plus-row-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Toggle switch iOS-style */
+.axxa-plus-row-switch {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+  position: relative;
+  transition: background 0.18s ease;
+}
+
+.axxa-plus-row-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.axxa-plus-row-switch-on {
+  background: var(--color-green, #06d6a0);
+}
+.axxa-plus-row-switch-on .axxa-plus-row-switch-thumb {
+  transform: translateX(18px);
+}
+
+/* =====================================================
+ * Effort selector single-line
+ * ===================================================== */
+
+.axxa-plus-effort-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.axxa-plus-effort-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+.axxa-plus-effort-label {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+  line-height: 1.3;
+}
+
+.axxa-plus-effort-sub {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+/* Row horizontal de 5 pills (Low/Med/High/xHigh/Max).
+   Scroll horizontal se não couber (telas estreitas). */
+.axxa-plus-effort-row {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--background-modifier-hover);
+  border-radius: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.axxa-plus-effort-row::-webkit-scrollbar {
+  display: none;
+}
+
+.axxa-plus-effort-pill,
+.axxa-plus-effort-pill:focus,
+.axxa-plus-effort-pill:active,
+.axxa-plus-effort-pill:hover {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-plus-effort-pill {
+  flex: 1 1 0;
+  min-width: 50px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-transform: capitalize;
+  white-space: nowrap;
+  line-height: 1.2 !important;
+  height: auto !important;
+}
+
+@media (hover: hover) {
+  .axxa-plus-effort-pill:hover {
+    color: var(--text-normal);
+  }
+}
+
+.axxa-plus-effort-pill-active {
+  background: var(--background-primary) !important;
+  color: var(--text-accent) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Fallback color-mix (Safari antigo) */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-plus-row-tone-blue .axxa-plus-row-icon,
+  .axxa-plus-row-tone-pink .axxa-plus-row-icon,
+  .axxa-plus-row-tone-orange .axxa-plus-row-icon,
+  .axxa-plus-row-tone-green .axxa-plus-row-icon,
+  .axxa-plus-row-tone-purple .axxa-plus-row-icon,
+  .axxa-plus-row-tone-red .axxa-plus-row-icon {
+    background: var(--background-modifier-hover);
+  }
 }
 
 .axxa-plus-options {

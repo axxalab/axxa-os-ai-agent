@@ -914,6 +914,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const makeAttachmentId = () =>
     `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+  // Toggles do PlusModal (webSearch, createImage, extendedThinking) — estado
+  // local. Cada provider/modelo decide se respeita. Persistência é da sessão.
+  const [plusToggles, setPlusToggles] = useState<Record<string, boolean>>({});
+
   const handleSend = async (text: string) => {
     const { addMessage, lockSession, setCurrentChatId, setCurrentChatTitle } =
       useChatStore.getState();
@@ -1516,6 +1520,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               onClose={handlePlusClose}
               visionEnabled={
                 getModelCapabilities(activeProviderId, activeModel).vision
+              }
+              imageGenEnabled={
+                Boolean(getModelCapabilities(activeProviderId, activeModel).imageGen)
+              }
+              toggles={plusToggles}
+              onToggle={(key, value) =>
+                setPlusToggles((prev) => ({ ...prev, [key]: value }))
               }
               onAttachPicked={(picked) => {
                 const id = makeAttachmentId();

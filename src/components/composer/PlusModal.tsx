@@ -41,6 +41,12 @@ interface PlusModalProps {
   visionEnabled?: boolean;
   /** Callback quando user escolheu um anexo (nota, pdf ou imagem). */
   onAttachPicked?: (att: AttachPickResult) => void;
+  /** Estado on/off das toggle actions (webSearch / createImage / etc). */
+  toggles?: Record<string, boolean>;
+  /** Callback quando user mexe num toggle. */
+  onToggle?: (key: string, value: boolean) => void;
+  /** True se o modelo ativo suporta image gen (habilita Create Image toggle). */
+  imageGenEnabled?: boolean;
 }
 
 export function PlusModal({
@@ -49,6 +55,9 @@ export function PlusModal({
   onClose,
   visionEnabled = false,
   onAttachPicked,
+  toggles = {},
+  onToggle,
+  imageGenEnabled = false,
 }: PlusModalProps) {
   const t = useT();
   const app = useApp();
@@ -214,11 +223,49 @@ export function PlusModal({
 
         <div className="axxa-plus-divider" />
 
-        {/* Opções: Effort selector */}
-        <div className="axxa-plus-options">
-          <div className="axxa-plus-options-label">{t.plus.effortTitle}</div>
-          <div className="axxa-plus-options-sub">{t.plus.effortSub}</div>
-          <div className="axxa-effort-grid">
+        {/* Action rows estilo Claude chat — cada feature numa linha
+            com ícone à esquerda, label/desc no meio, toggle/chevron à direita */}
+        <div className="axxa-plus-rows">
+          <PlusToggleRow
+            icon="globe"
+            tone="blue"
+            label={t.plus.webSearchTitle}
+            desc={t.plus.webSearchDesc}
+            checked={Boolean(toggles.webSearch)}
+            onChange={(v) => onToggle?.("webSearch", v)}
+          />
+          <PlusToggleRow
+            icon="image-plus"
+            tone="pink"
+            label={t.plus.createImageTitle}
+            desc={
+              imageGenEnabled
+                ? t.plus.createImageDesc
+                : t.plus.createImageNoGen
+            }
+            checked={Boolean(toggles.createImage)}
+            onChange={(v) => onToggle?.("createImage", v)}
+            disabled={!imageGenEnabled}
+          />
+          <PlusToggleRow
+            icon="brain"
+            tone="orange"
+            label={t.plus.extendedThinkingTitle}
+            desc={t.plus.extendedThinkingDesc}
+            checked={Boolean(toggles.extendedThinking)}
+            onChange={(v) => onToggle?.("extendedThinking", v)}
+          />
+        </div>
+
+        <div className="axxa-plus-divider" />
+
+        {/* Effort — single line horizontal (sem grid 2 colunas) */}
+        <div className="axxa-plus-effort-section">
+          <div className="axxa-plus-effort-head">
+            <span className="axxa-plus-effort-label">{t.plus.effortTitle}</span>
+            <span className="axxa-plus-effort-sub">{t.plus.effortSub}</span>
+          </div>
+          <div className="axxa-plus-effort-row">
             {EFFORT_LEVELS.map((level) => {
               const active = level === currentEffort;
               return (
@@ -226,23 +273,80 @@ export function PlusModal({
                   key={level}
                   type="button"
                   className={
-                    "axxa-effort-btn" + (active ? " axxa-effort-active" : "")
+                    "axxa-plus-effort-pill" +
+                    (active ? " axxa-plus-effort-pill-active" : "")
                   }
                   onClick={() => {
                     onSelectEffort(level);
                     onClose();
                   }}
+                  title={EFFORT_DESCRIPTIONS[level]}
                 >
-                  <span className="axxa-effort-label">{EFFORT_LABELS[level]}</span>
-                  <span className="axxa-effort-sub">
-                    {EFFORT_DESCRIPTIONS[level]}
-                  </span>
+                  {EFFORT_LABELS[level]}
                 </button>
               );
             })}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Action row no PlusModal — linha horizontal com ícone tonal + texto à esquerda
+ * e toggle switch à direita. Estilo iOS Settings list.
+ */
+function PlusToggleRow({
+  icon,
+  tone,
+  label,
+  desc,
+  checked,
+  onChange,
+  disabled = false,
+}: {
+  icon: string;
+  tone: "blue" | "pink" | "orange" | "green" | "purple" | "red";
+  label: string;
+  desc: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "axxa-plus-row axxa-plus-row-tone-" + tone +
+        (disabled ? " axxa-plus-row-disabled" : "")
+      }
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      onClick={() => !disabled && onChange(!checked)}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onChange(!checked);
+        }
+      }}
+    >
+      <span className="axxa-plus-row-icon">
+        <Icon name={icon} />
+      </span>
+      <span className="axxa-plus-row-text">
+        <span className="axxa-plus-row-label">{label}</span>
+        <span className="axxa-plus-row-desc">{desc}</span>
+      </span>
+      <span
+        className={
+          "axxa-plus-row-switch" +
+          (checked ? " axxa-plus-row-switch-on" : "")
+        }
+        aria-checked={checked}
+        role="switch"
+      >
+        <span className="axxa-plus-row-switch-thumb" />
+      </span>
     </div>
   );
 }

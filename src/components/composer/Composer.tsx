@@ -409,14 +409,16 @@ export function Composer({
             color: "var(--text-normal)",
             fontFamily: "var(--font-text)",
             fontSize: "var(--font-ui-medium)",
-            maxHeight: "200px",
+            // SEM maxHeight fixo — composer expande naturalmente com o texto.
+            // CSS externo (.axxa-composer-editor) cuida do clamp em telas
+            // muito altas via max-height calc(50vh - X).
             // overflow-x: hidden — campo de mensagem NUNCA scrolla horizontalmente
             // (regra: tudo respira pra baixo, jamais pra direita)
             overflowX: "hidden",
-            overflowY: "auto",
+            overflowY: "visible",
           },
           "&.cm-focused": { outline: "none" },
-          ".cm-scroller": { overflowX: "hidden" },
+          ".cm-scroller": { overflowX: "hidden", overflowY: "visible" },
           ".cm-content": {
             caretColor: "var(--text-normal)",
             padding: "4px 0",
