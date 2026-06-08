@@ -81,6 +81,9 @@ export const EN_US: Translations = {
     capToolsTooltip: "Supports tool calling (Agent Mode)",
     capStreamTooltip: "Real streaming (tokens arrive live)",
     capFreeTooltip: "Free model",
+    capImageGenTooltip: "Generates images — saved to axxa-ai/generation/images",
+    capAudioGenTooltip: "Generates audio — saved to axxa-ai/generation/audio",
+    capVideoGenTooltip: "Generates video — saved to axxa-ai/generation/video",
   },
 
   modes: {
@@ -210,7 +213,7 @@ export const EN_US: Translations = {
     openrouterIntro:
       "Multi-model proxy. Models prefixed by provider (e.g. anthropic/claude-3.5-sonnet).",
     nimIntro:
-      "Nvidia NIM hosted (1k free credits). Models: Nemotron Super/Ultra, Llama 3.3+, Qwen3+, DeepSeek v4. Smaller models may silently ignore tool calling.",
+      "Nvidia NIM hosted (1k free credits). Models: Llama 3.3/3.1, Nemotron, Mixtral, Qwen2.5, DeepSeek R1, Phi-4 + image generation (SDXL, FLUX). If you get 404/403, go to build.nvidia.com → Organization → enable 'Public API Endpoints'.",
     ollamaIntro:
       "Local LLMs. Requires Ollama server running (https://ollama.com). Tool calling works on llama3.1+, qwen2.5+, mistral-large.",
     ollamaEndpoint: "Endpoint",
@@ -238,6 +241,9 @@ export const EN_US: Translations = {
     skillsPathDesc: "Where skills are saved in the Vault (coming in Module 7)",
     recordingsPath: "Recordings folder",
     recordingsPathDesc: "Where audio recordings from the mic button are saved",
+    generationPath: "Generation folder",
+    generationPathDesc:
+      "Where generated media (image/audio/video) is saved. Each output creates 2 files: the media + a .md sidecar with frontmatter (prompt, model, provider).",
     comingSoon: "Coming soon",
     comingSoonItems: [
       "Audio recorder (mic) — Sprint E",

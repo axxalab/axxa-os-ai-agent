@@ -27,12 +27,17 @@ import {
   ProviderToolCall,
   TokenHandler,
   UsageHandler,
+  MediaGenerationRequest,
+  MediaGenerationItem,
 } from "./base";
 import { toOpenAIMessages } from "./openai";
 
 const NIM_ENDPOINT =
   "https://integrate.api.nvidia.com/v1/chat/completions";
 const NIM_MODELS_ENDPOINT = "https://integrate.api.nvidia.com/v1/models";
+// Base de inference de qualquer modelo NIM hosted — usado pra Visual GenAI
+// (Stable Diffusion, FLUX, etc). Endpoint específico do modelo é appended.
+const NIM_INFER_BASE = "https://ai.api.nvidia.com/v1/genai";
 
 export class NimProvider implements Provider {
   id = "nim";
@@ -74,26 +79,52 @@ export class NimProvider implements Provider {
         method: "POST",
         contentType: "application/json",
         headers: {
+          // NIM expects standard OpenAI-style headers. Accept JSON pra
+          // garantir que o servidor não responda com text/event-stream
+          // em algum modo confuso quando stream:false.
           Authorization: `Bearer ${apiKey.trim()}`,
+          Accept: "application/json",
         },
         body: JSON.stringify(body),
         throw: false,
       });
     } catch (err) {
-      throw new ProviderError("Falha de conexão.", "network");
+      console.error("[axxa] NIM network error:", err);
+      throw new ProviderError("Falha de conexão NIM.", "network");
+    }
+
+    // Log de diagnóstico — facilita debug quando user reporta "não funciona"
+    if (res.status < 200 || res.status >= 300) {
+      // Tenta parsear corpo JSON; cai pra .text se não for JSON
+      const errBody = res.json ?? (() => {
+        try { return JSON.parse(res.text); } catch { return res.text; }
+      })();
+      console.error(
+        "[axxa] NIM response failed:",
+        res.status,
+        errBody
+      );
     }
 
     if (res.status === 401 || res.status === 403) {
+      // 403 também pode significar "Public API Endpoints" permission falta.
+      // Adicionei dica explícita pra esse caso (causa comum reportada nas docs NVIDIA).
+      const hint =
+        res.status === 403
+          ? " (Verifique também se sua conta tem 'Public API Endpoints' habilitado em build.nvidia.com → Organization Settings.)"
+          : "";
       throw new ProviderError(
-        "API key Nvidia NIM inválida. Verifique em build.nvidia.com.",
+        `API key Nvidia NIM inválida ou sem permissão.${hint}`,
         "invalid-key"
       );
     }
     if (res.status === 404) {
-      // NIM retorna 404 quando o ID do modelo não existe no catálogo.
-      // Mensagem aponta pra ação concreta (botão "Buscar da API").
+      // NIM retorna 404 quando o ID do modelo não existe no catálogo OU
+      // quando o modelo está deprecado/não-hospedado.
+      const apiMsg = res.json?.detail ?? res.json?.error?.message ?? "";
       throw new ProviderError(
-        `NIM: modelo "${req.model}" não encontrado. Em Settings → Providers → Nvidia NIM, clique "Buscar da API" pra ver os modelos disponíveis.`,
+        `NIM: modelo "${req.model}" não encontrado ou não hospedado. ${apiMsg}\n` +
+          `Em Settings → Providers → Nvidia NIM, clique "Buscar da API" pra ver os modelos atualmente disponíveis.`,
         "unknown"
       );
     }
@@ -104,8 +135,14 @@ export class NimProvider implements Provider {
       );
     }
     if (res.status < 200 || res.status >= 300) {
-      const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
-      throw new ProviderError(`NIM: ${msg}`, "unknown");
+      // 400/422/500: inclui detalhes do body pra facilitar diagnóstico
+      const detail =
+        res.json?.error?.message ??
+        res.json?.detail ??
+        res.json?.message ??
+        (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
+        `HTTP ${res.status}`;
+      throw new ProviderError(`NIM (${res.status}): ${detail}`, "unknown");
     }
 
     const message = res.json?.choices?.[0]?.message;
@@ -183,6 +220,88 @@ export class NimProvider implements Provider {
     return response;
   }
 
+  /**
+   * Gera imagem via NIM Visual GenAI (Stable Diffusion 3, FLUX, SDXL).
+   * Endpoint: https://ai.api.nvidia.com/v1/genai/{publisher}/{model}
+   *
+   * Body típico:
+   *   {
+   *     prompt: "...",
+   *     mode: "text-to-image",
+   *     aspect_ratio: "1:1",
+   *     cfg_scale: 5,
+   *     seed: 0,
+   *     steps: 50
+   *   }
+   *
+   * Response: { artifacts: [{ base64: "...", finishReason: "SUCCESS" }] }
+   * OU { image: "base64..." } (depende do modelo).
+   */
+  async generateImage(
+    request: MediaGenerationRequest,
+    apiKey: string
+  ): Promise<MediaGenerationItem[]> {
+    if (!apiKey || !apiKey.trim()) {
+      throw new ProviderError("API key Nvidia NIM não configurada.", "no-key");
+    }
+    const url = `${NIM_INFER_BASE}/${request.model}`;
+    const aspectRatio = sizeToAspectRatio(request.size);
+    const body: Record<string, unknown> = {
+      prompt: request.prompt,
+      mode: "text-to-image",
+      aspect_ratio: aspectRatio,
+      cfg_scale: 5,
+      steps: 50,
+      seed: request.seed ?? 0,
+    };
+    let res;
+    try {
+      res = await requestUrl({
+        url,
+        method: "POST",
+        contentType: "application/json",
+        headers: {
+          Authorization: `Bearer ${apiKey.trim()}`,
+          Accept: "application/json",
+        },
+        body: JSON.stringify(body),
+        throw: false,
+      });
+    } catch (err) {
+      console.error("[axxa] NIM image gen network error:", err);
+      throw new ProviderError("Falha de conexão NIM image gen.", "network");
+    }
+    if (res.status < 200 || res.status >= 300) {
+      console.error("[axxa] NIM image gen failed:", res.status, res.json ?? res.text);
+      const detail =
+        res.json?.detail ??
+        res.json?.error?.message ??
+        (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
+        `HTTP ${res.status}`;
+      throw new ProviderError(`NIM image gen: ${detail}`, "unknown");
+    }
+    // Várias APIs com shapes diferentes — tenta os mais comuns
+    const artifacts = res.json?.artifacts;
+    const items: MediaGenerationItem[] = [];
+    if (Array.isArray(artifacts)) {
+      for (const a of artifacts) {
+        if (typeof a.base64 === "string" && a.base64) {
+          items.push({ data: base64ToBytes(a.base64), mime: "image/png" });
+        }
+      }
+    }
+    if (items.length === 0 && typeof res.json?.image === "string") {
+      items.push({ data: base64ToBytes(res.json.image), mime: "image/png" });
+    }
+    if (items.length === 0) {
+      throw new ProviderError(
+        "NIM não retornou imagens — verifique se o modelo suporta text-to-image.",
+        "unknown"
+      );
+    }
+    return items;
+  }
+
   /** Lista modelos NIM disponíveis no endpoint hospedado. Filtra prefixos relevantes. */
   async listModels(apiKey: string): Promise<string[]> {
     if (!apiKey || !apiKey.trim()) {
@@ -209,8 +328,15 @@ export class NimProvider implements Provider {
 }
 
 /**
- * Mantém só modelos de chat dos publishers principais.
- * Exclui embeddings, vision-only (rerank/parse), TTS, NeMo retriever, etc.
+ * Filtro de modelos NIM relevantes pro plugin.
+ *
+ * Estratégia: lista permissiva — aceita os principais publishers
+ * (LLM + image generation + multimodal) e exclui apenas componentes
+ * de pipeline (embeddings, rerank, retriever) e modelos de áudio
+ * de baixo nível (parakeet/canary) que não fazem sentido na UI de chat.
+ *
+ * Em particular: AGORA inclui modelos de geração de imagem (stabilityai,
+ * black-forest-labs, etc) — eles aparecem com badge "img-gen" no DS.
  */
 function isRelevantNimModel(id: string): boolean {
   const allowedPrefixes = [
@@ -221,14 +347,24 @@ function isRelevantNimModel(id: string): boolean {
     "microsoft/",
     "mistralai/",
     "google/",
+    // Image generation publishers
+    "stabilityai/",
+    "black-forest-labs/",
+    "shutterstock/",
+    // Outros que aparecem em chat
+    "minimaxai/",
+    "moonshot-ai/",
+    "ai21labs/",
+    "01-ai/",
   ];
   if (!allowedPrefixes.some((p) => id.startsWith(p))) return false;
+  // Exclui só o que NÃO faz sentido na UI: embedding, rerank, retriever,
+  // OCR, áudio de baixo nível (parakeet/canary), vista (NeMo).
   const excludeKeywords = [
     "embed",
     "embedqa",
     "rerank",
     "retriever",
-    "tts",
     "parakeet",
     "canary",
     "ocdrnet",
@@ -236,6 +372,28 @@ function isRelevantNimModel(id: string): boolean {
   ];
   if (excludeKeywords.some((kw) => id.includes(kw))) return false;
   return true;
+}
+
+/** Helper: mapeia size canonical → aspect_ratio do NIM Visual GenAI. */
+function sizeToAspectRatio(size?: string): string {
+  switch (size) {
+    case "1024x1792": return "9:16";
+    case "1792x1024": return "16:9";
+    case "512x512":
+    case "1024x1024":
+    case undefined:
+    case "auto":
+      return "1:1";
+    default: return "1:1";
+  }
+}
+
+/** Decode base64 → Uint8Array. */
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
 export const nimProvider = new NimProvider();

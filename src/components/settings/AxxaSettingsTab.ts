@@ -800,6 +800,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
+    new Setting(parent)
+      .setName(t.settings.generationPath)
+      .setDesc(t.settings.generationPathDesc)
+      .addText((text) =>
+        text
+          .setPlaceholder("axxa-ai/generation")
+          .setValue(this.plugin.settings.generationPath)
+          .onChange(async (value) => {
+            this.plugin.settings.generationPath =
+              value || "axxa-ai/generation";
+            await this.plugin.saveSettings();
+          })
+      );
+
     parent.createEl("h3", { text: t.settings.comingSoon });
     const todo = parent.createEl("ul");
     t.settings.comingSoonItems.forEach((item) => {

@@ -7,10 +7,21 @@
 // em alguns contextos. OpenAI permite CORS via Bearer auth, então fetch funciona.
 
 import { requestUrl } from "obsidian";
-import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandler, UsageHandler } from "./base";
+import {
+  Provider,
+  ProviderError,
+  ProviderRequest,
+  ProviderResponse,
+  TokenHandler,
+  UsageHandler,
+  MediaGenerationRequest,
+  MediaGenerationItem,
+} from "./base";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODELS_ENDPOINT = "https://api.openai.com/v1/models";
+const OPENAI_IMAGES_ENDPOINT = "https://api.openai.com/v1/images/generations";
+const OPENAI_AUDIO_SPEECH_ENDPOINT = "https://api.openai.com/v1/audio/speech";
 
 /**
  * Converte ProviderMessage[] pro formato wire-level do OpenAI.
@@ -347,6 +358,114 @@ export class OpenAIProvider implements Provider {
   }
 
   /**
+   * Gera imagem via DALL-E 3 ou gpt-image-1.
+   * Endpoint: /v1/images/generations. Retorna URL ou b64_json conforme `response_format`.
+   * Usamos b64_json pra ter os bytes direto sem precisar fazer fetch separado.
+   */
+  async generateImage(
+    request: MediaGenerationRequest,
+    apiKey: string
+  ): Promise<MediaGenerationItem[]> {
+    if (!apiKey || !apiKey.trim()) {
+      throw new ProviderError("API key da OpenAI não configurada.", "no-key");
+    }
+    const body: Record<string, unknown> = {
+      model: request.model,
+      prompt: request.prompt,
+      n: request.n ?? 1,
+      size: request.size && request.size !== "auto" ? request.size : "1024x1024",
+      response_format: "b64_json",
+    };
+    let res;
+    try {
+      res = await requestUrl({
+        url: OPENAI_IMAGES_ENDPOINT,
+        method: "POST",
+        contentType: "application/json",
+        headers: { Authorization: `Bearer ${apiKey.trim()}` },
+        body: JSON.stringify(body),
+        throw: false,
+      });
+    } catch (err) {
+      throw new ProviderError("Falha de conexão na geração.", "network");
+    }
+    if (res.status === 401) {
+      throw new ProviderError("API key inválida.", "invalid-key");
+    }
+    if (res.status === 429) {
+      throw new ProviderError("Rate limit OpenAI.", "rate-limit");
+    }
+    if (res.status < 200 || res.status >= 300) {
+      const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
+      throw new ProviderError(`OpenAI imagens: ${msg}`, "unknown");
+    }
+    const items = res.json?.data;
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new ProviderError("Resposta sem imagens.", "unknown");
+    }
+    // Parse o size pra extrair width/height (se vier no formato WxH).
+    const [width, height] = parseSize(body.size as string);
+    return items.map((it: { b64_json?: string; revised_prompt?: string }) => {
+      const b64 = it.b64_json ?? "";
+      const data = base64ToBytes(b64);
+      return {
+        data,
+        mime: "image/png",
+        width,
+        height,
+        text: it.revised_prompt,
+      } as MediaGenerationItem;
+    });
+  }
+
+  /**
+   * Gera áudio (TTS) via /v1/audio/speech.
+   * Modelos: tts-1, tts-1-hd, gpt-4o-mini-tts. Voice default "alloy".
+   * Retorna 1 item (a API só gera 1 saída por chamada).
+   */
+  async generateAudio(
+    request: MediaGenerationRequest,
+    apiKey: string
+  ): Promise<MediaGenerationItem[]> {
+    if (!apiKey || !apiKey.trim()) {
+      throw new ProviderError("API key da OpenAI não configurada.", "no-key");
+    }
+    const body: Record<string, unknown> = {
+      model: request.model,
+      input: request.prompt,
+      voice: request.voice ?? "alloy",
+      response_format: "mp3",
+    };
+    let res;
+    try {
+      res = await requestUrl({
+        url: OPENAI_AUDIO_SPEECH_ENDPOINT,
+        method: "POST",
+        contentType: "application/json",
+        headers: { Authorization: `Bearer ${apiKey.trim()}` },
+        body: JSON.stringify(body),
+        throw: false,
+      });
+    } catch (err) {
+      throw new ProviderError("Falha de conexão TTS.", "network");
+    }
+    if (res.status === 401) {
+      throw new ProviderError("API key inválida.", "invalid-key");
+    }
+    if (res.status === 429) {
+      throw new ProviderError("Rate limit OpenAI TTS.", "rate-limit");
+    }
+    if (res.status < 200 || res.status >= 300) {
+      const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
+      throw new ProviderError(`OpenAI TTS: ${msg}`, "unknown");
+    }
+    // Retorna binário (audio/mpeg). res.arrayBuffer é o buffer cru.
+    const buf = res.arrayBuffer;
+    const data = new Uint8Array(buf);
+    return [{ data, mime: "audio/mpeg" }];
+  }
+
+  /**
    * Lista modelos relevantes (modernos) da OpenAI.
    * Filtra legacy / audio / embeddings / etc.
    */
@@ -435,25 +554,50 @@ function finalizeOpenAI(
   return result;
 }
 
-/** Mantém só os modelos modernos de chat — sem legacy, sem áudio/embedding/tools. */
+/** Mantém modelos relevantes — chat moderno + image gen (DALL-E, gpt-image)
+ *  + TTS (tts-*, gpt-4o-mini-tts). Filtra só embed/legacy/moderation. */
 function isRelevantOpenAIModel(id: string): boolean {
-  const allowedPrefixes = ["gpt-4o", "gpt-5", "o1", "o3", "o4"];
-  if (!allowedPrefixes.some((p) => id.startsWith(p))) return false;
-  const excludeKeywords = [
-    "audio",
-    "realtime",
-    "transcribe",
-    "tts",
-    "search",
-    "embed",
-    "preview",
-    "vision",
-    "instruct",
-    "moderation",
-    "image",
-  ];
-  if (excludeKeywords.some((kw) => id.includes(kw))) return false;
-  return true;
+  // Chat
+  if (
+    id.startsWith("gpt-4o") ||
+    id.startsWith("gpt-5") ||
+    id.startsWith("o1") ||
+    id.startsWith("o3") ||
+    id.startsWith("o4")
+  ) {
+    const excludeKeywords = [
+      "audio",
+      "realtime",
+      "transcribe",
+      "search",
+      "preview",
+      "vision",
+      "instruct",
+      "moderation",
+    ];
+    return !excludeKeywords.some((kw) => id.includes(kw));
+  }
+  // Image generation
+  if (id.startsWith("dall-e") || id.startsWith("gpt-image")) return true;
+  // TTS
+  if (id === "tts-1" || id === "tts-1-hd" || id.startsWith("gpt-4o-mini-tts"))
+    return true;
+  return false;
+}
+
+/** Helper: parse "1024x1024" → [1024, 1024]. */
+function parseSize(s: string): [number | undefined, number | undefined] {
+  const m = /^(\d+)x(\d+)$/.exec(s);
+  if (!m) return [undefined, undefined];
+  return [parseInt(m[1], 10), parseInt(m[2], 10)];
+}
+
+/** Decode base64 → Uint8Array. */
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
 export const openaiProvider = new OpenAIProvider();

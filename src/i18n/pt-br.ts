@@ -81,6 +81,9 @@ export const PT_BR = {
     capToolsTooltip: "Suporta tool calling (Agent Mode)",
     capStreamTooltip: "Streaming real (tokens chegam ao vivo)",
     capFreeTooltip: "Modelo gratuito",
+    capImageGenTooltip: "Gera imagens — salvas em axxa-ai/generation/images",
+    capAudioGenTooltip: "Gera áudio — salvo em axxa-ai/generation/audio",
+    capVideoGenTooltip: "Gera vídeo — salvo em axxa-ai/generation/video",
   },
 
   modes: {
@@ -212,7 +215,7 @@ export const PT_BR = {
     openrouterIntro:
       "Proxy multi-modelo. Modelos prefixados por provider (ex: anthropic/claude-3.5-sonnet).",
     nimIntro:
-      "Nvidia NIM hospedado (1k créditos free). Modelos: Nemotron Super/Ultra, Llama 3.3+, Qwen3+, DeepSeek v4. Modelos pequenos podem ignorar tool calling silenciosamente.",
+      "Nvidia NIM hospedado (1k créditos free). Modelos: Llama 3.3/3.1, Nemotron, Mixtral, Qwen2.5, DeepSeek R1, Phi-4 + geração de imagem (SDXL, FLUX). Se receber erro 404/403, vá em build.nvidia.com → Organization → habilite 'Public API Endpoints'.",
     ollamaIntro:
       "LLMs locais. Precisa do servidor Ollama rodando (https://ollama.com). Tool calling funciona em llama3.1+, qwen2.5+, mistral-large.",
     ollamaEndpoint: "Endpoint",
@@ -240,6 +243,9 @@ export const PT_BR = {
     skillsPathDesc: "Onde as skills serão salvas no Vault (vem no Módulo 7)",
     recordingsPath: "Pasta das gravações",
     recordingsPathDesc: "Onde os áudios gravados pelo botão de mic serão salvos",
+    generationPath: "Pasta de gerações",
+    generationPathDesc:
+      "Onde mídias geradas (imagem/áudio/vídeo) são salvas. Cada saída gera 2 arquivos: a mídia + sidecar .md com frontmatter (prompt, modelo, provider).",
     comingSoon: "Em breve",
     comingSoonItems: [
       "Audio recorder (mic) — Sprint E",

@@ -22,10 +22,13 @@ import {
 
 // Cores DS pra badges de capacidade — cada flag tem uma cor semântica fixa.
 const CAP_COLORS = {
-  vision: "var(--color-purple, #a370f7)",  // multimodal = roxo
-  tools: "var(--color-orange, #ec7b3e)",   // tools = laranja
-  stream: "var(--color-green, #06d6a0)",   // streaming real = verde
-  free: "var(--color-cyan, #4cc9f0)",      // grátis = cyan
+  vision: "var(--color-purple, #a370f7)",     // multimodal = roxo
+  tools: "var(--color-orange, #ec7b3e)",      // tools = laranja
+  stream: "var(--color-green, #06d6a0)",      // streaming real = verde
+  free: "var(--color-cyan, #4cc9f0)",         // grátis = cyan
+  "img-gen": "var(--color-pink, #f472b6)",    // gera imagem = rosa
+  "audio-gen": "var(--color-cyan, #4cc9f0)",  // gera áudio = cyan
+  "video-gen": "var(--color-purple, #a370f7)", // gera vídeo = roxo
 } as const;
 
 // Mesmas cores semânticas usadas no status line do Composer.
@@ -39,7 +42,7 @@ const CHIP_COLORS = {
 
 /** Tooltip por badge — texto explicativo do que cada flag significa. */
 function modelCapTooltip(
-  id: "vision" | "tools" | "stream" | "free",
+  id: "vision" | "tools" | "stream" | "free" | "img-gen" | "audio-gen" | "video-gen",
   t: ReturnType<typeof useT>
 ): string {
   switch (id) {
@@ -47,6 +50,9 @@ function modelCapTooltip(
     case "tools": return t.starter.capToolsTooltip;
     case "stream": return t.starter.capStreamTooltip;
     case "free": return t.starter.capFreeTooltip;
+    case "img-gen": return t.starter.capImageGenTooltip;
+    case "audio-gen": return t.starter.capAudioGenTooltip;
+    case "video-gen": return t.starter.capVideoGenTooltip;
   }
 }
 

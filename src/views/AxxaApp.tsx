@@ -25,7 +25,8 @@ import { TranslationsContext, getTranslations } from "../i18n";
 import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage, type MessageAttachment } from "../providers/base";
-import { getModelCapabilities } from "../providers/modelCapabilities";
+import { getModelCapabilities, isGenerationModel } from "../providers/modelCapabilities";
+import { saveGeneration, type GenerationMediaType } from "../generation/save";
 import {
   effortToMaxTokens,
   effortToVaultLookup,
@@ -942,11 +943,145 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     addMessage({ type: "user", content: text });
     setPendingAttachments([]);
 
+    // Se o modelo ativo é de generation (imageGen/audioGen/videoGen), roteia
+    // pra runGenerationTurn em vez de chat — gera mídia + salva no vault.
+    if (isGenerationModel(caps)) {
+      await runGenerationTurn(text, caps);
+      return;
+    }
+
     // Dispatch baseado no modo: agent usa loop com tools, demais usa streamReply
     if (activeMode === "agent") {
       await runAgentTurn(text, attachments);
     } else {
       await streamReply(text, attachments);
+    }
+  };
+
+  // ============================================================
+  // Generation turn — chama generateImage/Audio/Video conforme as caps
+  // do modelo, salva o resultado em axxa-ai/generation/{type}/ + sidecar .md
+  // com frontmatter, e renderiza a mídia inline na conversa.
+  // ============================================================
+  const runGenerationTurn = async (
+    prompt: string,
+    caps: ReturnType<typeof getModelCapabilities>
+  ) => {
+    const {
+      addMessage,
+      updateActivity,
+      setLoading,
+      newChat,
+    } = useChatStore.getState();
+    void newChat;
+
+    setLoading(true);
+    const mediaType: GenerationMediaType = caps.imageGen
+      ? "image"
+      : caps.audioGen
+        ? "audio"
+        : "video";
+
+    const activityId = addMessage({
+      type: "ai-comment",
+      content: "",
+      activity: {
+        phase: "pending",
+        iconPending: mediaType === "image" ? "image-plus" : mediaType === "audio" ? "volume-2" : "video",
+        iconDone: "check",
+        pendingText: mediaType === "image"
+          ? "Gerando imagem..."
+          : mediaType === "audio"
+            ? "Gerando áudio..."
+            : "Gerando vídeo...",
+        doneText: "",
+      },
+    });
+
+    try {
+      const provider = activeProvider;
+      const apiKey = apiKeyFor(activeProviderId);
+      let items;
+      if (mediaType === "image") {
+        if (!provider.generateImage) {
+          throw new Error(`Provider "${provider.name}" não implementa generateImage.`);
+        }
+        items = await provider.generateImage(
+          { model: activeModel, prompt, size: "1024x1024" },
+          apiKey
+        );
+      } else if (mediaType === "audio") {
+        if (!provider.generateAudio) {
+          throw new Error(`Provider "${provider.name}" não implementa generateAudio.`);
+        }
+        items = await provider.generateAudio(
+          { model: activeModel, prompt },
+          apiKey
+        );
+      } else {
+        if (!provider.generateVideo) {
+          throw new Error(`Provider "${provider.name}" não implementa generateVideo.`);
+        }
+        items = await provider.generateVideo(
+          { model: activeModel, prompt },
+          apiKey
+        );
+      }
+
+      // Salva cada item gerado no vault com sidecar de metadata
+      const savedPaths: string[] = [];
+      for (const item of items) {
+        const result = await saveGeneration(
+          plugin.app,
+          plugin.settings.generationPath,
+          item.data,
+          {
+            id: makeId(),
+            type: mediaType,
+            provider: activeProviderId,
+            model: activeModel,
+            prompt,
+            created: new Date().toISOString(),
+            size: item.data.byteLength,
+            mime: item.mime,
+            width: item.width,
+            height: item.height,
+            duration: item.duration,
+            seed: item.seed,
+            chatId: useChatStore.getState().currentChatId ?? undefined,
+          }
+        );
+        savedPaths.push(result.mediaPath);
+      }
+
+      updateActivity(
+        activityId,
+        {
+          phase: "done",
+          doneText: `${items.length} ${mediaType === "image" ? "imagem" : mediaType === "audio" ? "áudio" : "vídeo"}${items.length > 1 ? "s" : ""} gerado${items.length > 1 ? "s" : ""}`,
+        },
+        savedPaths[0]
+      );
+
+      // Resposta com wikilinks pra cada mídia salva (renderizado como embed pelo Obsidian)
+      const responseContent = savedPaths
+        .map((p) => mediaType === "image" ? `![[${p}]]` : `[[${p}]]`)
+        .join("\n\n");
+      addMessage({ type: "ai-response", content: responseContent });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro desconhecido.";
+      updateActivity(
+        activityId,
+        {
+          phase: "failed",
+          iconFailed: "x-circle",
+          failedText: "Falha na geração",
+        },
+        msg
+      );
+      addMessage({ type: "ai-response", content: `${t.ai.errorPrefix} ${msg}` });
+    } finally {
+      setLoading(false);
     }
   };
 

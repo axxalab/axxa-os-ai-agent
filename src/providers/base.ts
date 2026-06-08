@@ -97,6 +97,36 @@ export interface Usage {
 /** Callback opcional pra receber usage quando o provider informar. */
 export type UsageHandler = (usage: Usage) => void;
 
+/** Request pra geração de mídia (imagem/áudio/vídeo). */
+export interface MediaGenerationRequest {
+  model: string;
+  prompt: string;
+  /** Opcional: aspect ratio / dimensões. Cada provider mapeia conforme suporta. */
+  size?: "1024x1024" | "1024x1792" | "1792x1024" | "512x512" | "auto";
+  /** Quantas saídas (alguns providers aceitam n=1..N). Default 1. */
+  n?: number;
+  /** Seed determinística, se suportada. */
+  seed?: number;
+  /** Voz pra TTS (provider-specific). */
+  voice?: string;
+}
+
+/** Result item de geração — UM arquivo binário + meta de retorno. */
+export interface MediaGenerationItem {
+  /** Bytes da mídia. */
+  data: Uint8Array;
+  /** Mime type retornado pelo provider. */
+  mime: string;
+  width?: number;
+  height?: number;
+  /** Pra audio/video em segundos. */
+  duration?: number;
+  /** Seed efetivamente usada (provider às vezes adjusts). */
+  seed?: number;
+  /** Texto auxiliar do modelo (descrição, alt, revised prompt, etc). */
+  text?: string;
+}
+
 export interface Provider {
   id: string;
   name: string;
@@ -117,6 +147,23 @@ export interface Provider {
     onUsage?: UsageHandler,
     signal?: AbortSignal
   ): Promise<ProviderResponse>;
+  /**
+   * Gera mídia (imagem/áudio/vídeo) conforme suportado pelo modelo.
+   * Provider que não suporta retorna lista vazia / lança erro.
+   * Implementação opcional — só providers com modelos de geração precisam.
+   */
+  generateImage?(
+    request: MediaGenerationRequest,
+    apiKey: string
+  ): Promise<MediaGenerationItem[]>;
+  generateAudio?(
+    request: MediaGenerationRequest,
+    apiKey: string
+  ): Promise<MediaGenerationItem[]>;
+  generateVideo?(
+    request: MediaGenerationRequest,
+    apiKey: string
+  ): Promise<MediaGenerationItem[]>;
 }
 
 /**

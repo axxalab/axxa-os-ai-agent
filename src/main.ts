@@ -41,6 +41,10 @@ interface AxxaSettings {
   background: string;
   /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
   recordingsPath: string;
+  /** Pasta no Vault onde mídias geradas por modelos (imagem/áudio/vídeo)
+   *  são salvas. Cada saída gera 2 arquivos: mídia + sidecar .md com
+   *  frontmatter (prompt, model, provider, timestamp, etc). */
+  generationPath: string;
   // ============ RAG (Sprint F — v0.1.25) ============
   /** Pasta no Vault onde o índice vetorial é persistido. */
   ragIndexPath: string;
@@ -100,11 +104,19 @@ const DEFAULT_SETTINGS: AxxaSettings = {
       "google/gemini-2.0-flash-001",
     ],
     nim: [
+      // Modelos confirmados como ativos no catálogo hosted (jun/2026).
+      // Atualizar via webfetch periodicamente — catálogo muda com frequência.
       "meta/llama-3.3-70b-instruct",
-      "nvidia/llama-3.1-nemotron-ultra-253b-v1",
-      "mistralai/mixtral-8x22b-instruct",
+      "meta/llama-3.1-70b-instruct",
+      "meta/llama-3.1-8b-instruct",
+      "nvidia/llama-3.1-nemotron-70b-instruct",
+      "mistralai/mixtral-8x22b-instruct-v0.1",
       "deepseek-ai/deepseek-r1",
       "qwen/qwen2.5-72b-instruct",
+      "microsoft/phi-4",
+      // Image generation (NIM Visual GenAI)
+      "stabilityai/stable-diffusion-3-medium",
+      "black-forest-labs/flux.1-schnell",
     ],
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },
@@ -115,6 +127,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   language: "pt-br",
   background: "none",
   recordingsPath: "axxa-ai/recordings",
+  generationPath: "axxa-ai/generation",
   ragIndexPath: "axxa-ai/index",
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",

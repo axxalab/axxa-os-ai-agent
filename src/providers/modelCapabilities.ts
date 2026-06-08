@@ -18,6 +18,12 @@ export interface ModelCapabilities {
   streaming: boolean;
   /** Modelo gratuito (sem custo de uso). null = informação desconhecida */
   free?: boolean;
+  /** Gera imagens (text-to-image). Salvas em axxa-ai/generation/images/ */
+  imageGen?: boolean;
+  /** Gera áudio (TTS ou voice models). Salvos em axxa-ai/generation/audio/ */
+  audioGen?: boolean;
+  /** Gera vídeo (Veo, Sora, Cosmos, etc). Salvos em axxa-ai/generation/video/ */
+  videoGen?: boolean;
 }
 
 const DEFAULT_CAPS: ModelCapabilities = {
@@ -37,6 +43,17 @@ interface CapsEntry {
 const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
   // ─────────────────────────────── OpenAI ───────────────────────────────
   openai: [
+    // Image generation
+    { prefix: "dall-e-3", caps: { vision: false, tools: false, streaming: false, imageGen: true } },
+    { prefix: "dall-e-2", caps: { vision: false, tools: false, streaming: false, imageGen: true } },
+    { prefix: "gpt-image", caps: { vision: false, tools: false, streaming: false, imageGen: true } },
+    // Audio (TTS)
+    { prefix: "tts-1-hd", caps: { vision: false, tools: false, streaming: false, audioGen: true } },
+    { prefix: "tts-1", caps: { vision: false, tools: false, streaming: false, audioGen: true } },
+    { prefix: "gpt-4o-mini-tts", caps: { vision: false, tools: false, streaming: false, audioGen: true } },
+    // Video gen — Sora API (quando GA)
+    { prefix: "sora", caps: { vision: false, tools: false, streaming: false, videoGen: true } },
+    // Chat LLM
     { prefix: "gpt-4o-mini", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "gpt-4o", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "gpt-5", caps: { vision: true, tools: true, streaming: true } },
@@ -60,7 +77,16 @@ const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
 
   // ─────────────────────────────── Gemini ──────────────────────────────
   gemini: [
-    // Toda família Gemini 1.5+ aceita imagem nativa
+    // Image generation — "Nano Banana" é o codename do gemini-2.5-flash-image
+    { prefix: "gemini-2.5-flash-image", caps: { vision: true, tools: false, streaming: false, imageGen: true, free: true } },
+    { prefix: "gemini-2.0-flash-exp-image", caps: { vision: true, tools: false, streaming: false, imageGen: true, free: true } },
+    { prefix: "imagen-3", caps: { vision: false, tools: false, streaming: false, imageGen: true } },
+    { prefix: "imagen-4", caps: { vision: false, tools: false, streaming: false, imageGen: true } },
+    // Audio (TTS)
+    { prefix: "gemini-2.5-flash-preview-tts", caps: { vision: false, tools: false, streaming: false, audioGen: true, free: true } },
+    // Video gen (Veo)
+    { prefix: "veo", caps: { vision: false, tools: false, streaming: false, videoGen: true } },
+    // Chat LLM — toda família Gemini 1.5+ aceita imagem nativa
     { prefix: "gemini-3", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "gemini-2.5", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "gemini-2.0", caps: { vision: true, tools: true, streaming: true } },
@@ -103,6 +129,11 @@ const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
   // ─────────────────────────── Nvidia NIM ──────────────────────────
   // NIM streaming é "fake" (requestUrl bypass CORS) — streaming:false marca isso.
   nim: [
+    // ===== Image generation (NIM Visual GenAI) =====
+    { prefix: "stabilityai/stable-diffusion", caps: { vision: false, tools: false, streaming: false, imageGen: true, free: true } },
+    { prefix: "stabilityai/sdxl", caps: { vision: false, tools: false, streaming: false, imageGen: true, free: true } },
+    { prefix: "black-forest-labs/flux", caps: { vision: false, tools: false, streaming: false, imageGen: true, free: true } },
+    { prefix: "shutterstock/", caps: { vision: false, tools: false, streaming: false, imageGen: true, free: true } },
     // Nemotron VL / Vision tem suporte multimodal
     { prefix: "nvidia/llama-3.2-nv-embedqa", caps: { vision: false, tools: false, streaming: false } },
     { prefix: "nvidia/llama-nemotron-embed", caps: { vision: true, tools: false, streaming: false } },
@@ -182,19 +213,37 @@ export function getModelCapabilities(
   return matched ? { ...matched } : { ...DEFAULT_CAPS };
 }
 
+export type CapabilityBadgeId =
+  | "vision"
+  | "tools"
+  | "stream"
+  | "free"
+  | "img-gen"
+  | "audio-gen"
+  | "video-gen";
+
 /**
  * Helper utilitário pra UI: lista os flags ativos como strings curtas.
- * Ordem fixa: vision → tools → streaming → free.
+ * Ordem fixa: generation flags primeiro (mais distintivas), depois input
+ * capabilities, depois stream/free.
  */
 export function capabilityBadges(caps: ModelCapabilities): Array<{
-  id: "vision" | "tools" | "stream" | "free";
+  id: CapabilityBadgeId;
   label: string;
   icon: string;
 }> {
-  const badges: Array<{ id: "vision" | "tools" | "stream" | "free"; label: string; icon: string }> = [];
+  const badges: Array<{ id: CapabilityBadgeId; label: string; icon: string }> = [];
+  if (caps.imageGen) badges.push({ id: "img-gen", label: "img-gen", icon: "image-plus" });
+  if (caps.audioGen) badges.push({ id: "audio-gen", label: "audio-gen", icon: "volume-2" });
+  if (caps.videoGen) badges.push({ id: "video-gen", label: "video-gen", icon: "video" });
   if (caps.vision) badges.push({ id: "vision", label: "vision", icon: "image" });
   if (caps.tools) badges.push({ id: "tools", label: "tools", icon: "wrench" });
   if (caps.streaming) badges.push({ id: "stream", label: "stream", icon: "zap" });
   if (caps.free) badges.push({ id: "free", label: "free", icon: "gift" });
   return badges;
+}
+
+/** Helper conveniência: o modelo é qualquer tipo de generation? */
+export function isGenerationModel(caps: ModelCapabilities): boolean {
+  return Boolean(caps.imageGen || caps.audioGen || caps.videoGen);
 }

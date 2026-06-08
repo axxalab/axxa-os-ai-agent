@@ -23,6 +23,8 @@ import {
   ProviderToolCall,
   TokenHandler,
   UsageHandler,
+  MediaGenerationRequest,
+  MediaGenerationItem,
 } from "./base";
 import { toOpenAIMessages, finalizeOpenAIResponse } from "./openai";
 
@@ -30,6 +32,9 @@ const GEMINI_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const GEMINI_MODELS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/openai/models";
+// Endpoint nativo do Gemini pra image generation ("Nano Banana" e Imagen).
+// Não usa o OpenAI-compat porque image gen tem formato próprio (responseModalities).
+const GEMINI_NATIVE_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export class GeminiProvider implements Provider {
   id = "gemini";
@@ -272,7 +277,91 @@ export class GeminiProvider implements Provider {
   }
 
   /**
-   * Lista modelos Gemini relevantes (chat, não TTS/Live/Image/Embedding).
+   * Gera imagem via Gemini Nano Banana (gemini-2.5-flash-image) ou Imagen.
+   * Endpoint nativo:  /v1beta/models/{model}:generateContent
+   *
+   * Body:
+   *   {
+   *     contents: [{ parts: [{ text: prompt }] }],
+   *     generationConfig: { responseModalities: ["IMAGE"] }
+   *   }
+   *
+   * Response: candidates[0].content.parts[i].inlineData.{data, mimeType}
+   */
+  async generateImage(
+    request: MediaGenerationRequest,
+    apiKey: string
+  ): Promise<MediaGenerationItem[]> {
+    if (!apiKey || !apiKey.trim()) {
+      throw new ProviderError(
+        "API key do Gemini não configurada.",
+        "no-key"
+      );
+    }
+    const url = `${GEMINI_NATIVE_BASE}/${request.model}:generateContent?key=${encodeURIComponent(apiKey.trim())}`;
+    const body = {
+      contents: [{ parts: [{ text: request.prompt }] }],
+      generationConfig: {
+        responseModalities: ["IMAGE"],
+        ...(request.seed != null ? { seed: request.seed } : {}),
+      },
+    };
+    let res;
+    try {
+      res = await requestUrl({
+        url,
+        method: "POST",
+        contentType: "application/json",
+        body: JSON.stringify(body),
+        throw: false,
+      });
+    } catch (err) {
+      throw new ProviderError("Falha de conexão.", "network");
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new ProviderError(
+        "API key Gemini inválida.",
+        "invalid-key"
+      );
+    }
+    if (res.status === 429) {
+      throw new ProviderError(
+        "Rate limit Gemini.",
+        "rate-limit"
+      );
+    }
+    if (res.status < 200 || res.status >= 300) {
+      const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
+      throw new ProviderError(`Gemini imagens: ${msg}`, "unknown");
+    }
+    const parts: Array<{ inlineData?: { data: string; mimeType: string }; text?: string }> =
+      res.json?.candidates?.[0]?.content?.parts ?? [];
+    const items: MediaGenerationItem[] = [];
+    let textAccum = "";
+    for (const p of parts) {
+      if (p.inlineData?.data) {
+        const data = base64ToBytes(p.inlineData.data);
+        items.push({
+          data,
+          mime: p.inlineData.mimeType || "image/png",
+        });
+      } else if (p.text) {
+        textAccum += p.text;
+      }
+    }
+    if (items.length === 0) {
+      throw new ProviderError(
+        "Gemini não retornou imagens — verifique se o modelo suporta IMAGE modality.",
+        "unknown"
+      );
+    }
+    // Anexa o texto auxiliar (se houver) no primeiro item
+    if (textAccum && items[0]) items[0].text = textAccum;
+    return items;
+  }
+
+  /**
+   * Lista modelos Gemini relevantes (chat + image gen + TTS).
    * Alguns endpoints retornam IDs prefixados com "models/" — normalizamos.
    */
   async listModels(apiKey: string): Promise<string[]> {
@@ -302,19 +391,30 @@ export class GeminiProvider implements Provider {
   }
 }
 
-/** Mantém só modelos de chat — sem TTS, Live, Image-gen, Embedding, AQA. */
+/**
+ * Mantém modelos relevantes — chat, image gen (Nano Banana / Imagen),
+ * TTS (gemini-*-preview-tts) e Veo (video gen).
+ * Filtra só embed e legacy (aqa).
+ */
 function isRelevantGeminiModel(id: string): boolean {
-  if (!id.startsWith("gemini-")) return false;
-  const excludeKeywords = [
-    "tts",       // text-to-speech (gemini-2.5-flash-preview-tts)
-    "live",      // live API audio/video (gemini-2.5-flash-live)
-    "image",     // image generation (gemini-2.5-flash-image)
-    "embedding", // embeddings (gemini-embedding-001)
-    "embed",
-    "aqa",       // attributed Q&A (legacy)
-  ];
-  if (excludeKeywords.some((kw) => id.includes(kw))) return false;
-  return true;
+  // Chat / multimodal
+  if (id.startsWith("gemini-")) {
+    if (id.includes("embedding") || id.includes("aqa") || id.includes("live")) return false;
+    return true;
+  }
+  // Image generation
+  if (id.startsWith("imagen-")) return true;
+  // Video generation
+  if (id.startsWith("veo")) return true;
+  return false;
+}
+
+/** Decode base64 → Uint8Array. */
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
 export const geminiProvider = new GeminiProvider();
