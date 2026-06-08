@@ -123,6 +123,37 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
   background-color: var(--background-primary) !important;
 }
 
+/* === Edge-to-edge bg em SIDEBAR REGULAR (não fullscreen) v0.1.57 ===
+   Aplica background-primary nos containers do leaf + safe-area-zone
+   pra que a barra nativa do OS (Android nav buttons OU gesture handle)
+   mostre o mesmo bg do chat. Resultado: text-area parece ocupar 100%
+   da viewport, sem bloco branco/cinza atrás da nav.
+
+   Escopo: aplica apenas quando a leaf do AXXA OS é o conteúdo visível
+   (data-type matching). Não afeta outras leaves do Obsidian. */
+body.is-mobile .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+body.is-mobile .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content,
+body.is-mobile .workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]),
+body.is-mobile .workspace-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
+  background: var(--background-primary) !important;
+  background-color: var(--background-primary) !important;
+}
+
+/* Mobile-navbar nativo do Obsidian — só quando AXXA é a leaf ativa.
+   :has() na .workspace-drawer pra escopar dentro do drawer direito. */
+body.is-mobile .workspace-drawer.mod-right:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) .mobile-navbar {
+  background: var(--background-primary) !important;
+  background-color: var(--background-primary) !important;
+}
+
+/* Fallback browsers velhos sem :has() — aplica mais amplo */
+@supports not selector(html:has(*)) {
+  body.is-mobile .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+  body.is-mobile .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+    background: var(--background-primary) !important;
+  }
+}
+
 /* Padding superior do header pra escapar do status bar nativo no fullscreen.
    Em devices com notch, env(safe-area-inset-top) pode ser >40, então max(). */
 body.is-mobile.axxa-fullscreen .axxa-header {

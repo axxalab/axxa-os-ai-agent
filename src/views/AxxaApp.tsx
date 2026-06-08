@@ -80,15 +80,26 @@ function makeId(): string {
 function applyMobileFullscreen(enabled: boolean): void {
   const body = document.body;
   body.classList.toggle("axxa-fullscreen", enabled);
+}
 
-  // theme-color dynamic — lê do tema ativo (resolveValue após dom mount)
+/**
+ * Atualiza o `<meta name="theme-color">` pra que o OS pinte a status bar
+ * e a nav bar nativa com `--background-primary`.
+ *
+ * Independente de fullscreen — chamado sempre que AXXA monta em mobile,
+ * pra que a area da OS nav bar (gesture handle OU 3-button nav) mostre
+ * o mesmo bg do chat. Resultado: text-area parece edge-to-edge.
+ *
+ * `enabled=false` restaura o theme-color original (cleanup ao unmount).
+ */
+function applyThemeColor(enabled: boolean): void {
   let metaThemeColor = document.querySelector(
     'meta[name="theme-color"]'
   ) as HTMLMetaElement | null;
   if (enabled) {
-    // Pega cor real do bg primário (renderizada pelo browser)
     const cs = getComputedStyle(document.body);
-    const bg = cs.getPropertyValue("--background-primary").trim() ||
+    const bg =
+      cs.getPropertyValue("--background-primary").trim() ||
       cs.backgroundColor ||
       "#000000";
     if (!metaThemeColor) {
@@ -97,7 +108,6 @@ function applyMobileFullscreen(enabled: boolean): void {
       document.head.appendChild(metaThemeColor);
       metaThemeColor.setAttribute("data-axxa-managed", "true");
     }
-    // Guarda valor original pra restaurar depois
     if (!metaThemeColor.getAttribute("data-axxa-original")) {
       metaThemeColor.setAttribute(
         "data-axxa-original",
@@ -106,7 +116,6 @@ function applyMobileFullscreen(enabled: boolean): void {
     }
     metaThemeColor.content = bg;
   } else if (metaThemeColor?.getAttribute("data-axxa-managed") === "true") {
-    // Restaura valor original ou remove se foi criada pela gente
     const original = metaThemeColor.getAttribute("data-axxa-original") || "";
     if (original) {
       metaThemeColor.content = original;
@@ -269,6 +278,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       applyMobileFullscreen(false);
     };
   }, [plugin.settings.mobileFullscreen]);
+
+  // theme-color do OS = --background-primary SEMPRE quando AXXA monta
+  // (mesmo fora do fullscreen). Faz a OS pintar a nav bar nativa com
+  // a cor do chat — text-area "transparece" atrás da barra do sistema.
+  useEffect(() => {
+    applyThemeColor(true);
+    return () => {
+      // Cleanup só se realmente está desmontando o AXXA — restaura
+      // theme-color original do Obsidian.
+      applyThemeColor(false);
+    };
+  }, []);
 
   // Lê traduções na hora — atualiza no próximo render (após forceRender acima)
   const t = getTranslations(plugin.settings.language);
