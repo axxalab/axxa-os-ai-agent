@@ -129,6 +129,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const tokensIn = useChatStore((s) => s.tokensIn);
   const tokensOut = useChatStore((s) => s.tokensOut);
   const lastPromptTokens = useChatStore((s) => s.lastPromptTokens);
+  const tokensPerSec = useChatStore((s) => s.tokensPerSec);
   const messages = useChatStore((s) => s.messages);
   const sessionProvider = useChatStore((s) => s.sessionProvider);
   const sessionModel = useChatStore((s) => s.sessionModel);
@@ -264,6 +265,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       setLoading,
       setStreamingMessageId,
       addUsage,
+      startStreamTimer,
+      tickStreamTokens,
+      endStreamTimer,
     } = useChatStore.getState();
 
     // Modo Vault Q&A: busca notas relevantes ANTES da chamada
@@ -369,6 +373,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
       const apiKey = apiKeyFor(activeProviderId);
 
+      startStreamTimer();
       await activeProvider.streamChat(
         {
           model: activeModel,
@@ -384,12 +389,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           } else {
             appendToMessage(responseId, token);
           }
+          tickStreamTokens(token);
         },
         (usage) => {
           addUsage(usage.input, usage.output);
         },
         controller.signal
       );
+      endStreamTimer();
 
       if (responseId === null) {
         removeMessage(commentId);
@@ -998,6 +1005,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             effort={effort}
             tokensIn={tokensIn}
             tokensOut={tokensOut}
+            tokensPerSec={tokensPerSec}
             contextUsed={lastPromptTokens}
             locked={isLocked}
             mode={activeMode}

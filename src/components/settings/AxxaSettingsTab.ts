@@ -32,6 +32,7 @@ type ProviderTabId =
   | "openrouter"
   | "nim"
   | "ollama";
+type OutrosTabId = "geral" | "ui" | "agent" | "rag";
 
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
@@ -39,6 +40,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private activeTopTab: TopTabId = "providers";
   /** Sub-tab quando topTab = providers */
   private activeProviderTab: ProviderTabId = "openai";
+  /** Sub-tab quando topTab = outros (v0.1.39 reorganização) */
+  private activeOutrosTab: OutrosTabId = "geral";
   private unsubscribe?: () => void;
   /** Controller usado pra cancelar uma indexação em andamento. */
   private indexAbortController: AbortController | null = null;
@@ -685,11 +688,60 @@ export class AxxaSettingsTab extends PluginSettingTab {
   }
 
   // ============================================================
-  // Tab: Outros (idioma, paths, em breve)
+  // Tab: Outros — header + sub-tabs (Geral / UI / Agent / RAG)
   // ============================================================
   private renderOutros(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
       text: t.settings.outrosIntro,
+      cls: "setting-item-description",
+    });
+
+    // Sub-tabs estilo segmented control (mesmo padrão dos providers)
+    const subTabsEl = parent.createDiv({ cls: "axxa-settings-subtabs" });
+    this.createOutrosSubTab(subTabsEl, "geral", t.settings.outrosTabs.geral);
+    this.createOutrosSubTab(subTabsEl, "ui", t.settings.outrosTabs.ui);
+    this.createOutrosSubTab(subTabsEl, "agent", t.settings.outrosTabs.agent);
+    this.createOutrosSubTab(subTabsEl, "rag", t.settings.outrosTabs.rag);
+
+    const subContentEl = parent.createDiv({ cls: "axxa-settings-subcontent" });
+    switch (this.activeOutrosTab) {
+      case "geral":
+        this.renderOutrosGeral(subContentEl, t);
+        break;
+      case "ui":
+        this.renderOutrosUI(subContentEl, t);
+        break;
+      case "agent":
+        this.renderOutrosAgent(subContentEl, t);
+        break;
+      case "rag":
+        this.renderOutrosRAG(subContentEl, t);
+        break;
+    }
+  }
+
+  /** Botão de sub-tab de Outros */
+  private createOutrosSubTab(
+    parent: HTMLElement,
+    id: OutrosTabId,
+    label: string
+  ) {
+    const btn = parent.createEl("button", {
+      cls:
+        "axxa-subtab-btn" +
+        (this.activeOutrosTab === id ? " axxa-subtab-active" : ""),
+      text: label,
+    });
+    btn.onclick = () => {
+      this.activeOutrosTab = id;
+      this.display();
+    };
+  }
+
+  /** Sub-tab Geral — idioma + paths */
+  private renderOutrosGeral(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.outrosGeralIntro,
       cls: "setting-item-description",
     });
 
@@ -704,7 +756,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.language = value;
             await this.plugin.saveSettings();
-            // Re-render Settings em si pra refletir o novo idioma na hora
             this.display();
           })
       );
@@ -749,8 +800,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
-    // Code wrap toggle — quando true, code blocks quebram linhas em vez
-    // de scrollar (útil em mobile / sidebars estreitos)
+    parent.createEl("h3", { text: t.settings.comingSoon });
+    const todo = parent.createEl("ul");
+    t.settings.comingSoonItems.forEach((item) => {
+      todo.createEl("li", { text: item });
+    });
+  }
+
+  /** Sub-tab Interface — chips, aparência, code wrap */
+  private renderOutrosUI(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.outrosUiIntro,
+      cls: "setting-item-description",
+    });
+
     new Setting(parent)
       .setName(t.settings.codeWrap)
       .setDesc(t.settings.codeWrapDesc)
@@ -763,7 +826,28 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
-    // Agent Mode permission level (Sprint G — v0.1.28)
+    parent.createEl("h3", { text: t.settings.chips });
+    parent.createEl("p", {
+      text: t.settings.chipsDesc,
+      cls: "setting-item-description",
+    });
+    this.renderChipsSection(parent, t);
+
+    parent.createEl("h3", { text: t.settings.appearance });
+    parent.createEl("p", {
+      text: t.settings.appearanceDesc,
+      cls: "setting-item-description",
+    });
+    this.renderBackgroundPicker(parent, t);
+  }
+
+  /** Sub-tab Agent — permissão */
+  private renderOutrosAgent(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.outrosAgentIntro,
+      cls: "setting-item-description",
+    });
+
     new Setting(parent)
       .setName(t.agent.permissionLevel)
       .setDesc(t.agent.permissionLevelDesc)
@@ -778,49 +862,35 @@ export class AxxaSettingsTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // ============================================================
-    // Chips visíveis — toggle de quais infos aparecem no composer + listas
-    // ============================================================
-    parent.createEl("h3", { text: t.settings.chips });
+  /** Sub-tab RAG — embeddings + indexação */
+  private renderOutrosRAG(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
-      text: t.settings.chipsDesc,
+      text: t.settings.outrosRagIntro,
       cls: "setting-item-description",
     });
-    this.renderChipsSection(parent, t);
-
-    // ============================================================
-    // Aparência — grid de swatches (5 presets + None)
-    // ============================================================
-    parent.createEl("h3", { text: t.settings.appearance });
-    parent.createEl("p", {
-      text: t.settings.appearanceDesc,
-      cls: "setting-item-description",
-    });
-    this.renderBackgroundPicker(parent, t);
-
-    // ============================================================
-    // RAG — Vault Q&A com embeddings
-    // ============================================================
-    parent.createEl("h3", { text: t.settings.rag });
     parent.createEl("p", {
       text: t.settings.ragDesc,
       cls: "setting-item-description",
     });
     this.renderRagSection(parent, t);
-
-    parent.createEl("h3", { text: t.settings.comingSoon });
-    const todo = parent.createEl("ul");
-    t.settings.comingSoonItems.forEach((item) => {
-      todo.createEl("li", { text: item });
-    });
   }
 
   // ============================================================
   // Chips section — toggles pro composer + listas
   // ============================================================
   private renderChipsSection(parent: HTMLElement, t: Translations) {
-    const COMPOSER_IDS = ["mode", "model", "effort", "context", "in", "out", "total"] as const;
+    const COMPOSER_IDS = [
+      "mode",
+      "model",
+      "effort",
+      "context",
+      "in",
+      "out",
+      "total",
+      "speed",
+    ] as const;
     const LIST_IDS = ["mode", "model", "date", "messages", "tokens"] as const;
 
     const composerSection = parent.createDiv({ cls: "axxa-chips-section" });

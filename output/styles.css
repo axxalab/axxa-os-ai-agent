@@ -778,6 +778,19 @@ body.is-mobile
   overflow-x: hidden !important;
 }
 
+/* Placeholder SEMPRE single-line (v0.1.39). O texto do user continua
+   wrapping normalmente; só o placeholder nunca quebra pra 2 linhas.
+   Usa absolute position pra escapar do flow do .cm-line (que faz
+   wrap por padrão). */
+.axxa-composer-editor .cm-placeholder {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+}
+
 /* Autocomplete popup (@nota e /comando) — tooltips position:fixed.
    Estilizamos pra ficar legível e acima de outros overlays.
    Limite max-height pra mobile (10 items visíveis), scroll dentro. */

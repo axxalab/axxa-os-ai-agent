@@ -46,6 +46,8 @@ interface ComposerProps {
   effort: string;
   tokensIn: number;
   tokensOut: number;
+  /** Tokens por segundo do stream atual (atualiza durante geração). */
+  tokensPerSec: number;
   contextUsed: number;
   /** Session travada (após primeira msg) — mostra ícone de cadeado no model */
   locked?: boolean;
@@ -75,6 +77,7 @@ export function Composer({
   effort,
   tokensIn,
   tokensOut,
+  tokensPerSec,
   contextUsed,
   locked = false,
   mode = "chat",
@@ -485,6 +488,14 @@ export function Composer({
         {visibleChips.includes("total") && (
           <InfoChip icon="sigma" color="var(--text-muted)">
             {tokensTotal}
+          </InfoChip>
+        )}
+        {visibleChips.includes("speed") && tokensPerSec > 0 && (
+          <InfoChip icon="activity" color="var(--color-yellow, #facc15)">
+            {tokensPerSec >= 10
+              ? Math.round(tokensPerSec)
+              : tokensPerSec.toFixed(1)}
+            {" t/s"}
           </InfoChip>
         )}
       </div>

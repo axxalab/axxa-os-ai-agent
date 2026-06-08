@@ -61,6 +61,12 @@ interface ChatState {
   lastPromptTokens: number;
   /** Id da mensagem que tá sendo streamada agora (pra esconder footer durante stream). */
   streamingMessageId: string | null;
+  /** Timestamp (ms) do primeiro token do stream atual. null entre streams. */
+  streamStartedAt: number | null;
+  /** Quantidade aproximada de tokens recebidos no stream atual (chars/3.5). */
+  streamTokens: number;
+  /** Tokens por segundo calculado durante streaming. Persiste após o fim. */
+  tokensPerSec: number;
   /** Provider/model/mode TRAVADOS após primeira mensagem (session lock). null = não travado. */
   sessionProvider: string | null;
   sessionModel: string | null;
@@ -78,6 +84,13 @@ interface ChatState {
   addUsage: (input: number, output: number) => void;
   resetUsage: () => void;
   setStreamingMessageId: (id: string | null) => void;
+  /** Marca início do stream (reset de tokensPerSec + start time). */
+  startStreamTimer: () => void;
+  /** Incrementa contagem aproximada de tokens + recomputa tokensPerSec.
+   *  Recebe o texto do delta — estimamos tokens por chars/3.5. */
+  tickStreamTokens: (chunk: string) => void;
+  /** Encerra o timer mas mantém o último valor de tokensPerSec visível. */
+  endStreamTimer: () => void;
   lockSession: (provider: string, model: string, mode?: string) => void;
   unlockSession: () => void;
   setCurrentChatId: (id: string | null) => void;
@@ -104,6 +117,9 @@ export const useChatStore = create<ChatState>((set) => ({
   tokensOut: 0,
   lastPromptTokens: 0,
   streamingMessageId: null,
+  streamStartedAt: null,
+  streamTokens: 0,
+  tokensPerSec: 0,
   sessionProvider: null,
   sessionModel: null,
   sessionMode: null,
@@ -163,6 +179,30 @@ export const useChatStore = create<ChatState>((set) => ({
     })),
   resetUsage: () => set({ tokensIn: 0, tokensOut: 0, lastPromptTokens: 0 }),
   setStreamingMessageId: (id) => set({ streamingMessageId: id }),
+  startStreamTimer: () =>
+    set({ streamStartedAt: Date.now(), streamTokens: 0, tokensPerSec: 0 }),
+  tickStreamTokens: (chunk) =>
+    set((state) => {
+      if (state.streamStartedAt === null) {
+        // Primeiro tick — começa o timer agora se não foi iniciado antes
+        const now = Date.now();
+        const approx = Math.max(1, Math.ceil(chunk.length / 3.5));
+        return {
+          streamStartedAt: now,
+          streamTokens: approx,
+          tokensPerSec: 0,
+        };
+      }
+      const approx = Math.ceil(chunk.length / 3.5);
+      const newTokens = state.streamTokens + approx;
+      const elapsedSec = (Date.now() - state.streamStartedAt) / 1000;
+      const tps = elapsedSec > 0.05 ? newTokens / elapsedSec : 0;
+      return {
+        streamTokens: newTokens,
+        tokensPerSec: tps,
+      };
+    }),
+  endStreamTimer: () => set({ streamStartedAt: null }),
   lockSession: (provider, model, mode) =>
     set({
       sessionProvider: provider,

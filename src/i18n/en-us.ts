@@ -200,6 +200,16 @@ export const EN_US: Translations = {
     ollamaEndpointDesc:
       "Ollama server URL (default: http://localhost:11434)",
     outrosIntro: "General settings — paths, language, appearance.",
+    outrosTabs: {
+      geral: "General",
+      ui: "Interface",
+      agent: "Agent",
+      rag: "RAG",
+    },
+    outrosGeralIntro: "Language, vault paths and basic preferences.",
+    outrosUiIntro: "Appearance, visible chips, code blocks.",
+    outrosAgentIntro: "Permissions and Agent Mode behavior.",
+    outrosRagIntro: "Semantic search across your notes with embeddings.",
     language: "Language",
     languageDesc:
       "Plugin language. The UI updates immediately.",
@@ -253,6 +263,7 @@ export const EN_US: Translations = {
       in: "Tokens in",
       out: "Tokens out",
       total: "Tokens total",
+      speed: "Tokens per second (live)",
       date: "Relative date",
       messages: "Message count",
       tokens: "Total tokens",

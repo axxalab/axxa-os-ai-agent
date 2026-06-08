@@ -89,6 +89,14 @@ export class NimProvider implements Provider {
         "invalid-key"
       );
     }
+    if (res.status === 404) {
+      // NIM retorna 404 quando o ID do modelo não existe no catálogo.
+      // Mensagem aponta pra ação concreta (botão "Buscar da API").
+      throw new ProviderError(
+        `NIM: modelo "${req.model}" não encontrado. Em Settings → Providers → Nvidia NIM, clique "Buscar da API" pra ver os modelos disponíveis.`,
+        "unknown"
+      );
+    }
     if (res.status === 429) {
       throw new ProviderError(
         "Rate limit Nvidia NIM. Aguarde alguns segundos.",

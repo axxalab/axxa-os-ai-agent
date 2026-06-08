@@ -77,7 +77,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   anthropicModel: "claude-sonnet-4-6",
   geminiModel: "gemini-2.5-flash",
   openrouterModel: "anthropic/claude-3.5-sonnet",
-  nimModel: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+  nimModel: "meta/llama-3.3-70b-instruct",
   ollamaModel: "llama3.2",
   activeModels: {
     openai: ["gpt-4o", "gpt-4o-mini", "o1", "o3", "gpt-5"],
@@ -100,11 +100,11 @@ const DEFAULT_SETTINGS: AxxaSettings = {
       "google/gemini-2.0-flash-001",
     ],
     nim: [
-      "nvidia/llama-3.3-nemotron-super-49b-v1.5",
       "meta/llama-3.3-70b-instruct",
-      "qwen/qwen3-next-80b-a3b-instruct",
-      "deepseek-ai/deepseek-v4-pro",
-      "microsoft/phi-4",
+      "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+      "mistralai/mixtral-8x22b-instruct",
+      "deepseek-ai/deepseek-r1",
+      "qwen/qwen2.5-72b-instruct",
     ],
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },
@@ -121,7 +121,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   codeWrap: false,
   agentPermissionLevel: "ask",
   // Defaults slim — user pode adicionar mais via Settings → Outros → Chips
-  composerChips: ["model", "effort", "in", "out"],
+  composerChips: ["model", "effort", "speed", "in", "out"],
   listChips: ["mode", "model", "date"],
 };
 

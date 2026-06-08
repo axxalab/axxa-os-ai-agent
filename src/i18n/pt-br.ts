@@ -200,6 +200,16 @@ export const PT_BR = {
     ollamaEndpointDesc:
       "URL do servidor Ollama (default: http://localhost:11434)",
     outrosIntro: "Configurações gerais — paths, idioma, aparência.",
+    outrosTabs: {
+      geral: "Geral",
+      ui: "Interface",
+      agent: "Agent",
+      rag: "RAG",
+    },
+    outrosGeralIntro: "Idioma, vault paths e preferências básicas.",
+    outrosUiIntro: "Aparência, chips visíveis, code blocks.",
+    outrosAgentIntro: "Permissões e comportamento do Agent Mode.",
+    outrosRagIntro: "Busca semântica nas suas notas com embeddings.",
     language: "Idioma",
     languageDesc:
       "Linguagem do plugin. A interface atualiza na hora.",
@@ -253,6 +263,7 @@ export const PT_BR = {
       in: "Tokens in",
       out: "Tokens out",
       total: "Tokens total",
+      speed: "Tokens por segundo (live)",
       date: "Data relativa",
       messages: "Quantidade de mensagens",
       tokens: "Tokens totais",
