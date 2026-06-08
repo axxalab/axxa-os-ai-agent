@@ -115,10 +115,10 @@ export function StarterScreen({
                 (m.id === mode ? " axxa-starter-segment-active" : "")
               }
               onClick={() => onModeChange(m.id)}
-              title={`${modeLabel(m.id)} — ${modeDesc(m.id)}`}
-              aria-label={modeLabel(m.id)}
+              title={modeDesc(m.id)}
             >
               <Icon name={m.icon} />
+              <span className="axxa-starter-segment-label">{modeLabel(m.id)}</span>
             </button>
           ))}
         </div>
@@ -139,9 +139,9 @@ export function StarterScreen({
               }
               onClick={() => onProviderChange(p.id)}
               title={p.name}
-              aria-label={p.name}
             >
               <Icon name={p.icon} />
+              <span className="axxa-starter-segment-label">{p.name}</span>
             </button>
           ))}
         </div>
