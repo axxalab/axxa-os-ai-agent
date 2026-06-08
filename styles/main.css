@@ -96,6 +96,42 @@ body.is-mobile.axxa-fullscreen
   padding-bottom: calc(var(--safe-area-inset-bottom, 0px) + var(--size-4-1)) !important;
 }
 
+/* === Nav bar / safe-area area bg matching (v0.1.52) ===
+   Sem isso, a region embaixo (safe-area zone, atrás de onde a OS nav bar
+   ficaria) mostra o body/drawer default (branco no light, cinza escuro
+   no dark) — visualmente quebra a impressão de fullscreen.
+   Forçamos background-primary em TODOS os containers prováveis. */
+
+body.axxa-fullscreen,
+html:has(body.axxa-fullscreen),
+body.axxa-fullscreen .app-container,
+body.axxa-fullscreen .horizontal-main-container,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf-content,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tab-container,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-inner,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .view-content {
+  background: var(--background-primary) !important;
+  background-color: var(--background-primary) !important;
+}
+
+/* Mobile-navbar (a barra inferior nativa do Obsidian — não da OS) também
+   herda a cor quando visível no fullscreen. */
+body.is-mobile.axxa-fullscreen .mobile-navbar {
+  background: var(--background-primary) !important;
+  background-color: var(--background-primary) !important;
+}
+
+/* Fallback @supports — :has() não funciona em alguns browsers velhos.
+   Vai pegar só body, mas ja resolve 90% dos casos */
+@supports not selector(html:has(*)) {
+  body.axxa-fullscreen {
+    /* Mesma regra acima, só pra dar redundância no fallback path */
+    background: var(--background-primary) !important;
+  }
+}
+
 /* Drawer + teclado aberto → esconde header/tab options do drawer */
 body.is-mobile
 .workspace-drawer.axxa-keyboard-open
