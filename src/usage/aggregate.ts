@@ -1,0 +1,211 @@
+// src/usage/aggregate.ts
+// Agrega usage de todos os chats salvos no vault — base pra Usage tab.
+//
+// Lê via listAllChats (que já parsa frontmatter de todos os modos),
+// calcula custo via getPricing+calculateCost, e devolve breakdown
+// por provider / modelo / modo / dia + chats ordenados por custo.
+
+import type { App } from "obsidian";
+import { listAllChats, type ChatSummary } from "../components/_shared/chatPersistence";
+import { calculateCost, getPricing, type ModelPricing } from "./pricing";
+
+/** Bucket de agregação — totais e flag de "algum modelo sem preço". */
+export interface UsageBucket {
+  chats: number;
+  tokensIn: number;
+  tokensOut: number;
+  cost: number; // USD, 0 se tudo free
+  /** true se algum chat dentro do bucket tem modelo sem pricing conhecido */
+  hasUnknownCost: boolean;
+}
+
+/** Row de uma conversa, com cost já calculado. */
+export interface ChatUsageRow {
+  id: string;
+  title: string;
+  date: string;
+  /** YYYY-MM-DD extraído de date (UTC). */
+  day: string;
+  provider: string;
+  model: string;
+  mode: string;
+  tokensIn: number;
+  tokensOut: number;
+  cost: number | null; // null = pricing unknown
+  messages: number;
+  filePath: string;
+}
+
+/** Resultado completo da agregação. */
+export interface UsageAggregate {
+  total: UsageBucket;
+  byProvider: Record<string, UsageBucket>;
+  byModel: Record<string, UsageBucket>;
+  byMode: Record<string, UsageBucket>;
+  /** YYYY-MM-DD → bucket. Ordenar por chave pra heatmap. */
+  byDay: Record<string, UsageBucket>;
+  /** Chats sorted by cost desc (pra "top 10 caras"). null cost vai pro fim. */
+  chats: ChatUsageRow[];
+  /** Período coberto. */
+  periodStart: string | null;
+  periodEnd: string | null;
+}
+
+function emptyBucket(): UsageBucket {
+  return {
+    chats: 0,
+    tokensIn: 0,
+    tokensOut: 0,
+    cost: 0,
+    hasUnknownCost: false,
+  };
+}
+
+function dayFromIso(iso: string): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toISOString().slice(0, 10);
+  } catch {
+    return "";
+  }
+}
+
+function bump(bucket: UsageBucket, row: ChatUsageRow): void {
+  bucket.chats += 1;
+  bucket.tokensIn += row.tokensIn;
+  bucket.tokensOut += row.tokensOut;
+  if (row.cost == null) {
+    bucket.hasUnknownCost = true;
+  } else {
+    bucket.cost += row.cost;
+  }
+}
+
+/**
+ * Constrói ChatUsageRow a partir de ChatSummary + pricing lookup.
+ * Cost vira null quando o pricing do modelo não cobre os tokens existentes.
+ */
+function summaryToRow(s: ChatSummary): ChatUsageRow {
+  const pricing: ModelPricing = getPricing(s.provider, s.model);
+  const cost = calculateCost(pricing, s.tokensIn, s.tokensOut);
+  return {
+    id: s.id,
+    title: s.title,
+    date: s.date,
+    day: dayFromIso(s.date),
+    provider: s.provider,
+    model: s.model,
+    mode: s.mode,
+    tokensIn: s.tokensIn,
+    tokensOut: s.tokensOut,
+    cost,
+    messages: s.messageCount,
+    filePath: s.filePath,
+  };
+}
+
+/**
+ * Filtra chats pelo período (`periodDays`). 0/undefined = sem filtro.
+ * Compara via `date` ISO no chat. Default cutoff: hoje - periodDays.
+ */
+function filterByPeriod(rows: ChatUsageRow[], periodDays?: number): ChatUsageRow[] {
+  if (!periodDays || periodDays <= 0) return rows;
+  const cutoffMs = Date.now() - periodDays * 24 * 60 * 60 * 1000;
+  return rows.filter((r) => {
+    const t = Date.parse(r.date);
+    return !isNaN(t) && t >= cutoffMs;
+  });
+}
+
+/**
+ * Lê todos os chats do vault, computa breakdown, devolve UsageAggregate.
+ * Opcional: `periodDays` filtra os últimos N dias (0=tudo).
+ */
+export async function aggregateUsage(
+  app: App,
+  chatsPath: string,
+  periodDays = 0
+): Promise<UsageAggregate> {
+  const summaries = await listAllChats(app, chatsPath, 100_000);
+  const rawRows = summaries.map(summaryToRow);
+  const rows = filterByPeriod(rawRows, periodDays);
+
+  const total = emptyBucket();
+  const byProvider: Record<string, UsageBucket> = {};
+  const byModel: Record<string, UsageBucket> = {};
+  const byMode: Record<string, UsageBucket> = {};
+  const byDay: Record<string, UsageBucket> = {};
+
+  let minDate: string | null = null;
+  let maxDate: string | null = null;
+
+  for (const row of rows) {
+    bump(total, row);
+
+    const p = row.provider || "(desconhecido)";
+    byProvider[p] ??= emptyBucket();
+    bump(byProvider[p], row);
+
+    const m = row.model || "(desconhecido)";
+    byModel[m] ??= emptyBucket();
+    bump(byModel[m], row);
+
+    const mode = row.mode || "chat";
+    byMode[mode] ??= emptyBucket();
+    bump(byMode[mode], row);
+
+    const day = row.day || "(sem data)";
+    byDay[day] ??= emptyBucket();
+    bump(byDay[day], row);
+
+    if (row.day) {
+      if (!minDate || row.day < minDate) minDate = row.day;
+      if (!maxDate || row.day > maxDate) maxDate = row.day;
+    }
+  }
+
+  // Ordena chats por custo desc. null cost vai pro fim.
+  const sortedChats = [...rows].sort((a, b) => {
+    if (a.cost == null && b.cost == null) return 0;
+    if (a.cost == null) return 1;
+    if (b.cost == null) return -1;
+    return b.cost - a.cost;
+  });
+
+  return {
+    total,
+    byProvider,
+    byModel,
+    byMode,
+    byDay,
+    chats: sortedChats,
+    periodStart: minDate,
+    periodEnd: maxDate,
+  };
+}
+
+/** Helper UI: ordena entries dum Record<string, UsageBucket> por cost desc. */
+export function sortBucketEntries(
+  buckets: Record<string, UsageBucket>
+): Array<[string, UsageBucket]> {
+  return Object.entries(buckets).sort(([, a], [, b]) => b.cost - a.cost);
+}
+
+/** Helper UI: top N entries de byDay com fillado pra dias sem chat. */
+export function lastNDays(
+  byDay: Record<string, UsageBucket>,
+  n: number
+): Array<{ day: string; bucket: UsageBucket }> {
+  const out: Array<{ day: string; bucket: UsageBucket }> = [];
+  const today = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    out.push({
+      day: key,
+      bucket: byDay[key] ?? emptyBucket(),
+    });
+  }
+  return out;
+}

@@ -3538,6 +3538,193 @@ body.theme-dark .axxa-root.axxa-bg-aurora-live::after {
 }
 
 /* =====================================================
+ * Settings — Usage tab (K.4.2)
+ * Cards de resumo + tabelas + heatmap + export buttons
+ * ===================================================== */
+
+.axxa-usage-period {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 18px 0;
+  flex-wrap: wrap;
+}
+
+.axxa-usage-period-label {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.axxa-usage-period-pills {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--background-modifier-hover);
+  border-radius: 12px;
+  flex-wrap: nowrap;
+}
+
+.axxa-usage-period-pill,
+.axxa-usage-period-pill:hover,
+.axxa-usage-period-pill:focus,
+.axxa-usage-period-pill:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-usage-period-pill {
+  padding: 6px 12px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.axxa-usage-period-pill-active {
+  background: var(--background-primary) !important;
+  color: var(--text-accent) !important;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+}
+
+.axxa-usage-loading,
+.axxa-usage-empty,
+.axxa-usage-error {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-usage-error {
+  color: var(--text-error, #f87171);
+}
+
+.axxa-usage-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.axxa-usage-card {
+  padding: 12px 14px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+}
+
+.axxa-usage-card-icon {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.axxa-usage-card-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.axxa-usage-card-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-normal);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tabelas — usa estilo Obsidian tweak */
+.axxa-usage-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 20px 0;
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-usage-table th,
+.axxa-usage-table td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.axxa-usage-table th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  font-weight: 600;
+  background: var(--background-modifier-hover);
+  position: sticky;
+  top: 0;
+}
+
+.axxa-usage-table tbody tr:hover {
+  background: var(--background-modifier-hover);
+}
+
+.axxa-usage-table td.axxa-usage-num,
+.axxa-usage-table th.axxa-usage-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.axxa-usage-cost {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.axxa-usage-table code {
+  font-family: var(--font-monospace);
+  font-size: 10px;
+  background: var(--background-modifier-form-field);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* Heatmap — 30 quadradinhos lado a lado */
+.axxa-usage-heatmap {
+  display: grid;
+  grid-template-columns: repeat(30, 1fr);
+  gap: 3px;
+  margin: 8px 0 20px 0;
+  padding: 4px;
+}
+
+.axxa-usage-heatcell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--background-modifier-border);
+  min-height: 12px;
+}
+
+.axxa-usage-footnote {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.axxa-usage-export-row {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 16px 0;
+  flex-wrap: wrap;
+}
+
+.axxa-usage-export-row button {
+  cursor: pointer;
+}
+
+/* =====================================================
  * Modal keyboard-aware (mobile)
  * Quando o teclado virtual abre (.axxa-keyboard-open),
  * o modal nosso (marcado com .axxa-modal-keyboard-aware)

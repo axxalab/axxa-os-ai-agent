@@ -23,6 +23,19 @@ import { getTranslations, type Translations } from "../../i18n";
 import { indexVault, type IndexProgress } from "../../rag/indexer";
 import { deleteIndex } from "../../rag/vectorIndex";
 import { EMBEDDING_MODELS } from "../../rag/types";
+import {
+  aggregateUsage,
+  sortBucketEntries,
+  lastNDays,
+  type UsageAggregate,
+  type UsageBucket,
+} from "../../usage/aggregate";
+import { formatUsd } from "../../usage/pricing";
+import {
+  saveUsageMarkdown,
+  saveUsageHtml,
+  printUsageReport,
+} from "../../usage/export";
 
 type TopTabId = "providers" | "outros";
 type ProviderTabId =
@@ -32,7 +45,7 @@ type ProviderTabId =
   | "openrouter"
   | "nim"
   | "ollama";
-type OutrosTabId = "geral" | "ui" | "agent" | "rag";
+type OutrosTabId = "geral" | "ui" | "agent" | "rag" | "usage";
 
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
@@ -43,6 +56,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
   /** Sub-tab quando topTab = outros (v0.1.39 reorganização) */
   private activeOutrosTab: OutrosTabId = "geral";
   private unsubscribe?: () => void;
+  /** Período em dias do filtro do Usage tab. 0 = tudo. Persistido em memória. */
+  private usagePeriodDays = 0;
+  /** Cache do último aggregate computed pra evitar recomputar a cada render. */
+  private cachedUsage: UsageAggregate | null = null;
   /** Controller usado pra cancelar uma indexação em andamento. */
   private indexAbortController: AbortController | null = null;
 
@@ -702,6 +719,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     this.createOutrosSubTab(subTabsEl, "ui", t.settings.outrosTabs.ui);
     this.createOutrosSubTab(subTabsEl, "agent", t.settings.outrosTabs.agent);
     this.createOutrosSubTab(subTabsEl, "rag", t.settings.outrosTabs.rag);
+    this.createOutrosSubTab(subTabsEl, "usage", t.settings.outrosTabs.usage);
 
     const subContentEl = parent.createDiv({ cls: "axxa-settings-subcontent" });
     switch (this.activeOutrosTab) {
@@ -716,6 +734,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
         break;
       case "rag":
         this.renderOutrosRAG(subContentEl, t);
+        break;
+      case "usage":
+        this.renderOutrosUsage(subContentEl, t);
         break;
     }
   }
@@ -1338,4 +1359,346 @@ export class AxxaSettingsTab extends PluginSettingTab {
       };
     });
   }
+
+  // ============================================================
+  // Sub-tab Usage — contabilidade de tokens (K.4.2)
+  //
+  // Layout:
+  //   1. Cards de resumo (gasto / tokens in / tokens out / conversas)
+  //   2. Filtro de período (7d/30d/90d/todos) em pills
+  //   3. Tabela por provider
+  //   4. Tabela por modelo (top 10)
+  //   5. Tabela por modo
+  //   6. Heatmap dos últimos 30 dias
+  //   7. Top 10 conversas mais caras
+  //   8. Botões de export (PDF + Markdown)
+  // ============================================================
+  private async renderOutrosUsage(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.outrosUsageIntro,
+      cls: "setting-item-description",
+    });
+
+    // Filtro de período
+    const periodEl = parent.createDiv({ cls: "axxa-usage-period" });
+    const periodLabelEl = periodEl.createSpan({
+      cls: "axxa-usage-period-label",
+      text: t.settings.usagePeriodLabel,
+    });
+    void periodLabelEl;
+    const periods: Array<{ days: number; label: string }> = [
+      { days: 7, label: t.settings.usagePeriod7d },
+      { days: 30, label: t.settings.usagePeriod30d },
+      { days: 90, label: t.settings.usagePeriod90d },
+      { days: 0, label: t.settings.usagePeriodAll },
+    ];
+    const pillsRow = periodEl.createDiv({ cls: "axxa-usage-period-pills" });
+    for (const p of periods) {
+      const btn = pillsRow.createEl("button", {
+        cls:
+          "axxa-usage-period-pill" +
+          (this.usagePeriodDays === p.days
+            ? " axxa-usage-period-pill-active"
+            : ""),
+        text: p.label,
+      });
+      btn.onclick = async () => {
+        this.usagePeriodDays = p.days;
+        this.cachedUsage = null;
+        this.display();
+      };
+    }
+
+    // Loading placeholder enquanto computa
+    const contentEl = parent.createDiv({ cls: "axxa-usage-content" });
+    contentEl.createDiv({
+      cls: "axxa-usage-loading",
+      text: t.settings.usageLoading,
+    });
+
+    try {
+      const agg =
+        this.cachedUsage ??
+        (await aggregateUsage(
+          this.plugin.app,
+          this.plugin.settings.chatsPath,
+          this.usagePeriodDays
+        ));
+      this.cachedUsage = agg;
+      contentEl.empty();
+      this.renderUsageBody(contentEl, agg, t);
+    } catch (err) {
+      contentEl.empty();
+      contentEl.createDiv({
+        cls: "axxa-usage-error",
+        text: `${t.settings.usageError}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
+  private renderUsageBody(
+    parent: HTMLElement,
+    agg: UsageAggregate,
+    t: Translations
+  ) {
+    // ===== Cards de resumo =====
+    const summaryGrid = parent.createDiv({ cls: "axxa-usage-summary" });
+    this.usageCard(
+      summaryGrid,
+      t.settings.usageCostLabel,
+      formatUsd(agg.total.cost) + (agg.total.hasUnknownCost ? "*" : ""),
+      "dollar-sign",
+      "var(--color-green, #06d6a0)"
+    );
+    this.usageCard(
+      summaryGrid,
+      t.settings.usageTokensInLabel,
+      formatTokens(agg.total.tokensIn),
+      "arrow-down",
+      "var(--color-blue, #4361ee)"
+    );
+    this.usageCard(
+      summaryGrid,
+      t.settings.usageTokensOutLabel,
+      formatTokens(agg.total.tokensOut),
+      "arrow-up",
+      "var(--color-green, #06d6a0)"
+    );
+    this.usageCard(
+      summaryGrid,
+      t.settings.usageChatsLabel,
+      String(agg.total.chats),
+      "message-square",
+      "var(--color-purple, #a370f7)"
+    );
+
+    if (agg.total.chats === 0) {
+      parent.createDiv({
+        cls: "axxa-usage-empty",
+        text: t.settings.usageEmpty,
+      });
+      return;
+    }
+
+    // ===== Tabela por provider =====
+    this.usageTable(
+      parent,
+      t.settings.usageByProvider,
+      sortBucketEntries(agg.byProvider),
+      t.settings.usageColProvider,
+      t
+    );
+
+    // ===== Tabela por modelo (top 10) =====
+    this.usageTable(
+      parent,
+      t.settings.usageByModel,
+      sortBucketEntries(agg.byModel).slice(0, 10),
+      t.settings.usageColModel,
+      t,
+      true // code-style pro nome
+    );
+
+    // ===== Tabela por modo =====
+    this.usageTable(
+      parent,
+      t.settings.usageByMode,
+      sortBucketEntries(agg.byMode),
+      t.settings.usageColMode,
+      t
+    );
+
+    // ===== Heatmap dos últimos 30 dias =====
+    const heatSection = parent.createEl("h4", { text: t.settings.usageHeatmap });
+    void heatSection;
+    const heatRow = parent.createDiv({ cls: "axxa-usage-heatmap" });
+    const days = lastNDays(agg.byDay, 30);
+    const maxCost = Math.max(...days.map((d) => d.bucket.cost), 0.0001);
+    for (const d of days) {
+      const intensity = d.bucket.cost / maxCost;
+      const cell = heatRow.createDiv({
+        cls: "axxa-usage-heatcell",
+        attr: {
+          title:
+            `${d.day}: ${formatUsd(d.bucket.cost)} · ${d.bucket.chats} conversa${d.bucket.chats === 1 ? "" : "s"}`,
+        },
+      });
+      // Opacidade visual baseada em intensidade
+      cell.style.opacity = String(0.1 + 0.9 * intensity);
+      cell.style.background =
+        d.bucket.chats > 0
+          ? "var(--color-green, #06d6a0)"
+          : "var(--background-modifier-border)";
+    }
+
+    // ===== Top 10 conversas =====
+    if (agg.chats.length > 0) {
+      const topSection = parent.createEl("h4", {
+        text: t.settings.usageTopChats,
+      });
+      void topSection;
+      const topTable = parent.createEl("table", { cls: "axxa-usage-table" });
+      const thead = topTable.createEl("thead");
+      const headRow = thead.createEl("tr");
+      [
+        t.settings.usageColTitle,
+        t.settings.usageColMode,
+        t.settings.usageColModel,
+        t.settings.usageColTokens,
+        t.settings.usageColCost,
+      ].forEach((h) => headRow.createEl("th", { text: h }));
+      const tbody = topTable.createEl("tbody");
+      for (const c of agg.chats.slice(0, 10)) {
+        const row = tbody.createEl("tr");
+        const titleTd = row.createEl("td");
+        titleTd.setText(
+          c.title.length > 40 ? c.title.slice(0, 37) + "…" : c.title
+        );
+        row.createEl("td", { text: c.mode });
+        const modelTd = row.createEl("td");
+        modelTd.createEl("code", { text: c.model });
+        row.createEl("td", {
+          text: `${formatTokens(c.tokensIn)} / ${formatTokens(c.tokensOut)}`,
+          cls: "axxa-usage-num",
+        });
+        row.createEl("td", {
+          text: c.cost == null ? "—" : formatUsd(c.cost),
+          cls: "axxa-usage-num axxa-usage-cost",
+        });
+      }
+    }
+
+    if (agg.total.hasUnknownCost) {
+      parent.createDiv({
+        cls: "axxa-usage-footnote",
+        text: t.settings.usagePartialFootnote,
+      });
+    }
+
+    // ===== Export buttons =====
+    parent.createEl("h4", { text: t.settings.usageExport });
+    const exportRow = parent.createDiv({ cls: "axxa-usage-export-row" });
+
+    const pdfBtn = exportRow.createEl("button", {
+      text: t.settings.usageExportPdf,
+      cls: "mod-cta",
+    });
+    pdfBtn.onclick = () => {
+      try {
+        printUsageReport(
+          agg,
+          this.usagePeriodDays,
+          this.plugin.settings.chatsPath
+        );
+      } catch (err) {
+        new Notice(
+          `${t.settings.usageExportFailed}: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    };
+
+    const mdBtn = exportRow.createEl("button", {
+      text: t.settings.usageExportMarkdown,
+    });
+    mdBtn.onclick = async () => {
+      try {
+        const result = await saveUsageMarkdown(
+          this.plugin.app,
+          agg,
+          this.usagePeriodDays,
+          this.plugin.settings.chatsPath
+        );
+        new Notice(t.settings.usageExportSuccess(result.path));
+      } catch (err) {
+        new Notice(
+          `${t.settings.usageExportFailed}: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    };
+
+    const htmlBtn = exportRow.createEl("button", {
+      text: t.settings.usageExportHtml,
+    });
+    htmlBtn.onclick = async () => {
+      try {
+        const result = await saveUsageHtml(
+          this.plugin.app,
+          agg,
+          this.usagePeriodDays,
+          this.plugin.settings.chatsPath
+        );
+        new Notice(t.settings.usageExportSuccess(result.path));
+      } catch (err) {
+        new Notice(
+          `${t.settings.usageExportFailed}: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    };
+  }
+
+  /** Card de resumo no Usage tab */
+  private usageCard(
+    parent: HTMLElement,
+    label: string,
+    value: string,
+    icon: string,
+    color: string
+  ) {
+    const card = parent.createDiv({ cls: "axxa-usage-card" });
+    const iconEl = card.createDiv({ cls: "axxa-usage-card-icon" });
+    iconEl.style.color = color;
+    void icon;
+    card.createDiv({ cls: "axxa-usage-card-label", text: label });
+    card.createDiv({ cls: "axxa-usage-card-value", text: value });
+  }
+
+  /** Tabela genérica do Usage tab */
+  private usageTable(
+    parent: HTMLElement,
+    title: string,
+    rows: Array<[string, UsageBucket]>,
+    headerName: string,
+    t: Translations,
+    nameIsCode = false
+  ) {
+    if (rows.length === 0) return;
+    parent.createEl("h4", { text: title });
+    const table = parent.createEl("table", { cls: "axxa-usage-table" });
+    const thead = table.createEl("thead");
+    const headRow = thead.createEl("tr");
+    [
+      headerName,
+      t.settings.usageColChats,
+      t.settings.usageColIn,
+      t.settings.usageColOut,
+      t.settings.usageColCost,
+    ].forEach((h) => headRow.createEl("th", { text: h }));
+    const tbody = table.createEl("tbody");
+    for (const [name, b] of rows) {
+      const row = tbody.createEl("tr");
+      const nameTd = row.createEl("td");
+      if (nameIsCode) nameTd.createEl("code", { text: name });
+      else nameTd.setText(name);
+      row.createEl("td", { text: String(b.chats), cls: "axxa-usage-num" });
+      row.createEl("td", {
+        text: formatTokens(b.tokensIn),
+        cls: "axxa-usage-num",
+      });
+      row.createEl("td", {
+        text: formatTokens(b.tokensOut),
+        cls: "axxa-usage-num",
+      });
+      row.createEl("td", {
+        text: (b.hasUnknownCost ? formatUsd(b.cost) + "*" : formatUsd(b.cost)),
+        cls: "axxa-usage-num axxa-usage-cost",
+      });
+    }
+  }
+}
+
+/** Helper local — formato compacto de tokens. Duplica formatTokens do _shared. */
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + "k";
+  return String(n);
 }
