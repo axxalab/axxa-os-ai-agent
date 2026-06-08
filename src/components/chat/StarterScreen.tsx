@@ -18,7 +18,9 @@ import { useT } from "../../i18n";
 const PROVIDERS = [
   { id: "openai", name: "OpenAI", icon: "sparkles" },
   { id: "anthropic", name: "Anthropic", icon: "bot" },
+  { id: "gemini", name: "Gemini", icon: "sparkle" },
   { id: "openrouter", name: "OpenRouter", icon: "shuffle" },
+  { id: "nim", name: "Nvidia NIM", icon: "cpu" },
   { id: "ollama", name: "Ollama", icon: "hard-drive" },
 ];
 

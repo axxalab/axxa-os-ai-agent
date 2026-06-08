@@ -1,9 +1,9 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, 6.1+6.2 ✅ Agent multi-provider (**OpenAI ✅, Anthropic ✅, OpenRouter ✅**) · próximo: **Gemini API + Nvidia NIM (Sprint I — v0.1.33)** → depois Ollama tools + Whisper áudio  
-> **Versão:** 1.1 · plugin em v0.1.32 (→ v0.1.33 com 6 providers)  
-> **Última revisão:** 07/06/2026 (revisão Gemini + NIM)  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, **6.1+6.2 ✅ Agent 6-provider** (OpenAI ✅, Anthropic ✅, **Gemini ✅, NIM ✅, Ollama ✅** v0.1.33, OpenRouter ✅) · próximo: smoke test do dev + Whisper áudio  
+> **Versão:** 1.2 · plugin em **v0.1.33 (6 providers + Ollama tools)**  
+> **Última revisão:** 07/06/2026 (Sprint I concluído)  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
 ---
@@ -114,24 +114,23 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 ### 2.2 Providers adicionais
 - ✅ `providers/anthropic.ts` — Claude models (chat + streamChat via fetch SSE; x-api-key + anthropic-version + anthropic-dangerous-direct-browser-access)
 - ✅ `providers/openrouter.ts` — proxy multi-model (OpenAI-compatible; bearer auth + HTTP-Referer + X-Title; listModels filtra free/auto)
-- ✅ `providers/ollama.ts` — local LLM (NDJSON streaming via /api/chat, listModels via /api/tags, sem auth)
-- ⬜ `providers/gemini.ts` — **Google Gemini via endpoint OpenAI-compat** (`https://generativelanguage.googleapis.com/v1beta/openai/`). Auth `Authorization: Bearer ${key}`. Reusa `toOpenAIMessages()`. Tool calling ✅ nativo. Modelos: gemini-2.5-pro / 2.5-flash / 2.5-flash-lite / 3.5-flash / 3.1-flash-lite. listModels via `/openai/models`. Sprint I (v0.1.33).
-- ⬜ `providers/nim.ts` — **Nvidia NIM hosted** (`https://integrate.api.nvidia.com/v1/chat/completions`). 100% OpenAI-compat. Auth `Authorization: Bearer nvapi-...`. Tool calling ✅ pra modelos que suportam (Nemotron Super/Ultra, Llama 3.3+, Qwen3+, DeepSeek v4). listModels via `/v1/models`. Sprint I (v0.1.33).
+- ✅ `providers/ollama.ts` — local LLM (NDJSON streaming via /api/chat, listModels via /api/tags, sem auth) — **tool calling habilitado em v0.1.33**
+- ✅ `providers/gemini.ts` — **Google Gemini via endpoint OpenAI-compat** (`https://generativelanguage.googleapis.com/v1beta/openai/`). Auth `Authorization: Bearer ${key}`. Reusa `toOpenAIMessages()`. Tool calling ✅. Modelos: gemini-2.5-pro/flash/flash-lite, gemini-3.5-flash, gemini-3.1-flash-lite. listModels via `/openai/models`. **v0.1.33**.
+- ✅ `providers/nim.ts` — **Nvidia NIM hosted** (`https://integrate.api.nvidia.com/v1/chat/completions`). 100% OpenAI-compat. Auth `Authorization: Bearer nvapi-...`. Tool calling ✅ pra modelos compatíveis. listModels via `/v1/models` com filtro de prefixos. **v0.1.33**.
 - ✅ `providers/base.ts` — interface comum (chat + streamChat obrigatórios)
 - ✅ `providers/index.ts` — registry + getProvider(id) com **6 providers registrados** (v0.1.33)
 
 ### 2.3 Obsidian Settings Tab
-- ✅ `AxxaSettingsTab.ts` registrado no Obsidian (**5 sub-tabs: OpenAI/Anthropic/OpenRouter/Ollama/Outros** — v0.1.22)
-- ⬜ **Expansão pra 7 sub-tabs** (v0.1.33): + Gemini, + Nvidia NIM. Ordem proposta: OpenAI · Anthropic · Gemini · OpenRouter · NIM · Ollama. flex-wrap garante quebra no mobile.
+- ✅ `AxxaSettingsTab.ts` registrado no Obsidian (**6 sub-tabs em v0.1.33: OpenAI/Anthropic/Gemini/OpenRouter/NIM/Ollama + Outros**)
 - ✅ Provider padrão sempre visível acima das tabs + bolinha colorida no tab do padrão
-- ✅ Seção API Keys (OpenAI ✅, Anthropic ✅, OpenRouter ✅) + botão "↻ Buscar modelos" via API
-- ⬜ **Campos novos nas Settings** (v0.1.33): `geminiApiKey`, `geminiModel`, `nimApiKey`, `nimModel`. Defaults: `gemini-2.5-flash` e `nvidia/llama-3.3-nemotron-super-49b-v1.5`.
+- ✅ Seção API Keys (OpenAI ✅, Anthropic ✅, Gemini ✅, OpenRouter ✅, NIM ✅) + botão "↻ Buscar modelos" via API
+- ✅ **Campos novos nas Settings** (v0.1.33): `geminiApiKey`, `geminiModel`, `nimApiKey`, `nimModel`. Defaults: `gemini-2.5-flash` e `nvidia/llama-3.3-nemotron-super-49b-v1.5`.
 - ✅ Ollama endpoint configurável + listModels via `/api/tags`
-- ✅ Defaults: provider (dropdown 4 opções), model (por provider), effort (placeholder via PlusModal), mode (via StarterScreen)
-- ⬜ **Dropdown defaultProvider** (v0.1.33): expandir de 4 pra 6 opções.
+- ✅ Defaults: provider (dropdown 6 opções em v0.1.33), model (por provider), effort (placeholder via PlusModal), mode (via StarterScreen)
+- ✅ **Dropdown defaultProvider** (v0.1.33): expandido de 4 pra 6 opções.
 - ✅ Vault paths (chatsPath, skillsPath na tab Outros)
 - ✅ **Modelos ativos por provider** — curadoria de qual modelo aparece no seletor da StarterScreen. Pills removíveis + input manual (suporta legacy) + "Buscar API" com checkboxes (v0.1.19)
-- ⬜ **Seed do `activeModels`** (v0.1.33): adicionar listas iniciais pra `gemini` e `nim` no DEFAULT_SETTINGS. Loader já faz merge per-provider (não pisa em settings existentes).
+- ✅ **Seed do `activeModels`** (v0.1.33): listas iniciais de `gemini` e `nim` no DEFAULT_SETTINGS. Loader já faz merge per-provider (não pisa em settings existentes).
 - ⬜ Seção Appearance (background, balloon style) — Módulo 3
 
 ### 2.4 Effort Selector
@@ -282,11 +281,12 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ **Delete SEMPRE confirma** independente do nível (`tool.irreversible` flag)
 - ⬜ Log em `.axxa/logs/agent.md` — adiar pra v0.1.29 (só console.log por enquanto)
 
-### 6.2 Agent Mode ✅ Multi-provider (v0.1.28 + v0.1.32 → v0.1.33)
+### 6.2 Agent Mode ✅ Multi-provider (v0.1.28 + v0.1.32 + v0.1.33)
 - ✅ Modo "Agent" na StarterScreen (3º opção ao lado de Chat / Vault Q&A) com ícone bot
-- ✅ **Tool calling providers**: OpenAI ✅ function calling, **Anthropic ✅ tool use** (v0.1.32), **OpenRouter ✅** (OpenAI-compat, v0.1.32). Ollama 🟡 (modelos recentes suportam; falta wiring)
-- ⬜ **Tool calling Gemini ✅** (v0.1.33) — via OpenAI-compat endpoint do Google, `supportsTools=true`. Funciona em gemini-2.5-pro / 2.5-flash / 3.5-flash. Reusa formato OpenAI `tools[]` + `tool_choice:"auto"`.
-- ⬜ **Tool calling Nvidia NIM ✅** (v0.1.33) — via endpoint nativo OpenAI-compat. Funciona em Nemotron Super/Ultra, Llama 3.3+, Qwen3+, DeepSeek v4. Modelos pequenos ignoram silenciosamente — documentar quais.
+- ✅ **Tool calling providers (6 de 6)**: OpenAI ✅ function calling, **Anthropic ✅ tool use** (v0.1.32), **OpenRouter ✅** (OpenAI-compat, v0.1.32), **Gemini ✅** (OpenAI-compat, v0.1.33), **Nvidia NIM ✅** (v0.1.33), **Ollama ✅** (v0.1.33 — exige modelo compatível como llama3.1+/qwen2.5+/mistral-large)
+- ✅ **Tool calling Gemini** (v0.1.33) — via OpenAI-compat endpoint do Google, `supportsTools=true`. Funciona em gemini-2.5-pro / 2.5-flash / 3.5-flash. Reusa formato OpenAI `tools[]` + `tool_choice:"auto"`.
+- ✅ **Tool calling Nvidia NIM** (v0.1.33) — via endpoint nativo OpenAI-compat. Funciona em Nemotron Super/Ultra, Llama 3.3+, Qwen3+, DeepSeek v4. Modelos pequenos ignoram silenciosamente — aviso no `nimIntro` do i18n.
+- ✅ **Tool calling Ollama** (v0.1.33) — reusa `toOpenAIMessages()`, envia `tools[]` (sem `tool_choice`, ignorado pelo Ollama), parseia `tool_calls` aceitando `arguments` como objeto OU string, gera `id` quando ausente.
 - ✅ **7 tools** implementadas em `src/agent/tools.ts`:
   - `vault_list` — lista pasta
   - `vault_read` — lê arquivo (cap 200KB)
@@ -326,50 +326,53 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 
 ---
 
-## SPRINT I — Gemini + Nvidia NIM (v0.1.33) 🟡 Próximo
-> **Objetivo:** Subir de 4 pra 6 providers num único sprint. Ambos seguem padrão OpenAI-compat, então o esforço é principalmente plumbing (Settings + i18n + registry), não engenharia de protocolo.
+## SPRINT I — Gemini + Nvidia NIM + Ollama tools (v0.1.33) ✅ Concluído
+> **Objetivo:** Subir de 4 pra 6 providers + completar a matriz de tool calling (Ollama 6/6).
+> **Status:** ✅ Código entregue 07/06/2026. Smoke test do dev pendente.
 
-### I.1 Provider Gemini (`src/providers/gemini.ts`)
-- ⬜ Cópia ajustada de `openrouter.ts` — mesmo padrão Bearer + reuso de `toOpenAIMessages()`
-- ⬜ Endpoint base: `https://generativelanguage.googleapis.com/v1beta/openai/`
-  - `POST /chat/completions` — chat + streaming SSE (formato OpenAI puro)
-  - `GET /models` — listar modelos (filtrar pra `gemini-*`, excluir `*-tts`, `*-live`, `*-image`, embeddings)
-- ⬜ Auth: `Authorization: Bearer ${geminiApiKey}` (Google aceita a chave de AI Studio direto)
-- ⬜ Tool calling: `supportsTools = true` (mesmo body que OpenAI)
-- ⬜ Defaults: `gemini-2.5-flash` no `geminiModel`; activeModels seed = `["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3.1-flash-lite"]`
-- ⬜ Tratamento de erro: 401 → "API key Gemini inválida (gere em aistudio.google.com)"
-- ⬜ **Risco conhecido**: alguns response chunks vêm sem `delta.content` (vêm com `delta.reasoning` ou metadados de safety). Parser SSE precisa ignorar silenciosamente — mesma defesa que já tem.
+### I.1 Provider Gemini (`src/providers/gemini.ts`) ✅
+- ✅ Cópia ajustada de `openrouter.ts` — mesmo padrão Bearer + reuso de `toOpenAIMessages()`
+- ✅ Endpoint base: `https://generativelanguage.googleapis.com/v1beta/openai/`
+- ✅ Auth: `Authorization: Bearer ${geminiApiKey}` (chave do AI Studio direto)
+- ✅ Tool calling: `supportsTools = true` (mesmo body que OpenAI)
+- ✅ Defaults: `gemini-2.5-flash`; activeModels seed com 5 modelos 2.5/3.x
+- ✅ Erros 401/403 → "API key Gemini inválida (aistudio.google.com)"
+- ✅ Filtro de modelos exclui tts/live/image/embedding/aqa + strip de prefixo `models/`
 
-### I.2 Provider Nvidia NIM (`src/providers/nim.ts`)
-- ⬜ Cópia ajustada de `openrouter.ts` — mesmo padrão Bearer + reuso de `toOpenAIMessages()`
-- ⬜ Endpoint: `https://integrate.api.nvidia.com/v1/chat/completions`
-- ⬜ Auth: `Authorization: Bearer nvapi-...` (chaves do build.nvidia.com têm prefixo `nvapi-`)
-- ⬜ Tool calling: `supportsTools = true` para modelos compatíveis (matriz no comentário do arquivo)
-- ⬜ Defaults: `nvidia/llama-3.3-nemotron-super-49b-v1.5` no `nimModel`; activeModels seed = `["nvidia/llama-3.3-nemotron-super-49b-v1.5", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct", "deepseek-ai/deepseek-v4-pro", "microsoft/phi-4"]`
-- ⬜ listModels via `GET /v1/models` (sort + filtra prefixos relevantes)
-- ⬜ Sem headers extras tipo `HTTP-Referer` (NIM não exige)
+### I.2 Provider Nvidia NIM (`src/providers/nim.ts`) ✅
+- ✅ Mesmo padrão Bearer + reuso de `toOpenAIMessages()`
+- ✅ Endpoint: `https://integrate.api.nvidia.com/v1/chat/completions`
+- ✅ Auth: `Authorization: Bearer nvapi-...`
+- ✅ Tool calling: `supportsTools = true`
+- ✅ Defaults: `nvidia/llama-3.3-nemotron-super-49b-v1.5`; activeModels seed com 5 modelos
+- ✅ listModels via `GET /v1/models` filtra publishers principais (nvidia/meta/qwen/deepseek-ai/microsoft/mistralai/google) + exclui embed/rerank/tts/parakeet/canary/etc
 
-### I.3 Plumbing comum
-- ⬜ `providers/index.ts` — registrar `gemini` e `nim` no record
-- ⬜ `main.ts` — campos `geminiApiKey`, `geminiModel`, `nimApiKey`, `nimModel` em `AxxaSettings` + DEFAULT_SETTINGS + seed do `activeModels`
-- ⬜ `AxxaSettingsTab.ts` — `ProviderTabId` ganha `"gemini" | "nim"`; renderGemini + renderNim como cópia do renderOpenRouter; dropdown defaultProvider expande pra 6 opções
-- ⬜ `i18n/pt-br.ts` + `en-us.ts` — strings `tabs.gemini`, `tabs.nim`, `apiKeyDescGemini`, `apiKeyDescNim`, `geminiIntro`, `nimIntro`
-- ⬜ `StarterScreen.tsx` — adicionar entries `{ id: "gemini", name: "Gemini", icon: "sparkle" }` e `{ id: "nim", name: "Nvidia NIM", icon: "cpu" }` no array `PROVIDERS`
-- ⬜ Smoke test do dev com chave real de cada um (chat texto + agent tool call)
+### I.3 Ollama tool calling (`src/providers/ollama.ts`) ✅ — BÔNUS do sprint
+- ✅ `supportsTools = true` (Ollama ≥0.3 com modelos compatíveis)
+- ✅ chat() usa `toOpenAIMessages()` (igual OpenAI/NIM/Gemini)
+- ✅ Body envia `tools[]` no formato OpenAI — Ollama ignora `tool_choice` (omitido)
+- ✅ Parser de `tool_calls` aceita `arguments` como objeto (path Ollama) OU string JSON (compat)
+- ✅ Gera `id` `"ollama_call_${ts}_${idx}"` quando ausente (Ollama frequentemente omite)
+- ✅ Captura usage no chat não-streaming via `prompt_eval_count` + `eval_count`
 
-### I.4 RAG opcional (pode ficar pro v0.1.34)
-- ⬜ Adicionar specs em `rag/types.ts`:
-  - `{ provider: "gemini", model: "gemini-embedding-001", dim: 3072, ... }`
-  - `{ provider: "nim", model: "nvidia/nv-embedqa-e5-v5", dim: 1024, ... }`
-- ⬜ Estender `EmbeddingProvider` pra `"openai" | "openrouter" | "gemini" | "nim"`
-- ⬜ `embeddings.ts` — handlers `embedBatchGemini` e `embedBatchNim` (mesma forma do `embedBatch` da OpenAI, só muda URL/auth)
+### I.4 Plumbing comum ✅
+- ✅ `providers/index.ts` — registry com 6 providers
+- ✅ `main.ts` — 4 campos novos (`geminiApiKey`, `geminiModel`, `nimApiKey`, `nimModel`) + activeModels seed
+- ✅ `AxxaSettingsTab.ts` — `ProviderTabId` ganha `"gemini" | "nim"`; `renderGemini` + `renderNim`; dropdown defaultProvider em 6 opções; ordem das tabs OpenAI · Anthropic · Gemini · OpenRouter · NIM · Ollama
+- ✅ `i18n/pt-br.ts` + `en-us.ts` — `tabs.gemini`, `tabs.nim`, `apiKeyDescGemini`, `apiKeyDescNim`, `geminiIntro`, `nimIntro`; `agent.needsOpenAI` reescrita pra ser provider-agnóstica
+- ✅ `StarterScreen.tsx` — entries Gemini (icon `sparkle`) e Nvidia NIM (icon `cpu`) no array `PROVIDERS`
+- ⬜ **Smoke test do dev** — chave real de Gemini + NIM, validar chat texto + agent tool call em cada um (Ollama exige modelo local compatível, ex: `ollama pull llama3.1`)
+
+### I.5 RAG opcional (pulado pra v0.1.34+)
+- ⬜ Specs em `rag/types.ts` pra `gemini-embedding-001` (dim 3072) e `nvidia/nv-embedqa-e5-v5` (dim 1024)
+- ⬜ Estender `EmbeddingProvider` pra incluir `"gemini" | "nim"`
+- ⬜ Handlers `embedBatchGemini` / `embedBatchNim` em `embeddings.ts`
 - ⬜ Settings RAG dropdown: 4 providers em vez de 2
-- ⬜ **Por que separado**: o sprint I.1+I.2+I.3 já entrega valor (chat + agent). Embeddings podem vir num sprint pequeno depois sem bloquear o lançamento.
 
-### I.5 Marco
-- ⬜ **🎯 MARCO:** 6 providers funcionando, dropdown atualizado, Agent rodando em pelo menos 1 modelo Gemini e 1 modelo NIM
-- ⬜ Bump de versão pra `0.1.33` em `manifest.json` e `package.json`
-- ⬜ Atualizar `README.md` mencionando os 2 novos providers
+### I.6 Marco ✅
+- ✅ **🎯 MARCO:** 6 providers funcionando via UI (Settings + StarterScreen), Agent multi-provider 6/6
+- ✅ Bump pra `v0.1.33` em `manifest.json` e `package.json`
+- ⬜ `README.md` mencionando os 2 novos providers — TODO pequeno
 
 ---
 

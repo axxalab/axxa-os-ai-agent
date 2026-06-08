@@ -76,7 +76,7 @@ export const EN_US: Translations = {
   agent: {
     thinking: "🤖 Agent thinking...",
     needsOpenAI:
-      "Agent Mode requires OpenAI (provider with function calling). Switch provider on the StarterScreen.",
+      "Agent Mode requires a provider with tool calling. Use OpenAI, Anthropic, Gemini, OpenRouter, Nvidia NIM, or Ollama (compatible model).",
     deniedAction: "🚫 Action denied by user",
     maxTurnsReached: (n: number) =>
       `Agent hit the limit of ${n} turns without finishing. Try rephrasing the task.`,
@@ -140,7 +140,9 @@ export const EN_US: Translations = {
     tabs: {
       openai: "OpenAI",
       anthropic: "Anthropic",
+      gemini: "Gemini",
       openrouter: "OpenRouter",
+      nim: "Nvidia NIM",
       ollama: "Ollama",
       outros: "Other",
     },
@@ -151,7 +153,9 @@ export const EN_US: Translations = {
     apiKey: "API Key",
     apiKeyDescOpenai: "sk-... — stored locally in the vault.",
     apiKeyDescAnthropic: "sk-ant-... — stored locally.",
+    apiKeyDescGemini: "Key from aistudio.google.com/apikey — stored locally.",
     apiKeyDescOpenrouter: "sk-or-... — stored locally.",
+    apiKeyDescNim: "nvapi-... (from build.nvidia.com) — stored locally.",
     model: "Default model",
     modelDesc: (provider: string) =>
       `Default model for ${provider}. Use 'Fetch' to see what's available.`,
@@ -176,10 +180,14 @@ export const EN_US: Translations = {
     activeModelsAvailable: (count: number) =>
       `${count} models available. Check the ones to appear in the picker:`,
     activeModelsRemoveTitle: "Remove",
+    geminiIntro:
+      "Google Gemini via OpenAI-compatible endpoint. Tool calling works on 2.5+/3.x. Generous free tier on AI Studio.",
     openrouterIntro:
       "Multi-model proxy. Models prefixed by provider (e.g. anthropic/claude-3.5-sonnet).",
+    nimIntro:
+      "Nvidia NIM hosted (1k free credits). Models: Nemotron Super/Ultra, Llama 3.3+, Qwen3+, DeepSeek v4. Smaller models may silently ignore tool calling.",
     ollamaIntro:
-      "Local LLMs. Requires Ollama server running (https://ollama.com).",
+      "Local LLMs. Requires Ollama server running (https://ollama.com). Tool calling works on llama3.1+, qwen2.5+, mistral-large.",
     ollamaEndpoint: "Endpoint",
     ollamaEndpointDesc:
       "Ollama server URL (default: http://localhost:11434)",

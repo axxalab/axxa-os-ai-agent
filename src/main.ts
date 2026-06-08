@@ -10,15 +10,21 @@ import { VectorIndex, loadIndex } from "./rag/vectorIndex";
 interface AxxaSettings {
   openaiApiKey: string;
   anthropicApiKey: string;
+  geminiApiKey: string;
   openrouterApiKey: string;
+  nimApiKey: string;
   ollamaEndpoint: string;
   defaultProvider: string;
   /** Modelo usado pelo provider OpenAI (ex: gpt-4o, gpt-4o-mini) */
   defaultModel: string;
   /** Modelo usado pelo provider Anthropic (ex: claude-sonnet-4-6, claude-opus-4-8) */
   anthropicModel: string;
+  /** Modelo usado pelo Gemini (ex: gemini-2.5-flash, gemini-2.5-pro) */
+  geminiModel: string;
   /** Modelo usado pelo OpenRouter (ex: anthropic/claude-3.5-sonnet) */
   openrouterModel: string;
+  /** Modelo usado pelo Nvidia NIM (ex: nvidia/llama-3.3-nemotron-super-49b-v1.5) */
+  nimModel: string;
   /** Modelo usado pelo Ollama (instalado localmente, ex: llama3.2, qwen2.5) */
   ollamaModel: string;
   /** Modelos ativos por provider — só esses aparecem no seletor da StarterScreen.
@@ -55,12 +61,16 @@ interface AxxaSettings {
 const DEFAULT_SETTINGS: AxxaSettings = {
   openaiApiKey: "",
   anthropicApiKey: "",
+  geminiApiKey: "",
   openrouterApiKey: "",
+  nimApiKey: "",
   ollamaEndpoint: "http://localhost:11434",
   defaultProvider: "openai",
   defaultModel: "gpt-4o",
   anthropicModel: "claude-sonnet-4-6",
+  geminiModel: "gemini-2.5-flash",
   openrouterModel: "anthropic/claude-3.5-sonnet",
+  nimModel: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
   ollamaModel: "llama3.2",
   activeModels: {
     openai: ["gpt-4o", "gpt-4o-mini", "o1", "o3", "gpt-5"],
@@ -69,11 +79,25 @@ const DEFAULT_SETTINGS: AxxaSettings = {
       "claude-sonnet-4-6",
       "claude-haiku-4-5-20251001",
     ],
+    gemini: [
+      "gemini-2.5-pro",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-3.1-flash-lite",
+    ],
     openrouter: [
       "anthropic/claude-3.5-sonnet",
       "openai/gpt-4o",
       "meta-llama/llama-3.3-70b-instruct",
       "google/gemini-2.0-flash-001",
+    ],
+    nim: [
+      "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+      "meta/llama-3.3-70b-instruct",
+      "qwen/qwen3-next-80b-a3b-instruct",
+      "deepseek-ai/deepseek-v4-pro",
+      "microsoft/phi-4",
     ],
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },

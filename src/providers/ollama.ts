@@ -4,19 +4,40 @@
 // Sem auth (local).
 //
 // Diferenças do OpenAI:
-//   - Body: { model, messages, stream, options? }
+//   - Body: { model, messages, stream, tools?, options? }
 //   - Resposta streaming: JSON delimitado por NEWLINE (não SSE com "data:")
 //   - Cada linha: {"message": {"role":"assistant","content":"..."}, "done":false}
 //   - Última linha: {"done":true, "prompt_eval_count":..., "eval_count":...}
 //
+// Tool calling (v0.1.33):
+//   - Body envia `tools[]` mesmo formato OpenAI (sem `tool_choice` — Ollama ignora)
+//   - Resposta: `message.tool_calls[]` no formato `{function: {name, arguments}}`
+//   - Pegadinha: `arguments` no Ollama vem como OBJETO (não JSON string como OpenAI)
+//   - Pegadinha: tool_calls do Ollama frequentemente vêm SEM `id` — geramos um
+//   - Modelos com tool calling: llama3.1, llama3.2, qwen2.5, mistral-large, etc.
+//   - Modelos antigos / pequenos ignoram silenciosamente o campo `tools`
+//
 // Como a key não é necessária, passamos vazia mesmo.
 
 import { requestUrl } from "obsidian";
-import { Provider, ProviderError, ProviderRequest, ProviderResponse, TokenHandler, UsageHandler } from "./base";
+import {
+  Provider,
+  ProviderError,
+  ProviderRequest,
+  ProviderResponse,
+  ProviderToolCall,
+  TokenHandler,
+  UsageHandler,
+} from "./base";
+import { toOpenAIMessages } from "./openai";
 
 export class OllamaProvider implements Provider {
   id = "ollama";
   name = "Ollama";
+  // Ollama ≥0.3 suporta tool calling em modelos compatíveis (llama3.1+,
+  // qwen2.5+, mistral-large, etc). Modelos antigos ignoram silenciosamente.
+  // O usuário precisa escolher um modelo que tenha tools no card do Ollama.
+  supportsTools = true;
 
   /** Endpoint base que vem das settings (apiKey no nosso modelo, mas é URL). */
   private getEndpoint(apiKey: string): string {
@@ -27,20 +48,36 @@ export class OllamaProvider implements Provider {
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     const endpoint = this.getEndpoint(apiKey);
+
+    // Body com OpenAI-compat messages — reusa o converter pra normalizar
+    // assistant.tool_calls e tool results.
+    const body: Record<string, unknown> = {
+      model: req.model,
+      messages: toOpenAIMessages(req.messages),
+      stream: false,
+      options: {
+        num_predict: req.maxTokens ?? 2000,
+      },
+    };
+    if (req.tools && req.tools.length > 0) {
+      body.tools = req.tools.map((t) => ({
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      }));
+      // Ollama NÃO usa tool_choice — qualquer valor é ignorado, então omitimos.
+    }
+
     let res;
     try {
       res = await requestUrl({
         url: `${endpoint}/api/chat`,
         method: "POST",
         contentType: "application/json",
-        body: JSON.stringify({
-          model: req.model,
-          messages: req.messages,
-          stream: false,
-          options: {
-            num_predict: req.maxTokens ?? 2000,
-          },
-        }),
+        body: JSON.stringify(body),
         throw: false,
       });
     } catch (err) {
@@ -53,11 +90,59 @@ export class OllamaProvider implements Provider {
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`Ollama: HTTP ${res.status}`, "unknown");
     }
-    const content = res.json?.message?.content;
-    if (typeof content !== "string" || !content.length) {
+
+    const message = res.json?.message;
+    if (!message) {
       throw new ProviderError("Resposta vazia do Ollama.", "unknown");
     }
-    return { content };
+
+    // Parseia tool_calls — formato Ollama:
+    //   { function: { name: string, arguments: object | string } }
+    // Sem `id` na maioria dos casos — geramos um pra fechar o loop.
+    let toolCalls: ProviderToolCall[] | undefined;
+    if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+      toolCalls = message.tool_calls.map(
+        (tc: { id?: string; function: { name: string; arguments: unknown } }, idx: number) => {
+          const raw = tc.function?.arguments;
+          let parsedArgs: Record<string, unknown> = {};
+          if (raw && typeof raw === "object") {
+            // Ollama path: já vem como objeto
+            parsedArgs = raw as Record<string, unknown>;
+          } else if (typeof raw === "string") {
+            // Compat path: alguns modelos via Ollama devolvem string JSON
+            try {
+              parsedArgs = JSON.parse(raw);
+            } catch {
+              parsedArgs = { _raw: raw };
+            }
+          }
+          return {
+            id: tc.id ?? `ollama_call_${Date.now()}_${idx}`,
+            name: tc.function.name,
+            arguments: parsedArgs,
+          };
+        }
+      );
+    }
+
+    const content = typeof message.content === "string" ? message.content : "";
+    if (!toolCalls && !content) {
+      throw new ProviderError(
+        "Resposta vazia do Ollama (sem texto nem tool_calls).",
+        "unknown"
+      );
+    }
+
+    const result: ProviderResponse = { content };
+    if (toolCalls) result.toolCalls = toolCalls;
+    // Usage tokens (vem no response não-streaming também)
+    if (res.json?.prompt_eval_count !== undefined || res.json?.eval_count !== undefined) {
+      result.usage = {
+        input: res.json.prompt_eval_count ?? 0,
+        output: res.json.eval_count ?? 0,
+      };
+    }
+    return result;
   }
 
   async streamChat(

@@ -1,9 +1,9 @@
 // src/components/settings/AxxaSettingsTab.ts
-// Settings tab do AXXA OS com TABS ANINHADAS (Sprint v0.1.26):
+// Settings tab do AXXA OS com TABS ANINHADAS (Sprint v0.1.26 → v0.1.33):
 //
 //   Top-level: Providers · Outros
 //   ↳ Providers tem sub-tabs estilo segmented control:
-//      OpenAI · Anthropic · OpenRouter · Ollama
+//      OpenAI · Anthropic · Gemini · OpenRouter · Nvidia NIM · Ollama
 //
 // Provider padrão fica DENTRO da aba Providers (não global) — assim a aba
 // Outros não fica com setting sobrando que não é do tema dela.
@@ -15,7 +15,9 @@ import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type AxxaPlugin from "../../main";
 import { openaiProvider } from "../../providers/openai";
 import { anthropicProvider } from "../../providers/anthropic";
+import { geminiProvider } from "../../providers/gemini";
 import { openrouterProvider } from "../../providers/openrouter";
+import { nimProvider } from "../../providers/nim";
 import { ollamaProvider } from "../../providers/ollama";
 import { getTranslations, type Translations } from "../../i18n";
 import { indexVault, type IndexProgress } from "../../rag/indexer";
@@ -23,7 +25,13 @@ import { deleteIndex } from "../../rag/vectorIndex";
 import { EMBEDDING_MODELS } from "../../rag/types";
 
 type TopTabId = "providers" | "outros";
-type ProviderTabId = "openai" | "anthropic" | "openrouter" | "ollama";
+type ProviderTabId =
+  | "openai"
+  | "anthropic"
+  | "gemini"
+  | "openrouter"
+  | "nim"
+  | "ollama";
 
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
@@ -110,7 +118,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
         dd
           .addOption("openai", "OpenAI")
           .addOption("anthropic", "Anthropic (Claude)")
+          .addOption("gemini", "Google Gemini")
           .addOption("openrouter", "OpenRouter")
+          .addOption("nim", "Nvidia NIM")
           .addOption("ollama", "Ollama (local)")
           .setValue(this.plugin.settings.defaultProvider)
           .onChange(async (value) => {
@@ -121,10 +131,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       );
 
     // Sub-tabs estilo segmented control (pill container)
+    // Ordem: big labs (OpenAI · Anthropic · Gemini) → agregadores
+    // (OpenRouter · NIM) → local (Ollama). flex-wrap quebra em mobile.
     const subTabsEl = parent.createDiv({ cls: "axxa-settings-subtabs" });
     this.createProviderSubTab(subTabsEl, "openai", t.settings.tabs.openai);
     this.createProviderSubTab(subTabsEl, "anthropic", t.settings.tabs.anthropic);
+    this.createProviderSubTab(subTabsEl, "gemini", t.settings.tabs.gemini);
     this.createProviderSubTab(subTabsEl, "openrouter", t.settings.tabs.openrouter);
+    this.createProviderSubTab(subTabsEl, "nim", t.settings.tabs.nim);
     this.createProviderSubTab(subTabsEl, "ollama", t.settings.tabs.ollama);
 
     // Conteúdo da sub-tab
@@ -136,8 +150,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       case "anthropic":
         this.renderAnthropic(subContentEl, t);
         break;
+      case "gemini":
+        this.renderGemini(subContentEl, t);
+        break;
       case "openrouter":
         this.renderOpenRouter(subContentEl, t);
+        break;
+      case "nim":
+        this.renderNim(subContentEl, t);
         break;
       case "ollama":
         this.renderOllama(subContentEl, t);
@@ -260,6 +280,53 @@ export class AxxaSettingsTab extends PluginSettingTab {
   }
 
   // ============================================================
+  // Tab: Gemini (Google) — via endpoint OpenAI-compat
+  // ============================================================
+  private renderGemini(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.geminiIntro,
+      cls: "setting-item-description",
+    });
+
+    new Setting(parent)
+      .setName(t.settings.apiKey)
+      .setDesc(t.settings.apiKeyDescGemini)
+      .addText((text) => {
+        text
+          .setPlaceholder("AIza...")
+          .setValue(this.plugin.settings.geminiApiKey)
+          .onChange(async (value) => {
+            this.plugin.settings.geminiApiKey = value.trim();
+            await this.plugin.saveSettings();
+          });
+        text.inputEl.type = "password";
+        text.inputEl.autocomplete = "off";
+      });
+
+    this.createModelField(
+      parent,
+      t,
+      "Gemini",
+      this.plugin.settings.geminiModel,
+      async (value) => {
+        this.plugin.settings.geminiModel = value || "gemini-2.5-flash";
+        await this.plugin.saveSettings();
+      },
+      () => geminiProvider.listModels(this.plugin.settings.geminiApiKey),
+      "gemini-2.5-flash"
+    );
+
+    this.createActiveModelsField(
+      parent,
+      t,
+      "Gemini",
+      "gemini",
+      () => geminiProvider.listModels(this.plugin.settings.geminiApiKey),
+      "gemini-2.5-pro"
+    );
+  }
+
+  // ============================================================
   // Tab: OpenRouter
   // ============================================================
   private renderOpenRouter(parent: HTMLElement, t: Translations) {
@@ -304,6 +371,54 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "openrouter",
       () => openrouterProvider.listModels(this.plugin.settings.openrouterApiKey),
       "openai/gpt-3.5-turbo"
+    );
+  }
+
+  // ============================================================
+  // Tab: Nvidia NIM (hospedado em integrate.api.nvidia.com)
+  // ============================================================
+  private renderNim(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.nimIntro,
+      cls: "setting-item-description",
+    });
+
+    new Setting(parent)
+      .setName(t.settings.apiKey)
+      .setDesc(t.settings.apiKeyDescNim)
+      .addText((text) => {
+        text
+          .setPlaceholder("nvapi-...")
+          .setValue(this.plugin.settings.nimApiKey)
+          .onChange(async (value) => {
+            this.plugin.settings.nimApiKey = value.trim();
+            await this.plugin.saveSettings();
+          });
+        text.inputEl.type = "password";
+        text.inputEl.autocomplete = "off";
+      });
+
+    this.createModelField(
+      parent,
+      t,
+      "Nvidia NIM",
+      this.plugin.settings.nimModel,
+      async (value) => {
+        this.plugin.settings.nimModel =
+          value || "nvidia/llama-3.3-nemotron-super-49b-v1.5";
+        await this.plugin.saveSettings();
+      },
+      () => nimProvider.listModels(this.plugin.settings.nimApiKey),
+      "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+    );
+
+    this.createActiveModelsField(
+      parent,
+      t,
+      "Nvidia NIM",
+      "nim",
+      () => nimProvider.listModels(this.plugin.settings.nimApiKey),
+      "meta/llama-3.3-70b-instruct"
     );
   }
 
