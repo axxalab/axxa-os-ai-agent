@@ -123,6 +123,12 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
   background-color: var(--background-primary) !important;
 }
 
+/* Padding superior do header pra escapar do status bar nativo no fullscreen.
+   Em devices com notch, env(safe-area-inset-top) pode ser >40, então max(). */
+body.is-mobile.axxa-fullscreen .axxa-header {
+  padding-top: max(40px, env(safe-area-inset-top, 40px)) !important;
+}
+
 /* Fallback @supports — :has() não funciona em alguns browsers velhos.
    Vai pegar só body, mas ja resolve 90% dos casos */
 @supports not selector(html:has(*)) {
