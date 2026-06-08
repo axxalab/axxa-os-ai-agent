@@ -1368,13 +1368,16 @@ body.is-mobile
 
 /* Camada extra de bg sólido por trás (caso o blur falhe + opacity
    ainda mostre algo): pseudo ::before com bg solido cobre o que
-   está visualmente atrás. */
+   está visualmente atrás.
+   v0.1.64: bg do pseudo = --background-modifier-form-field (era
+   --background-primary, criava efeito de status line nao herdar
+   o bg do text field) */
 .axxa-composer-info::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: 14px;
-  background: var(--background-primary);
+  background: var(--background-modifier-form-field);
   opacity: 0.6;
   z-index: -1;
 }
@@ -1425,11 +1428,11 @@ body.is-mobile
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  /* v0.1.51: align-items center pra texto ficar Y-centered na pill quando
-     em 1 linha. Em multi-linha, mantém centralizado em relacao ao + e send
-     (visual ChatGPT-style: botoes no meio do bloco de texto). */
   align-items: center;
   gap: 4px;
+  /* v0.1.64: min-height 44 — minimo de toque tipico. Pill cresce com
+     o texto, mas nunca menor que 44 (igual altura do send button). */
+  min-height: 44px;
   /* Background semi-transparente + backdrop blur agressivo (v0.1.50)
      pra elevar visualmente do chat por trás */
   background: color-mix(in srgb, var(--background-modifier-form-field) 80%, transparent);
@@ -1538,6 +1541,22 @@ body.is-mobile
 .axxa-composer-attach .axxa-icon .svg-icon {
   width: 16px;
   height: 16px;
+}
+
+/* v0.1.64: attach generico (paperclip) tem cor muted (diferente do image
+   que tem accent purple). Ordem natural: + (esquerda) → texto → paperclip → image. */
+.axxa-composer-attach.axxa-composer-attach-file,
+.axxa-composer-attach.axxa-composer-attach-file:hover,
+.axxa-composer-attach.axxa-composer-attach-file:focus,
+.axxa-composer-attach.axxa-composer-attach-file:active {
+  color: var(--text-muted) !important;
+}
+
+@media (hover: hover) {
+  .axxa-composer-attach.axxa-composer-attach-file:hover {
+    color: var(--text-normal) !important;
+    background: color-mix(in srgb, var(--background-modifier-hover) 70%, transparent) !important;
+  }
 }
 
 /* Linha de anexos pendentes — chips com thumbnail + nome + remove.
@@ -1873,16 +1892,31 @@ body.is-mobile
 
 .axxa-composer-send {
   flex: 0 0 auto;
+  /* v0.1.64: altura herda da composer-pill via stretch flex.
+     Min-height 44 garante tamanho minimo de toque mesmo quando texto
+     1 linha so. Quando pill cresce (multi-linha), button cresce junto. */
   width: 44px;
-  height: 44px;
+  min-height: 44px;
+  align-self: stretch;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
+  /* Bg igual ao composer pill — form-field 80% transparent + blur */
+  background: color-mix(in srgb, var(--background-modifier-form-field) 80%, transparent) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  color: var(--text-normal);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, transform 0.1s;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+}
+
+/* Fallback browsers sem color-mix */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-composer-send {
+    background: var(--background-modifier-form-field) !important;
+  }
 }
 
 .axxa-composer-send:active {

@@ -763,6 +763,18 @@ export function Composer({
           >
             <Icon name="plus" />
           </button>
+          <div ref={editorRef} className="axxa-composer-editor" />
+          {/* Botões attach (anexo + imagem) MOVIDOS pra direita dentro do pill
+              v0.1.64: so o + fica na esquerda; demais ferramentas no fim */}
+          <button
+            type="button"
+            className="axxa-composer-attach axxa-composer-attach-file"
+            aria-label={t.composer.plusLabel}
+            title={t.composer.plusLabel}
+            onClick={onPlusClick}
+          >
+            <Icon name="paperclip" />
+          </button>
           {visionEnabled && (
             <button
               type="button"
@@ -774,7 +786,6 @@ export function Composer({
               <Icon name="image" />
             </button>
           )}
-          <div ref={editorRef} className="axxa-composer-editor" />
         </div>
         <button
           type="button"
