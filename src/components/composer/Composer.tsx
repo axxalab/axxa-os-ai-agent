@@ -441,30 +441,35 @@ export function Composer({
           "&": {
             backgroundColor: "transparent",
             color: "var(--text-normal)",
-            // CRÍTICO: fontFamily + fontSize + lineHeight DEVEM ser idênticos
-            // ao placeholder e ao texto que o usuário digita, senão o cursor
-            // "pula" e o spacing fica inconsistente entre os dois.
             fontFamily: "var(--font-text)",
             fontSize: "var(--font-ui-medium)",
             lineHeight: "1.5",
             overflowX: "hidden",
             overflowY: "visible",
+            // CRÍTICO: reseta padding/margin/border que CodeMirror aplica
+            // por default no .cm-editor — esses deslocam o texto pro
+            // direito visualmente.
+            padding: "0",
+            margin: "0",
+            border: "none",
           },
           "&.cm-focused": { outline: "none" },
           ".cm-scroller": {
             overflowX: "hidden",
             overflowY: "visible",
-            // Scroller herda fonte do & — força explicit pra evitar drift
             fontFamily: "var(--font-text)",
             fontSize: "var(--font-ui-medium)",
             lineHeight: "1.5",
+            // Sem padding/margin — texto começa no left edge do flex container
+            padding: "0",
+            margin: "0",
           },
           ".cm-content": {
             caretColor: "var(--text-normal)",
-            // Padding 0 vertical pro texto começar EXATAMENTE onde o placeholder
-            // começa. line-height controla o espaçamento entre linhas.
+            // Padding 0 — texto começa EXATAMENTE no left edge do editor
+            // (offset horizontal vem só do flex parent: composer-pill padding)
             padding: "0",
-            // Mesma fonte + tamanho que o & pra evitar diferenças sub-pixel
+            margin: "0",
             fontFamily: "var(--font-text)",
             fontSize: "var(--font-ui-medium)",
             lineHeight: "1.5",
@@ -472,16 +477,20 @@ export function Composer({
             overflowWrap: "anywhere",
           },
           ".cm-line": {
+            // CRÍTICO pro X-align: padding 0 horizontal + 0 vertical
             padding: "0",
+            margin: "0",
             lineHeight: "1.5",
           },
-          // Placeholder com EXATAMENTE os mesmos atributos visuais do texto
-          // — apenas color muda (faint). Evita "pulo" quando começa a digitar.
           ".cm-placeholder": {
             color: "var(--text-faint)",
             fontFamily: "var(--font-text)",
             fontSize: "var(--font-ui-medium)",
             lineHeight: "1.5",
+            // Sem indent — fica no mesmo X que o texto digitado
+            padding: "0",
+            margin: "0",
+            textIndent: "0",
           },
         }),
       ],
