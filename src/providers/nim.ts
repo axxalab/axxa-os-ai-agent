@@ -224,18 +224,16 @@ export class NimProvider implements Provider {
    * Gera imagem via NIM Visual GenAI (Stable Diffusion 3, FLUX, SDXL).
    * Endpoint: https://ai.api.nvidia.com/v1/genai/{publisher}/{model}
    *
-   * Body típico:
-   *   {
-   *     prompt: "...",
-   *     mode: "text-to-image",
-   *     aspect_ratio: "1:1",
-   *     cfg_scale: 5,
-   *     seed: 0,
-   *     steps: 50
-   *   }
+   * Confirmado via webfetch (docs.api.nvidia.com/nim/reference/stabilityai-stable-diffusion-3-medium-infer):
+   *  - URL contém publisher/model na path
+   *  - Body inclui: prompt, mode="text-to-image", aspect_ratio, cfg_scale,
+   *    steps, seed, output_format ("png"|"jpeg"), optional negative_prompt
+   *  - Stable Diffusion 3 também exige `model: "sd3"` no body além da URL
    *
-   * Response: { artifacts: [{ base64: "...", finishReason: "SUCCESS" }] }
-   * OU { image: "base64..." } (depende do modelo).
+   * Response: dois shapes possíveis dependendo do modelo:
+   *   { artifacts: [{ base64: "...", finishReason: "SUCCESS" }] } (SDXL/FLUX clássicos)
+   *   { image: "base64..." } (alguns modelos)
+   *   Ambos suportados.
    */
   async generateImage(
     request: MediaGenerationRequest,
@@ -253,7 +251,14 @@ export class NimProvider implements Provider {
       cfg_scale: 5,
       steps: 50,
       seed: request.seed ?? 0,
+      output_format: "png",
+      negative_prompt: "",
     };
+    // Stable Diffusion 3 family exige `model: "sd3"` no body (docs oficiais).
+    // Outros modelos ignoram.
+    if (request.model.includes("stable-diffusion-3")) {
+      body.model = "sd3";
+    }
     let res;
     try {
       res = await requestUrl({
@@ -276,26 +281,35 @@ export class NimProvider implements Provider {
       const detail =
         res.json?.detail ??
         res.json?.error?.message ??
-        (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
+        res.json?.message ??
+        (typeof res.text === "string" ? res.text.slice(0, 280) : null) ??
         `HTTP ${res.status}`;
-      throw new ProviderError(`NIM image gen: ${detail}`, "unknown");
+      throw new ProviderError(`NIM image gen (${res.status}): ${detail}`, "unknown");
     }
     // Várias APIs com shapes diferentes — tenta os mais comuns
-    const artifacts = res.json?.artifacts;
     const items: MediaGenerationItem[] = [];
+    const artifacts = res.json?.artifacts;
     if (Array.isArray(artifacts)) {
       for (const a of artifacts) {
-        if (typeof a.base64 === "string" && a.base64) {
-          items.push({ data: base64ToBytes(a.base64), mime: "image/png" });
-        }
+        const b64 =
+          typeof a?.base64 === "string"
+            ? a.base64
+            : typeof a?.image === "string"
+              ? a.image
+              : null;
+        if (b64) items.push({ data: base64ToBytes(b64), mime: "image/png" });
       }
     }
     if (items.length === 0 && typeof res.json?.image === "string") {
       items.push({ data: base64ToBytes(res.json.image), mime: "image/png" });
     }
+    if (items.length === 0 && typeof res.json?.b64_json === "string") {
+      items.push({ data: base64ToBytes(res.json.b64_json), mime: "image/png" });
+    }
     if (items.length === 0) {
+      console.error("[axxa] NIM unknown response shape:", res.json);
       throw new ProviderError(
-        "NIM não retornou imagens — verifique se o modelo suporta text-to-image.",
+        `NIM não retornou imagens — verifique se "${request.model}" suporta text-to-image. Veja DevTools console pra resposta raw.`,
         "unknown"
       );
     }

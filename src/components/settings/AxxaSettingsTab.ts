@@ -11,7 +11,7 @@
 // Background do user é aplicado também aqui (.axxa-settings-root.axxa-bg-X)
 // pra ficar consistente com a view principal.
 
-import { App, PluginSettingTab, Setting, Notice } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice, TFolder } from "obsidian";
 import type AxxaPlugin from "../../main";
 import { openaiProvider } from "../../providers/openai";
 import { anthropicProvider } from "../../providers/anthropic";
@@ -739,6 +739,40 @@ export class AxxaSettingsTab extends PluginSettingTab {
   }
 
   /** Sub-tab Geral — idioma + paths */
+  /**
+   * Anexa um <datalist> nativo HTML ao input pra autocomplete de pastas.
+   * Lista todas as pastas do vault (TFolder) e bind via `list=` attribute.
+   *
+   * Vantagem do datalist: zero deps externas, type-ahead nativo do browser,
+   * funciona em mobile (Android sugere conforme digita).
+   */
+  private attachFolderAutocomplete(inputEl: HTMLInputElement) {
+    const folders: string[] = [];
+    const walk = (folder: TFolder, path: string) => {
+      if (path) folders.push(path);
+      for (const child of folder.children) {
+        if (child instanceof TFolder) {
+          walk(child, child.path);
+        }
+      }
+    };
+    walk(this.app.vault.getRoot(), "");
+    folders.sort();
+
+    const doc = inputEl.ownerDocument;
+    const id = `axxa-folder-list-${Math.random().toString(36).slice(2, 8)}`;
+    const datalist = doc.createElement("datalist");
+    datalist.id = id;
+    for (const path of folders) {
+      const option = doc.createElement("option");
+      option.value = path;
+      datalist.appendChild(option);
+    }
+    inputEl.parentElement?.appendChild(datalist);
+    inputEl.setAttribute("list", id);
+    inputEl.setAttribute("autocomplete", "off");
+  }
+
   private renderOutrosGeral(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
       text: t.settings.outrosGeralIntro,
@@ -763,33 +797,35 @@ export class AxxaSettingsTab extends PluginSettingTab {
     new Setting(parent)
       .setName(t.settings.chatsPath)
       .setDesc(t.settings.chatsPathDesc)
-      .addText((text) =>
+      .addText((text) => {
         text
           .setPlaceholder("axxa-ai/chats")
           .setValue(this.plugin.settings.chatsPath)
           .onChange(async (value) => {
             this.plugin.settings.chatsPath = value || "axxa-ai/chats";
             await this.plugin.saveSettings();
-          })
-      );
+          });
+        this.attachFolderAutocomplete(text.inputEl);
+      });
 
     new Setting(parent)
       .setName(t.settings.skillsPath)
       .setDesc(t.settings.skillsPathDesc)
-      .addText((text) =>
+      .addText((text) => {
         text
           .setPlaceholder("axxa-ai/skills")
           .setValue(this.plugin.settings.skillsPath)
           .onChange(async (value) => {
             this.plugin.settings.skillsPath = value || "axxa-ai/skills";
             await this.plugin.saveSettings();
-          })
-      );
+          });
+        this.attachFolderAutocomplete(text.inputEl);
+      });
 
     new Setting(parent)
       .setName(t.settings.recordingsPath)
       .setDesc(t.settings.recordingsPathDesc)
-      .addText((text) =>
+      .addText((text) => {
         text
           .setPlaceholder("axxa-ai/recordings")
           .setValue(this.plugin.settings.recordingsPath)
@@ -797,13 +833,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
             this.plugin.settings.recordingsPath =
               value || "axxa-ai/recordings";
             await this.plugin.saveSettings();
-          })
-      );
+          });
+        this.attachFolderAutocomplete(text.inputEl);
+      });
 
     new Setting(parent)
       .setName(t.settings.generationPath)
       .setDesc(t.settings.generationPathDesc)
-      .addText((text) =>
+      .addText((text) => {
         text
           .setPlaceholder("axxa-ai/generation")
           .setValue(this.plugin.settings.generationPath)
@@ -811,8 +848,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
             this.plugin.settings.generationPath =
               value || "axxa-ai/generation";
             await this.plugin.saveSettings();
-          })
-      );
+          });
+        this.attachFolderAutocomplete(text.inputEl);
+      });
 
     parent.createEl("h3", { text: t.settings.comingSoon });
     const todo = parent.createEl("ul");
@@ -1049,15 +1087,16 @@ export class AxxaSettingsTab extends PluginSettingTab {
     new Setting(section)
       .setName(t.settings.ragIndexPath)
       .setDesc(t.settings.ragIndexPathDesc)
-      .addText((text) =>
+      .addText((text) => {
         text
           .setPlaceholder("axxa-ai/index")
           .setValue(this.plugin.settings.ragIndexPath)
           .onChange(async (value) => {
             this.plugin.settings.ragIndexPath = value || "axxa-ai/index";
             await this.plugin.saveSettings();
-          })
-      );
+          });
+        this.attachFolderAutocomplete(text.inputEl);
+      });
 
     // ---- Stats line ----
     const statsEl = section.createDiv({ cls: "axxa-rag-stats" });

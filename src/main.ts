@@ -91,11 +91,15 @@ const DEFAULT_SETTINGS: AxxaSettings = {
       "claude-haiku-4-5-20251001",
     ],
     gemini: [
+      // Chat / multimodal
       "gemini-2.5-pro",
       "gemini-2.5-flash",
       "gemini-2.5-flash-lite",
       "gemini-3.5-flash",
       "gemini-3.1-flash-lite",
+      // Image generation (Nano Banana + Imagen)
+      "gemini-2.5-flash-image",
+      "imagen-3.0-generate-002",
     ],
     openrouter: [
       "anthropic/claude-3.5-sonnet",

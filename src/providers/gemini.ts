@@ -34,7 +34,8 @@ const GEMINI_MODELS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/openai/models";
 // Endpoint nativo do Gemini pra image generation ("Nano Banana" e Imagen).
 // Não usa o OpenAI-compat porque image gen tem formato próprio (responseModalities).
-const GEMINI_NATIVE_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+// Atualizado pra v1 (era v1beta) por orientação das docs oficiais (jun/2026).
+const GEMINI_NATIVE_BASE = "https://generativelanguage.googleapis.com/v1/models";
 
 export class GeminiProvider implements Provider {
   id = "gemini";
@@ -278,12 +279,18 @@ export class GeminiProvider implements Provider {
 
   /**
    * Gera imagem via Gemini Nano Banana (gemini-2.5-flash-image) ou Imagen.
-   * Endpoint nativo:  /v1beta/models/{model}:generateContent
+   * Endpoint nativo:  /v1/models/{model}:generateContent
+   *
+   * Quirks confirmados via webfetch (ai.google.dev/gemini-api/docs/image-generation):
+   *  - **responseModalities** precisa de `["TEXT", "IMAGE"]`, não só `["IMAGE"]`
+   *  - **Endpoint** é `/v1/` (não `/v1beta/`) pro Nano Banana
+   *  - **Response shape** usa `inlineData` (camelCase) no JSON
+   *  - **Model ID** correto é `gemini-2.5-flash-image` (sem "-preview")
    *
    * Body:
    *   {
    *     contents: [{ parts: [{ text: prompt }] }],
-   *     generationConfig: { responseModalities: ["IMAGE"] }
+   *     generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
    *   }
    *
    * Response: candidates[0].content.parts[i].inlineData.{data, mimeType}
@@ -302,7 +309,8 @@ export class GeminiProvider implements Provider {
     const body = {
       contents: [{ parts: [{ text: request.prompt }] }],
       generationConfig: {
-        responseModalities: ["IMAGE"],
+        // CRÍTICO: precisa de TEXT + IMAGE — só IMAGE retorna vazio
+        responseModalities: ["TEXT", "IMAGE"],
         ...(request.seed != null ? { seed: request.seed } : {}),
       },
     };
@@ -316,7 +324,11 @@ export class GeminiProvider implements Provider {
         throw: false,
       });
     } catch (err) {
+      console.error("[axxa] Gemini image gen network error:", err);
       throw new ProviderError("Falha de conexão.", "network");
+    }
+    if (res.status < 200 || res.status >= 300) {
+      console.error("[axxa] Gemini image gen failed:", res.status, res.json ?? res.text);
     }
     if (res.status === 401 || res.status === 403) {
       throw new ProviderError(
@@ -331,27 +343,42 @@ export class GeminiProvider implements Provider {
       );
     }
     if (res.status < 200 || res.status >= 300) {
-      const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
-      throw new ProviderError(`Gemini imagens: ${msg}`, "unknown");
+      const msg =
+        res.json?.error?.message ??
+        (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
+        `HTTP ${res.status}`;
+      throw new ProviderError(`Gemini imagens (${res.status}): ${msg}`, "unknown");
     }
-    const parts: Array<{ inlineData?: { data: string; mimeType: string }; text?: string }> =
-      res.json?.candidates?.[0]?.content?.parts ?? [];
+    // Aceita ambos os shapes: inlineData (camelCase, comum em REST JS clients)
+    // OU inline_data (snake_case, formato cru REST)
+    const parts: Array<{
+      inlineData?: { data: string; mimeType: string };
+      inline_data?: { data: string; mime_type: string };
+      text?: string;
+    }> = res.json?.candidates?.[0]?.content?.parts ?? [];
     const items: MediaGenerationItem[] = [];
     let textAccum = "";
     for (const p of parts) {
-      if (p.inlineData?.data) {
-        const data = base64ToBytes(p.inlineData.data);
+      const inline = p.inlineData ?? (
+        p.inline_data
+          ? { data: p.inline_data.data, mimeType: p.inline_data.mime_type }
+          : null
+      );
+      if (inline?.data) {
+        const data = base64ToBytes(inline.data);
         items.push({
           data,
-          mime: p.inlineData.mimeType || "image/png",
+          mime: inline.mimeType || "image/png",
         });
       } else if (p.text) {
         textAccum += p.text;
       }
     }
     if (items.length === 0) {
+      // Erro mais claro: cita modelo + sugere usar gemini-2.5-flash-image
       throw new ProviderError(
-        "Gemini não retornou imagens — verifique se o modelo suporta IMAGE modality.",
+        `Gemini "${request.model}" não retornou imagens. ` +
+          `Modelos confirmados pra image gen: gemini-2.5-flash-image (Nano Banana), imagen-3.0-generate-002.`,
         "unknown"
       );
     }

@@ -354,6 +354,8 @@ export function Composer({
         placeholderCompartment.of(cmPlaceholder(placeholderText)),
         // Autocomplete: @nota (wikilinks) + /comando (actions do AXXA).
         // Sources delegam pra app e commandsRef — capturam ref live (não closure).
+        // aboveCursor:true → tooltip sempre acima do cursor pra não ficar
+        // escondido atrás do teclado virtual no mobile.
         autocompletion({
           override: [
             wikilinkCompletionSource(app),
@@ -361,6 +363,7 @@ export function Composer({
           ],
           activateOnTyping: true,
           maxRenderedOptions: 30,
+          aboveCursor: true,
         }),
         // Renderiza o popup do autocomplete COMO position:fixed no document.body,
         // escapando do overflow:hidden do composer pill. Sem isso o dropdown

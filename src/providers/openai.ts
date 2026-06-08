@@ -359,8 +359,14 @@ export class OpenAIProvider implements Provider {
 
   /**
    * Gera imagem via DALL-E 3 ou gpt-image-1.
-   * Endpoint: /v1/images/generations. Retorna URL ou b64_json conforme `response_format`.
-   * Usamos b64_json pra ter os bytes direto sem precisar fazer fetch separado.
+   * Endpoint: /v1/images/generations.
+   *
+   * Quirks confirmados via webfetch:
+   *  - **gpt-image-1** NÃO aceita `response_format` — sempre devolve `b64_json`.
+   *    Mandar o param dá erro 400 "Unknown parameter: response_format".
+   *  - **DALL-E 3** aceita só sizes `1024x1024`, `1024x1792`, `1792x1024`.
+   *  - **DALL-E 2** aceita `256x256`, `512x512`, `1024x1024`.
+   *  - **gpt-image-1** aceita `1024x1024`, `1024x1536`, `1536x1024`, `auto`.
    */
   async generateImage(
     request: MediaGenerationRequest,
@@ -369,13 +375,22 @@ export class OpenAIProvider implements Provider {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError("API key da OpenAI não configurada.", "no-key");
     }
+    const isGptImage = request.model.startsWith("gpt-image");
+    const isDallE3 = request.model.startsWith("dall-e-3");
+
     const body: Record<string, unknown> = {
       model: request.model,
       prompt: request.prompt,
       n: request.n ?? 1,
       size: request.size && request.size !== "auto" ? request.size : "1024x1024",
-      response_format: "b64_json",
     };
+    // gpt-image-1 NÃO aceita response_format (sempre b64_json). DALL-E aceita.
+    if (!isGptImage) {
+      body.response_format = "b64_json";
+    }
+    // DALL-E 3 só gera 1 imagem por chamada
+    if (isDallE3) body.n = 1;
+
     let res;
     try {
       res = await requestUrl({
@@ -387,7 +402,11 @@ export class OpenAIProvider implements Provider {
         throw: false,
       });
     } catch (err) {
+      console.error("[axxa] OpenAI image gen network error:", err);
       throw new ProviderError("Falha de conexão na geração.", "network");
+    }
+    if (res.status < 200 || res.status >= 300) {
+      console.error("[axxa] OpenAI image gen failed:", res.status, res.json ?? res.text);
     }
     if (res.status === 401) {
       throw new ProviderError("API key inválida.", "invalid-key");
@@ -396,17 +415,26 @@ export class OpenAIProvider implements Provider {
       throw new ProviderError("Rate limit OpenAI.", "rate-limit");
     }
     if (res.status < 200 || res.status >= 300) {
-      const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
-      throw new ProviderError(`OpenAI imagens: ${msg}`, "unknown");
+      const msg =
+        res.json?.error?.message ??
+        (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
+        `HTTP ${res.status}`;
+      throw new ProviderError(`OpenAI imagens (${res.status}): ${msg}`, "unknown");
     }
     const items = res.json?.data;
     if (!Array.isArray(items) || items.length === 0) {
-      throw new ProviderError("Resposta sem imagens.", "unknown");
+      throw new ProviderError("OpenAI: resposta sem imagens (data vazio).", "unknown");
     }
-    // Parse o size pra extrair width/height (se vier no formato WxH).
     const [width, height] = parseSize(body.size as string);
-    return items.map((it: { b64_json?: string; revised_prompt?: string }) => {
+    return items.map((it: { b64_json?: string; url?: string; revised_prompt?: string }) => {
       const b64 = it.b64_json ?? "";
+      if (!b64) {
+        // Fallback se vier `url` em vez de b64 (caso raro)
+        throw new ProviderError(
+          "OpenAI: imagem retornada sem b64_json (apenas url). Fetch da URL não implementado.",
+          "unknown"
+        );
+      }
       const data = base64ToBytes(b64);
       return {
         data,
