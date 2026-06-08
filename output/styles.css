@@ -142,37 +142,32 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
   background-color: var(--background-primary) !important;
 }
 
-/* === Edge-to-edge bg em SIDEBAR REGULAR (não fullscreen) v0.1.57 ===
-   Aplica background-primary nos containers do leaf + safe-area-zone
-   pra que a barra nativa do OS (Android nav buttons OU gesture handle)
-   mostre o mesmo bg do chat. Resultado: text-area parece ocupar 100%
-   da viewport, sem bloco branco/cinza atrás da nav.
-
-   Escopo: aplica apenas quando a leaf do AXXA OS é o conteúdo visível
-   (data-type matching). Não afeta outras leaves do Obsidian. */
-body.is-mobile .workspace-leaf-content[data-type="axxa-os-ai-agent"],
-body.is-mobile .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content,
-body.is-mobile .workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]),
-body.is-mobile .workspace-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
+/* === Edge-to-edge bg (v0.1.57 → v0.1.62 REVERTIDO em non-fullscreen) ===
+   v0.1.62: revertido em non-fullscreen a pedido do user.
+   Non-fullscreen mantem layout default do Obsidian (navbar, footers,
+   etc visiveis e funcionais).
+   Aplica background-primary apenas em FULLSCREEN. */
+body.is-mobile.axxa-fullscreen .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+body.is-mobile.axxa-fullscreen .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content,
+body.is-mobile.axxa-fullscreen .workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]),
+body.is-mobile.axxa-fullscreen .workspace-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
   background: var(--background-primary) !important;
   background-color: var(--background-primary) !important;
 }
 
-/* === Obsidian native chrome "5px transparent" trick (v0.1.61) ===
-   Aplicado a TODA navegacao nativa do Obsidian em mobile.
-   Visualmente invisivel + estrutura preservada pro Obsidian.
-   pointer-events: none impede que esses elementos respondam a
-   overlay/keyboard/animation triggers — eliminando o footer fantasma
-   que "ouvia movimentos de overlay" em non-fullscreen. */
-body.is-mobile .mobile-navbar,
-body.is-mobile .mobile-toolbar,
-body.is-mobile .workspace-drawer-footer,
-body.is-mobile .workspace-drawer-header,
-body.is-mobile .workspace-drawer-tab-options,
-body.is-mobile .workspace-tab-header-container,
-body.is-mobile .nav-buttons-container,
-body.is-mobile .titlebar,
-body.is-mobile .status-bar {
+/* === Obsidian native chrome "5px transparent" trick (v0.1.62) ===
+   APLICA APENAS NO FULLSCREEN (revertido em v0.1.62 a pedido do user
+   — non-fullscreen deve manter elementos Obsidian funcionais/visiveis).
+   Substitui o display:none anterior (v0.1.51): elementos ficam com
+   5px transparent em vez de none — visualmente identico mas preserva
+   layout estrutural. */
+body.is-mobile.axxa-fullscreen .mobile-navbar,
+body.is-mobile.axxa-fullscreen .mobile-toolbar,
+body.is-mobile.axxa-fullscreen .workspace-drawer-footer,
+body.is-mobile.axxa-fullscreen .workspace-drawer-tab-options,
+body.is-mobile.axxa-fullscreen .nav-buttons-container,
+body.is-mobile.axxa-fullscreen .titlebar,
+body.is-mobile.axxa-fullscreen .status-bar {
   height: 5px !important;
   min-height: 0 !important;
   max-height: 5px !important;
@@ -183,29 +178,24 @@ body.is-mobile .status-bar {
   overflow: hidden !important;
   padding: 0 !important;
   margin: 0 !important;
-  /* CRITICAL: impede que esses elementos respondam a overlay/keyboard
-     triggers que faziam o "footer fantasma" aparecer em non-fullscreen */
   pointer-events: none !important;
 }
 
-/* Conteudo interno escondido pra evitar visibilidade meio-cortada */
-body.is-mobile .mobile-navbar > *,
-body.is-mobile .mobile-toolbar > *,
-body.is-mobile .workspace-drawer-footer > *,
-body.is-mobile .workspace-drawer-header > *,
-body.is-mobile .workspace-drawer-tab-options > *,
-body.is-mobile .workspace-tab-header-container > *,
-body.is-mobile .nav-buttons-container > *,
-body.is-mobile .titlebar > *,
-body.is-mobile .status-bar > * {
+body.is-mobile.axxa-fullscreen .mobile-navbar > *,
+body.is-mobile.axxa-fullscreen .mobile-toolbar > *,
+body.is-mobile.axxa-fullscreen .workspace-drawer-footer > *,
+body.is-mobile.axxa-fullscreen .workspace-drawer-tab-options > *,
+body.is-mobile.axxa-fullscreen .nav-buttons-container > *,
+body.is-mobile.axxa-fullscreen .titlebar > *,
+body.is-mobile.axxa-fullscreen .status-bar > * {
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
-/* Fallback browsers velhos sem :has() — aplica mais amplo */
+/* Fallback browsers velhos sem :has() — aplica mais amplo em fullscreen */
 @supports not selector(html:has(*)) {
-  body.is-mobile .workspace-leaf-content[data-type="axxa-os-ai-agent"],
-  body.is-mobile .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+  body.is-mobile.axxa-fullscreen .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+  body.is-mobile.axxa-fullscreen .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
     background: var(--background-primary) !important;
   }
 }

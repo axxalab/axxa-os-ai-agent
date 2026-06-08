@@ -270,26 +270,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     return unsub;
   }, [plugin]);
 
-  // Aplica o modo fullscreen mobile no mount + reapplica quando settings mudar
+  // Aplica o modo fullscreen mobile no mount + reapplica quando settings mudar.
+  // theme-color do OS = --background-primary APENAS quando fullscreen ativo
+  // (revertido em v0.1.62 — non-fullscreen mantem theme-color default
+  // do Obsidian, sem alterar OS nav bar).
   useEffect(() => {
-    applyMobileFullscreen(plugin.settings.mobileFullscreen);
+    const enabled = plugin.settings.mobileFullscreen;
+    applyMobileFullscreen(enabled);
+    applyThemeColor(enabled);
     return () => {
-      // Limpa ao unmontar a view (volta drawer ao normal)
       applyMobileFullscreen(false);
-    };
-  }, [plugin.settings.mobileFullscreen]);
-
-  // theme-color do OS = --background-primary SEMPRE quando AXXA monta
-  // (mesmo fora do fullscreen). Faz a OS pintar a nav bar nativa com
-  // a cor do chat — text-area "transparece" atrás da barra do sistema.
-  useEffect(() => {
-    applyThemeColor(true);
-    return () => {
-      // Cleanup só se realmente está desmontando o AXXA — restaura
-      // theme-color original do Obsidian.
       applyThemeColor(false);
     };
-  }, []);
+  }, [plugin.settings.mobileFullscreen]);
 
   // Lê traduções na hora — atualiza no próximo render (após forceRender acima)
   const t = getTranslations(plugin.settings.language);
