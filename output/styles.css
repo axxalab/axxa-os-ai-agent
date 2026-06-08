@@ -257,6 +257,72 @@ body.is-mobile
 }
 
 /* =====================================================
+ * Back-to-bottom button (v0.1.49)
+ * Botão redondo igual ao send/mic do composer.
+ * Sempre acima do composer flutuante, mesmas vars de keyboard.
+ * ===================================================== */
+
+.axxa-back-to-bottom,
+.axxa-back-to-bottom:hover,
+.axxa-back-to-bottom:focus,
+.axxa-back-to-bottom:active {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.axxa-back-to-bottom {
+  position: absolute;
+  right: 16px;
+  /* Acima do composer flutuante: composer-h + 12px de gap.
+     view-content padding já cobre navbar + safe-area. */
+  bottom: calc(var(--axxa-composer-h, 80px) + 12px);
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--background-secondary) !important;
+  color: var(--text-normal) !important;
+  cursor: pointer;
+  z-index: 48;
+  /* Mesma sombra FAB do composer pra consistência visual */
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--background-modifier-border) !important;
+  transition: bottom 0.18s ease, transform 0.12s, background 0.15s;
+}
+
+.axxa-back-to-bottom .axxa-icon .svg-icon {
+  width: 18px;
+  height: 18px;
+}
+
+@media (hover: hover) {
+  .axxa-back-to-bottom:hover {
+    background: var(--background-modifier-hover) !important;
+    transform: translateY(-1px);
+  }
+}
+
+.axxa-back-to-bottom:active {
+  transform: scale(0.93);
+}
+
+/* Mobile teclado aberto: sobe junto com composer */
+body.is-mobile.axxa-keyboard-open .axxa-back-to-bottom {
+  bottom: calc(
+    var(--keyboard-height, 0px) +
+    var(--safe-area-inset-bottom, 0px) +
+    var(--axxa-composer-h, 80px) +
+    12px
+  );
+}
+
+/* =====================================================
  * Day separator (Hoje / Ontem / 12 de junho)
  * Pill centrada (regra: 999px em pills/badges)
  * ===================================================== */
@@ -828,13 +894,9 @@ body.is-mobile
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: calc(
-    var(--keyboard-height, 0px) +
-    var(--safe-area-inset-bottom, 0px) +
-    var(--copilot-status-bar-clearance, 0px) +
-    var(--axxa-composer-h, 80px) +
-    14px
-  );
+  /* Mesma lógica do composer: view-content padding já handle navbar+safe.
+     Banner fica composer-h + 14px acima do composer (que tá em bottom:8px) */
+  bottom: calc(var(--axxa-composer-h, 80px) + 14px);
   z-index: 49;
   display: flex;
   align-items: center;
@@ -860,19 +922,10 @@ body.is-mobile
   }
 }
 
-body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav) .axxa-incompat-banner {
-  bottom: calc(
-    var(--keyboard-height, 0px) +
-    var(--navbar-height, 50px) +
-    var(--safe-area-inset-bottom, 0px) +
-    var(--axxa-composer-h, 80px) +
-    14px
-  );
-}
-
 body.is-mobile.axxa-keyboard-open .axxa-incompat-banner {
   bottom: calc(
     var(--keyboard-height, 0px) +
+    var(--safe-area-inset-bottom, 0px) +
     var(--axxa-composer-h, 80px) +
     14px
   );
@@ -998,41 +1051,34 @@ body.is-mobile.axxa-keyboard-open .axxa-incompat-banner {
   position: absolute;
   left: 8px;
   right: 8px;
-  bottom: calc(
-    var(--keyboard-height, 0px) +
-    var(--safe-area-inset-bottom, 0px) +
-    var(--copilot-status-bar-clearance, 0px) +
-    8px
-  );
+  /* IMPORTANTE: .view-content já tem padding-bottom = navbar + safe-area
+     + copilot-clearance + size-4-1 (regra desktop/mobile com navbar).
+     Então o composer com bottom:8px FICA visivelmente acima da
+     safe-area e do navbar — não precisa somar essas vars de novo
+     (causava o bug "fica muito acima do normal"). */
+  bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 8px 4px 6px;
-  /* Background do composer continua transparente — o pill interno
-     tem o fundo sólido. */
   background: transparent;
-  /* Eleva acima de qualquer overlay/system bar */
   z-index: 50;
   /* Transição suave quando o teclado abre/fecha */
   transition: bottom 0.18s ease;
-  /* Sombra sutil pra "destacar" do chat area por trás */
   pointer-events: auto;
 }
 
-/* Mobile com navbar nativo visível: soma o navbar-height ao offset */
-body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav) .axxa-composer {
+/* Mobile com teclado aberto: a regra do view-content padding pra navbar
+   deixa de matchar (`.is-hidden-nav` é adicionada ao body), então o
+   padding-bottom da view-content cai pra só size-4-1.
+   Aqui compensamos COMPLETAMENTE: keyboard + safe-area + breath.
+   axxa-keyboard-open é setado pelo AxxaView.tsx via MutationObserver. */
+body.is-mobile.axxa-keyboard-open .axxa-composer {
   bottom: calc(
     var(--keyboard-height, 0px) +
-    var(--navbar-height, 50px) +
     var(--safe-area-inset-bottom, 0px) +
     8px
   );
-}
-
-/* Mobile com teclado aberto: cancela o navbar-height (teclado sobrepõe nav).
-   axxa-keyboard-open é setado pelo AxxaView.tsx via MutationObserver. */
-body.is-mobile.axxa-keyboard-open .axxa-composer {
-  bottom: calc(var(--keyboard-height, 0px) + 8px);
 }
 
 /* Garante que conteúdo interno do composer fique acima do pseudo-bg */
@@ -1057,19 +1103,33 @@ body.is-mobile.axxa-keyboard-open .axxa-composer {
    mesmo com nome de modelo longo (ex: anthropic/claude-3.5-sonnet-20241022). */
 .axxa-composer-info {
   display: flex;
-  /* Single line garantida — sem wrap. User curou via Settings → Chips. */
-  flex-wrap: nowrap;
+  /* v0.1.49: PERMITE wrap pra 2 linhas (era nowrap). Status line cabe
+     bem em telas estreitas sem cortar chips. */
+  flex-wrap: wrap;
   align-items: center;
   gap: 3px 10px;
-  padding: 0 6px;
+  padding: 5px 10px;
+  margin: 0 4px;
   font-size: 10px;
   line-height: 1.3;
   user-select: none;
   max-width: 100%;
   min-width: 0;
-  /* Se ainda assim o conjunto estourar a largura, esconde silenciosamente
-     em vez de quebrar pra próxima linha */
-  overflow: hidden;
+  /* Backdrop blur — destaca a status line do chat por trás (composer FAB
+     deixa o chat visível por baixo dos chips). */
+  background: color-mix(in srgb, var(--background-primary) 70%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+}
+
+/* Fallback browsers sem color-mix (Safari < 16.2) */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-composer-info {
+    background: var(--background-primary);
+    opacity: 0.96;
+  }
 }
 
 .axxa-info-chip {
