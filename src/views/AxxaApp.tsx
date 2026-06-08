@@ -24,7 +24,8 @@ import {
 import { TranslationsContext, getTranslations } from "../i18n";
 import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
-import { ProviderError, type ProviderMessage } from "../providers/base";
+import { ProviderError, type ProviderMessage, type MessageAttachment } from "../providers/base";
+import { getModelCapabilities } from "../providers/modelCapabilities";
 import {
   effortToMaxTokens,
   effortToVaultLookup,
@@ -257,7 +258,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // "Pensando..." → streamChat → trata erro/abort.
   // Lê a história ATUAL do store (não captura via closure) pra funcionar
   // tanto no handleSend quanto no handleRegenerate (que mutou o array antes).
-  const streamReply = async (userText: string) => {
+  // userAttachments: imagens anexadas pela UI — propagadas pra última msg user
+  // do history quando o modelo suporta vision.
+  const streamReply = async (
+    userText: string,
+    userAttachments?: import("../providers/base").MessageAttachment[]
+  ) => {
     const {
       addMessage,
       removeMessage,
@@ -361,14 +367,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           ? t.systemPrompt.base + t.systemPrompt.vaultQaSuffix + vaultContextBlock
           : t.systemPrompt.base;
 
+      // Pega só user/assistant do store. Última user msg ganha attachments
+      // multimodais se foram passados pra essa chamada.
+      const storeMsgs = useChatStore.getState().messages
+        .filter((m) => m.type === "user" || m.type === "ai-response");
+      const historyConverted: ProviderMessage[] = storeMsgs.map((m, idx) => {
+        const base = {
+          role: (m.type === "user" ? "user" : "assistant") as "user" | "assistant",
+          content: (m as { content: string }).content,
+        };
+        const isLastUser =
+          idx === storeMsgs.length - 1 && m.type === "user";
+        if (isLastUser && userAttachments && userAttachments.length > 0) {
+          return { ...base, attachments: userAttachments };
+        }
+        return base;
+      });
       const history: ProviderMessage[] = [
         { role: "system", content: fullSystem },
-        ...useChatStore.getState().messages
-          .filter((m) => m.type === "user" || m.type === "ai-response")
-          .map((m) => ({
-            role: (m.type === "user" ? "user" : "assistant") as "user" | "assistant",
-            content: (m as { content: string }).content,
-          })),
+        ...historyConverted,
       ];
 
       const apiKey = apiKeyFor(activeProviderId);
@@ -426,21 +443,37 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   };
 
   // ============================================================
-  // Agent loop — non-streaming, com tool calls
+  // Agent loop — STREAMING + tool calls (v0.1.40)
   //
   // Flow:
-  //   1. Monta history com system prompt do agent + tools disponíveis
-  //   2. Chama provider.chat() (NÃO streaming — agent precisa ver resposta inteira)
-  //   3. Se tem toolCalls: pra cada uma → check permission → modal se preciso → executa
-  //   4. Adiciona tool results na history
-  //   5. Loop (até MAX_TURNS) ou para quando resposta tem só texto (final answer)
+  //   1. Monta history com system prompt + tools disponíveis
+  //   2. Chama provider.streamChat() pra cada turno — tokens vêm via onToken
+  //      e alimentam um ai-response message (sticky-bottom scroll funciona)
+  //   3. Retorno do streamChat tem o estado final (text + tool_calls + usage)
+  //   4. Se tem toolCalls: pra cada uma → check permission → executa
+  //   5. Loop até resposta sem tools (final answer)
+  //
+  // Por que streaming agora?
+  //   - User vê os tokens chegando (igual chat mode)
+  //   - Token/s metric funciona
+  //   - Sticky-bottom scroll triggered por updates de message
+  //   - Provider sem streaming real (NIM) cai num pseudo-stream que ainda
+  //     emite onToken — UX consistente
   // ============================================================
-  const runAgentTurn = async (userText: string) => {
+  const runAgentTurn = async (
+    userText: string,
+    userAttachments?: import("../providers/base").MessageAttachment[]
+  ) => {
     const {
       addMessage,
       removeMessage,
+      appendToMessage,
       setLoading,
+      setStreamingMessageId,
       addUsage,
+      startStreamTimer,
+      tickStreamTokens,
+      endStreamTimer,
     } = useChatStore.getState();
 
     if (!activeProvider.supportsTools) {
@@ -454,7 +487,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setLoading(true);
     const commentId = addMessage({
       type: "ai-comment",
-      content: "🤖 Agente pensando...",
+      content: t.agent.thinking,
     });
 
     const permissionLevel: PermissionLevel = (plugin.settings.agentPermissionLevel ||
@@ -469,22 +502,29 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       "Quando terminar, devolva uma resposta de texto resumindo o que fez. " +
       "Pra editar arquivos, SEMPRE use vault_read antes pra ver o conteúdo exato.";
 
-    // Constrói history inicial — pega só user/assistant do store (chat anterior),
-    // depois acrescenta a nova user msg que acabou de ser enviada
-    const conversationHistory: ProviderMessage[] = useChatStore
+    // Constrói history inicial — pega só user/assistant do store (chat anterior).
+    // Última user msg recebe attachments multimodais se vieram.
+    const storeMsgs = useChatStore
       .getState()
-      .messages.filter((m) => m.type === "user" || m.type === "ai-response")
-      .map((m) => ({
+      .messages.filter((m) => m.type === "user" || m.type === "ai-response");
+    const conversationHistory: ProviderMessage[] = storeMsgs.map((m, idx) => {
+      const isLastUser =
+        idx === storeMsgs.length - 1 && m.type === "user";
+      const base = {
         role: (m.type === "user" ? "user" : "assistant") as "user" | "assistant",
         content: (m as { content: string }).content,
-      }));
+      };
+      if (isLastUser && userAttachments && userAttachments.length > 0) {
+        return { ...base, attachments: userAttachments };
+      }
+      return base;
+    });
 
     const history: ProviderMessage[] = [
       { role: "system", content: AGENT_SYSTEM_PROMPT },
       ...conversationHistory,
     ];
 
-    // Tools no formato do provider base (que OpenAI provider converte pro wire)
     const tools = TOOL_DEFINITIONS.map((td) => ({
       name: td.name,
       description: td.description,
@@ -493,35 +533,69 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     const apiKey = apiKeyFor(activeProviderId);
 
-    const MAX_TURNS = 10; // safety cap pra evitar loop infinito
+    const MAX_TURNS = 10;
     let turn = 0;
     let firstTurn = true;
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       while (turn < MAX_TURNS) {
         turn++;
-        const response = await activeProvider.chat(
+
+        // Cria msg ai-response que vai ser preenchida token-a-token.
+        // Cada turno é um message separado pra ficar claro qual tokens
+        // pertencem a qual round de tool execution.
+        let responseId: string | null = null;
+        const onToken = (token: string) => {
+          if (responseId === null) {
+            // Remove o comment de "Pensando..." só no primeiro token do primeiro turno
+            if (firstTurn) {
+              removeMessage(commentId);
+              firstTurn = false;
+            }
+            responseId = addMessage({ type: "ai-response", content: token });
+            setStreamingMessageId(responseId);
+          } else {
+            appendToMessage(responseId, token);
+          }
+          tickStreamTokens(token);
+        };
+
+        startStreamTimer();
+        const response = await activeProvider.streamChat(
           {
             model: activeModel,
             messages: history,
             maxTokens: effortToMaxTokens(effort),
             tools,
           },
-          apiKey
+          apiKey,
+          onToken,
+          (usage) => addUsage(usage.input, usage.output),
+          controller.signal
         );
-        if (response.usage) addUsage(response.usage.input, response.usage.output);
+        endStreamTimer();
+        setStreamingMessageId(null);
 
-        // Caso 1: provider devolveu só texto = resposta final, sai do loop
+        // Caso 1: stream terminou sem tool_calls = resposta final
         if (!response.toolCalls || response.toolCalls.length === 0) {
-          if (firstTurn) removeMessage(commentId);
-          addMessage({
-            type: "ai-response",
-            content: response.content || t.ai.emptyResponse,
-          });
+          // Se não veio nem um token (raro), insere uma resposta vazia
+          if (responseId === null) {
+            if (firstTurn) {
+              removeMessage(commentId);
+              firstTurn = false;
+            }
+            addMessage({
+              type: "ai-response",
+              content: response.content || t.ai.emptyResponse,
+            });
+          }
           return;
         }
 
-        // Caso 2: tem tool_calls — adiciona msg do assistant na history e executa
+        // Caso 2: tool_calls — finaliza mensagem do turno (se já criada) e
+        // adiciona msg do assistant na history pra próximo loop.
         if (firstTurn) {
           removeMessage(commentId);
           firstTurn = false;
@@ -547,7 +621,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             continue;
           }
 
-          // Decide se executa direto ou pede confirmação
           const decision = evaluatePermission(def, permissionLevel);
           let approved = decision.autoApprove;
           if (!approved) {
@@ -571,7 +644,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             continue;
           }
 
-          // Executa
           addMessage({
             type: "ai-comment",
             content: agentToolLabel(call.name, call.arguments),
@@ -598,29 +670,43 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             });
           }
         }
-        // Continua o loop pro provider ver os resultados das tools
       }
-      // Atingiu MAX_TURNS sem resposta final
       addMessage({
         type: "ai-response",
-        content: `${t.ai.errorPrefix} Agente atingiu o limite de ${MAX_TURNS} turnos sem terminar. Tente refrasear a tarefa.`,
+        content: t.agent.maxTurnsReached(MAX_TURNS),
       });
     } catch (err) {
       if (firstTurn) removeMessage(commentId);
-      const errorMsg =
-        err instanceof ProviderError
-          ? err.message
-          : err instanceof Error
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // Abort silencioso — usuário clicou em parar
+      } else {
+        const errorMsg =
+          err instanceof ProviderError
             ? err.message
-            : t.ai.unknownError;
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${errorMsg}`,
-      });
+            : err instanceof Error
+              ? err.message
+              : t.ai.unknownError;
+        addMessage({
+          type: "ai-response",
+          content: `${t.ai.errorPrefix} ${errorMsg}`,
+        });
+      }
     } finally {
       setLoading(false);
+      setStreamingMessageId(null);
+      endStreamTimer();
+      abortRef.current = null;
     }
   };
+
+  // Imagens anexadas no composer pra próxima mensagem (limpa após envio).
+  // Cada attachment ganha id estável pra UI tracking — não persiste no .md.
+  interface PendingAttachmentEntry {
+    id: string;
+    attachment: MessageAttachment;
+    name: string;
+  }
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachmentEntry[]>([]);
 
   const handleSend = async (text: string) => {
     const { addMessage, lockSession, setCurrentChatId, setCurrentChatTitle } =
@@ -634,13 +720,24 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       lockSession(activeProviderId, activeModel, activeMode);
     }
 
+    // Filtra attachments só se o modelo aceita vision — silenciosamente
+    // descarta caso contrário (UI já bloqueou attach, mas dupla checagem aqui).
+    const caps = getModelCapabilities(activeProviderId, activeModel);
+    const attachments =
+      caps.vision && pendingAttachments.length > 0
+        ? pendingAttachments.map((p) => p.attachment)
+        : undefined;
+
+    // User msg salva sem attachments no store (pra simplicidade do auto-save .md).
+    // O propagation pro provider acontece via parâmetro adicional pra streamReply/runAgentTurn.
     addMessage({ type: "user", content: text });
+    setPendingAttachments([]);
 
     // Dispatch baseado no modo: agent usa loop com tools, demais usa streamReply
     if (activeMode === "agent") {
-      await runAgentTurn(text);
+      await runAgentTurn(text, attachments);
     } else {
-      await streamReply(text);
+      await streamReply(text, attachments);
     }
   };
 
@@ -1013,6 +1110,32 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onSaveAudio={handleSaveAudio}
             commands={axxaCommands}
             visibleChips={plugin.settings.composerChips}
+            visionEnabled={getModelCapabilities(activeProviderId, activeModel).vision}
+            pendingImages={pendingAttachments
+              .filter((p) => p.attachment.type === "image")
+              .map((p) => ({
+                id: p.id,
+                dataUrl: p.attachment.dataUrl,
+                mimeType: p.attachment.mimeType ?? "image/png",
+                name: p.name,
+              }))}
+            onAddImage={(img) =>
+              setPendingAttachments((prev) => [
+                ...prev,
+                {
+                  id: img.id,
+                  attachment: {
+                    type: "image",
+                    dataUrl: img.dataUrl,
+                    mimeType: img.mimeType,
+                  },
+                  name: img.name,
+                },
+              ])
+            }
+            onRemoveImage={(id) =>
+              setPendingAttachments((prev) => prev.filter((p) => p.id !== id))
+            }
           />
         )}
           {plusOpen && (

@@ -18,6 +18,17 @@ export interface ProviderToolCall {
   arguments: Record<string, unknown>;
 }
 
+/** Anexo multimodal — imagem por enquanto, vídeo/áudio podem vir depois. */
+export interface ImageAttachment {
+  type: "image";
+  /** Data URL (`data:image/png;base64,...`) ou URL externa (`https://...`). */
+  dataUrl: string;
+  /** Mime type — útil pra providers que exigem (Anthropic, Gemini nativo). */
+  mimeType?: string;
+}
+
+export type MessageAttachment = ImageAttachment;
+
 export interface ProviderMessage {
   role: "system" | "user" | "assistant" | "tool";
   content: string;
@@ -25,6 +36,8 @@ export interface ProviderMessage {
   toolCalls?: ProviderToolCall[];
   /** Set em role="tool" — conecta o resultado à tool_call original. */
   toolCallId?: string;
+  /** Anexos multimodais (imagens) — só passa se o modelo suporta vision. */
+  attachments?: MessageAttachment[];
 }
 
 export interface ProviderRequest {
@@ -60,13 +73,20 @@ export interface Provider {
   /** true se este provider suporta tool/function calling no Agent mode. */
   supportsTools?: boolean;
   chat(request: ProviderRequest, apiKey: string): Promise<ProviderResponse>;
+  /**
+   * Streaming SSE — emite tokens via onToken e RETORNA o resumo final
+   * (content acumulado + toolCalls + usage). Caller pode usar o retorno
+   * pra detectar tool_calls no Agent mode.
+   *
+   * Caller antigo (chat mode) só descarta o retorno — compatível.
+   */
   streamChat(
     request: ProviderRequest,
     apiKey: string,
     onToken: TokenHandler,
     onUsage?: UsageHandler,
     signal?: AbortSignal
-  ): Promise<void>;
+  ): Promise<ProviderResponse>;
 }
 
 /**

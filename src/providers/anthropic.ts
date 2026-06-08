@@ -51,7 +51,16 @@ interface ToolResultBlock {
   tool_use_id: string;
   content: string;
 }
-type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
+interface ImageBlock {
+  type: "image";
+  source: {
+    type: "base64" | "url";
+    media_type?: string;
+    data?: string;
+    url?: string;
+  };
+}
+type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock | ImageBlock;
 
 interface AnthropicMessage {
   role: "user" | "assistant";
@@ -124,7 +133,40 @@ function toAnthropicPayload(messages: ProviderMessage[]): {
       continue;
     }
 
-    // User normal ou assistant text-only
+    // User normal — pode ter attachments (imagens) em content array
+    if (m.role === "user" && m.attachments && m.attachments.length > 0) {
+      const blocks: ContentBlock[] = [];
+      if (m.content) blocks.push({ type: "text", text: m.content });
+      for (const att of m.attachments) {
+        if (att.type === "image") {
+          // Anthropic aceita base64 inline OU URL externa
+          const isDataUrl = att.dataUrl.startsWith("data:");
+          if (isDataUrl) {
+            // data:image/png;base64,XXXX → media_type + data separados
+            const match = /^data:([^;]+);base64,(.+)$/.exec(att.dataUrl);
+            if (match) {
+              blocks.push({
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: match[1],
+                  data: match[2],
+                },
+              });
+            }
+          } else {
+            blocks.push({
+              type: "image",
+              source: { type: "url", url: att.dataUrl },
+            });
+          }
+        }
+      }
+      converted.push({ role: "user", content: blocks });
+      continue;
+    }
+
+    // Assistant text-only
     converted.push({
       role: m.role as "user" | "assistant",
       content: m.content,
@@ -266,7 +308,7 @@ export class AnthropicProvider implements Provider {
     onToken: TokenHandler,
     onUsage?: UsageHandler,
     signal?: AbortSignal
-  ): Promise<void> {
+  ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
         "API key da Anthropic não configurada. Vá em Settings → AXXA OS.",
@@ -311,14 +353,17 @@ export class AnthropicProvider implements Provider {
     }
 
     // Parser SSE — Anthropic envia events tipados.
-    // Nos interessam: content_block_delta (texto), message_stop (fim), error.
+    // Nos interessam:
+    //   content_block_start (text ou tool_use), content_block_delta (text_delta
+    //   ou input_json_delta), content_block_stop, message_stop, error.
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-    // Anthropic informa input_tokens em message_start e output_tokens em
-    // message_delta. A gente acumula localmente e dispara onUsage no fim.
     let inputTokens = 0;
     let outputTokens = 0;
+    let accumulatedText = "";
+    // Tool use accumulator por content_block_index
+    const toolUseAccum: Record<number, { id: string; name: string; jsonBuf: string }> = {};
 
     while (true) {
       const { done, value } = await reader.read();
@@ -335,13 +380,27 @@ export class AnthropicProvider implements Provider {
         if (!data) continue;
         try {
           const json = JSON.parse(data);
-          if (
-            json.type === "content_block_delta" &&
-            json.delta?.type === "text_delta"
-          ) {
-            const token = json.delta.text;
-            if (typeof token === "string" && token.length > 0) {
-              onToken(token);
+          if (json.type === "content_block_start") {
+            const block = json.content_block;
+            if (block?.type === "tool_use") {
+              toolUseAccum[json.index] = {
+                id: block.id ?? "",
+                name: block.name ?? "",
+                jsonBuf: "",
+              };
+            }
+          } else if (json.type === "content_block_delta") {
+            if (json.delta?.type === "text_delta") {
+              const token = json.delta.text;
+              if (typeof token === "string" && token.length > 0) {
+                accumulatedText += token;
+                onToken(token);
+              }
+            } else if (json.delta?.type === "input_json_delta") {
+              const idx = json.index;
+              if (toolUseAccum[idx]) {
+                toolUseAccum[idx].jsonBuf += json.delta.partial_json ?? "";
+              }
             }
           } else if (json.type === "message_start") {
             inputTokens = json.message?.usage?.input_tokens ?? 0;
@@ -349,7 +408,12 @@ export class AnthropicProvider implements Provider {
             outputTokens = json.usage?.output_tokens ?? outputTokens;
           } else if (json.type === "message_stop") {
             if (onUsage) onUsage({ input: inputTokens, output: outputTokens });
-            return;
+            return buildAnthropicStreamResponse(
+              accumulatedText,
+              toolUseAccum,
+              inputTokens,
+              outputTokens
+            );
           } else if (json.type === "error") {
             throw new ProviderError(
               `Anthropic: ${json.error?.message ?? "erro durante stream"}`,
@@ -367,9 +431,16 @@ export class AnthropicProvider implements Provider {
     if (onUsage && (inputTokens > 0 || outputTokens > 0)) {
       onUsage({ input: inputTokens, output: outputTokens });
     }
+    return buildAnthropicStreamResponse(
+      accumulatedText,
+      toolUseAccum,
+      inputTokens,
+      outputTokens
+    );
   }
 
-  /** Lista hardcoded — Anthropic não tem endpoint público de models. */
+  /** Monta ProviderResponse do stream — text + tool_use blocks parseados. */
+
   async listModels(_apiKey: string): Promise<string[]> {
     return [
       "claude-opus-4-8",
@@ -377,6 +448,44 @@ export class AnthropicProvider implements Provider {
       "claude-haiku-4-5-20251001",
     ];
   }
+}
+
+/**
+ * Helper compartilhado pra montar ProviderResponse após o stream Anthropic terminar.
+ * Parseia input_json_delta acumulado em cada tool_use block.
+ */
+function buildAnthropicStreamResponse(
+  text: string,
+  toolUseAccum: Record<number, { id: string; name: string; jsonBuf: string }>,
+  inputTokens: number,
+  outputTokens: number
+): ProviderResponse {
+  const indices = Object.keys(toolUseAccum)
+    .map((k) => Number(k))
+    .sort((a, b) => a - b);
+  const toolCalls: ProviderToolCall[] = [];
+  for (const i of indices) {
+    const acc = toolUseAccum[i];
+    if (!acc.name) continue;
+    let parsedArgs: Record<string, unknown> = {};
+    try {
+      // input_json_delta às vezes vem vazio quando o input é {} — buf vazio = {}
+      parsedArgs = acc.jsonBuf ? JSON.parse(acc.jsonBuf) : {};
+    } catch {
+      parsedArgs = { _raw: acc.jsonBuf };
+    }
+    toolCalls.push({
+      id: acc.id || `anthropic_call_${Date.now()}_${i}`,
+      name: acc.name,
+      arguments: parsedArgs,
+    });
+  }
+  const result: ProviderResponse = { content: text };
+  if (toolCalls.length > 0) result.toolCalls = toolCalls;
+  if (inputTokens > 0 || outputTokens > 0) {
+    result.usage = { input: inputTokens, output: outputTokens };
+  }
+  return result;
 }
 
 export const anthropicProvider = new AnthropicProvider();

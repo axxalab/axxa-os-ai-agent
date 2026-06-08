@@ -15,6 +15,12 @@ export const PT_BR = {
     micLabel: "Segure pra gravar áudio",
     micRecording: "Solte pra parar",
     plusLabel: "Mais opções",
+    attachImageLabel: "Anexar imagem",
+    attachImageRemoveLabel: "Remover anexo",
+    attachImageNoVision:
+      "O modelo selecionado não aceita imagens. Troque por um modelo com vision (ex: gpt-4o, claude, gemini).",
+    attachImagePastedNotice: "Imagem colada anexada",
+    attachImageFailed: "Falha ao processar a imagem.",
   },
 
   recording: {
@@ -70,6 +76,11 @@ export const PT_BR = {
     effortLabel: "Effort",
     recentChatsLabel: "Conversas recentes",
     hint: 'Mande a primeira mensagem pra começar. Provider e modelo travam — só Effort pode mudar depois (via "+").',
+    modelCapsAria: "Capacidades do modelo",
+    capVisionTooltip: "Aceita imagens (multimodal)",
+    capToolsTooltip: "Suporta tool calling (Agent Mode)",
+    capStreamTooltip: "Streaming real (tokens chegam ao vivo)",
+    capFreeTooltip: "Modelo gratuito",
   },
 
   modes: {

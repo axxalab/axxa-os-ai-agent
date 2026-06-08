@@ -19,7 +19,7 @@ import {
   TokenHandler,
   UsageHandler,
 } from "./base";
-import { toOpenAIMessages } from "./openai";
+import { toOpenAIMessages, finalizeOpenAIResponse } from "./openai";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODELS_ENDPOINT = "https://openrouter.ai/api/v1/models";
@@ -133,9 +133,28 @@ export class OpenRouterProvider implements Provider {
     onToken: TokenHandler,
     onUsage?: UsageHandler,
     signal?: AbortSignal
-  ): Promise<void> {
+  ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError("API key OpenRouter não configurada.", "no-key");
+    }
+
+    const body: Record<string, unknown> = {
+      model: req.model,
+      messages: toOpenAIMessages(req.messages),
+      stream: true,
+      stream_options: { include_usage: true },
+      max_tokens: req.maxTokens ?? 2000,
+    };
+    if (req.tools && req.tools.length > 0) {
+      body.tools = req.tools.map((t) => ({
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      }));
+      body.tool_choice = "auto";
     }
 
     let res: Response;
@@ -147,13 +166,7 @@ export class OpenRouterProvider implements Provider {
           Authorization: `Bearer ${apiKey.trim()}`,
           ...APP_HEADERS,
         },
-        body: JSON.stringify({
-          model: req.model,
-          messages: req.messages,
-          stream: true,
-          stream_options: { include_usage: true },
-          max_tokens: req.maxTokens ?? 2000,
-        }),
+        body: JSON.stringify(body),
         signal,
       });
     } catch (err) {
@@ -184,6 +197,9 @@ export class OpenRouterProvider implements Provider {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let accumulatedText = "";
+    const toolCallAccum: Record<number, { id: string; name: string; argsBuf: string }> = {};
+    let usage: { input: number; output: number } | undefined;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -197,26 +213,47 @@ export class OpenRouterProvider implements Provider {
         if (!trimmed.startsWith("data:")) continue;
         const data = trimmed.slice(5).trim();
         if (!data || data === "[DONE]") {
-          if (data === "[DONE]") return;
+          if (data === "[DONE]") {
+            return finalizeOpenAIResponse(accumulatedText, toolCallAccum, usage, "openrouter_call");
+          }
           continue;
         }
         try {
           const json = JSON.parse(data);
-          const token = json?.choices?.[0]?.delta?.content;
-          if (typeof token === "string" && token.length > 0) {
-            onToken(token);
+          const delta = json?.choices?.[0]?.delta;
+          if (delta) {
+            const token = delta.content;
+            if (typeof token === "string" && token.length > 0) {
+              accumulatedText += token;
+              onToken(token);
+            }
+            if (Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index ?? 0;
+                if (!toolCallAccum[idx]) {
+                  toolCallAccum[idx] = { id: "", name: "", argsBuf: "" };
+                }
+                if (tc.id) toolCallAccum[idx].id = tc.id;
+                if (tc.function?.name) toolCallAccum[idx].name = tc.function.name;
+                if (typeof tc.function?.arguments === "string") {
+                  toolCallAccum[idx].argsBuf += tc.function.arguments;
+                }
+              }
+            }
           }
-          if (json?.usage && onUsage) {
-            onUsage({
+          if (json?.usage) {
+            usage = {
               input: json.usage.prompt_tokens ?? 0,
               output: json.usage.completion_tokens ?? 0,
-            });
+            };
+            if (onUsage) onUsage(usage);
           }
         } catch {
           /* skip */
         }
       }
     }
+    return finalizeOpenAIResponse(accumulatedText, toolCallAccum, usage, "openrouter_call");
   }
 
   /** Lista modelos modernos do OpenRouter (sem free/auto/etc) */

@@ -163,7 +163,7 @@ export class NimProvider implements Provider {
     onToken: TokenHandler,
     onUsage?: UsageHandler,
     signal?: AbortSignal
-  ): Promise<void> {
+  ): Promise<ProviderResponse> {
     // Reusa a chat() que já vai por requestUrl e funciona em prod.
     if (signal?.aborted) {
       throw new DOMException("Aborted", "AbortError");
@@ -179,6 +179,8 @@ export class NimProvider implements Provider {
     if (response.usage && onUsage) {
       onUsage(response.usage);
     }
+    // Retorna a resposta completa pra Agent loop poder consumir tool_calls.
+    return response;
   }
 
   /** Lista modelos NIM disponíveis no endpoint hospedado. Filtra prefixos relevantes. */

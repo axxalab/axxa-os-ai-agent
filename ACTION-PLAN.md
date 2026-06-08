@@ -1,9 +1,9 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, **6.1+6.2 ✅ Agent 6-provider** validado, **Sprint J ✅ UX polish + chips configuráveis + Settings reorganizado** · próximo: **Sprint K — Coder Mode (6.3) + Embeddings Gemini/NIM (I.5) + Whisper áudio**  
-> **Versão:** 1.3 · plugin em **v0.1.39 (6 providers operacionais + UI profissional)**  
-> **Última revisão:** 08/06/2026 (revisão completa pós-Sprint J)  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, **6.1+6.2 ✅ Agent 6-provider** validado, **Sprint J ✅ UX polish**, **Sprint K.1 ✅ Multimodal + Agent streaming + badges** · próximo: **Sprint K.2 — Coder Mode (6.3) + Embeddings Gemini/NIM (I.5) + Whisper áudio**  
+> **Versão:** 1.4 · plugin em **v0.1.40 (6 providers + chat/vault-qa/agent streaming + multimodal + badges DS)**  
+> **Última revisão:** 08/06/2026 (pós-Sprint K.1)  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
 ---
@@ -375,6 +375,86 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ **🎯 MARCO:** 6 providers funcionando via UI (Settings + StarterScreen), Agent multi-provider 6/6
 - ✅ Bump pra `v0.1.33` em `manifest.json` e `package.json`
 - ⬜ `README.md` mencionando os 2 novos providers — TODO pequeno
+
+---
+
+## SPRINT K.1 — Multimodal + Agent Streaming + Badges (v0.1.40) ✅ Concluído
+> **Objetivo:** Trazer pra Agent/Vault-QA o mesmo streaming + sticky-bottom do Chat mode; aceitar imagens em todos os modos quando o modelo suporta vision; identificar capacidades dos modelos visualmente (DS chips) no seletor.
+> **Status:** ✅ Código entregue 08/06/2026. Smoke test (especialmente vision) pendente.
+
+### K.1.1 Matriz de capacidades (`src/providers/modelCapabilities.ts`) ✅
+- ✅ `getModelCapabilities(provider, model)` retorna `{ vision, tools, streaming, free }`
+- ✅ Match por prefixo (resiliente a versão); ordem do array prioriza prefixos específicos
+- ✅ Cobre 6 providers: OpenAI (gpt-4o+/o1+ família), Anthropic (claude-3/4 vision), Gemini (1.5+/2.5+/3.x), OpenRouter (mapeia por upstream), NIM (Nemotron VL, Llama 3.2 Vision; streaming=false porque é fake via requestUrl), Ollama (llava/bakllava/llama3.2-vision/qwen2.5-vl + texto local)
+- ✅ `capabilityBadges(caps)` helper retorna `[{id,label,icon}]` ordenado pro UI consumir
+
+### K.1.2 Imagens (multimodal) em chat/vault-qa/agent ✅
+- ✅ Tipo novo `ImageAttachment` + `MessageAttachment` em `providers/base.ts`; `ProviderMessage.attachments?: MessageAttachment[]`
+- ✅ `toOpenAIMessages()` (openai.ts) faz user-msg com attachments virar content array `[{type:"text"},{type:"image_url"}]` — formato vision compatível com OpenAI/Gemini/OpenRouter/NIM/Ollama
+- ✅ Anthropic (`toAnthropicPayload`): user com imagens vira content array com `{type:"image",source:{type:"base64",media_type,data}}` — parser de data URL embutido; URLs externas usam `source:{type:"url"}`
+- ✅ Composer (`Composer.tsx`):
+  - Novo botão attach (icon `image`) ao lado do `+` — visível apenas quando `visionEnabled=true`
+  - Hidden `<input type="file" multiple accept="image/*">` (FileReader → dataUrl)
+  - **Paste de imagem no editor**: `EditorView.domEventHandlers({paste})` — intercepta `image/*` do clipboard, gera PendingImage, mostra Notice
+  - Chips de preview acima do composer (`.axxa-composer-attachments`) com thumbnail 28x28 + nome + botão X
+  - Notice clara quando user tenta anexar em modelo sem vision
+- ✅ AxxaApp:
+  - State `pendingAttachments: PendingAttachmentEntry[]` (id estável pra UI tracking)
+  - `handleSend` filtra via `getModelCapabilities().vision` (dupla checagem além da UI)
+  - `streamReply(userText, userAttachments?)` e `runAgentTurn(userText, userAttachments?)` aceitam attachments — propagados pra última user msg do `history`
+- ⚠️ Decisão: attachments NÃO persistem no `.md` do chat (frontmatter ficaria pesado com base64). Trade-off: regen de msg com imagem perde o anexo. Resolver com upload-to-vault depois
+
+### K.1.3 Streaming no Agent mode (refactor `runAgentTurn`) ✅
+- ✅ `streamChat` no contrato `Provider` agora retorna `Promise<ProviderResponse>` (era `Promise<void>`); callers antigos só ignoram o retorno (backwards-compat)
+- ✅ Cada provider parseia tool_calls no STREAM e devolve no retorno:
+  - **OpenAI/Gemini/OpenRouter**: acumulador por `index` (deltas de `tool_calls[i].function.arguments` viram string concatenada → JSON.parse no fim). Helper `finalizeOpenAIResponse` exportado
+  - **Anthropic**: parser de `content_block_start` (tipo tool_use) + `content_block_delta` com `input_json_delta` acumula `partial_json` por block index
+  - **NIM**: streaming "fake" via chat() — apenas retorna a resposta completa (já tinha o trabalho feito)
+  - **Ollama**: parser NDJSON acumula `message.tool_calls[]` quando aparece (Ollama emite tool_calls inteiros, não em deltas)
+- ✅ Body de streamChat agora envia `tools[]` + `tool_choice:"auto"` (faltava em quase todos)
+- ✅ `runAgentTurn` reescrito:
+  - Usa `streamChat` em cada turno, com `onToken` que cria/anexa numa ai-response (não mais ai-comment)
+  - `startStreamTimer` + `tickStreamTokens` + `endStreamTimer` ativam métrica de t/s (chip `speed`)
+  - `setStreamingMessageId` esconde footer durante stream (igual chat mode)
+  - Sticky-bottom scroll dispara naturalmente via ChatArea (já era mode-agnóstico)
+  - AbortController integrado — botão "stop" cancela o agent loop, não só o chat
+  - Retorno do streamChat informa se tem tool_calls → loop continua ou termina
+- ✅ Max turns mantido em 10; permission level (`ask/vault/yolo`) inalterado
+
+### K.1.4 Badges de capacidade no seletor de modelo ✅
+- ✅ `StarterScreen.tsx`: abaixo do `<select>` de modelo, novo `.axxa-model-caps` mostra chips do design system
+- ✅ Cores semânticas do DS:
+  - vision → roxo (`--color-purple`) — combina com chip de model
+  - tools → laranja (`--color-orange`) — combina com chip de effort
+  - stream → verde (`--color-green`) — combina com chip de tokens out
+  - free → cyan (`--color-cyan`) — combina com chip de context
+- ✅ Tooltip por badge via `title` prop (PT-BR + EN-US): explica o significado da capacidade
+- ✅ Reusa `InfoChip` (mesmo componente do status line) — visual unificado
+
+### K.1.5 i18n novos strings ✅
+- ✅ PT-BR + EN-US: `composer.attachImageLabel/RemoveLabel/NoVision/PastedNotice/Failed`
+- ✅ PT-BR + EN-US: `starter.modelCapsAria` + `capVisionTooltip/capToolsTooltip/capStreamTooltip/capFreeTooltip`
+- ✅ `agent.thinking` reusado no `runAgentTurn` (era hardcoded antes)
+- ✅ `agent.maxTurnsReached(n)` reusado
+
+### K.1.6 CSS novo (`styles/main.css`) ✅
+- ✅ `.axxa-composer-attach` — botão de clip com cor accent roxa, hover invertido (text-on-accent sobre bg-purple)
+- ✅ `.axxa-composer-attachments` — linha horizontal scrollável de chips, scrollbar thin
+- ✅ `.axxa-attachment-chip` — pill com thumb 28x28 + name truncate + X
+- ✅ `.axxa-model-caps` — wrap row de InfoChips abaixo do select de modelo
+
+### K.1.7 Estado final ✅
+- ✅ **Chat mode**: streaming SSE (já era) + sticky-bottom + token/s + multimodal opt-in
+- ✅ **Vault Q&A**: streaming SSE (já era, via streamReply compartilhado) + multimodal opt-in
+- ✅ **Agent mode**: AGORA com streaming real (parsing de tool_calls deltas em SSE) + token/s + abort + multimodal opt-in
+- ✅ **Badges no seletor**: usuário vê de cara se o modelo aceita imagem / tem tools / faz streaming real / é grátis
+- ✅ Build verde (`npm run build` exit 0)
+- 🟡 Smoke test pendente: verificar paste de imagem em PT-BR, agent loop com Anthropic (tool_use blocks no stream), NIM com modelo Vision (Llama 3.2 90B Vision via NIM)
+
+### K.1.8 Tech debt remanescente
+- ⬜ Attachments não persistem no `.md` — regen e reload perdem anexo. Mover pro vault como `axxa-ai/attachments/{ts}-{name}` e gravar wikilink no body
+- ⬜ Composer não distingue "streaming fake" (NIM) vs real no chip de speed — funciona, mas o usuário só vê o "spike" no final. Pode mostrar shimmer estático em vez de chip de t/s vivo
+- ⬜ Anthropic chat() non-streaming ainda existe — pode ser removido se Agent loop só usa streamChat agora (mas chat() ainda é usado por outros lugares? checar `chat()` calls antes de remover)
 
 ---
 

@@ -8,7 +8,7 @@
 //
 // "+" button abre o PlusModal (ChatGPT-style bottom sheet com Effort selector)
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   EditorView,
   keymap,
@@ -34,6 +34,13 @@ function formatRecordingDuration(ms: number): string {
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+interface PendingImage {
+  id: string;
+  dataUrl: string;
+  mimeType: string;
+  name: string;
 }
 
 interface ComposerProps {
@@ -62,7 +69,19 @@ interface ComposerProps {
   /** IDs dos chips visíveis no status line. Cada chip renderiza só se seu
    *  id estiver aqui (curado pelo user em Settings → Outros → Chips). */
   visibleChips: string[];
+  /** True se o modelo selecionado aceita imagens. Habilita botão de attach
+   *  + paste de imagem. */
+  visionEnabled?: boolean;
+  /** Imagens pendentes (anexadas pra próxima msg). Renderizadas como chips
+   *  acima do composer. */
+  pendingImages?: PendingImage[];
+  /** Callback chamado quando user adiciona imagem (paste ou attach). */
+  onAddImage?: (img: PendingImage) => void;
+  /** Callback chamado quando user remove imagem do pending. */
+  onRemoveImage?: (id: string) => void;
 }
+
+export type { PendingImage };
 
 // InfoChip extraído pra _shared/InfoChip.tsx — reusado em recent chats list,
 // ConversationsList items, etc. (v0.1.37)
@@ -85,6 +104,10 @@ export function Composer({
   onSaveAudio,
   commands,
   visibleChips,
+  visionEnabled = false,
+  pendingImages = [],
+  onAddImage,
+  onRemoveImage,
 }: ComposerProps) {
   const t = useT();
   const app = useApp();
@@ -107,6 +130,53 @@ export function Composer({
   const [placeholderCompartment] = useState(() => new Compartment());
 
   const [isEmpty, setIsEmpty] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Refs vivas pros handlers da imagem — evita reapegar listeners no editor
+  const visionEnabledRef = useRef(visionEnabled);
+  visionEnabledRef.current = visionEnabled;
+  const onAddImageRef = useRef(onAddImage);
+  onAddImageRef.current = onAddImage;
+
+  // Converte File/Blob em PendingImage via FileReader (data URL).
+  const blobToPendingImage = (blob: Blob, name: string): Promise<PendingImage> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result ?? "");
+        resolve({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          dataUrl,
+          mimeType: blob.type || "image/png",
+          name,
+        });
+      };
+      reader.onerror = () => reject(reader.error ?? new Error("FileReader error"));
+      reader.readAsDataURL(blob);
+    });
+
+  const handleAttachClick = () => {
+    if (!visionEnabled) {
+      new Notice(t.composer.attachImageNoVision);
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ""; // reset pro mesmo arquivo poder ser reanexado
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      try {
+        const img = await blobToPendingImage(file, file.name);
+        onAddImage?.(img);
+      } catch (err) {
+        console.error("[axxa] anexo de imagem falhou:", err);
+        new Notice(t.composer.attachImageFailed);
+      }
+    }
+  };
 
   // ============================================================
   // Audio recording state — hold-to-record com MediaRecorder
@@ -182,6 +252,34 @@ export function Composer({
             const text = update.state.doc.toString().trim();
             setIsEmpty(text.length === 0);
           }
+        }),
+        // Paste de imagem do clipboard — só pega quando o modelo suporta vision.
+        // Continua processando texto normalmente (não bloqueia paste de string).
+        EditorView.domEventHandlers({
+          paste: (event) => {
+            if (!visionEnabledRef.current || !onAddImageRef.current) return false;
+            const items = event.clipboardData?.items;
+            if (!items) return false;
+            for (let i = 0; i < items.length; i++) {
+              const it = items[i];
+              if (it.kind === "file" && it.type.startsWith("image/")) {
+                const file = it.getAsFile();
+                if (!file) continue;
+                event.preventDefault();
+                blobToPendingImage(file, file.name || `pasted-${Date.now()}.png`)
+                  .then((img) => {
+                    onAddImageRef.current?.(img);
+                    new Notice(t.composer.attachImagePastedNotice);
+                  })
+                  .catch((err) => {
+                    console.error("[axxa] paste de imagem falhou:", err);
+                    new Notice(t.composer.attachImageFailed);
+                  });
+                return true;
+              }
+            }
+            return false;
+          },
         }),
         EditorView.theme({
           "&": {
@@ -404,6 +502,39 @@ export function Composer({
           <span className="axxa-recording-hint">{t.composer.micRecording}</span>
         </div>
       )}
+      {/* Hidden file input — disparado pelo botão de clip quando visionEnabled */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+      {/* Imagens pendentes (preview chips antes do envio) */}
+      {pendingImages.length > 0 && (
+        <div className="axxa-composer-attachments" aria-label="Anexos pendentes">
+          {pendingImages.map((img) => (
+            <div key={img.id} className="axxa-attachment-chip">
+              <img
+                src={img.dataUrl}
+                alt={img.name}
+                className="axxa-attachment-thumb"
+              />
+              <span className="axxa-attachment-name">{img.name}</span>
+              <button
+                type="button"
+                className="axxa-attachment-remove"
+                aria-label={t.composer.attachImageRemoveLabel}
+                title={t.composer.attachImageRemoveLabel}
+                onClick={() => onRemoveImage?.(img.id)}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="axxa-composer-row">
         <div className="axxa-composer-pill">
           <button
@@ -415,6 +546,17 @@ export function Composer({
           >
             <Icon name="plus" />
           </button>
+          {visionEnabled && (
+            <button
+              type="button"
+              className="axxa-composer-attach"
+              aria-label={t.composer.attachImageLabel}
+              title={t.composer.attachImageLabel}
+              onClick={handleAttachClick}
+            >
+              <Icon name="image" />
+            </button>
+          )}
           <div ref={editorRef} className="axxa-composer-editor" />
         </div>
         <button

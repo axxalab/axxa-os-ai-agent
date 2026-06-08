@@ -15,6 +15,18 @@ import {
 import type { ChatSummary } from "../_shared/chatPersistence";
 import { formatTokens } from "../_shared/contextWindows";
 import { useT } from "../../i18n";
+import {
+  getModelCapabilities,
+  capabilityBadges,
+} from "../../providers/modelCapabilities";
+
+// Cores DS pra badges de capacidade — cada flag tem uma cor semântica fixa.
+const CAP_COLORS = {
+  vision: "var(--color-purple, #a370f7)",  // multimodal = roxo
+  tools: "var(--color-orange, #ec7b3e)",   // tools = laranja
+  stream: "var(--color-green, #06d6a0)",   // streaming real = verde
+  free: "var(--color-cyan, #4cc9f0)",      // grátis = cyan
+} as const;
 
 // Mesmas cores semânticas usadas no status line do Composer.
 const CHIP_COLORS = {
@@ -24,6 +36,19 @@ const CHIP_COLORS = {
   messages: "var(--color-cyan, #4cc9f0)",
   tokens: "var(--color-green, #06d6a0)",
 } as const;
+
+/** Tooltip por badge — texto explicativo do que cada flag significa. */
+function modelCapTooltip(
+  id: "vision" | "tools" | "stream" | "free",
+  t: ReturnType<typeof useT>
+): string {
+  switch (id) {
+    case "vision": return t.starter.capVisionTooltip;
+    case "tools": return t.starter.capToolsTooltip;
+    case "stream": return t.starter.capStreamTooltip;
+    case "free": return t.starter.capFreeTooltip;
+  }
+}
 
 function modeChipIcon(mode: string): string {
   switch (mode) {
@@ -184,6 +209,19 @@ export function StarterScreen({
             </option>
           ))}
         </select>
+        {/* Badges de capacidade do modelo selecionado — DS chips do design system */}
+        <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
+          {capabilityBadges(getModelCapabilities(provider, model)).map((b) => (
+            <InfoChip
+              key={b.id}
+              icon={b.icon}
+              color={CAP_COLORS[b.id]}
+              title={modelCapTooltip(b.id, t)}
+            >
+              {b.label}
+            </InfoChip>
+          ))}
+        </div>
       </div>
 
       <div className="axxa-starter-section">

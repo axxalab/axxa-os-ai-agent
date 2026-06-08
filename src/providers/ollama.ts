@@ -151,22 +151,34 @@ export class OllamaProvider implements Provider {
     onToken: TokenHandler,
     onUsage?: UsageHandler,
     signal?: AbortSignal
-  ): Promise<void> {
+  ): Promise<ProviderResponse> {
     const endpoint = this.getEndpoint(apiKey);
+
+    const body: Record<string, unknown> = {
+      model: req.model,
+      messages: toOpenAIMessages(req.messages),
+      stream: true,
+      options: {
+        num_predict: req.maxTokens ?? 2000,
+      },
+    };
+    if (req.tools && req.tools.length > 0) {
+      body.tools = req.tools.map((t) => ({
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      }));
+    }
 
     let res: Response;
     try {
       res = await fetch(`${endpoint}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: req.model,
-          messages: req.messages,
-          stream: true,
-          options: {
-            num_predict: req.maxTokens ?? 2000,
-          },
-        }),
+        body: JSON.stringify(body),
         signal,
       });
     } catch (err) {
@@ -188,6 +200,9 @@ export class OllamaProvider implements Provider {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let accumulatedText = "";
+    let usage: { input: number; output: number } | undefined;
+    const accumulatedToolCalls: ProviderToolCall[] = [];
 
     while (true) {
       const { done, value } = await reader.read();
@@ -201,24 +216,52 @@ export class OllamaProvider implements Provider {
         if (!trimmed) continue;
         try {
           const json = JSON.parse(trimmed);
-          const token = json?.message?.content;
+          const message = json?.message;
+          const token = message?.content;
           if (typeof token === "string" && token.length > 0) {
+            accumulatedText += token;
             onToken(token);
           }
+          // Ollama emite tool_calls inteiros (não em deltas) — geralmente
+          // numa linha só, próximo do final do stream.
+          if (Array.isArray(message?.tool_calls) && message.tool_calls.length > 0) {
+            message.tool_calls.forEach(
+              (tc: { id?: string; function: { name: string; arguments: unknown } }, idx: number) => {
+                const raw = tc.function?.arguments;
+                let parsedArgs: Record<string, unknown> = {};
+                if (raw && typeof raw === "object") {
+                  parsedArgs = raw as Record<string, unknown>;
+                } else if (typeof raw === "string") {
+                  try { parsedArgs = JSON.parse(raw); } catch { parsedArgs = { _raw: raw }; }
+                }
+                accumulatedToolCalls.push({
+                  id: tc.id ?? `ollama_call_${Date.now()}_${accumulatedToolCalls.length + idx}`,
+                  name: tc.function.name,
+                  arguments: parsedArgs,
+                });
+              }
+            );
+          }
           if (json?.done === true) {
-            if (onUsage) {
-              onUsage({
-                input: json.prompt_eval_count ?? 0,
-                output: json.eval_count ?? 0,
-              });
-            }
-            return;
+            usage = {
+              input: json.prompt_eval_count ?? 0,
+              output: json.eval_count ?? 0,
+            };
+            if (onUsage) onUsage(usage);
+            const result: ProviderResponse = { content: accumulatedText };
+            if (accumulatedToolCalls.length > 0) result.toolCalls = accumulatedToolCalls;
+            if (usage) result.usage = usage;
+            return result;
           }
         } catch {
           /* skip JSON inválido */
         }
       }
     }
+    const result: ProviderResponse = { content: accumulatedText };
+    if (accumulatedToolCalls.length > 0) result.toolCalls = accumulatedToolCalls;
+    if (usage) result.usage = usage;
+    return result;
   }
 
   /** Lista modelos instalados localmente via /api/tags */

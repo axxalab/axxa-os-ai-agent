@@ -17,6 +17,8 @@ const OPENAI_MODELS_ENDPOINT = "https://api.openai.com/v1/models";
  * Tratamento especial:
  *   - assistant com toolCalls vira { role:"assistant", tool_calls: [...] }
  *   - tool result vira { role:"tool", tool_call_id, content }
+ *   - user com attachments (imagens) vira content array `[{type:"text"},{type:"image_url"}]`
+ *     — formato vision GPT-4o / GPT-5 / o1+
  */
 export function toOpenAIMessages(
   messages: import("./base").ProviderMessage[]
@@ -42,6 +44,19 @@ export function toOpenAIMessages(
           },
         })),
       };
+    }
+    if (m.role === "user" && m.attachments && m.attachments.length > 0) {
+      const parts: Array<Record<string, unknown>> = [];
+      if (m.content) parts.push({ type: "text", text: m.content });
+      for (const att of m.attachments) {
+        if (att.type === "image") {
+          parts.push({
+            type: "image_url",
+            image_url: { url: att.dataUrl },
+          });
+        }
+      }
+      return { role: "user", content: parts };
     }
     return { role: m.role, content: m.content };
   });
@@ -163,8 +178,12 @@ export class OpenAIProvider implements Provider {
 
   /**
    * Streaming SSE — chama onToken pra cada delta recebido.
+   * Retorna ProviderResponse com o estado FINAL acumulado: content total,
+   * toolCalls (se houve) e usage. Agent mode usa esse retorno pra decidir
+   * se executa tools ou se a resposta tá completa.
+   *
    * Lança ProviderError em falhas e AbortError quando o signal aborta.
-   * O caller deve tratar AbortError como cancelamento intencional (sem erro UI).
+   * O caller deve tratar AbortError como cancelamento intencional.
    */
   async streamChat(
     req: ProviderRequest,
@@ -172,12 +191,33 @@ export class OpenAIProvider implements Provider {
     onToken: TokenHandler,
     onUsage?: UsageHandler,
     signal?: AbortSignal
-  ): Promise<void> {
+  ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
         "API key da OpenAI não configurada. Vá em Settings → AXXA OS para colar sua chave.",
         "no-key"
       );
+    }
+
+    // Body com tools — necessário pra Agent mode com streaming
+    const body: Record<string, unknown> = {
+      model: req.model,
+      messages: toOpenAIMessages(req.messages),
+      stream: true,
+      // include_usage faz a OpenAI mandar um chunk final com `usage`
+      stream_options: { include_usage: true },
+      max_completion_tokens: req.maxTokens ?? 2000,
+    };
+    if (req.tools && req.tools.length > 0) {
+      body.tools = req.tools.map((t) => ({
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      }));
+      body.tool_choice = "auto";
     }
 
     let res: Response;
@@ -188,14 +228,7 @@ export class OpenAIProvider implements Provider {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey.trim()}`,
         },
-        body: JSON.stringify({
-          model: req.model,
-          messages: req.messages,
-          stream: true,
-          // include_usage faz a OpenAI mandar um chunk final com `usage`
-          stream_options: { include_usage: true },
-          max_completion_tokens: req.maxTokens ?? 2000,
-        }),
+        body: JSON.stringify(body),
         signal,
       });
     } catch (err) {
@@ -236,6 +269,16 @@ export class OpenAIProvider implements Provider {
     const decoder = new TextDecoder();
     let buffer = "";
 
+    // Acumuladores pro retorno final
+    let accumulatedText = "";
+    // tool_calls vêm em deltas indexados — accumulator por index
+    const toolCallAccum: Record<number, {
+      id: string;
+      name: string;
+      argsBuf: string;
+    }> = {};
+    let usage: { input: number; output: number } | undefined;
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -249,27 +292,51 @@ export class OpenAIProvider implements Provider {
         if (!trimmed.startsWith("data:")) continue;
         const data = trimmed.slice(5).trim();
         if (!data || data === "[DONE]") {
-          if (data === "[DONE]") return;
+          if (data === "[DONE]") {
+            return finalizeOpenAI(accumulatedText, toolCallAccum, usage);
+          }
           continue;
         }
         try {
           const json = JSON.parse(data);
-          const token = json?.choices?.[0]?.delta?.content;
-          if (typeof token === "string" && token.length > 0) {
-            onToken(token);
+          const delta = json?.choices?.[0]?.delta;
+          if (delta) {
+            const token = delta.content;
+            if (typeof token === "string" && token.length > 0) {
+              accumulatedText += token;
+              onToken(token);
+            }
+            // tool_calls em delta — formato:
+            //   { tool_calls: [{ index: 0, id?: "call_x", function: { name?, arguments? } }] }
+            if (Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index ?? 0;
+                if (!toolCallAccum[idx]) {
+                  toolCallAccum[idx] = { id: "", name: "", argsBuf: "" };
+                }
+                if (tc.id) toolCallAccum[idx].id = tc.id;
+                if (tc.function?.name) toolCallAccum[idx].name = tc.function.name;
+                if (typeof tc.function?.arguments === "string") {
+                  toolCallAccum[idx].argsBuf += tc.function.arguments;
+                }
+              }
+            }
           }
           // Último chunk vem com `usage` (graças ao include_usage)
-          if (json?.usage && onUsage) {
-            onUsage({
+          if (json?.usage) {
+            usage = {
               input: json.usage.prompt_tokens ?? 0,
               output: json.usage.completion_tokens ?? 0,
-            });
+            };
+            if (onUsage) onUsage(usage);
           }
         } catch {
           // chunk JSON inválido — pula
         }
       }
     }
+
+    return finalizeOpenAI(accumulatedText, toolCallAccum, usage);
   }
 
   /**
@@ -295,6 +362,70 @@ export class OpenAIProvider implements Provider {
     const all: string[] = (res.json?.data ?? []).map((m: { id: string }) => m.id);
     return all.filter(isRelevantOpenAIModel).sort();
   }
+}
+
+/** Monta o ProviderResponse final a partir dos buffers do stream.
+ *  Exportado pra reuso por providers OpenAI-compat (Gemini, OpenRouter, NIM, Ollama). */
+export function finalizeOpenAIResponse(
+  content: string,
+  toolCallAccum: Record<number, { id: string; name: string; argsBuf: string }>,
+  usage?: { input: number; output: number },
+  idPrefix = "openai_call"
+): ProviderResponse {
+  const indices = Object.keys(toolCallAccum)
+    .map((k) => Number(k))
+    .sort((a, b) => a - b);
+  const toolCalls: import("./base").ProviderToolCall[] = [];
+  for (const i of indices) {
+    const acc = toolCallAccum[i];
+    if (!acc.name) continue;
+    let parsedArgs: Record<string, unknown> = {};
+    try {
+      parsedArgs = acc.argsBuf ? JSON.parse(acc.argsBuf) : {};
+    } catch {
+      parsedArgs = { _raw: acc.argsBuf };
+    }
+    toolCalls.push({
+      id: acc.id || `${idPrefix}_${Date.now()}_${i}`,
+      name: acc.name,
+      arguments: parsedArgs,
+    });
+  }
+  const result: ProviderResponse = { content };
+  if (toolCalls.length > 0) result.toolCalls = toolCalls;
+  if (usage) result.usage = usage;
+  return result;
+}
+
+/** Monta o ProviderResponse final a partir dos buffers do stream. */
+function finalizeOpenAI(
+  content: string,
+  toolCallAccum: Record<number, { id: string; name: string; argsBuf: string }>,
+  usage?: { input: number; output: number }
+): ProviderResponse {
+  const indices = Object.keys(toolCallAccum)
+    .map((k) => Number(k))
+    .sort((a, b) => a - b);
+  const toolCalls: import("./base").ProviderToolCall[] = [];
+  for (const i of indices) {
+    const acc = toolCallAccum[i];
+    if (!acc.name) continue;
+    let parsedArgs: Record<string, unknown> = {};
+    try {
+      parsedArgs = acc.argsBuf ? JSON.parse(acc.argsBuf) : {};
+    } catch {
+      parsedArgs = { _raw: acc.argsBuf };
+    }
+    toolCalls.push({
+      id: acc.id || `openai_call_${Date.now()}_${i}`,
+      name: acc.name,
+      arguments: parsedArgs,
+    });
+  }
+  const result: ProviderResponse = { content };
+  if (toolCalls.length > 0) result.toolCalls = toolCalls;
+  if (usage) result.usage = usage;
+  return result;
 }
 
 /** Mantém só os modelos modernos de chat — sem legacy, sem áudio/embedding/tools. */

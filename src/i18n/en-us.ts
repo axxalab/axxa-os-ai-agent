@@ -15,6 +15,12 @@ export const EN_US: Translations = {
     micLabel: "Hold to record audio",
     micRecording: "Release to stop",
     plusLabel: "More options",
+    attachImageLabel: "Attach image",
+    attachImageRemoveLabel: "Remove attachment",
+    attachImageNoVision:
+      "Selected model doesn't accept images. Pick a vision-capable model (e.g. gpt-4o, claude, gemini).",
+    attachImagePastedNotice: "Pasted image attached",
+    attachImageFailed: "Failed to process the image.",
   },
 
   recording: {
@@ -70,6 +76,11 @@ export const EN_US: Translations = {
     effortLabel: "Effort",
     recentChatsLabel: "Recent conversations",
     hint: 'Send the first message to start. Provider and model lock — only Effort can change later (via "+").',
+    modelCapsAria: "Model capabilities",
+    capVisionTooltip: "Accepts images (multimodal)",
+    capToolsTooltip: "Supports tool calling (Agent Mode)",
+    capStreamTooltip: "Real streaming (tokens arrive live)",
+    capFreeTooltip: "Free model",
   },
 
   modes: {
