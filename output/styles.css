@@ -16,12 +16,31 @@
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
     padding-left: 0;
     padding-right: 0;
+    /* v0.1.58: padding-top: 0 elimina a "barra horizontal ~20px" que
+       Obsidian colocava entre o topo da .view-content e nosso .axxa-header.
+       Era a default --size-4-5 (20px) do Obsidian view-content.
+       O .axxa-header tem seu proprio padding-top interno. */
+    padding-top: 0 !important;
 
     padding-bottom: calc(
         var(--safe-area-inset-bottom, 0px) +
         var(--copilot-status-bar-clearance, 0px) +
         var(--size-4-1)
     ) !important;
+}
+
+/* Esconde .status-bar do Obsidian quando dentro do leaf do AXXA OS
+   (em alguns devices/temas aparece em mobile, gerando strip de ~22px). */
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .status-bar,
+.workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]) .status-bar {
+  display: none !important;
+}
+
+/* Reset margins/padding default no .workspace-leaf que poderiam criar
+   strip horizontal entre o leaf e nosso conteudo */
+.workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
 }
 
 body.is-mobile
