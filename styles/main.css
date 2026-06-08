@@ -3250,9 +3250,11 @@ body.is-mobile .axxa-code-copy {
  * (cores escuras precisam de mais saturação pra aparecer).
  * ===================================================== */
 
+/* IMPORTANT em todos os bg presets pra vencer overrides do Obsidian /
+   temas / nossas próprias regras v0.1.52 + .workspace-leaf-content */
 .axxa-root.axxa-bg-none,
 .axxa-settings-root.axxa-bg-none {
-  background: var(--background-primary);
+  background: var(--background-primary) !important;
 }
 
 /* Settings tab: garante que o scroll funciona sempre.
@@ -3271,13 +3273,13 @@ body.is-mobile .axxa-code-copy {
 .axxa-settings-root.axxa-bg-sunset {
   background:
     linear-gradient(135deg, rgba(255, 126, 95, 0.18), rgba(254, 180, 123, 0.10) 60%, transparent),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 body.theme-dark .axxa-root.axxa-bg-sunset,
 body.theme-dark .axxa-settings-root.axxa-bg-sunset {
   background:
     linear-gradient(135deg, rgba(255, 126, 95, 0.26), rgba(254, 180, 123, 0.16) 60%, transparent),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 
 /* Ocean — cyan → azul */
@@ -3285,13 +3287,13 @@ body.theme-dark .axxa-settings-root.axxa-bg-sunset {
 .axxa-settings-root.axxa-bg-ocean {
   background:
     linear-gradient(135deg, rgba(33, 147, 176, 0.20), rgba(109, 213, 237, 0.10) 60%, transparent),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 body.theme-dark .axxa-root.axxa-bg-ocean,
 body.theme-dark .axxa-settings-root.axxa-bg-ocean {
   background:
     linear-gradient(135deg, rgba(33, 147, 176, 0.28), rgba(109, 213, 237, 0.16) 60%, transparent),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 
 /* Forest — verde → teal */
@@ -3299,13 +3301,13 @@ body.theme-dark .axxa-settings-root.axxa-bg-ocean {
 .axxa-settings-root.axxa-bg-forest {
   background:
     linear-gradient(135deg, rgba(17, 153, 142, 0.20), rgba(56, 239, 125, 0.10) 60%, transparent),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 body.theme-dark .axxa-root.axxa-bg-forest,
 body.theme-dark .axxa-settings-root.axxa-bg-forest {
   background:
     linear-gradient(135deg, rgba(17, 153, 142, 0.28), rgba(56, 239, 125, 0.16) 60%, transparent),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 
 /* Violet — roxo → magenta */
@@ -3313,13 +3315,13 @@ body.theme-dark .axxa-settings-root.axxa-bg-forest {
 .axxa-settings-root.axxa-bg-violet {
   background:
     linear-gradient(135deg, rgba(142, 45, 226, 0.20), rgba(74, 0, 224, 0.10) 60%, transparent),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 body.theme-dark .axxa-root.axxa-bg-violet,
 body.theme-dark .axxa-settings-root.axxa-bg-violet {
   background:
     linear-gradient(135deg, rgba(142, 45, 226, 0.30), rgba(74, 0, 224, 0.18) 60%, transparent),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 
 /* Mono — cinza neutro elegante */
@@ -3327,13 +3329,13 @@ body.theme-dark .axxa-settings-root.axxa-bg-violet {
 .axxa-settings-root.axxa-bg-mono {
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 50%, rgba(0, 0, 0, 0.08)),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 body.theme-dark .axxa-root.axxa-bg-mono,
 body.theme-dark .axxa-settings-root.axxa-bg-mono {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 50%, rgba(255, 255, 255, 0.08)),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 
 /* ---------- RADIAIS (novos v0.1.26) ---------- */
@@ -3344,14 +3346,14 @@ body.theme-dark .axxa-settings-root.axxa-bg-mono {
   background:
     radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.22), transparent 70%),
     radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.22), transparent 70%),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 body.theme-dark .axxa-root.axxa-bg-aurora,
 body.theme-dark .axxa-settings-root.axxa-bg-aurora {
   background:
     radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.30), transparent 70%),
     radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.30), transparent 70%),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 
 /* Spotlight — círculo dourado quente no topo (acolhedor, "lendo à luz da lamparina") */
@@ -3359,13 +3361,13 @@ body.theme-dark .axxa-settings-root.axxa-bg-aurora {
 .axxa-settings-root.axxa-bg-spotlight {
   background:
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(252, 211, 77, 0.28), transparent 65%),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 body.theme-dark .axxa-root.axxa-bg-spotlight,
 body.theme-dark .axxa-settings-root.axxa-bg-spotlight {
   background:
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(252, 211, 77, 0.20), transparent 65%),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 
 /* Nebula — multi-ponto cósmico (azul / rosa / roxo) — vibe criativa */
@@ -3375,7 +3377,7 @@ body.theme-dark .axxa-settings-root.axxa-bg-spotlight {
     radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.22), transparent 50%),
     radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.22), transparent 50%),
     radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.14), transparent 70%),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 body.theme-dark .axxa-root.axxa-bg-nebula,
 body.theme-dark .axxa-settings-root.axxa-bg-nebula {
@@ -3383,7 +3385,7 @@ body.theme-dark .axxa-settings-root.axxa-bg-nebula {
     radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.30), transparent 50%),
     radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.30), transparent 50%),
     radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.20), transparent 70%),
-    var(--background-primary);
+    var(--background-primary) !important;
 }
 
 /* =====================================================
@@ -3560,6 +3562,136 @@ body.theme-dark .axxa-root.axxa-bg-aurora-live::after {
   animation-duration: 9s;
 }
 
+/* =====================================================
+ * Live BGs em Settings (v0.1.55)
+ *
+ * Settings precisa de overflow:auto (scroll). Pseudo-elements absolutos
+ * dentro de container scrollable ficam ANCORADOS no documento, não no
+ * viewport — perdem o efeito ao rolar.
+ *
+ * Fix: usar position:fixed nos pseudos pra eles ficarem ancorados no
+ * viewport. Sem precisar de overflow:hidden no .axxa-settings-root
+ * (que quebraria o scroll).
+ * ===================================================== */
+
+/* Pulse — Settings */
+.axxa-settings-root.axxa-bg-pulse {
+  background: var(--background-primary) !important;
+  position: relative;
+  /* SEM overflow:hidden — preserva scroll vertical da settings */
+}
+.axxa-settings-root.axxa-bg-pulse::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(99, 102, 241, 0.20),
+    transparent 55%
+  );
+  animation: axxa-bg-pulse-loop 6s ease-in-out infinite;
+  z-index: 0;
+}
+body.theme-dark .axxa-settings-root.axxa-bg-pulse::before {
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(99, 102, 241, 0.28),
+    transparent 55%
+  );
+}
+
+/* Flow — Settings */
+.axxa-settings-root.axxa-bg-flow {
+  background: var(--background-primary) !important;
+  position: relative;
+}
+.axxa-settings-root.axxa-bg-flow::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    rgba(56, 189, 248, 0.18),
+    rgba(168, 85, 247, 0.18),
+    rgba(236, 72, 153, 0.18),
+    rgba(56, 189, 248, 0.18)
+  );
+  background-size: 300% 300%;
+  animation: axxa-bg-flow-loop 18s ease infinite;
+  z-index: 0;
+}
+body.theme-dark .axxa-settings-root.axxa-bg-flow::before {
+  background: linear-gradient(
+    115deg,
+    rgba(56, 189, 248, 0.26),
+    rgba(168, 85, 247, 0.26),
+    rgba(236, 72, 153, 0.26),
+    rgba(56, 189, 248, 0.26)
+  );
+  background-size: 300% 300%;
+}
+
+/* Aurora Live — Settings */
+.axxa-settings-root.axxa-bg-aurora-live {
+  background: var(--background-primary) !important;
+  position: relative;
+}
+.axxa-settings-root.axxa-bg-aurora-live::before,
+.axxa-settings-root.axxa-bg-aurora-live::after {
+  content: "";
+  position: fixed;
+  width: 60vw;
+  height: 60vh;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(40px);
+  z-index: 0;
+}
+.axxa-settings-root.axxa-bg-aurora-live::before {
+  top: -10vh;
+  left: -10vw;
+  background: radial-gradient(
+    circle,
+    rgba(34, 197, 94, 0.32) 0%,
+    transparent 70%
+  );
+  animation: axxa-bg-aurora-move-1 22s ease-in-out infinite;
+}
+.axxa-settings-root.axxa-bg-aurora-live::after {
+  bottom: -10vh;
+  right: -10vw;
+  background: radial-gradient(
+    circle,
+    rgba(168, 85, 247, 0.32) 0%,
+    transparent 70%
+  );
+  animation: axxa-bg-aurora-move-2 26s ease-in-out infinite;
+}
+body.theme-dark .axxa-settings-root.axxa-bg-aurora-live::before {
+  background: radial-gradient(
+    circle,
+    rgba(34, 197, 94, 0.40) 0%,
+    transparent 70%
+  );
+}
+body.theme-dark .axxa-settings-root.axxa-bg-aurora-live::after {
+  background: radial-gradient(
+    circle,
+    rgba(168, 85, 247, 0.40) 0%,
+    transparent 70%
+  );
+}
+
+/* Garante conteúdo do settings fica ACIMA das animações de bg */
+.axxa-settings-root.axxa-bg-pulse > *,
+.axxa-settings-root.axxa-bg-flow > *,
+.axxa-settings-root.axxa-bg-aurora-live > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* Garante que o conteúdo do .axxa-root fica ACIMA do ::before animado.
    Sem isso, a animação cobre as mensagens. */
 .axxa-root.axxa-bg-pulse > *,
@@ -3614,11 +3746,17 @@ body.theme-dark .axxa-root.axxa-bg-aurora-live::after {
 }
 
 .axxa-bg-preview {
+  /* CRITICAL: display+width+min-height explicit pra preview nao colapsar
+     pra "listra horizontal vazia" quando dentro do flex column do button */
+  display: block;
+  width: 100%;
   height: 64px;
+  min-height: 64px;
   border-radius: 10px;
   border: 1px solid var(--background-modifier-border);
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .axxa-bg-preview-none {
