@@ -282,12 +282,23 @@ body.is-mobile
   justify-content: space-between;
   gap: 8px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  /* v0.1.61: z-index 1000 — topo absoluto da hierarquia AXXA.
-     Header sempre visivel acima do composer (900) e chat (800). */
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+  /* z-index 1000 — topo absoluto, sempre visivel acima do composer/chat */
   position: relative;
   z-index: 1000;
-  background: var(--background-primary);
+  /* v0.1.63: bg translucent + backdrop blur (mesmo padrao do composer pill).
+     Permite que o gradient/live bg do .axxa-root apareca POR BAIXO do
+     header, herdando o tema ativo. Mensagens scrollam atras com blur. */
+  background: color-mix(in srgb, var(--background-modifier-form-field) 80%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* Fallback browsers sem color-mix */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-header {
+    background: var(--background-modifier-form-field);
+  }
 }
 
 .axxa-header-title {
@@ -473,26 +484,50 @@ body.is-mobile
 .axxa-back-to-bottom {
   position: absolute;
   right: 16px;
-  /* Acima do composer flutuante: composer-h + 12px de gap.
-     view-content padding já cobre navbar + safe-area. */
+  /* Acima do composer flutuante: composer-h + 12px de gap. */
   bottom: calc(var(--axxa-composer-h, 80px) + 12px);
-  width: 38px;
-  height: 38px;
+  /* v0.1.63: altura 44px (mesma do send button do composer) — unificacao
+     visual entre os controles flutuantes. */
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--background-secondary) !important;
+  /* Bg do text field (mesmo do composer pill + status line v0.1.63) */
+  background: color-mix(in srgb, var(--background-modifier-form-field) 80%, transparent) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
   color: var(--text-normal) !important;
   cursor: pointer;
-  /* v0.1.61: entre chat-area (800) e composer (900) */
   z-index: 850;
   /* Mesma sombra FAB do composer pra consistência visual */
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.12),
     0 6px 16px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--background-modifier-border) !important;
-  transition: bottom 0.18s ease, transform 0.12s, background 0.15s;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent) !important;
+  /* Suave: bottom + opacity + scale animation */
+  transition: bottom 0.18s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.15s, opacity 0.2s ease;
+  /* Fade-in + scale-up animation quando aparece */
+  animation: axxa-back-to-bottom-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes axxa-back-to-bottom-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-back-to-bottom {
+    background: var(--background-modifier-form-field) !important;
+  }
 }
 
 .axxa-back-to-bottom .axxa-icon .svg-icon {
@@ -1312,12 +1347,12 @@ body.is-mobile
   user-select: none;
   max-width: 100%;
   min-width: 0;
-  /* v0.1.59: background MAIS OPACO (90% em vez de 75%) pra cobrir
-     completamente o shadow nativo do Obsidian que vazava por trás
-     do blur semi-transparente. */
-  background: color-mix(in srgb, var(--background-primary) 92%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  backdrop-filter: blur(18px) saturate(160%);
+  /* v0.1.63: bg unificado com text field (--background-modifier-form-field
+     em vez de --background-primary). Composer pill, status line e
+     back-to-bottom agora tem visual identico. */
+  background: color-mix(in srgb, var(--background-modifier-form-field) 80%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
   box-shadow:
