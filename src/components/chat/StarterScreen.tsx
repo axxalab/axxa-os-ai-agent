@@ -103,20 +103,22 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.modeLabel}</label>
-        <div className="axxa-starter-providers">
+        <div className="axxa-starter-segment" role="tablist">
           {MODES_META.map((m) => (
             <button
               key={m.id}
               type="button"
+              role="tab"
+              aria-selected={m.id === mode}
               className={
-                "axxa-starter-provider-btn" +
-                (m.id === mode ? " axxa-starter-provider-active" : "")
+                "axxa-starter-segment-btn" +
+                (m.id === mode ? " axxa-starter-segment-active" : "")
               }
               onClick={() => onModeChange(m.id)}
-              title={modeDesc(m.id)}
+              title={`${modeLabel(m.id)} — ${modeDesc(m.id)}`}
+              aria-label={modeLabel(m.id)}
             >
               <Icon name={m.icon} />
-              <span>{modeLabel(m.id)}</span>
             </button>
           ))}
         </div>
@@ -124,19 +126,22 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.providerLabel}</label>
-        <div className="axxa-starter-providers">
+        <div className="axxa-starter-segment" role="tablist">
           {PROVIDERS.map((p) => (
             <button
               key={p.id}
               type="button"
+              role="tab"
+              aria-selected={p.id === provider}
               className={
-                "axxa-starter-provider-btn" +
-                (p.id === provider ? " axxa-starter-provider-active" : "")
+                "axxa-starter-segment-btn" +
+                (p.id === provider ? " axxa-starter-segment-active" : "")
               }
               onClick={() => onProviderChange(p.id)}
+              title={p.name}
+              aria-label={p.name}
             >
               <Icon name={p.icon} />
-              <span>{p.name}</span>
             </button>
           ))}
         </div>

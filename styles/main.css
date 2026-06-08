@@ -990,55 +990,65 @@ body.theme-dark .axxa-recording-indicator {
   letter-spacing: 0.5px;
 }
 
-/* Provider buttons — visual polish v0.1.30: ícones menores, mais ar */
-.axxa-starter-providers {
+/* Provider + Mode selectors — segmented pill control (v0.1.35).
+   Mesmo padrão das sub-tabs do Settings: container pill + pills internas
+   só com ícone. Tooltip carrega o nome. Em sidebars estreitas, rola
+   horizontal em vez de quebrar pra 2 linhas. */
+.axxa-starter-segment {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 4px;
+  background: var(--background-modifier-hover);
+  border-radius: 999px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.axxa-starter-segment::-webkit-scrollbar {
+  display: none;
 }
 
-.axxa-starter-provider-btn,
-.axxa-starter-provider-btn:focus,
-.axxa-starter-provider-btn:active {
+.axxa-starter-segment-btn,
+.axxa-starter-segment-btn:focus,
+.axxa-starter-segment-btn:active,
+.axxa-starter-segment-btn:hover {
   appearance: none;
   -webkit-appearance: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-.axxa-starter-provider-btn {
+.axxa-starter-segment-btn {
   flex: 1 1 0;
-  min-width: 70px;
+  min-width: 40px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 10px 12px;
   border-radius: 999px;
-  border: 1px solid var(--background-modifier-border) !important;
-  background: var(--background-secondary) !important;
   color: var(--text-muted);
-  font-size: var(--font-ui-small);
-  font-weight: 500;
   cursor: pointer;
-  min-height: 44px;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
-.axxa-starter-provider-btn .axxa-icon .svg-icon {
-  width: 14px;
-  height: 14px;
+.axxa-starter-segment-btn .axxa-icon .svg-icon {
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
-.axxa-starter-provider-btn:hover {
-  border-color: var(--interactive-accent) !important;
-  background: var(--background-modifier-hover) !important;
+.axxa-starter-segment-btn:hover {
+  color: var(--text-normal);
 }
 
-.axxa-starter-provider-active {
-  border-color: var(--interactive-accent) !important;
-  background: var(--background-modifier-hover) !important;
-  color: var(--text-accent);
-  font-weight: 600;
+.axxa-starter-segment-active {
+  background: var(--background-primary) !important;
+  color: var(--text-accent) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
 }
 
 /* Model select */
@@ -1418,16 +1428,17 @@ body.theme-dark .axxa-recording-indicator {
   border-color: var(--interactive-accent) !important;
 }
 
+/* Single-line ellipsis — bulletproof. -webkit-line-clamp tava sumindo
+   o texto em alguns contextos de flex parent. (v0.1.35) */
 .axxa-recent-title {
+  display: block;
   font-weight: 500;
-  color: var(--text-normal);
+  color: var(--text-normal) !important;
   font-size: var(--font-ui-small);
+  line-height: 1.4;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  white-space: normal;
   width: 100%;
   min-width: 0;
 }
