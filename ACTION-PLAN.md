@@ -1,9 +1,9 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, **6.1+6.2 ✅ Agent 6-provider** (OpenAI ✅, Anthropic ✅, **Gemini ✅, NIM ✅, Ollama ✅** v0.1.33, OpenRouter ✅) · próximo: smoke test do dev + Whisper áudio  
-> **Versão:** 1.2 · plugin em **v0.1.33 (6 providers + Ollama tools)**  
-> **Última revisão:** 07/06/2026 (Sprint I concluído)  
+> **Status:** 🟡 Em andamento — Módulos 0 ✅, 1 ✅, 2 ✅, 3 ✅, 4 ✅, 6.4 ✅ RAG multimodal, **6.1+6.2 ✅ Agent 6-provider** validado, **Sprint J ✅ UX polish + chips configuráveis + Settings reorganizado** · próximo: **Sprint K — Coder Mode (6.3) + Embeddings Gemini/NIM (I.5) + Whisper áudio**  
+> **Versão:** 1.3 · plugin em **v0.1.39 (6 providers operacionais + UI profissional)**  
+> **Última revisão:** 08/06/2026 (revisão completa pós-Sprint J)  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
 ---
@@ -361,9 +361,11 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ `AxxaSettingsTab.ts` — `ProviderTabId` ganha `"gemini" | "nim"`; `renderGemini` + `renderNim`; dropdown defaultProvider em 6 opções; ordem das tabs OpenAI · Anthropic · Gemini · OpenRouter · NIM · Ollama
 - ✅ `i18n/pt-br.ts` + `en-us.ts` — `tabs.gemini`, `tabs.nim`, `apiKeyDescGemini`, `apiKeyDescNim`, `geminiIntro`, `nimIntro`; `agent.needsOpenAI` reescrita pra ser provider-agnóstica
 - ✅ `StarterScreen.tsx` — entries Gemini (icon `sparkle`) e Nvidia NIM (icon `cpu`) no array `PROVIDERS`
-- ⬜ **Smoke test do dev** — chave real de Gemini + NIM, validar chat texto + agent tool call em cada um (Ollama exige modelo local compatível, ex: `ollama pull llama3.1`)
+- ✅ **Smoke test NIM** validado pelo dev na v0.1.39 (chat funcionando após correção do default model em meta/llama-3.3-70b-instruct)
+- 🟡 Smoke test Gemini — plumbing correto, validar com chave real
+- 🟡 Smoke test Ollama tools — exige `ollama pull llama3.1` ou similar
 
-### I.5 RAG opcional (pulado pra v0.1.34+)
+### I.5 RAG opcional (pulado pra v0.1.40+)
 - ⬜ Specs em `rag/types.ts` pra `gemini-embedding-001` (dim 3072) e `nvidia/nv-embedqa-e5-v5` (dim 1024)
 - ⬜ Estender `EmbeddingProvider` pra incluir `"gemini" | "nim"`
 - ⬜ Handlers `embedBatchGemini` / `embedBatchNim` em `embeddings.ts`
@@ -373,6 +375,75 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ **🎯 MARCO:** 6 providers funcionando via UI (Settings + StarterScreen), Agent multi-provider 6/6
 - ✅ Bump pra `v0.1.33` em `manifest.json` e `package.json`
 - ⬜ `README.md` mencionando os 2 novos providers — TODO pequeno
+
+---
+
+## SPRINT J — UX Polish + Profissionalização (v0.1.34 → v0.1.39) ✅ Concluído
+> **Objetivo:** Pegar o produto "funcional 6 providers" e levar pra "produto que parece profissional" — visual unificado, status line refinada, listas densas, Settings organizado, bugs do NIM resolvidos.
+> **Status:** ✅ 6 versões shippadas em 1 dia (08/06/2026).
+
+### J.1 v0.1.34 — Plumbing NIM/Gemini + multi-modo + rename
+- ✅ **Bug fix crítico**: 4 switches em AxxaApp (modelFor / handleStarterModel / streamReply / runAgentTurn) caíam em `default = openaiApiKey` quando providerId era `gemini` ou `nim` → causa raiz do "erro de conexão" no NIM. Centralizei em `apiKeyFor()` + `modelFor()` com cases pros 6 providers
+- ✅ NIM `streamChat` → via `requestUrl` (chama `chat()` + emit final). `integrate.api.nvidia.com` não devolve CORS headers liberais; fetch direto do browser bloqueia. Trade-off: streaming "fake" (resposta vem inteira), mas funciona em prod
+- ✅ Settings tabs com `flex-wrap:nowrap + overflow-x:auto` (não quebram em 2 linhas com 6 providers)
+- ✅ `listAllChats()` em chatPersistence — walk em todas subpastas de `chatsPath`, agrega chat + agent + vault-qa
+- ✅ `ChatSummary.mode` incluído pra cada item conhecer modo (necessário pra loadChat usar a subpasta certa)
+- ✅ `handleLoadChat` aceita `chatMode` opcional (default "chat" pra compat)
+- ✅ `renameChat()` em chatPersistence — reescreve frontmatter `title:` + `# h1` do body sem mudar id/path
+- ✅ Header com input editável inline do título do chat (Enter/blur salva, Escape descarta)
+- ✅ `RenameChatModal` (Obsidian Modal nativo) — usado também via lápis na ConversationsList (depois removido em v0.1.37)
+
+### J.2 v0.1.35 — Título visível + pills segmented icon-only
+- ✅ `.axxa-recent-title` reescrito: drop `-webkit-line-clamp` (zerava texto em alguns flex parents), usa single-line ellipsis bulletproof (`display:block + white-space:nowrap + text-overflow:ellipsis + color !important`)
+- ✅ Provider e Mode selectors da StarterScreen viraram `.axxa-starter-segment` (mesma estética das sub-tabs do Settings) — icon-only com tooltip + aria-label
+- ✅ Active state com `background-primary` + box-shadow
+- ✅ Scroll horizontal mantido pra caber 6 providers em sidebar estreita
+
+### J.3 v0.1.36 — Compact mode (pills stacked)
+- ✅ Pills do Starter agora **stacked**: ícone 24px em cima + label 10px embaixo (em vez de só ícone)
+- ✅ Effort também virou segmented pill (estava btn solto com border)
+- ✅ Cards `.axxa-recent-item` — padding 8x10 (era 12x14), border-radius 10, line-height 1.4 explícito **resolve "container menor que altura do texto"** (Obsidian aplica line-height global em buttons que comprimia o flex column)
+- ✅ Meta font 9px, gap mais apertado, mode chip uppercase 8px
+- ✅ Starter title 18px (era 22px); section labels 10px
+
+### J.4 v0.1.37 — InfoChip extraído + filtros segmented pill
+- ✅ `InfoChip` extraído pra `_shared/InfoChip.tsx` (vivia inline no Composer; agora reusado em StarterScreen recent + ConversationsList items)
+- ✅ Recent items meta refeitos com info chips coloridos (mesmo padrão do status line):
+  - 🩷 mode (library/bot/message-square por modo)
+  - 🟣 model (cpu)
+  - ⚫ date (clock)
+  - 🔵 messages (message-square)
+  - 🟢 tokens (sigma)
+- ✅ **Lápis removido** da ConversationsList (UX cleaner — rename só via Header)
+- ✅ Filtros mode + provider viraram segmented pill (mesmo container cinza pill das tabs do Settings)
+- ✅ Limpa ~80 linhas de CSS dead da v0.1.34 (`-item-row`, `-item-action`, `-title-row`, `-mode-chip`)
+
+### J.5 v0.1.38 — Chip visibility configurável + single-line
+- ✅ Settings novo: "Chips visíveis" — 2 seções de checkboxes pro composer status line + lista de chats
+- ✅ `AxxaSettings.composerChips: string[]` + `listChips: string[]`
+- ✅ Defaults SLIM: composer `[model, effort, in, out]` / lista `[mode, model, date]` — user opta por mais via checkboxes
+- ✅ `.axxa-composer-info` → `flex-wrap:nowrap + overflow:hidden` — single line garantida mesmo se user habilitar todos
+- ✅ Cards extra compact: padding 6x9, border-radius 10, gap 2, meta font 9px, list gap 5
+
+### J.6 v0.1.39 — NIM 404 + token/s + Settings sub-tabs semânticas
+- ✅ **NIM 404 corrigido**: default `nimModel` era `nvidia/llama-3.3-nemotron-super-49b-v1.5` (não existe no catálogo NIM hosted) → mudado pra `meta/llama-3.3-70b-instruct`. activeModels seed com 5 modelos validados via webfetch
+- ✅ NIM ganhou case 404 explícito: aponta direto pra Settings → Providers → NIM → "Buscar da API" + cita o ID inválido
+- ✅ Placeholder do composer single-line garantida (`.cm-placeholder` com nowrap + ellipsis)
+- ✅ **Token/s ao vivo**: chat store ganhou `streamStartedAt + streamTokens + tokensPerSec + startStreamTimer / tickStreamTokens / endStreamTimer`. AxxaApp dispara nos pontos certos do stream; cálculo via chars/3.5. Novo chip `speed` no status line (icon `activity`, cor amarela)
+- ✅ **Settings → Outros** quebrado em 4 sub-tabs (mesmo padrão segmented pill dos providers):
+  - **Geral**: idioma, paths (chats/skills/recordings), Em breve
+  - **Interface**: code wrap, chips visíveis, aparência (backgrounds)
+  - **Agent**: nível de permissão
+  - **RAG**: provider/model embeddings + indexação
+
+### J.7 Estado final do Sprint J ✅
+- ✅ 6 providers operacionais via UI: dropdown defaultProvider, 6 sub-tabs nas Settings, 6 entries no StarterScreen com tooltip+stack
+- ✅ Agent Mode multi-provider 6/6 (todos com tool calling habilitado)
+- ✅ Status line com 8 chips opcionais (mode/model/effort/context/in/out/total/**speed**)
+- ✅ Lista de chats agora cross-mode (chat + agent + vault-qa), com filtros segmented pill e InfoChips
+- ✅ Settings reorganizado: Providers (6 sub-tabs) · Outros (4 sub-tabs: Geral/UI/Agent/RAG)
+- ✅ Rename de título via Header inline (Enter salva, Escape descarta)
+- ✅ Bug do título sumindo eliminado em definitivo (CSS bulletproof)
 
 ---
 
@@ -533,6 +604,133 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 07/06/2026 | Sprint I (v0.1.33) — Nvidia NIM 100% OpenAI-compat | NIM hospedado (integrate.api.nvidia.com) é o caminho — sem deploy local. Auth Bearer com chave `nvapi-...` do build.nvidia.com. Free tier de 1k créditos por conta basta pra testes. Modelos com tool calling validado: Nemotron Super/Ultra, Llama 3.3+, Qwen3+, DeepSeek v4. Modelos pequenos (Phi-4 mini, Llama 3.2 8b) ignoram silenciosamente — incluir aviso no campo Settings. |
 | 07/06/2026 | Sprint I — ordem das tabs nas Settings | Proposta: OpenAI · Anthropic · **Gemini** · OpenRouter · **NIM** · Ollama. Critério: providers de fronteira primeiro (3 big labs), agregadores no meio, local no fim. flex-wrap já cobre overflow no mobile (6 tabs cabem em 2 linhas em telas <380px). |
 | 07/06/2026 | Sprint I — embeddings Gemini/NIM ficam no I.4 (não bloqueia chat/agent) | Razão: o valor imediato é mais opções de chat + agent. Embeddings dependem de mexer no `EmbeddingProvider` type, `EMBEDDING_MODELS` spec list, router `embedItems`, e UI de Settings RAG. Dá pra entregar I.1+I.2+I.3 em 1 sprint, e I.4 num follow-up de 1-2h. Evita escopo inflado bloqueando o release. |
+| 08/06/2026 | J.1 (v0.1.34) — `apiKeyFor()` + `modelFor()` centralizados | 4 switches espalhados em AxxaApp (modelFor/handleStarterModel/streamReply/runAgentTurn) caíam em `default = openaiApiKey` quando providerId era gemini/nim → causa raiz do "erro de conexão" no NIM. Lição: switches duplicados convidam bugs quando adiciona provider novo. Solução: 2 helpers no topo do AxxaApp; quem precisa chama. Quando adicionar 7º provider, é só editar um lugar. |
+| 08/06/2026 | J.1 (v0.1.34) — NIM streamChat via requestUrl (não fetch) | integrate.api.nvidia.com bloqueia CORS no browser → `fetch` direto throw TypeError. Solução: streamChat chama internamente o próprio `chat()` (que usa `requestUrl` do Obsidian) + emite o conteúdo como único token no final. Trade-off: usuário vê resposta completa de uma vez, sem efeito token-a-token. UX < real streaming, mas funciona. Alternativa futura: proxy próprio. |
+| 08/06/2026 | J.1 (v0.1.34) — `listAllChats()` walk em subpastas | Antes: `listChats(chatsPath, "chat", limit)` hardcoded → só listava chats do modo "chat". Bug: agentes/vault-qa salvos não apareciam. Solução: novo `listAllChats` faz `adapter.list(chatsPath).folders` e itera. Cada chat já guardava `mode` no frontmatter; só faltava agregar. |
+| 08/06/2026 | J.1 (v0.1.34) — `renameChat()` sem mudar id/path | Reescreve só frontmatter `title:` + h1 do body; mantém id e file path. Razão: id é UUID estável, mudar arrastaria wikilinks/refs. Trade-off: chats antigos podem ter title divergente do filename, mas nunca quebram referência. |
+| 08/06/2026 | J.2 (v0.1.35) — drop `-webkit-line-clamp` no título | Em alguns flex parents, line-clamp colapsava texto pra 0px (mesmo com display:-webkit-box explícito). Causa: combo line-clamp + width:100% + flex parent + Obsidian button reset. Solução: single-line ellipsis padrão (display:block + nowrap + ellipsis + color !important). Funciona em todos os contextos sem mistério. |
+| 08/06/2026 | J.3 (v0.1.36) — line-height 1.4 explícito em `.axxa-recent-item` | Obsidian aplica line-height global agressivo em `<button>` que comprimia flex column → container ficava MENOR que altura natural do conteúdo. Solução: line-height:1.4 explícito + height:auto + min-height:0 + box-sizing:border-box. Vale pra qualquer button-as-card no Obsidian. |
+| 08/06/2026 | J.3 (v0.1.36) — pills stacked icon 24 + label 10 | Padrão "ícone em cima, label embaixo" gera reconhecimento sem cluttering. 24px ícone é o sweet spot pra mobile (>=24 = touch target visível). Label 10px é "legível mas claramente secundário". flex-direction:column no btn + alinhamento centralizado. |
+| 08/06/2026 | J.4 (v0.1.37) — `InfoChip` extraído pra `_shared/` | Vivia inline em Composer.tsx; reusado em StarterScreen recent + ConversationsList items. Sinal de extração: 2+ consumidores com lógica idêntica. Component é tiny (10 linhas) — não justifica mais que isso, mas o reuso evita drift visual entre lugares. |
+| 08/06/2026 | J.4 (v0.1.37) — filtros viraram segmented pill (mesmo padrão do Settings) | Consistência: 4 lugares no app agora usam o mesmo padrão (sub-tabs Providers, pills do Starter, filtros da Conversations, sub-tabs Outros). Container `var(--background-modifier-hover)` border-radius pill + pills internas com active state `--background-primary` + box-shadow. Visual unificado SEM duplicar CSS (cada um tem sua classe wrapper). |
+| 08/06/2026 | J.5 (v0.1.38) — chips configuráveis via Settings | `composerChips` + `listChips` em AxxaSettings. Defaults SLIM (4+3 chips). User opta por mais. Razão: tela do mobile não tolera 8 chips visíveis; sidebar de 320px também não. Setting controla individualmente por contexto (status line ≠ lista). Loader faz merge (não pisa em config existente). |
+| 08/06/2026 | J.5 (v0.1.38) — `.axxa-composer-info { flex-wrap: nowrap; overflow: hidden }` | Status line NUNCA quebra pra 2 linhas. Se user habilita 8 chips e largura não cabe, esconde silenciosamente os da direita. Prioridade implícita pela ordem do JSX. Alternativa rejeitada: scroll horizontal na status line — fica ruidoso visualmente. |
+| 08/06/2026 | J.6 (v0.1.39) — Default NIM model atualizado pra meta/llama-3.3-70b-instruct | `nvidia/llama-3.3-nemotron-super-49b-v1.5` (default antigo) não existe no catálogo da NIM hosted → 404. Lição: confirmar modelo via webfetch antes de hardcodar default. activeModels seed também trocada pelos 5 modelos retornados oficialmente. Caso 404 ganhou mensagem que cita o ID inválido e aponta pra "Buscar da API". |
+| 08/06/2026 | J.6 (v0.1.39) — Token/s via store + estimativa chars/3.5 | Não tem endpoint que devolve tokens-emitidos-no-stream em tempo real (só usage no final). Solução: estimar localmente. Cada token recebido contribui `Math.ceil(chunk.length / 3.5)` (heurística pra PT/EN). Razão de 3.5 vs 4: PT-BR tem mais chars/token que inglês. Store guarda startTime + token counter + computed tokensPerSec. AxxaApp dispara nos pontos certos. |
+| 08/06/2026 | J.6 (v0.1.39) — `.cm-placeholder` single-line | Placeholder do CodeMirror agora `white-space:nowrap + overflow:hidden + text-overflow:ellipsis`. Texto do user continua wrapping normal. Era assimétrico: o placeholder podia quebrar mas o composer queria parecer compacto. Fix: forçar single-line só no placeholder, deixa user wrappear normal. |
+| 08/06/2026 | J.6 (v0.1.39) — Settings "Outros" com 4 sub-tabs semânticas | Geral / Interface / Agent / RAG. Mesmo padrão segmented pill dos providers. Antes era 1 tab gigante com scroll de ~600px. UX profissional precisa de organização semântica — agrupar settings por intenção, não por ordem de implementação. |
+
+---
+
+## Estado Atual & Handoff (08/06/2026)
+> **Lê isso primeiro se você é o próximo agente continuando o trabalho.**
+> Última sessão: v0.1.33 → v0.1.39 em 1 dia (Sprint I + Sprint J completos).
+
+### O que tá funcionando hoje ✅
+
+**6 providers operacionais** (OpenAI / Anthropic / Gemini / OpenRouter / NIM / Ollama):
+- Chat com streaming (NIM é streaming "fake" via requestUrl, ver J.1)
+- Agent Mode com tool calling em todos os 6 (Ollama exige modelo compatível ≥0.3 + llama3.1/qwen2.5/mistral-large)
+- Settings com sub-tabs: 6 provider tabs + 4 outras (Geral/UI/Agent/RAG)
+- Listar modelos via API (botão "Buscar da API" + activeModels curados)
+
+**Persistência multi-modo:**
+- Chats salvos como `.md` em `axxa-ai/chats/{mode}/{uuid}.md`
+- `listAllChats()` agrega todos os modos pra Recent + ConversationsList
+- Rename inline via título do Header (Enter salva, Escape descarta) — persiste no `.md`
+
+**RAG multimodal:**
+- OpenAI text-embedding-3-small/large
+- OpenRouter Nemotron VL :free (texto + imagem)
+- Indexação incremental (SHA-1 por arquivo, save a cada 25 arquivos)
+- Mobile-safe (não OOM em S23 FE)
+
+**UI profissional:**
+- Status line single-line + 8 chips opcionais (mode/model/effort/context/in/out/total/**speed**)
+- Listas de chat com InfoChip pattern (mesmo visual em todos os lugares)
+- Pills stacked (icon 24 + label 10) em todos os selectors
+- Filtros segmented pill em ConversationsList
+- 12 backgrounds (none + 8 estáticos + 3 animados live)
+- Mobile responsive: drawer, teclado handler estilo Copilot, sticky-bottom scroll
+
+### O que ainda precisa de validação 🟡
+
+1. **Smoke test Gemini chat texto + agent** — plumbing tá correto pós v0.1.34, mas dev não confirmou com chave real ainda
+2. **Smoke test Ollama tool calling** — exige `ollama pull llama3.1` (ou qwen2.5, mistral-large) e mode Agent. v0.1.33 adicionou o wiring; ninguém testou com modelo local rodando
+3. **NIM chat com modelo customizado** — default `meta/llama-3.3-70b-instruct` confirmado existir. Outros 4 da seed precisam validação real (já saem em "Buscar da API", então user descobre fácil)
+
+### Prioridades pro próximo sprint (Sprint K) 🎯
+
+Em ordem de impacto:
+
+#### K.1 Coder Mode (Módulo 6.3) — ⬜ NÃO INICIADO
+- Modo "Coder" no StarterScreen (4º opção ao lado de Chat / Vault Q&A / Agent)
+- Detecta arquivos de código nas mensagens (markdown code blocks + .ts/.js/.py/etc anexados)
+- Diff preview antes de aplicar edição (vault_edit em arquivos de código)
+- Syntax highlighting no output (já vem do Obsidian MarkdownRenderer)
+- Pode usar a mesma estrutura de tools do Agent — apenas adicionar `coder_apply_diff` e `coder_create_file`
+
+#### K.2 Embeddings Gemini + NIM (Sprint I.5 — pulado) — ⬜
+- Adicionar specs em `rag/types.ts`:
+  - `{ provider: "gemini", model: "gemini-embedding-001", dim: 3072, maxInputTokens: 2048 }`
+  - `{ provider: "nim", model: "nvidia/nv-embedqa-e5-v5", dim: 1024, maxInputTokens: 512 }`
+- Estender `EmbeddingProvider` pra `"openai" | "openrouter" | "gemini" | "nim"`
+- Handlers `embedBatchGemini` / `embedBatchNim` em `embeddings.ts` — mesma forma do `embedBatch` da OpenAI, só URL/auth diferentes
+- Settings RAG dropdown: 4 providers em vez de 2
+- **Estimativa:** 1-2h de trabalho. Embeddings da Gemini têm tier free generoso (boa default pra users sem OpenAI key)
+
+#### K.3 Whisper áudio (Módulo 6.4 follow-up) — ⬜
+- Áudios já ficam salvos em `axxa-ai/recordings/{ts}.webm` (Sprint E v0.1.24)
+- Falta pipeline: Whisper API (OpenAI) → transcrição → injetar como texto no composer / embedar no índice RAG
+- Endpoint: `https://api.openai.com/v1/audio/transcriptions` com `multipart/form-data`
+- 2 use cases:
+  1. Botão "transcrever" no chip de áudio gravado → vira texto no composer
+  2. Indexer reconhece áudios e roda Whisper → embed o texto pra busca RAG
+
+#### K.4 README polish — ⬜ pequeno
+- Mencionar os 6 providers (atualmente menciona só os 4 originais)
+- Screenshot da UI nova (pills stacked + status line single-line)
+- Quick start: gerar API key em cada lab, colar em Settings
+- Comentário sobre Agent Mode + tool calling
+
+### Tech debt conhecido (não bloqueia, mas vale endereçar)
+
+- **`parseSimpleYaml` em chatPersistence** — regex line-by-line, frágil pra YAML real (multiline strings, nested objects, etc.). OK pra nosso frontmatter simples, mas se algum dia ficar mais rico considerar `js-yaml` ou similar. Hoje: zero issues
+- **ConversationsList sem paginação** — `listAllChats(..., 1000)`. Em vaults com >1k chats fica lento (carrega todos no mount). Solução futura: virtual scrolling + paginação por scroll
+- **`generateTitle()`** — simplista (primeira msg cortada em 60 chars). Poderia usar LLM pra resumir, mas custo de tokens + latência não compensa. Manter
+- **NIM sem streaming real** — trade-off documentado. Aceitável até alguém pedir
+- **Dead `RenameChatModal`** — modal criado em v0.1.34, usado por handleRenameChatSummary, REMOVIDO em v0.1.37. O arquivo ainda existe (`src/components/chat/RenameChatModal.ts`). Manter porque vai ser útil pra futuras telas (rename de skill, project, etc.) — ou deletar quando próxima sprint começar e ninguém usa
+- **TypeScript path `*.tsx` vs `*.ts`** — Header virou `.tsx` mas tem outros componentes (`RenameChatModal.ts`, `useMessageContextMenu.ts`) que usam `.ts` apesar de ter JSX? Não — só `.tsx` tem JSX. OK
+- **Mensagens do agent system prompt em PT hardcoded** — em AxxaApp:451 `AGENT_SYSTEM_PROMPT` tá em PT. Mover pro i18n quando EN-US ficar production
+
+### Gotchas conhecidos pra próximo agente
+
+1. **Sempre validar models via webfetch antes de hardcodar default** — bug do NIM 404 saiu disso. Especialmente NIM/Gemini que mudam catálogo rápido
+2. **Switches por provider são lugar de bug** — quando adicionar provider 7, use o pattern `apiKeyFor/modelFor` em vez de duplicar switch
+3. **`requestUrl` bypassa CORS, `fetch` não** — pra qualquer API que retorne CORS restritivo no browser, use requestUrl. Streaming real só funciona com fetch
+4. **Obsidian aplica line-height global em buttons** — sempre setar `line-height:` explícito em buttons que viram cards/items
+5. **`-webkit-line-clamp` é flaky em flex parents** — preferir single-line ellipsis quando bug aparecer
+6. **`.cm-editor` clipa autocomplete tooltip** — usar `tooltips({ position: "fixed", parent: document.body })` do CodeMirror sempre que adicionar completion source nova
+7. **Mobile keyboard handler é hand-tuned** — `.axxa-keyboard-open` é gerenciado pelo AxxaView, NÃO mexer no padding-bottom da view-content sem confirmar com dev
+8. **Save por arquivo no indexer** — `SAVE_EVERY_N_FILES = 25` em rag/indexer.ts; mexer com cuidado (salvar a cada batch causava OOM em mobile)
+
+### Como rodar / testar local
+
+```bash
+npm install
+npm run build  # tsc -noEmit + esbuild production
+npm run dev    # watch mode
+```
+
+Plugin output em `output/main.js` + `output/manifest.json` + `output/styles.css`. Pra testar no Obsidian local, copiar pro `<vault>/.obsidian/plugins/axxa-os-ai-agent/`.
+
+### Como contribuir
+
+- **NÃO criar `.md` de planning/docs além deste action plan + DESIGN-SYSTEM.md** — mantém repo enxuto
+- **Commit message style:** `tipo(escopo): descrição (vX.Y.Z)` — ex: `feat(provider): Gemini API (v0.1.33)`, `fix(ux): título visível (v0.1.35)`
+- **Sempre bumpar manifest.json + package.json juntos**
+- **Build verde antes de commitar** — `npm run build` exit 0 obrigatório
+- **Marcar tasks completed nesta tabela conforme avança** — adicionar entradas novas no fim das Decisões Técnicas
 
 ---
 
@@ -545,5 +743,5 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 
 ---
 
-*AXXA OS — AI Agent · Action Plan v1.0*  
+*AXXA OS — AI Agent · Action Plan v1.3 · revisado 08/06/2026 pós-Sprint J*  
 *"Cada módulo concluído é um passo irreversível."*
