@@ -158,16 +158,21 @@ body.is-mobile .workspace-tab-container:has(.workspace-leaf-content[data-type="a
   background-color: var(--background-primary) !important;
 }
 
-/* === Mobile-navbar "5px transparent" trick (v0.1.60) ===
-   Sugestao do user: em vez de bg-primary (que ainda mostrava strip
-   por causa de border/box-shadow do tema), deixa navbar com altura
-   minima + background transparente. Visualmente invisivel + elemento
-   preservado pro Obsidian (estrutura intacta).
-   Resultado: text-area do AXXA aparece edge-to-edge atras. */
+/* === Obsidian native chrome "5px transparent" trick (v0.1.61) ===
+   Aplicado a TODA navegacao nativa do Obsidian em mobile.
+   Visualmente invisivel + estrutura preservada pro Obsidian.
+   pointer-events: none impede que esses elementos respondam a
+   overlay/keyboard/animation triggers — eliminando o footer fantasma
+   que "ouvia movimentos de overlay" em non-fullscreen. */
 body.is-mobile .mobile-navbar,
+body.is-mobile .mobile-toolbar,
 body.is-mobile .workspace-drawer-footer,
+body.is-mobile .workspace-drawer-header,
+body.is-mobile .workspace-drawer-tab-options,
+body.is-mobile .workspace-tab-header-container,
 body.is-mobile .nav-buttons-container,
-body.is-mobile .workspace-drawer-tab-options {
+body.is-mobile .titlebar,
+body.is-mobile .status-bar {
   height: 5px !important;
   min-height: 0 !important;
   max-height: 5px !important;
@@ -178,15 +183,23 @@ body.is-mobile .workspace-drawer-tab-options {
   overflow: hidden !important;
   padding: 0 !important;
   margin: 0 !important;
+  /* CRITICAL: impede que esses elementos respondam a overlay/keyboard
+     triggers que faziam o "footer fantasma" aparecer em non-fullscreen */
+  pointer-events: none !important;
 }
 
-/* Conteudo interno (icones de navegacao) escondido pra evitar parecer
-   meio-cortado no 5px de altura */
+/* Conteudo interno escondido pra evitar visibilidade meio-cortada */
 body.is-mobile .mobile-navbar > *,
+body.is-mobile .mobile-toolbar > *,
 body.is-mobile .workspace-drawer-footer > *,
+body.is-mobile .workspace-drawer-header > *,
+body.is-mobile .workspace-drawer-tab-options > *,
+body.is-mobile .workspace-tab-header-container > *,
 body.is-mobile .nav-buttons-container > *,
-body.is-mobile .workspace-drawer-tab-options > * {
+body.is-mobile .titlebar > *,
+body.is-mobile .status-bar > * {
   visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* Fallback browsers velhos sem :has() — aplica mais amplo */
@@ -280,6 +293,11 @@ body.is-mobile
   gap: 8px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--background-modifier-border);
+  /* v0.1.61: z-index 1000 — topo absoluto da hierarquia AXXA.
+     Header sempre visivel acima do composer (900) e chat (800). */
+  position: relative;
+  z-index: 1000;
+  background: var(--background-primary);
 }
 
 .axxa-header-title {
@@ -421,10 +439,9 @@ body.is-mobile
   display: flex;
   flex-direction: column;
   position: relative;
-  /* Z-index acima do .workspace-leaf default — mensagens rolam POR CIMA
-     dos elementos internos do leaf (em vez de ficarem atrás de alguma
-     overlay ou border). */
-  z-index: 5;
+  /* v0.1.61: z-index 800 — texto do chat acima do .workspace-leaf chrome
+     mas abaixo do composer (900) e header (1000). */
+  z-index: 800;
 }
 
 .axxa-chat-area {
@@ -478,9 +495,8 @@ body.is-mobile
   background: var(--background-secondary) !important;
   color: var(--text-normal) !important;
   cursor: pointer;
-  /* Entre chat-area (5) e composer (100) — fica visível acima do chat
-     mas abaixo do composer flutuante */
-  z-index: 80;
+  /* v0.1.61: entre chat-area (800) e composer (900) */
+  z-index: 850;
   /* Mesma sombra FAB do composer pra consistência visual */
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.12),
@@ -1083,8 +1099,8 @@ body.is-mobile
   /* Mesma lógica do composer: view-content padding já handle navbar+safe.
      Banner fica composer-h + 14px acima do composer (que tá em bottom:8px) */
   bottom: calc(var(--axxa-composer-h, 80px) + 14px);
-  /* Acima do chat-area-wrapper (5) e logo abaixo do composer (100) */
-  z-index: 99;
+  /* v0.1.61: abaixo do composer (900), acima do back-to-bottom (850) */
+  z-index: 890;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1240,9 +1256,8 @@ body.is-mobile
   gap: 6px;
   padding: 8px 4px 6px;
   background: transparent;
-  /* Z-index alto — composer fica VISUALMENTE acima do .workspace-leaf
-     e de qualquer overlay/border interno do Obsidian. */
-  z-index: 100;
+  /* v0.1.61: z-index 900 — abaixo do header (1000), acima do chat (800). */
+  z-index: 900;
   transition: bottom 0.18s ease;
   pointer-events: auto;
 }
