@@ -17,6 +17,8 @@ interface ConversationsListProps {
   chats: ChatSummary[];
   onLoadChat: (chatId: string) => void;
   onClose: () => void;
+  /** Chips visíveis em cada item (curado em Settings → Outros → Chips). */
+  visibleChips: string[];
 }
 
 type SortKey =
@@ -124,6 +126,7 @@ export function ConversationsList({
   chats,
   onLoadChat,
   onClose,
+  visibleChips,
 }: ConversationsListProps) {
   const t = useT();
   const [search, setSearch] = useState("");
@@ -307,24 +310,33 @@ export function ConversationsList({
                 onClick={() => onLoadChat(c.id)}
               >
                 <div className="axxa-recent-title">{c.title}</div>
-                {/* Meta com info chips coloridos — mesmo padrão do status
-                    line do Composer (.axxa-composer-info + .axxa-info-chip) */}
+                {/* Meta single-line — chips curados em Settings → Chips list */}
                 <div className="axxa-composer-info axxa-recent-meta">
-                  <InfoChip icon={modeIcon(c.mode)} color={CHIP_COLORS.mode}>
-                    {c.mode}
-                  </InfoChip>
-                  <InfoChip icon="cpu" color={CHIP_COLORS.model}>
-                    {c.model}
-                  </InfoChip>
-                  <InfoChip icon="clock" color={CHIP_COLORS.date}>
-                    {formatRelativeDate(c.date)}
-                  </InfoChip>
-                  <InfoChip icon="message-square" color={CHIP_COLORS.messages}>
-                    {c.messageCount}
-                  </InfoChip>
-                  <InfoChip icon="sigma" color={CHIP_COLORS.tokens}>
-                    {formatTokens(c.tokensIn + c.tokensOut)}
-                  </InfoChip>
+                  {visibleChips.includes("mode") && (
+                    <InfoChip icon={modeIcon(c.mode)} color={CHIP_COLORS.mode}>
+                      {c.mode}
+                    </InfoChip>
+                  )}
+                  {visibleChips.includes("model") && (
+                    <InfoChip icon="cpu" color={CHIP_COLORS.model}>
+                      {c.model}
+                    </InfoChip>
+                  )}
+                  {visibleChips.includes("date") && (
+                    <InfoChip icon="clock" color={CHIP_COLORS.date}>
+                      {formatRelativeDate(c.date)}
+                    </InfoChip>
+                  )}
+                  {visibleChips.includes("messages") && (
+                    <InfoChip icon="message-square" color={CHIP_COLORS.messages}>
+                      {c.messageCount}
+                    </InfoChip>
+                  )}
+                  {visibleChips.includes("tokens") && (
+                    <InfoChip icon="sigma" color={CHIP_COLORS.tokens}>
+                      {formatTokens(c.tokensIn + c.tokensOut)}
+                    </InfoChip>
+                  )}
                 </div>
               </button>
             ))}

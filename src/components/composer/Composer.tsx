@@ -57,6 +57,9 @@ interface ComposerProps {
   onSaveAudio?: (blob: Blob, durationMs: number) => Promise<string | null>;
   /** Lista de comandos /command disponíveis pro autocomplete do composer. */
   commands?: AxxaCommand[];
+  /** IDs dos chips visíveis no status line. Cada chip renderiza só se seu
+   *  id estiver aqui (curado pelo user em Settings → Outros → Chips). */
+  visibleChips: string[];
 }
 
 // InfoChip extraído pra _shared/InfoChip.tsx — reusado em recent chats list,
@@ -78,6 +81,7 @@ export function Composer({
   placeholder,
   onSaveAudio,
   commands,
+  visibleChips,
 }: ComposerProps) {
   const t = useT();
   const app = useApp();
@@ -441,35 +445,48 @@ export function Composer({
         </button>
       </div>
 
-      {/* Status row abaixo do pill — micro-ícones coloridos */}
+      {/* Status row abaixo do pill — micro-ícones coloridos
+          SINGLE LINE (v0.1.38): flex-wrap:nowrap no CSS. User curated
+          chips via Settings → Outros → Chips. */}
       <div className="axxa-composer-info">
-        {mode !== "chat" && (
+        {visibleChips.includes("mode") && mode !== "chat" && (
           <InfoChip icon="library" color="var(--color-pink, #f472b6)">
             {mode === "vault-qa" ? "vault" : mode}
           </InfoChip>
         )}
-        <InfoChip
-          icon={locked ? "lock" : "cpu"}
-          color="var(--color-purple, #a370f7)"
-        >
-          {modelName}
-        </InfoChip>
-        <InfoChip icon="zap" color="var(--color-orange, #ec7b3e)">
-          {effort}
-        </InfoChip>
-        <InfoChip icon="gauge" color="var(--color-cyan, #4cc9f0)">
-          {formatTokens(contextUsed)}/{formatTokens(contextTotal)}
-        </InfoChip>
-        <span className="axxa-info-sep">·</span>
-        <InfoChip icon="arrow-down" color="var(--color-blue, #4361ee)">
-          {tokensIn}
-        </InfoChip>
-        <InfoChip icon="arrow-up" color="var(--color-green, #06d6a0)">
-          {tokensOut}
-        </InfoChip>
-        <InfoChip icon="sigma" color="var(--text-muted)">
-          {tokensTotal}
-        </InfoChip>
+        {visibleChips.includes("model") && (
+          <InfoChip
+            icon={locked ? "lock" : "cpu"}
+            color="var(--color-purple, #a370f7)"
+          >
+            {modelName}
+          </InfoChip>
+        )}
+        {visibleChips.includes("effort") && (
+          <InfoChip icon="zap" color="var(--color-orange, #ec7b3e)">
+            {effort}
+          </InfoChip>
+        )}
+        {visibleChips.includes("context") && (
+          <InfoChip icon="gauge" color="var(--color-cyan, #4cc9f0)">
+            {formatTokens(contextUsed)}/{formatTokens(contextTotal)}
+          </InfoChip>
+        )}
+        {visibleChips.includes("in") && (
+          <InfoChip icon="arrow-down" color="var(--color-blue, #4361ee)">
+            {tokensIn}
+          </InfoChip>
+        )}
+        {visibleChips.includes("out") && (
+          <InfoChip icon="arrow-up" color="var(--color-green, #06d6a0)">
+            {tokensOut}
+          </InfoChip>
+        )}
+        {visibleChips.includes("total") && (
+          <InfoChip icon="sigma" color="var(--text-muted)">
+            {tokensTotal}
+          </InfoChip>
+        )}
       </div>
     </div>
   );

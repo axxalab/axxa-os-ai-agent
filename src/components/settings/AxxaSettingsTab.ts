@@ -780,6 +780,16 @@ export class AxxaSettingsTab extends PluginSettingTab {
       );
 
     // ============================================================
+    // Chips visíveis — toggle de quais infos aparecem no composer + listas
+    // ============================================================
+    parent.createEl("h3", { text: t.settings.chips });
+    parent.createEl("p", {
+      text: t.settings.chipsDesc,
+      cls: "setting-item-description",
+    });
+    this.renderChipsSection(parent, t);
+
+    // ============================================================
     // Aparência — grid de swatches (5 presets + None)
     // ============================================================
     parent.createEl("h3", { text: t.settings.appearance });
@@ -804,6 +814,90 @@ export class AxxaSettingsTab extends PluginSettingTab {
     t.settings.comingSoonItems.forEach((item) => {
       todo.createEl("li", { text: item });
     });
+  }
+
+  // ============================================================
+  // Chips section — toggles pro composer + listas
+  // ============================================================
+  private renderChipsSection(parent: HTMLElement, t: Translations) {
+    const COMPOSER_IDS = ["mode", "model", "effort", "context", "in", "out", "total"] as const;
+    const LIST_IDS = ["mode", "model", "date", "messages", "tokens"] as const;
+
+    const composerSection = parent.createDiv({ cls: "axxa-chips-section" });
+    composerSection.createEl("h4", { text: t.settings.chipsComposer });
+    composerSection.createEl("p", {
+      text: t.settings.chipsComposerDesc,
+      cls: "setting-item-description",
+    });
+    this.renderChipChecklist(
+      composerSection,
+      t,
+      COMPOSER_IDS as readonly string[],
+      "composerChips"
+    );
+
+    const listSection = parent.createDiv({ cls: "axxa-chips-section" });
+    listSection.createEl("h4", { text: t.settings.chipsList });
+    listSection.createEl("p", {
+      text: t.settings.chipsListDesc,
+      cls: "setting-item-description",
+    });
+    this.renderChipChecklist(
+      listSection,
+      t,
+      LIST_IDS as readonly string[],
+      "listChips"
+    );
+  }
+
+  /** Lista de checkboxes pra escolher quais chips aparecem. */
+  private renderChipChecklist(
+    parent: HTMLElement,
+    t: Translations,
+    chipIds: readonly string[],
+    settingKey: "composerChips" | "listChips"
+  ) {
+    const grid = parent.createDiv({ cls: "axxa-chips-grid" });
+    const labels = t.settings.chipsLabels as Record<string, string>;
+
+    for (const id of chipIds) {
+      const row = grid.createDiv({ cls: "axxa-chips-row" });
+      const cb = row.createEl("input", {
+        type: "checkbox",
+        cls: "axxa-chips-checkbox",
+      });
+      const current = this.plugin.settings[settingKey] ?? [];
+      cb.checked = current.includes(id);
+
+      const label = row.createEl("label", {
+        cls: "axxa-chips-label",
+        text: labels[id] ?? id,
+      });
+
+      const toggle = async () => {
+        const list = (this.plugin.settings[settingKey] ?? []).slice();
+        const idx = list.indexOf(id);
+        if (cb.checked && idx < 0) {
+          list.push(id);
+        } else if (!cb.checked && idx >= 0) {
+          list.splice(idx, 1);
+        }
+        this.plugin.settings[settingKey] = list;
+        await this.plugin.saveSettings();
+      };
+
+      cb.onchange = toggle;
+      label.onclick = () => {
+        cb.checked = !cb.checked;
+        toggle();
+      };
+      row.onclick = (e: MouseEvent) => {
+        if (e.target === row) {
+          cb.checked = !cb.checked;
+          toggle();
+        }
+      };
+    }
   }
 
   // ============================================================

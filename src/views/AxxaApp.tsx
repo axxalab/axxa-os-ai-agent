@@ -967,6 +967,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             chats={allChats}
             onLoadChat={handleLoadChatFromList}
             onClose={() => setView("chat")}
+            visibleChips={plugin.settings.listChips}
           />
         ) : isEmpty ? (
           <StarterScreen
@@ -981,6 +982,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onEffortChange={handleSelectEffort}
             onModeChange={handleStarterMode}
             onLoadChat={handleLoadChat}
+            visibleChips={plugin.settings.listChips}
           />
         ) : (
           <ChatArea />
@@ -1002,6 +1004,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             placeholder={placeholderForMode(activeMode, t.composer)}
             onSaveAudio={handleSaveAudio}
             commands={axxaCommands}
+            visibleChips={plugin.settings.composerChips}
           />
         )}
           {plusOpen && (

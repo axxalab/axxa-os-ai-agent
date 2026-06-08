@@ -56,6 +56,13 @@ interface AxxaSettings {
    *  Ask = confirma cada destrutiva. Vault = só delete pergunta. Yolo = só
    *  irreversível pergunta. Default "ask" (mais conservador). */
   agentPermissionLevel: string;
+  // ============ Chip visibility (v0.1.38) ============
+  /** Quais chips aparecem na status line do Composer.
+   *  IDs válidos: mode, model, effort, context, in, out, total */
+  composerChips: string[];
+  /** Quais chips aparecem nos cards da lista de chats (recent + conversations).
+   *  IDs válidos: mode, model, date, messages, tokens */
+  listChips: string[];
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -113,6 +120,9 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragEmbeddingModel: "text-embedding-3-small",
   codeWrap: false,
   agentPermissionLevel: "ask",
+  // Defaults slim — user pode adicionar mais via Settings → Outros → Chips
+  composerChips: ["model", "effort", "in", "out"],
+  listChips: ["mode", "model", "date"],
 };
 
 export default class AxxaPlugin extends Plugin {
