@@ -167,12 +167,74 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
 }
 
 export function AIComment({ msg }: { msg: AICommentMessage }) {
+  // Quando ai-comment tem `activity`, vira ActivityComment (estilo Claude Code:
+  // ícone pulsando enquanto pending, troca pra check/x quando termina, texto
+  // contextual mostra início e resultado).
+  if (msg.activity) {
+    return <ActivityComment msg={msg} />;
+  }
+  // Fallback: ai-comment "thinking" estilo Claude chat (sparkle pulsando).
   return (
     <div className="axxa-msg axxa-msg-ai-comment">
-      <div className="axxa-bubble axxa-bubble-ai">
+      <div className="axxa-bubble axxa-bubble-ai axxa-bubble-thinking">
         <Icon name="sparkles" className="axxa-bubble-icon" />
         <span>{msg.content}</span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * ActivityComment — render compacto inspirado no Claude Code.
+ *
+ * Estados visuais:
+ *   pending → ícone pulsa (scale 1↔1.15, opacity 1↔0.6) + texto em itálico
+ *   done    → ícone fixo (check default) + texto normal + meta-result em muted
+ *   failed  → ícone X vermelho + texto em vermelho-muted
+ *
+ * O texto é "ao vivo": pendingText durante pending, doneText quando termina.
+ * Falback do doneText: pendingText (continua mostrando o que foi feito).
+ */
+function ActivityComment({ msg }: { msg: AICommentMessage }) {
+  const activity = msg.activity!;
+  const isPending = activity.phase === "pending";
+  const isDone = activity.phase === "done";
+  const isFailed = activity.phase === "failed";
+
+  const iconName = isPending
+    ? activity.iconPending
+    : isFailed
+      ? activity.iconFailed ?? "x"
+      : activity.iconDone ?? "check";
+
+  const text = isPending
+    ? activity.pendingText
+    : isFailed
+      ? activity.failedText ?? activity.pendingText
+      : activity.doneText ?? activity.pendingText;
+
+  return (
+    <div
+      className={
+        "axxa-activity axxa-activity-" + activity.phase
+      }
+      role={isPending ? "status" : undefined}
+      aria-live={isPending ? "polite" : undefined}
+    >
+      <span
+        className={
+          "axxa-activity-icon" +
+          (isPending ? " axxa-activity-pulse" : "") +
+          (isDone ? " axxa-activity-pop" : "")
+        }
+        aria-hidden="true"
+      >
+        <Icon name={iconName} />
+      </span>
+      <span className="axxa-activity-text">{text}</span>
+      {msg.content && msg.content !== text && (
+        <span className="axxa-activity-meta">· {msg.content}</span>
+      )}
     </div>
   );
 }

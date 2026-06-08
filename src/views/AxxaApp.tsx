@@ -63,30 +63,115 @@ function makeId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// Label curto pra mostrar como ai-comment quando agent roda uma tool.
-// Inclui ícone visual (📄 criar, ✏️ editar, 🗑️ deletar, etc) + path resumido.
-function agentToolLabel(
+/**
+ * Spec de activity para cada tool — define ícone Lucide + textos pending/done
+ * que aparecem na timeline estilo Claude Code.
+ *
+ * iconPending: ícone semântico que pulsa enquanto a tool roda
+ * iconDone:    troca pra check com pop animation no fim (default global "check-circle-2")
+ * pendingText: ação em gerúndio + path resumido
+ * doneText:    ação no particípio + path resumido (sem "✓", o ícone faz isso)
+ */
+function agentActivitySpec(
   toolName: string,
   args: Record<string, unknown>
-): string {
-  const path = (args.path ?? args.from ?? args.folder ?? "") as string;
+): {
+  iconPending: string;
+  iconDone: string;
+  pendingText: string;
+  doneText: string;
+} {
+  const path = String(args.path ?? args.from ?? args.folder ?? "");
+  // Encurta path long pra cabe na timeline (mantém basename)
+  const shortPath = path.length > 48 ? "…" + path.slice(-46) : path;
+
   switch (toolName) {
     case "vault_list":
-      return `📋 Listando: ${path || "raiz"}`;
+      return {
+        iconPending: "folder-search",
+        iconDone: "folder-check",
+        pendingText: `Listando ${shortPath || "raiz"}`,
+        doneText: `Listou ${shortPath || "raiz"}`,
+      };
     case "vault_read":
-      return `👀 Lendo: ${path}`;
+      return {
+        iconPending: "eye",
+        iconDone: "file-check-2",
+        pendingText: `Lendo ${shortPath}`,
+        doneText: `Leu ${shortPath}`,
+      };
     case "vault_create":
-      return `📄 Criando: ${path}`;
+      return {
+        iconPending: "file-plus-2",
+        iconDone: "file-check-2",
+        pendingText: `Criando ${shortPath}`,
+        doneText: `Criou ${shortPath}`,
+      };
     case "vault_edit":
-      return `✏️ Editando: ${path}`;
+      return {
+        iconPending: "file-pen-line",
+        iconDone: "file-check-2",
+        pendingText: `Editando ${shortPath}`,
+        doneText: `Editou ${shortPath}`,
+      };
     case "vault_move":
-      return `📦 Movendo: ${path} → ${args.to ?? "?"}`;
+      return {
+        iconPending: "move",
+        iconDone: "check-circle-2",
+        pendingText: `Movendo ${shortPath} → ${String(args.to ?? "?")}`,
+        doneText: `Moveu ${shortPath} → ${String(args.to ?? "?")}`,
+      };
     case "vault_delete":
-      return `🗑️ Deletando: ${path}`;
+      return {
+        iconPending: "trash-2",
+        iconDone: "circle-check-big",
+        pendingText: `Deletando ${shortPath}`,
+        doneText: `Deletou ${shortPath}`,
+      };
     case "vault_create_folder":
-      return `📁 Criando pasta: ${path}`;
+      return {
+        iconPending: "folder-plus",
+        iconDone: "folder-check",
+        pendingText: `Criando pasta ${shortPath}`,
+        doneText: `Criou pasta ${shortPath}`,
+      };
     default:
-      return `🔧 ${toolName}`;
+      return {
+        iconPending: "wrench",
+        iconDone: "check-circle-2",
+        pendingText: `Executando ${toolName}`,
+        doneText: `${toolName} concluído`,
+      };
+  }
+}
+
+/**
+ * Extrai uma métrica curta do resultado de uma tool — usado como `content`
+ * do ai-comment depois que vira "done". Exemplos:
+ *   vault_list  → "8 itens"
+ *   vault_read  → "1.2k chars"
+ *   vault_edit  → "+12 chars" (tirado da string de retorno se possível)
+ */
+function summarizeToolResult(toolName: string, result: string): string {
+  if (!result) return "";
+  switch (toolName) {
+    case "vault_list": {
+      // Padrão: "Conteúdo de X (Y itens):"
+      const m = /\((\d+)\s+itens?\)/.exec(result);
+      return m ? `${m[1]} item${m[1] === "1" ? "" : "s"}` : "";
+    }
+    case "vault_read":
+      return `${result.length >= 1000 ? (result.length / 1000).toFixed(1) + "k" : result.length} chars`;
+    case "vault_create": {
+      const m = /\((\d+)\s+chars\)/.exec(result);
+      return m ? `${m[1]} chars` : "";
+    }
+    case "vault_edit": {
+      const m = /\(([+-]\d+)\s+chars\)/.exec(result);
+      return m ? `${m[1]} chars` : "";
+    }
+    default:
+      return "";
   }
 }
 
@@ -268,6 +353,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       addMessage,
       removeMessage,
       appendToMessage,
+      updateActivity,
       setLoading,
       setStreamingMessageId,
       addUsage,
@@ -286,11 +372,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       const useRag =
         plugin.vectorIndex !== null && plugin.vectorIndex.size > 0;
 
-      addMessage({
+      // Activity de busca — pulsa enquanto procura, vira check com resumo
+      const searchActivityId = addMessage({
         type: "ai-comment",
-        content: useRag
-          ? `Buscando ${topK} trechos via RAG (effort: ${effort})...`
-          : t.vault.searching(topK, effort),
+        content: "",
+        activity: {
+          phase: "pending",
+          iconPending: useRag ? "radar" : "search",
+          iconDone: "check",
+          pendingText: useRag
+            ? `Buscando até ${topK} trechos via RAG`
+            : t.vault.searching(topK, effort),
+          doneText: useRag
+            ? `Busca RAG concluída`
+            : `Busca por palavras-chave concluída`,
+        },
       });
 
       try {
@@ -306,25 +402,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           );
           const results = plugin.vectorIndex!.search(queryVec, topK, 0.3);
           if (results.length > 0) {
-            // Monta o contexto a partir dos chunks ranqueados
             vaultContextBlock = results
               .map((r) => {
                 const excerpt = r.entry.text.slice(0, excerptChars);
                 return `### ${r.entry.path} (sim=${r.score.toFixed(2)})\n\n${excerpt}`;
               })
               .join("\n\n---\n\n");
-            addMessage({
-              type: "ai-comment",
-              content: `${results.length} trecho${results.length > 1 ? "s" : ""} encontrado${results.length > 1 ? "s" : ""} via RAG (similarity ${results[0].score.toFixed(2)}–${results[results.length - 1].score.toFixed(2)})`,
+            // Done: doneText conta os trechos + range de similarity
+            updateActivity(searchActivityId, {
+              phase: "done",
+              doneText: `${results.length} trecho${results.length > 1 ? "s" : ""} encontrado${results.length > 1 ? "s" : ""} (sim ${results[0].score.toFixed(2)}–${results[results.length - 1].score.toFixed(2)})`,
             });
           } else {
-            addMessage({
-              type: "ai-comment",
-              content: t.vault.notFound,
+            updateActivity(searchActivityId, {
+              phase: "done",
+              iconDone: "circle-slash",
+              doneText: t.vault.notFound,
             });
           }
         } else {
-          // Fallback: keyword search (sem embedding configurado/indexado)
           const matches = await searchVault(
             plugin.app,
             userText,
@@ -333,27 +429,42 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           );
           if (matches.length > 0) {
             vaultContextBlock = buildVaultContext(matches);
-            addMessage({
-              type: "ai-comment",
-              content: t.vault.foundContext(matches.length),
+            updateActivity(searchActivityId, {
+              phase: "done",
+              doneText: t.vault.foundContext(matches.length),
             });
           } else {
-            addMessage({
-              type: "ai-comment",
-              content: t.vault.notFound,
+            updateActivity(searchActivityId, {
+              phase: "done",
+              iconDone: "circle-slash",
+              doneText: t.vault.notFound,
             });
           }
         }
       } catch (err) {
         console.error("[axxa] vault search falhou:", err);
-        addMessage({
-          type: "ai-comment",
-          content: `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`,
+        updateActivity(searchActivityId, {
+          phase: "failed",
+          iconFailed: "x-circle",
+          failedText: `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`,
         });
       }
     }
 
-    const commentId = addMessage({ type: "ai-comment", content: t.ai.thinking });
+    // Activity de "Pensando..." estilo Claude chat (sparkles pulsando).
+    // Vira done quando o primeiro token chega (em vez de ser removido) —
+    // mostra visualmente que o LLM começou a responder.
+    const commentId = addMessage({
+      type: "ai-comment",
+      content: "",
+      activity: {
+        phase: "pending",
+        iconPending: "sparkles",
+        iconDone: "check",
+        pendingText: t.ai.thinking,
+        doneText: t.ai.thinking,
+      },
+    });
     setLoading(true);
 
     const controller = new AbortController();
@@ -400,7 +511,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         apiKey,
         (token) => {
           if (responseId === null) {
-            removeMessage(commentId);
+            // Primeiro token: marca "Pensando..." como done (ícone pop pra check)
+            // em vez de remover — fica registrado na timeline da conversa.
+            updateActivity(commentId, { phase: "done" });
             responseId = addMessage({ type: "ai-response", content: token });
             setStreamingMessageId(responseId);
           } else {
@@ -416,14 +529,26 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       endStreamTimer();
 
       if (responseId === null) {
-        removeMessage(commentId);
+        updateActivity(commentId, { phase: "done" });
         addMessage({ type: "ai-response", content: t.ai.emptyResponse });
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        if (responseId === null) removeMessage(commentId);
+        if (responseId === null) {
+          updateActivity(commentId, {
+            phase: "failed",
+            iconFailed: "circle-stop",
+            failedText: "Interrompido",
+          });
+        }
       } else {
-        if (responseId === null) removeMessage(commentId);
+        if (responseId === null) {
+          updateActivity(commentId, {
+            phase: "failed",
+            iconFailed: "x-circle",
+            failedText: "Falhou",
+          });
+        }
         const errorMsg =
           err instanceof ProviderError
             ? err.message
@@ -468,6 +593,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       addMessage,
       removeMessage,
       appendToMessage,
+      updateActivity,
       setLoading,
       setStreamingMessageId,
       addUsage,
@@ -485,9 +611,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
 
     setLoading(true);
+    // Activity inicial "Pensando" — pulsa enquanto LLM processa, vira check
+    // quando o stream começa (primeiro token).
     const commentId = addMessage({
       type: "ai-comment",
-      content: t.agent.thinking,
+      content: "",
+      activity: {
+        phase: "pending",
+        iconPending: "sparkles",
+        iconDone: "check",
+        pendingText: t.agent.thinking,
+        doneText: t.agent.thinking,
+      },
     });
 
     const permissionLevel: PermissionLevel = (plugin.settings.agentPermissionLevel ||
@@ -549,9 +684,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         let responseId: string | null = null;
         const onToken = (token: string) => {
           if (responseId === null) {
-            // Remove o comment de "Pensando..." só no primeiro token do primeiro turno
+            // Primeiro token do primeiro turno: marca a activity de "Pensando"
+            // como done (ícone vira check com pop animation) e inicia a resposta.
             if (firstTurn) {
-              removeMessage(commentId);
+              updateActivity(commentId, { phase: "done" });
               firstTurn = false;
             }
             responseId = addMessage({ type: "ai-response", content: token });
@@ -583,7 +719,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           // Se não veio nem um token (raro), insere uma resposta vazia
           if (responseId === null) {
             if (firstTurn) {
-              removeMessage(commentId);
+              updateActivity(commentId, { phase: "done" });
               firstTurn = false;
             }
             addMessage({
@@ -597,7 +733,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         // Caso 2: tool_calls — finaliza mensagem do turno (se já criada) e
         // adiciona msg do assistant na history pra próximo loop.
         if (firstTurn) {
-          removeMessage(commentId);
+          updateActivity(commentId, { phase: "done" });
           firstTurn = false;
         }
         history.push({
@@ -611,7 +747,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           if (!def) {
             addMessage({
               type: "ai-comment",
-              content: `⚠️ Tool desconhecida: ${call.name}`,
+              content: "",
+              activity: {
+                phase: "failed",
+                iconPending: "wrench",
+                iconFailed: "alert-triangle",
+                pendingText: `Tool desconhecida: ${call.name}`,
+                failedText: `Tool desconhecida: ${call.name}`,
+              },
             });
             history.push({
               role: "tool",
@@ -634,7 +777,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           if (!approved) {
             addMessage({
               type: "ai-comment",
-              content: `🚫 Negado: ${call.name}`,
+              content: "",
+              activity: {
+                phase: "failed",
+                iconPending: "shield",
+                iconFailed: "ban",
+                pendingText: `Negado: ${call.name}`,
+                failedText: `Negado: ${call.name}`,
+              },
             });
             history.push({
               role: "tool",
@@ -644,13 +794,26 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             continue;
           }
 
-          addMessage({
+          // Cria activity pending — ícone pulsa enquanto roda
+          const spec = agentActivitySpec(call.name, call.arguments);
+          const activityId = addMessage({
             type: "ai-comment",
-            content: agentToolLabel(call.name, call.arguments),
+            content: "",
+            activity: {
+              phase: "pending",
+              iconPending: spec.iconPending,
+              iconDone: spec.iconDone,
+              pendingText: spec.pendingText,
+              doneText: spec.doneText,
+            },
           });
           const executor = TOOL_REGISTRY[call.name];
           try {
             const result = await executor(plugin.app, call.arguments);
+            // Atualiza pra done — ícone vira check com pop, texto fica "Leu X"
+            // e content recebe meta (ex: "1.2k chars") em muted ao lado
+            const meta = summarizeToolResult(call.name, result);
+            updateActivity(activityId, { phase: "done" }, meta);
             history.push({
               role: "tool",
               toolCallId: call.id,
@@ -659,10 +822,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           } catch (err) {
             const msg =
               err instanceof Error ? err.message : "Erro desconhecido.";
-            addMessage({
-              type: "ai-comment",
-              content: `❌ ${call.name} falhou: ${msg}`,
-            });
+            updateActivity(
+              activityId,
+              {
+                phase: "failed",
+                iconFailed: "x-circle",
+                failedText: spec.pendingText.replace(
+                  /^(Lendo|Editando|Criando|Movendo|Deletando|Listando|Executando)/,
+                  "Falhou em"
+                ),
+              },
+              msg
+            );
             history.push({
               role: "tool",
               toolCallId: call.id,
@@ -676,7 +847,23 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         content: t.agent.maxTurnsReached(MAX_TURNS),
       });
     } catch (err) {
-      if (firstTurn) removeMessage(commentId);
+      if (firstTurn) {
+        // Em caso de erro antes do primeiro token, marca o "Pensando..." como
+        // failed (ícone vira X) em vez de remover — dá feedback claro do que aconteceu.
+        if (err instanceof DOMException && err.name === "AbortError") {
+          updateActivity(commentId, {
+            phase: "failed",
+            iconFailed: "circle-stop",
+            failedText: "Interrompido",
+          });
+        } else {
+          updateActivity(commentId, {
+            phase: "failed",
+            iconFailed: "x-circle",
+            failedText: "Falhou",
+          });
+        }
+      }
       if (err instanceof DOMException && err.name === "AbortError") {
         // Abort silencioso — usuário clicou em parar
       } else {

@@ -24,9 +24,35 @@ export interface AIResponseMessage extends BaseMessage {
   content: string;
 }
 
+/**
+ * Activity tracking — opcional. Quando presente, o ai-comment vira um
+ * "activity step" com ícone animado durante phase="pending" e ícone fixo
+ * + check quando phase="done"/"failed".
+ *
+ * Inspiração: estilo do Claude Code (timeline de tools que pulsa enquanto
+ * roda e mostra resultado quando termina).
+ */
+export interface ActivityMeta {
+  phase: "pending" | "done" | "failed";
+  /** Ícone Lucide enquanto pending (pulsando). Ex: "eye", "file-pen-line". */
+  iconPending: string;
+  /** Ícone Lucide quando done (estático). Default: "check". */
+  iconDone?: string;
+  /** Ícone Lucide quando failed. Default: "x". */
+  iconFailed?: string;
+  /** Texto enquanto pending (ex: "Lendo notas/foo.md"). */
+  pendingText: string;
+  /** Texto quando done (ex: "Notas/foo.md lida — 1.2k chars"). Fallback: pendingText sem o gerúndio. */
+  doneText?: string;
+  /** Texto quando failed. Default: "Falhou: " + error message. */
+  failedText?: string;
+}
+
 export interface AICommentMessage extends BaseMessage {
   type: "ai-comment";
   content: string;
+  /** Quando set, renderiza como ActivityComment animado em vez de bubble simples. */
+  activity?: ActivityMeta;
 }
 
 export interface AIOptionsMessage extends BaseMessage {
@@ -78,6 +104,15 @@ interface ChatState {
   addMessage: (msg: NewMessageInput) => string;
   removeMessage: (id: string) => void;
   appendToMessage: (id: string, text: string) => void;
+  /** Atualiza meta `activity` de um ai-comment existente (transição
+   *  pending → done / failed). No-op se a msg não for ai-comment.
+   *  contentPatch opcional substitui o `content` na mesma operação (usado
+   *  pra anexar meta-result como "1.2k chars"). */
+  updateActivity: (
+    id: string,
+    patch: Partial<ActivityMeta>,
+    contentPatch?: string
+  ) => void;
   selectOption: (messageId: string, optionIndex: number) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
@@ -148,6 +183,21 @@ export const useChatStore = create<ChatState>((set) => ({
         if (m.id !== id) return m;
         if (m.type === "ai-options") return m;
         return { ...m, content: m.content + text };
+      }),
+    })),
+  // Patch atômico de campos do activity meta. Usado pelo agent loop pra
+  // mudar phase=pending → done/failed mantendo iconPending/pendingText.
+  updateActivity: (id, patch, contentPatch) =>
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== id) return m;
+        if (m.type !== "ai-comment") return m;
+        if (!m.activity) return m;
+        return {
+          ...m,
+          activity: { ...m.activity, ...patch },
+          ...(contentPatch !== undefined ? { content: contentPatch } : {}),
+        };
       }),
     })),
   selectOption: (messageId, optionIndex) =>

@@ -83,6 +83,54 @@ interface ComposerProps {
 
 export type { PendingImage };
 
+/**
+ * Chip de anexo com placeholder shimmer estilo ChatGPT.
+ * - Mostra placeholder cinza animado até `<img onLoad>` disparar
+ * - Trocando pro thumbnail real com fade-in (opacity 0→1)
+ * - Botão X pra remover do pending
+ */
+function AttachmentChip({
+  img,
+  onRemove,
+  removeLabel,
+}: {
+  img: PendingImage;
+  onRemove: () => void;
+  removeLabel: string;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="axxa-attachment-chip">
+      <div className="axxa-attachment-thumb-wrap">
+        {!loaded && (
+          <div className="axxa-image-placeholder axxa-attachment-thumb-placeholder">
+            <Icon name="image" />
+          </div>
+        )}
+        <img
+          src={img.dataUrl}
+          alt={img.name}
+          className={
+            "axxa-attachment-thumb" +
+            (loaded ? "" : " axxa-attachment-thumb-loading")
+          }
+          onLoad={() => setLoaded(true)}
+        />
+      </div>
+      <span className="axxa-attachment-name">{img.name}</span>
+      <button
+        type="button"
+        className="axxa-attachment-remove"
+        aria-label={removeLabel}
+        title={removeLabel}
+        onClick={onRemove}
+      >
+        <Icon name="x" />
+      </button>
+    </div>
+  );
+}
+
 // InfoChip extraído pra _shared/InfoChip.tsx — reusado em recent chats list,
 // ConversationsList items, etc. (v0.1.37)
 
@@ -511,27 +559,18 @@ export function Composer({
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
-      {/* Imagens pendentes (preview chips antes do envio) */}
+      {/* Imagens pendentes (preview chips antes do envio).
+          Estilo ChatGPT: shimmer placeholder enquanto o <img> não dispara onLoad,
+          troca pra thumb final com fade-in suave. */}
       {pendingImages.length > 0 && (
         <div className="axxa-composer-attachments" aria-label="Anexos pendentes">
           {pendingImages.map((img) => (
-            <div key={img.id} className="axxa-attachment-chip">
-              <img
-                src={img.dataUrl}
-                alt={img.name}
-                className="axxa-attachment-thumb"
-              />
-              <span className="axxa-attachment-name">{img.name}</span>
-              <button
-                type="button"
-                className="axxa-attachment-remove"
-                aria-label={t.composer.attachImageRemoveLabel}
-                title={t.composer.attachImageRemoveLabel}
-                onClick={() => onRemoveImage?.(img.id)}
-              >
-                <Icon name="x" />
-              </button>
-            </div>
+            <AttachmentChip
+              key={img.id}
+              img={img}
+              onRemove={() => onRemoveImage?.(img.id)}
+              removeLabel={t.composer.attachImageRemoveLabel}
+            />
           ))}
         </div>
       )}

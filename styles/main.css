@@ -384,6 +384,189 @@ body.is-mobile
 }
 
 /* =====================================================
+ * ActivityComment — estilo Claude Code (Agent timeline)
+ * + Claude chat (thinking)
+ *
+ * 3 estados: pending / done / failed
+ *   pending → ícone pulsa (axxa-activity-pulse) + texto italic muted
+ *   done    → ícone "pop" curto na transição (axxa-activity-pop)
+ *             e fica estático depois
+ *   failed  → ícone fixo em cor warning
+ *
+ * Layout horizontal compacto: [ícone] texto · meta
+ * Diferente do ai-comment "bubble" — sem fundo, alinhado à esquerda,
+ * estilo linha de log.
+ * ===================================================== */
+
+.axxa-activity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 4px 4px;
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+  color: var(--text-muted);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.axxa-activity-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  /* Transição entre estados — quando phase muda, troca de ícone com fade */
+  transition: color 0.2s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.axxa-activity-icon .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.axxa-activity-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.axxa-activity-meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Estados */
+.axxa-activity-pending {
+  color: var(--text-muted);
+}
+.axxa-activity-pending .axxa-activity-text {
+  font-style: italic;
+}
+.axxa-activity-pending .axxa-activity-icon {
+  color: var(--text-accent);
+}
+
+.axxa-activity-done {
+  color: var(--text-normal);
+}
+.axxa-activity-done .axxa-activity-icon {
+  color: var(--color-green, #06d6a0);
+}
+
+.axxa-activity-failed {
+  color: var(--text-error, #f87171);
+}
+.axxa-activity-failed .axxa-activity-icon {
+  color: var(--text-error, #f87171);
+}
+.axxa-activity-failed .axxa-activity-text {
+  color: var(--text-error, #f87171);
+}
+
+/* Pulse loop enquanto pending — ícone respira (scale + opacity), 1s cycle.
+   Faster que o sparkle do thinking pra parecer "trabalhando ativamente". */
+@keyframes axxa-activity-icon-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+}
+
+.axxa-activity-pulse {
+  animation: axxa-activity-icon-pulse 1.05s ease-in-out infinite;
+}
+
+/* Pop animation no momento done — ícone "explode" e volta ao normal.
+   Aparece quando a class .axxa-activity-pop é aplicada (transição
+   pending → done). Animation-fill-mode: backwards mantém estado final. */
+@keyframes axxa-activity-icon-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.2;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.axxa-activity-pop {
+  animation: axxa-activity-icon-pop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Bubble "Pensando..." do Claude chat — gera mais "respiro".
+   Quando NÃO é activity, o ai-comment ainda renderiza o bubble antigo. */
+.axxa-bubble-thinking .axxa-bubble-icon {
+  animation: axxa-activity-icon-pulse 1.2s ease-in-out infinite;
+}
+
+/* =====================================================
+ * Image placeholder (shimmer) — para anexos enquanto a thumb carrega
+ * Inspiração: ChatGPT "loading image" skeleton com gradient sweep.
+ * ===================================================== */
+
+@keyframes axxa-shimmer {
+  0% {
+    background-position: -150% 0;
+  }
+  100% {
+    background-position: 150% 0;
+  }
+}
+
+.axxa-image-placeholder {
+  position: relative;
+  overflow: hidden;
+  background: var(--background-modifier-form-field);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--background-modifier-hover) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: axxa-shimmer 1.4s linear infinite;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+}
+
+.axxa-image-placeholder .svg-icon {
+  width: 24px;
+  height: 24px;
+  opacity: 0.45;
+}
+
+/* Imagens carregadas com fade-in suave (transition de opacity) */
+.axxa-attachment-thumb {
+  transition: opacity 0.22s ease;
+}
+.axxa-attachment-thumb-loading {
+  opacity: 0;
+}
+
+/* =====================================================
  * AI Response (texto puro) + footer BARE
  * !important pra sobrescrever o background-color default
  * do <button> do Obsidian
@@ -830,12 +1013,34 @@ body.is-mobile
   min-width: 0;
 }
 
+.axxa-attachment-thumb-wrap {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
 .axxa-attachment-thumb {
   width: 28px;
   height: 28px;
   border-radius: 999px;
   object-fit: cover;
   flex-shrink: 0;
+  position: relative;
+  display: block;
+}
+
+.axxa-attachment-thumb-placeholder {
+  position: absolute;
+  inset: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.axxa-attachment-thumb-placeholder .svg-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .axxa-attachment-name {
