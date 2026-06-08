@@ -241,7 +241,10 @@ body.is-mobile
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 12px;
+  /* padding-bottom dinâmico = altura do composer + gap. ChatArea ocupa o
+     fundo total da view (atrás do composer flutuante) e a última msg fica
+     visível graças ao padding extra. */
+  padding: 16px 12px calc(var(--axxa-composer-h, 80px) + 16px) 12px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -813,54 +816,67 @@ body.is-mobile
  * Inspirado nas referências de design (ChatGPT mobile etc)
  * ===================================================== */
 
+/* =====================================================
+ * Composer FAB flutuante (v0.1.47)
+ *
+ * Layout NOVO: composer SAI do flex flow e vira position: absolute
+ * ancorado no bottom da .axxa-root, com offset calculado:
+ *
+ *   bottom = keyboard-height + safe-area + base-offset
+ *
+ * Variáveis usadas:
+ *   --keyboard-height                Obsidian seta no <html> quando teclado abre
+ *   --safe-area-inset-bottom         iOS safe-area (notch / home indicator)
+ *   --copilot-status-bar-clearance   navbar mobile do Obsidian
+ *   --axxa-composer-h                altura medida do composer (JS observer)
+ *
+ * O ChatArea ocupa toda a viewport e ganha padding-bottom = --axxa-composer-h
+ * pra última mensagem não ficar escondida atrás do composer.
+ * ===================================================== */
+
 .axxa-composer {
-  flex: 0 0 auto;
+  /* SAI do flex flow do .axxa-root — vira floating FAB */
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(
+    var(--keyboard-height, 0px) +
+    var(--safe-area-inset-bottom, 0px) +
+    var(--copilot-status-bar-clearance, 0px) +
+    8px
+  );
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 12px;
-  /* Background TRANSPARENTE — decisão do dev (0% opacidade). */
+  padding: 8px 4px 6px;
+  /* Background do composer continua transparente — o pill interno
+     tem o fundo sólido. */
   background: transparent;
-  /* Eleva o composer acima de qualquer overlay/system bar.
-     z-index alto + position relative permite ficar visualmente "no topo".
-     O background do drawer continua passando atrás (transparente). */
-  position: relative;
+  /* Eleva acima de qualquer overlay/system bar */
   z-index: 50;
+  /* Transição suave quando o teclado abre/fecha */
+  transition: bottom 0.18s ease;
+  /* Sombra sutil pra "destacar" do chat area por trás */
+  pointer-events: auto;
 }
 
-/* Drawer: composer fica "grudado" no rodapé e estende seu background
-   até cobrir a safe area do mobile (status/nav bar nativos).
-   Pseudo-element ::after preenche embaixo do composer com a cor primary
-   até a borda inferior da viewport — visualmente "consome" o padding-bottom
-   da view-content (que continua intocado pra layout cálculo). */
-.axxa-composer::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: calc(
-    var(--safe-area-inset-bottom, 0px) +
-    var(--copilot-status-bar-clearance, 0px) +
-    var(--size-4-4, 16px)
-  );
-  background: var(--background-primary);
-  z-index: -1;
-  pointer-events: none;
-}
-
-/* Mobile: navbar nativo presente — estende ainda mais pra cobrir.
-   navbar-height é a var do Obsidian (default ~50px). */
-body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav) .axxa-composer::after {
-  height: calc(
+/* Mobile com navbar nativo visível: soma o navbar-height ao offset */
+body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav) .axxa-composer {
+  bottom: calc(
+    var(--keyboard-height, 0px) +
     var(--navbar-height, 50px) +
     var(--safe-area-inset-bottom, 0px) +
-    var(--size-4-4, 16px)
+    8px
   );
 }
 
-/* Garante que o background do composer-row seja sólido também (não fica
-   "vazado" quando o background do drawer for diferente do primary). */
+/* Mobile com teclado aberto: cancela o navbar-height (teclado sobrepõe nav).
+   axxa-keyboard-open é setado pelo AxxaView.tsx via MutationObserver. */
+body.is-mobile.axxa-keyboard-open .axxa-composer {
+  bottom: calc(var(--keyboard-height, 0px) + 8px);
+}
+
+/* Garante que conteúdo interno do composer fique acima do pseudo-bg */
 .axxa-composer-row,
 .axxa-composer-info,
 .axxa-composer-attachments {
@@ -945,9 +961,13 @@ body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav) .axxa-composer::after {
   border: 1px solid var(--background-modifier-border);
   border-radius: 22px;
   padding: 6px 14px 6px 6px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   /* Hug o conteúdo verticalmente — pill se ajusta ao tamanho do texto */
   min-height: 0;
+  /* FAB shadow — destaca do chat-area por trás (composer agora é flutuante) */
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
 .axxa-composer-pill:focus-within {
@@ -1474,14 +1494,15 @@ body.theme-dark .axxa-recording-indicator {
 .axxa-starter {
   /* Fill container — toma TODA altura disponível entre header e composer,
      independente do conteúdo. Sem isso, com poucas recent chats a starter
-     ficava com fundo cortado no meio da view. */
+     ficava com fundo cortado no meio da view.
+     padding-bottom dinâmico = altura do composer flutuante (FAB v0.1.47) */
   flex: 1 1 auto;
   height: 100%;
   min-height: 0;
   width: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px 16px;
+  padding: 20px 16px calc(var(--axxa-composer-h, 100px) + 24px) 16px;
   display: flex;
   flex-direction: column;
   gap: 18px;

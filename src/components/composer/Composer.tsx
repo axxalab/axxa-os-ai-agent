@@ -26,6 +26,7 @@ import { useApp } from "../_shared/AppContext";
 import {
   wikilinkCompletionSource,
   commandCompletionSource,
+  extractWikilinks,
   type AxxaCommand,
 } from "./completions";
 
@@ -106,6 +107,9 @@ interface ComposerProps {
   onAddImage?: (img: PendingImage) => void;
   /** Callback chamado quando user remove um anexo do pending. */
   onRemoveAttachment?: (id: string) => void;
+  /** Callback chamado quando user seleciona uma nota via @ autocomplete OU
+   *  cola um wikilink. Caller lê o conteúdo e adiciona ao pending attachments. */
+  onPickNote?: (path: string, isFolder: boolean) => void;
 }
 
 export type { PendingImage };
@@ -219,6 +223,7 @@ export function Composer({
   pendingAttachments = [],
   onAddImage,
   onRemoveAttachment,
+  onPickNote,
 }: ComposerProps) {
   const t = useT();
   const app = useApp();
@@ -248,6 +253,8 @@ export function Composer({
   visionEnabledRef.current = visionEnabled;
   const onAddImageRef = useRef(onAddImage);
   onAddImageRef.current = onAddImage;
+  const onPickNoteRef = useRef(onPickNote);
+  onPickNoteRef.current = onPickNote;
 
   // Converte File/Blob em PendingImage via FileReader (data URL).
   const blobToPendingImage = (blob: Blob, name: string): Promise<PendingImage> =>
@@ -358,7 +365,10 @@ export function Composer({
         // escondido atrás do teclado virtual no mobile.
         autocompletion({
           override: [
-            wikilinkCompletionSource(app),
+            // @ autocomplete → dispara onPickNote em vez de inserir [[]]
+            wikilinkCompletionSource(app, (path, isFolder) => {
+              onPickNoteRef.current?.(path, isFolder);
+            }),
             commandCompletionSource(commandsRef.current),
           ],
           activateOnTyping: true,
@@ -378,31 +388,52 @@ export function Composer({
             setIsEmpty(text.length === 0);
           }
         }),
-        // Paste de imagem do clipboard — só pega quando o modelo suporta vision.
-        // Continua processando texto normalmente (não bloqueia paste de string).
+        // Paste handlers:
+        //  1. Imagem do clipboard → vira anexo (quando modelo suporta vision)
+        //  2. Texto com wikilinks `[[path]]` → extrai os links pra anexos
+        //     e cola só o texto limpo
         EditorView.domEventHandlers({
-          paste: (event) => {
-            if (!visionEnabledRef.current || !onAddImageRef.current) return false;
+          paste: (event, view) => {
             const items = event.clipboardData?.items;
-            if (!items) return false;
-            for (let i = 0; i < items.length; i++) {
-              const it = items[i];
-              if (it.kind === "file" && it.type.startsWith("image/")) {
-                const file = it.getAsFile();
-                if (!file) continue;
+
+            // === 1. Imagem do clipboard ===
+            if (items && visionEnabledRef.current && onAddImageRef.current) {
+              for (let i = 0; i < items.length; i++) {
+                const it = items[i];
+                if (it.kind === "file" && it.type.startsWith("image/")) {
+                  const file = it.getAsFile();
+                  if (!file) continue;
+                  event.preventDefault();
+                  blobToPendingImage(file, file.name || `pasted-${Date.now()}.png`)
+                    .then((img) => {
+                      onAddImageRef.current?.(img);
+                      new Notice(t.composer.attachImagePastedNotice);
+                    })
+                    .catch((err) => {
+                      console.error("[axxa] paste de imagem falhou:", err);
+                      new Notice(t.composer.attachImageFailed);
+                    });
+                  return true;
+                }
+              }
+            }
+
+            // === 2. Texto com wikilinks `[[path]]` ===
+            const pastedText = event.clipboardData?.getData("text/plain");
+            if (pastedText && pastedText.includes("[[")) {
+              const { cleanText, links } = extractWikilinks(pastedText);
+              if (links.length > 0 && onPickNoteRef.current) {
                 event.preventDefault();
-                blobToPendingImage(file, file.name || `pasted-${Date.now()}.png`)
-                  .then((img) => {
-                    onAddImageRef.current?.(img);
-                    new Notice(t.composer.attachImagePastedNotice);
-                  })
-                  .catch((err) => {
-                    console.error("[axxa] paste de imagem falhou:", err);
-                    new Notice(t.composer.attachImageFailed);
-                  });
+                // Insere o cleanText no cursor (substitui seleção se houver)
+                view.dispatch(view.state.replaceSelection(cleanText));
+                // Adiciona cada link como anexo (caller resolve path real)
+                for (const link of links) {
+                  onPickNoteRef.current(link.path, false);
+                }
                 return true;
               }
             }
+
             return false;
           },
         }),
@@ -410,27 +441,48 @@ export function Composer({
           "&": {
             backgroundColor: "transparent",
             color: "var(--text-normal)",
+            // CRÍTICO: fontFamily + fontSize + lineHeight DEVEM ser idênticos
+            // ao placeholder e ao texto que o usuário digita, senão o cursor
+            // "pula" e o spacing fica inconsistente entre os dois.
             fontFamily: "var(--font-text)",
             fontSize: "var(--font-ui-medium)",
-            // SEM maxHeight fixo — composer expande naturalmente com o texto.
-            // CSS externo (.axxa-composer-editor) cuida do clamp em telas
-            // muito altas via max-height calc(50vh - X).
-            // overflow-x: hidden — campo de mensagem NUNCA scrolla horizontalmente
-            // (regra: tudo respira pra baixo, jamais pra direita)
+            lineHeight: "1.5",
             overflowX: "hidden",
             overflowY: "visible",
           },
           "&.cm-focused": { outline: "none" },
-          ".cm-scroller": { overflowX: "hidden", overflowY: "visible" },
+          ".cm-scroller": {
+            overflowX: "hidden",
+            overflowY: "visible",
+            // Scroller herda fonte do & — força explicit pra evitar drift
+            fontFamily: "var(--font-text)",
+            fontSize: "var(--font-ui-medium)",
+            lineHeight: "1.5",
+          },
           ".cm-content": {
             caretColor: "var(--text-normal)",
-            padding: "4px 0",
-            // Quebra palavras longas (URLs, identifiers, etc) que lineWrapping
-            // sozinho não pega (lineWrapping só quebra em word boundary).
+            // Padding 0 vertical pro texto começar EXATAMENTE onde o placeholder
+            // começa. line-height controla o espaçamento entre linhas.
+            padding: "0",
+            // Mesma fonte + tamanho que o & pra evitar diferenças sub-pixel
+            fontFamily: "var(--font-text)",
+            fontSize: "var(--font-ui-medium)",
+            lineHeight: "1.5",
             wordBreak: "break-word",
             overflowWrap: "anywhere",
           },
-          ".cm-line": { padding: "0" },
+          ".cm-line": {
+            padding: "0",
+            lineHeight: "1.5",
+          },
+          // Placeholder com EXATAMENTE os mesmos atributos visuais do texto
+          // — apenas color muda (faint). Evita "pulo" quando começa a digitar.
+          ".cm-placeholder": {
+            color: "var(--text-faint)",
+            fontFamily: "var(--font-text)",
+            fontSize: "var(--font-ui-medium)",
+            lineHeight: "1.5",
+          },
         }),
       ],
     });
@@ -618,8 +670,32 @@ export function Composer({
   const contextTotal = getContextWindow(modelName);
   const tokensTotal = tokensIn + tokensOut;
 
+  // Mede a altura do composer + atualiza CSS var --axxa-composer-h na .axxa-root.
+  // Permite que o ChatArea aplique padding-bottom dinâmico = altura real do composer
+  // (que cresce com texto + anexos pendentes). Usa ResizeObserver pra reatividade.
+  const composerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    const root = el.closest(".axxa-root") as HTMLElement | null;
+    if (!root) return;
+    const update = () => {
+      root.style.setProperty(
+        "--axxa-composer-h",
+        `${Math.round(el.offsetHeight)}px`
+      );
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty("--axxa-composer-h");
+    };
+  }, []);
+
   return (
-    <div className="axxa-composer">
+    <div className="axxa-composer" ref={composerRef}>
       {isRecording && (
         <div className="axxa-recording-indicator" aria-live="polite">
           <span className="axxa-recording-dot" aria-hidden="true" />

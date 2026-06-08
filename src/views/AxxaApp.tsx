@@ -1511,6 +1511,45 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onRemoveAttachment={(id) =>
               setPendingAttachments((prev) => prev.filter((p) => p.id !== id))
             }
+            onPickNote={async (path, isFolder) => {
+              // Pasta vira "note" sem content (pra LLM saber que existe);
+              // arquivo é lido e inlinado como contexto na hora do envio
+              try {
+                let content = "";
+                let resolvedPath = path;
+                if (!isFolder) {
+                  // Path pode vir sem .md (do autocomplete). Adiciona se faltar.
+                  const candidate = path.endsWith(".md") ? path : `${path}.md`;
+                  const exists = await plugin.app.vault.adapter.exists(candidate);
+                  if (exists) {
+                    resolvedPath = candidate;
+                    content = await plugin.app.vault.adapter.read(candidate);
+                  } else if (await plugin.app.vault.adapter.exists(path)) {
+                    content = await plugin.app.vault.adapter.read(path);
+                  } else {
+                    new Notice(`Nota não encontrada: ${path}`);
+                    return;
+                  }
+                }
+                setPendingAttachments((prev) => [
+                  ...prev,
+                  {
+                    id: makeAttachmentId(),
+                    attachment: {
+                      type: "note",
+                      path: resolvedPath,
+                      content,
+                    },
+                    name: resolvedPath.split("/").pop() ?? resolvedPath,
+                  },
+                ]);
+              } catch (err) {
+                console.error("[axxa] onPickNote falhou:", err);
+                new Notice(
+                  `Falha ao anexar nota: ${err instanceof Error ? err.message : "erro"}`
+                );
+              }
+            }}
           />
         )}
           {plusOpen && (

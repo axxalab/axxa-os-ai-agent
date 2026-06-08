@@ -52,10 +52,21 @@ function collectVaultPaths(app: App): WikiLinkOption[] {
   return items;
 }
 
-/** Source pra completion de @notas/pastas. Trigger: @ seguido de qualquer char. */
-export function wikilinkCompletionSource(app: App): CompletionSource {
+/**
+ * Source pra completion de @notas/pastas. Trigger: @ seguido de qualquer char.
+ *
+ * Comportamento NOVO (v0.1.47): em vez de inserir `[[path]]` no texto,
+ * dispara o callback `onPickNote(path)` (caller adiciona como anexo) e
+ * limpa o `@query` do composer. Mesma UX do paste de imagem — anexo
+ * vai pro chip acima do composer, não polui o campo de texto.
+ *
+ * Fallback: se nenhum callback for passado, comportamento antigo (insere wikilink).
+ */
+export function wikilinkCompletionSource(
+  app: App,
+  onPickNote?: (path: string, isFolder: boolean) => void
+): CompletionSource {
   return (context: CompletionContext): CompletionResult | null => {
-    // Match @ + caracteres do nome (alfanum, -, _, /, espaço)
     const match = context.matchBefore(/@[\w\-/. áàâãäéèêëíîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÎÏÓÒÔÕÖÚÙÛÜÇÑ]*/);
     if (!match) return null;
     if (match.from === match.to && !context.explicit) return null;
@@ -71,7 +82,7 @@ export function wikilinkCompletionSource(app: App): CompletionSource {
           item.path.toLowerCase().includes(query)
         );
       })
-      .slice(0, 50); // cap pra performance
+      .slice(0, 50);
 
     return {
       from: match.from,
@@ -79,12 +90,48 @@ export function wikilinkCompletionSource(app: App): CompletionSource {
         label: item.display,
         detail: item.isFolder ? "folder" : item.path,
         type: item.isFolder ? "namespace" : "text",
-        apply: `[[${item.path}]] `,
+        apply: onPickNote
+          ? (
+              view: EditorView,
+              _completion: Completion,
+              fromArg: number,
+              toArg: number
+            ) => {
+              // Remove o "@query" do texto
+              view.dispatch({ changes: { from: fromArg, to: toArg, insert: "" } });
+              // Dispara callback (caller adiciona como anexo)
+              Promise.resolve().then(() => onPickNote(item.path, item.isFolder));
+            }
+          : `[[${item.path}]] `,
       })),
-      // Filter já foi aplicado acima — não deixa CodeMirror re-filtrar
       filter: false,
     };
   };
+}
+
+/**
+ * Detecta wikilinks `[[path]]` em texto colado/digitado e extrai eles.
+ *
+ * Retorna: { cleanText, links: Array<{ path }> }
+ * — cleanText: texto original sem os wikilinks (whitespace ao redor trimmed)
+ * — links: array de paths extraídos (na ordem em que apareciam)
+ *
+ * Suporta alias `[[path|alias]]` — pega só o `path`, descarta o alias.
+ */
+export function extractWikilinks(text: string): {
+  cleanText: string;
+  links: Array<{ path: string }>;
+} {
+  const links: Array<{ path: string }> = [];
+  // Regex pra `[[path]]` ou `[[path|alias]]`. Permite . _ - / espaço dentro.
+  const wikilinkRe = /\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]/g;
+  let cleanText = text.replace(wikilinkRe, (_full, path: string) => {
+    links.push({ path: path.trim() });
+    return ""; // remove o link do texto
+  });
+  // Limpa whitespace duplicado deixado pelo replace
+  cleanText = cleanText.replace(/[ \t]{2,}/g, " ").trim();
+  return { cleanText, links };
 }
 
 // ============================================================
