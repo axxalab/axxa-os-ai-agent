@@ -8,7 +8,7 @@
 //
 // "+" button abre o PlusModal (ChatGPT-style bottom sheet com Effort selector)
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   EditorView,
   keymap,
@@ -19,6 +19,7 @@ import { EditorState, Compartment } from "@codemirror/state";
 import { autocompletion } from "@codemirror/autocomplete";
 import { Notice, Platform } from "obsidian";
 import { Icon } from "../_shared/Icon";
+import { InfoChip } from "../_shared/InfoChip";
 import { formatTokens, getContextWindow } from "../_shared/contextWindows";
 import { useT } from "../../i18n";
 import { useApp } from "../_shared/AppContext";
@@ -58,22 +59,8 @@ interface ComposerProps {
   commands?: AxxaCommand[];
 }
 
-function InfoChip({
-  icon,
-  color,
-  children,
-}: {
-  icon: string;
-  color: string;
-  children: ReactNode;
-}) {
-  return (
-    <span className="axxa-info-chip" style={{ color }}>
-      <Icon name={icon} />
-      <span>{children}</span>
-    </span>
-  );
-}
+// InfoChip extraído pra _shared/InfoChip.tsx — reusado em recent chats list,
+// ConversationsList items, etc. (v0.1.37)
 
 export function Composer({
   onSend,

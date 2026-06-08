@@ -5,6 +5,7 @@
 //   - Quando user manda primeira msg, AxxaApp chama lockSession()
 
 import { Icon } from "../_shared/Icon";
+import { InfoChip } from "../_shared/InfoChip";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
@@ -14,6 +15,23 @@ import {
 import type { ChatSummary } from "../_shared/chatPersistence";
 import { formatTokens } from "../_shared/contextWindows";
 import { useT } from "../../i18n";
+
+// Mesmas cores semânticas usadas no status line do Composer.
+const CHIP_COLORS = {
+  mode: "var(--color-pink, #f472b6)",
+  model: "var(--color-purple, #a370f7)",
+  date: "var(--text-muted)",
+  messages: "var(--color-cyan, #4cc9f0)",
+  tokens: "var(--color-green, #06d6a0)",
+} as const;
+
+function modeChipIcon(mode: string): string {
+  switch (mode) {
+    case "agent": return "bot";
+    case "vault-qa": return "library";
+    default: return "message-square";
+  }
+}
 
 const PROVIDERS = [
   { id: "openai", name: "OpenAI", icon: "sparkles" },
@@ -199,14 +217,24 @@ export function StarterScreen({
                 onClick={() => onLoadChat(c.id, c.mode)}
               >
                 <div className="axxa-recent-title">{c.title}</div>
-                <div className="axxa-recent-meta">
-                  <span>{formatRelativeDate(c.date)}</span>
-                  <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                  <span>{c.model}</span>
-                  <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                  <span>{c.messageCount} msgs</span>
-                  <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                  <span>{formatTokens(c.tokensIn + c.tokensOut)} tokens</span>
+                {/* Meta com info chips coloridos — mesmo padrão do status
+                    line do Composer */}
+                <div className="axxa-composer-info axxa-recent-meta">
+                  <InfoChip icon={modeChipIcon(c.mode)} color={CHIP_COLORS.mode}>
+                    {c.mode}
+                  </InfoChip>
+                  <InfoChip icon="cpu" color={CHIP_COLORS.model}>
+                    {c.model}
+                  </InfoChip>
+                  <InfoChip icon="clock" color={CHIP_COLORS.date}>
+                    {formatRelativeDate(c.date)}
+                  </InfoChip>
+                  <InfoChip icon="message-square" color={CHIP_COLORS.messages}>
+                    {c.messageCount}
+                  </InfoChip>
+                  <InfoChip icon="sigma" color={CHIP_COLORS.tokens}>
+                    {formatTokens(c.tokensIn + c.tokensOut)}
+                  </InfoChip>
                 </div>
               </button>
             ))}

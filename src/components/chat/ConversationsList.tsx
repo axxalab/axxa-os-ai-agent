@@ -1,14 +1,14 @@
 // src/components/chat/ConversationsList.tsx
 // Tela cheia mostrando TODAS as conversas salvas (todos os modos: chat /
 // vault-qa / agent). Tem search inline + agrupa por dia (Hoje / Ontem /
-// data) + filtros de provider E modo + sort. Mesmo visual dos recent
-// chats da StarterScreen — só que aqui mostra tudo.
+// data) + filtros de provider E modo (segmented pills) + sort.
 //
-// AxxaApp gerencia o state `view: "chat" | "conversations"` e injeta esse
-// componente no body quando view==="conversations".
+// Cada item usa o mesmo padrão visual do status line do Composer
+// (InfoChip + .axxa-composer-info) — consistência visual entre componentes.
 
 import { useMemo, useState } from "react";
 import { Icon } from "../_shared/Icon";
+import { InfoChip } from "../_shared/InfoChip";
 import { useT } from "../../i18n";
 import { formatTokens } from "../_shared/contextWindows";
 import type { ChatSummary } from "../_shared/chatPersistence";
@@ -16,7 +16,6 @@ import type { ChatSummary } from "../_shared/chatPersistence";
 interface ConversationsListProps {
   chats: ChatSummary[];
   onLoadChat: (chatId: string) => void;
-  onRenameChat: (chat: ChatSummary) => void;
   onClose: () => void;
 }
 
@@ -40,6 +39,15 @@ type ProviderFilter = (typeof PROVIDER_FILTERS)[number];
 
 const MODE_FILTERS = ["all", "chat", "vault-qa", "agent"] as const;
 type ModeFilter = (typeof MODE_FILTERS)[number];
+
+// Cores semânticas — mesmo padrão do status line do Composer
+const CHIP_COLORS = {
+  mode: "var(--color-pink, #f472b6)",
+  model: "var(--color-purple, #a370f7)",
+  date: "var(--text-muted)",
+  messages: "var(--color-cyan, #4cc9f0)",
+  tokens: "var(--color-green, #06d6a0)",
+} as const;
 
 function providerLabel(id: ProviderFilter, allLabel: string): string {
   switch (id) {
@@ -115,7 +123,6 @@ function formatRelativeDate(iso: string): string {
 export function ConversationsList({
   chats,
   onLoadChat,
-  onRenameChat,
   onClose,
 }: ConversationsListProps) {
   const t = useT();
@@ -219,7 +226,8 @@ export function ConversationsList({
         )}
       </div>
 
-      {/* Sort + provider filter chips + mode filter chips */}
+      {/* Sort + provider filter chips + mode filter chips
+          Filtros usam o mesmo padrão segmented pill do StarterScreen */}
       <div className="axxa-conversations-controls">
         <div className="axxa-conversations-sort">
           <Icon name="arrow-up-down" />
@@ -238,11 +246,13 @@ export function ConversationsList({
           </select>
         </div>
 
-        <div className="axxa-conversations-filters">
+        <div className="axxa-conversations-filters" role="tablist">
           {MODE_FILTERS.map((id) => (
             <button
               key={`mode-${id}`}
               type="button"
+              role="tab"
+              aria-selected={modeFilter === id}
               className={
                 "axxa-filter-chip" +
                 (modeFilter === id ? " axxa-filter-chip-active" : "")
@@ -254,11 +264,13 @@ export function ConversationsList({
           ))}
         </div>
 
-        <div className="axxa-conversations-filters">
+        <div className="axxa-conversations-filters" role="tablist">
           {PROVIDER_FILTERS.map((id) => (
             <button
               key={id}
               type="button"
+              role="tab"
+              aria-selected={providerFilter === id}
               className={
                 "axxa-filter-chip" +
                 (providerFilter === id ? " axxa-filter-chip-active" : "")
@@ -288,43 +300,33 @@ export function ConversationsList({
               <div className="axxa-conversations-group-head">{dayLabel}</div>
             )}
             {items.map((c) => (
-              <div key={c.id} className="axxa-recent-item-row">
-                <button
-                  type="button"
-                  className="axxa-recent-item"
-                  onClick={() => onLoadChat(c.id)}
-                >
-                  <div className="axxa-recent-title-row">
-                    <Icon name={modeIcon(c.mode)} />
-                    <span className="axxa-recent-title">{c.title}</span>
-                  </div>
-                  <div className="axxa-recent-meta">
-                    <span className="axxa-recent-mode-chip">{c.mode}</span>
-                    <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                    <span>{formatRelativeDate(c.date)}</span>
-                    <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                    <span>{c.model}</span>
-                    <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                    <span>{c.messageCount} msgs</span>
-                    <span className="axxa-recent-meta-dot" aria-hidden="true" />
-                    <span>
-                      {formatTokens(c.tokensIn + c.tokensOut)} tokens
-                    </span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className="axxa-recent-item-action"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRenameChat(c);
-                  }}
-                  aria-label={t.conversations.renameAria}
-                  title={t.conversations.renameTitle}
-                >
-                  <Icon name="pencil" />
-                </button>
-              </div>
+              <button
+                key={c.id}
+                type="button"
+                className="axxa-recent-item"
+                onClick={() => onLoadChat(c.id)}
+              >
+                <div className="axxa-recent-title">{c.title}</div>
+                {/* Meta com info chips coloridos — mesmo padrão do status
+                    line do Composer (.axxa-composer-info + .axxa-info-chip) */}
+                <div className="axxa-composer-info axxa-recent-meta">
+                  <InfoChip icon={modeIcon(c.mode)} color={CHIP_COLORS.mode}>
+                    {c.mode}
+                  </InfoChip>
+                  <InfoChip icon="cpu" color={CHIP_COLORS.model}>
+                    {c.model}
+                  </InfoChip>
+                  <InfoChip icon="clock" color={CHIP_COLORS.date}>
+                    {formatRelativeDate(c.date)}
+                  </InfoChip>
+                  <InfoChip icon="message-square" color={CHIP_COLORS.messages}>
+                    {c.messageCount}
+                  </InfoChip>
+                  <InfoChip icon="sigma" color={CHIP_COLORS.tokens}>
+                    {formatTokens(c.tokensIn + c.tokensOut)}
+                  </InfoChip>
+                </div>
+              </button>
             ))}
           </div>
         ))}

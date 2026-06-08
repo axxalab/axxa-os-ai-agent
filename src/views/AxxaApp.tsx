@@ -33,14 +33,12 @@ import {
 import {
   saveChat,
   loadChat,
-  listChats,
   listAllChats,
   renameChat,
   generateTitle,
   type ChatData,
   type ChatSummary,
 } from "../components/_shared/chatPersistence";
-import { RenameChatModal } from "../components/chat/RenameChatModal";
 import { Notice } from "obsidian";
 import { searchVault, buildVaultContext } from "../components/_shared/vaultSearch";
 import { ensureFolder } from "../components/_shared/chatPersistence";
@@ -756,42 +754,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setView("chat");
   };
 
-  // Abre o modal de rename pra uma conversa qualquer (lista ou header)
-  const handleRenameChatSummary = (chat: ChatSummary) => {
-    new RenameChatModal(plugin.app, {
-      currentTitle: chat.title,
-      title: t.conversations.renameModalTitle,
-      inputLabel: t.conversations.renameInputLabel,
-      submitLabel: t.conversations.renameSubmit,
-      cancelLabel: t.conversations.renameCancel,
-      onSubmit: async (newTitle) => {
-        try {
-          await renameChat(
-            plugin.app,
-            plugin.settings.chatsPath,
-            chat.mode,
-            chat.id,
-            newTitle
-          );
-          new Notice(t.conversations.renameSuccess(newTitle));
-          // Reflete na lista atual + state se for o chat aberto
-          setAllChats((prev) =>
-            prev.map((c) => (c.id === chat.id ? { ...c, title: newTitle } : c))
-          );
-          setRecentChats((prev) =>
-            prev.map((c) => (c.id === chat.id ? { ...c, title: newTitle } : c))
-          );
-          if (currentChatId === chat.id) {
-            useChatStore.getState().setCurrentChatTitle(newTitle);
-          }
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : t.ai.unknownError;
-          new Notice(t.conversations.renameFailed(msg));
-        }
-      },
-    }).open();
-  };
-
   // Rename direto pelo título do header (chat ativo). Reescreve o arquivo
   // com base na sessionMode + currentChatId já conhecidos.
   const handleHeaderRename = async (newTitle: string) => {
@@ -1004,7 +966,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           <ConversationsList
             chats={allChats}
             onLoadChat={handleLoadChatFromList}
-            onRenameChat={handleRenameChatSummary}
             onClose={() => setView("chat")}
           />
         ) : isEmpty ? (
