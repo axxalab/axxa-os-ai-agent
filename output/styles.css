@@ -158,9 +158,16 @@ body.is-mobile .workspace-tab-container:has(.workspace-leaf-content[data-type="a
   background-color: var(--background-primary) !important;
 }
 
-/* Mobile-navbar nativo do Obsidian — só quando AXXA é a leaf ativa.
-   :has() na .workspace-drawer pra escopar dentro do drawer direito. */
-body.is-mobile .workspace-drawer.mod-right:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) .mobile-navbar {
+/* === Mobile-navbar bg fix (v0.1.59) ===
+   .mobile-navbar é SIBLING do .workspace-drawer (não descendente).
+   Selector anterior com :has() dentro do drawer não matchava.
+   Target global em mobile + outros chromes inferiores do Obsidian
+   (footer, nav-buttons, tab-options) pra eliminar strip horizontal
+   branco/escuro embaixo. */
+body.is-mobile .mobile-navbar,
+body.is-mobile .workspace-drawer-footer,
+body.is-mobile .nav-buttons-container,
+body.is-mobile .workspace-drawer-tab-options {
   background: var(--background-primary) !important;
   background-color: var(--background-primary) !important;
 }
@@ -1247,6 +1254,24 @@ body.is-mobile
   gap: 8px;
   /* Sem min-height fixo — o row cresce com a pill (que cresce com o texto) */
   min-height: 0;
+  /* v0.1.59: garante que o row NUNCA wrappa quando stop aparece —
+     pill+button ficam sempre lado a lado, button não shifta */
+  flex-wrap: nowrap;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* v0.1.59: pill sempre toma todo espaço disponível; button SEMPRE 44x44
+   alinhado à direita. Sem isso, stop button shifta horizontalmente
+   quando o conteúdo do row muda. */
+.axxa-composer-pill {
+  flex: 1 1 0 !important;
+  min-width: 0;
+}
+.axxa-composer-send {
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  box-sizing: border-box;
 }
 
 /* Status row abaixo do pill — model · effort · context · tokens
@@ -1255,8 +1280,6 @@ body.is-mobile
    mesmo com nome de modelo longo (ex: anthropic/claude-3.5-sonnet-20241022). */
 .axxa-composer-info {
   display: flex;
-  /* v0.1.49: PERMITE wrap pra 2 linhas (era nowrap). Status line cabe
-     bem em telas estreitas sem cortar chips. */
   flex-wrap: wrap;
   align-items: center;
   gap: 3px 10px;
@@ -1267,9 +1290,10 @@ body.is-mobile
   user-select: none;
   max-width: 100%;
   min-width: 0;
-  /* Backdrop blur AGRESSIVO + sombra FAB (v0.1.50) — destaca a status
-     line do chat por trás. saturate(160%) dá um "tint" sutil ao blur. */
-  background: color-mix(in srgb, var(--background-primary) 75%, transparent);
+  /* v0.1.59: background MAIS OPACO (90% em vez de 75%) pra cobrir
+     completamente o shadow nativo do Obsidian que vazava por trás
+     do blur semi-transparente. */
+  background: color-mix(in srgb, var(--background-primary) 92%, transparent);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
   backdrop-filter: blur(18px) saturate(160%);
   border-radius: 14px;
@@ -1278,6 +1302,24 @@ body.is-mobile
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 3px 8px rgba(0, 0, 0, 0.06),
     0 8px 20px rgba(0, 0, 0, 0.08);
+  /* Position relative + isolation isolate pra criar stacking context
+     novo, garantindo que shadows/overlays do Obsidian NÃO atravessem
+     pra dentro/atras da status line. */
+  position: relative;
+  isolation: isolate;
+}
+
+/* Camada extra de bg sólido por trás (caso o blur falhe + opacity
+   ainda mostre algo): pseudo ::before com bg solido cobre o que
+   está visualmente atrás. */
+.axxa-composer-info::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: var(--background-primary);
+  opacity: 0.6;
+  z-index: -1;
 }
 
 /* Fallback browsers sem color-mix (Safari < 16.2) */
