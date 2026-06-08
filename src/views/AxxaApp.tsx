@@ -377,6 +377,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           type: m.type as "user" | "ai-response",
           content: m.content,
           timestamp: m.timestamp,
+          // Persiste reaction quando ai-response (like/dislike sobrevive reload)
+          ...(m.type === "ai-response" && (m as AIResponseMessage).reaction
+            ? { reaction: (m as AIResponseMessage).reaction }
+            : {}),
         })),
       };
       saveChat(plugin.app, plugin.settings.chatsPath, chat).catch((err) =>
@@ -1388,6 +1392,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         type: m.type,
         content: m.content,
         timestamp: m.timestamp,
+        // Restaura reaction salva quando ai-response
+        ...(m.type === "ai-response" && m.reaction
+          ? { reaction: m.reaction }
+          : {}),
       })) as ChatMessage[];
 
       const {

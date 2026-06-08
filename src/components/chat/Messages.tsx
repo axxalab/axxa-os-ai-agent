@@ -63,7 +63,10 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   const actions = useChatActions();
   const t = useT();
   const [copied, setCopied] = useState(false);
-  const [liked, setLiked] = useState<null | boolean>(null);
+  // Reaction agora vem do store (persiste no .md). Local state era perdido
+  // a cada reload — não rastreava feedback do user de forma confiável.
+  const setReaction = useChatStore((s) => s.setReaction);
+  const liked = msg.reaction === "like" ? true : msg.reaction === "dislike" ? false : null;
   // Esconde footer enquanto essa msg específica tá sendo streamada
   const streamingId = useChatStore((s) => s.streamingMessageId);
   const isStreaming = msg.id === streamingId;
@@ -87,11 +90,11 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   };
 
   const handleLike = () => {
-    setLiked((prev) => (prev === true ? null : true));
+    setReaction(msg.id, msg.reaction === "like" ? null : "like");
   };
 
   const handleDislike = () => {
-    setLiked((prev) => (prev === false ? null : false));
+    setReaction(msg.id, msg.reaction === "dislike" ? null : "dislike");
   };
 
   const menuHandlers = useMessageContextMenu(() => {

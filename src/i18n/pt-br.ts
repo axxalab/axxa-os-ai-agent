@@ -178,6 +178,8 @@ export const PT_BR = {
     title: "AXXA OS — AI Agent",
     topTabs: {
       providers: "Providers",
+      appearance: "Aparência",
+      usage: "Usage",
       outros: "Outros",
     },
     tabs: {

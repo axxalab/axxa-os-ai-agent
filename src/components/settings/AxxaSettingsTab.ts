@@ -37,7 +37,7 @@ import {
   printUsageReport,
 } from "../../usage/export";
 
-type TopTabId = "providers" | "outros";
+type TopTabId = "providers" | "appearance" | "usage" | "outros";
 type ProviderTabId =
   | "openai"
   | "anthropic"
@@ -90,6 +90,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // ============================================================
     const topTabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
     this.createTopTabButton(topTabsEl, "providers", t.settings.topTabs.providers);
+    this.createTopTabButton(topTabsEl, "appearance", t.settings.topTabs.appearance);
+    this.createTopTabButton(topTabsEl, "usage", t.settings.topTabs.usage);
     this.createTopTabButton(topTabsEl, "outros", t.settings.topTabs.outros);
 
     // ============================================================
@@ -97,11 +99,29 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // ============================================================
     const contentEl = containerEl.createDiv({ cls: "axxa-settings-content" });
 
-    if (this.activeTopTab === "providers") {
-      this.renderProvidersTab(contentEl, t);
-    } else {
-      this.renderOutros(contentEl, t);
+    switch (this.activeTopTab) {
+      case "providers":
+        this.renderProvidersTab(contentEl, t);
+        break;
+      case "appearance":
+        this.renderAppearanceTab(contentEl, t);
+        break;
+      case "usage":
+        this.renderOutrosUsage(contentEl, t);
+        break;
+      case "outros":
+        this.renderOutros(contentEl, t);
+        break;
     }
+  }
+
+  /** Top-tab Appearance — só backgrounds + chips + code wrap (movido de Outros → UI) */
+  private renderAppearanceTab(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.outrosUiIntro,
+      cls: "setting-item-description",
+    });
+    this.renderOutrosUI(parent, t);
   }
 
   hide() {
@@ -713,30 +733,28 @@ export class AxxaSettingsTab extends PluginSettingTab {
       cls: "setting-item-description",
     });
 
-    // Sub-tabs estilo segmented control (mesmo padrão dos providers)
+    // Sub-tabs (Geral / Agent / RAG) — Appearance e Usage agora são
+    // top-tabs separadas (v0.1.56).
     const subTabsEl = parent.createDiv({ cls: "axxa-settings-subtabs" });
     this.createOutrosSubTab(subTabsEl, "geral", t.settings.outrosTabs.geral);
-    this.createOutrosSubTab(subTabsEl, "ui", t.settings.outrosTabs.ui);
     this.createOutrosSubTab(subTabsEl, "agent", t.settings.outrosTabs.agent);
     this.createOutrosSubTab(subTabsEl, "rag", t.settings.outrosTabs.rag);
-    this.createOutrosSubTab(subTabsEl, "usage", t.settings.outrosTabs.usage);
+
+    // Se activeOutrosTab for "ui" ou "usage" (state legado), redireciona pra geral
+    if (this.activeOutrosTab === "ui" || this.activeOutrosTab === "usage") {
+      this.activeOutrosTab = "geral";
+    }
 
     const subContentEl = parent.createDiv({ cls: "axxa-settings-subcontent" });
     switch (this.activeOutrosTab) {
       case "geral":
         this.renderOutrosGeral(subContentEl, t);
         break;
-      case "ui":
-        this.renderOutrosUI(subContentEl, t);
-        break;
       case "agent":
         this.renderOutrosAgent(subContentEl, t);
         break;
       case "rag":
         this.renderOutrosRAG(subContentEl, t);
-        break;
-      case "usage":
-        this.renderOutrosUsage(subContentEl, t);
         break;
     }
   }

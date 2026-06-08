@@ -3708,9 +3708,15 @@ body.theme-dark .axxa-settings-root.axxa-bg-aurora-live::after {
 
 .axxa-bg-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-  gap: 10px;
-  margin: 8px 0 16px 0;
+  /* v0.1.56: minmax maior pra evitar cards encavalados (cabe 2-3 por linha
+     em telas estreitas, 4-5 em desktop). Gap maior pra clareza visual. */
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  margin: 12px 0 20px 0;
+  /* Garante que o container do grid expanda mesmo dentro de Obsidian
+     setting-item-control (que pode ter flex constraints) */
+  width: 100%;
+  max-width: 100%;
 }
 
 .axxa-bg-option,
@@ -3728,11 +3734,17 @@ body.theme-dark .axxa-settings-root.axxa-bg-aurora-live::after {
 .axxa-bg-option {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 6px;
+  gap: 8px;
+  padding: 8px;
   border-radius: 14px;
   cursor: pointer;
   transition: background 0.15s;
+  /* Garante a card tem altura mínima e não fica colada na próxima */
+  min-height: 100px;
+  align-items: stretch;
+  justify-content: flex-start;
+  /* Evita "encavalamento" — fica claro o boundary entre cards */
+  border: 1px solid transparent;
 }
 
 .axxa-bg-option:hover {
@@ -3746,12 +3758,12 @@ body.theme-dark .axxa-settings-root.axxa-bg-aurora-live::after {
 }
 
 .axxa-bg-preview {
-  /* CRITICAL: display+width+min-height explicit pra preview nao colapsar
-     pra "listra horizontal vazia" quando dentro do flex column do button */
+  /* Cresce com o card; min/max garantem proporção sem encavalar */
   display: block;
   width: 100%;
-  height: 64px;
-  min-height: 64px;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
   border-radius: 10px;
   border: 1px solid var(--background-modifier-border);
   position: relative;

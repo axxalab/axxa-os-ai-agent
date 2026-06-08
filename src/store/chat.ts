@@ -22,6 +22,8 @@ export interface UserMessage extends BaseMessage {
 export interface AIResponseMessage extends BaseMessage {
   type: "ai-response";
   content: string;
+  /** Reaction do user — persiste no .md, sobrevive a reload. */
+  reaction?: "like" | "dislike" | null;
 }
 
 /**
@@ -113,6 +115,8 @@ interface ChatState {
     patch: Partial<ActivityMeta>,
     contentPatch?: string
   ) => void;
+  /** Toggle/seta reaction num ai-response. null = neutro, "like"/"dislike". */
+  setReaction: (id: string, reaction: "like" | "dislike" | null) => void;
   selectOption: (messageId: string, optionIndex: number) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
@@ -198,6 +202,14 @@ export const useChatStore = create<ChatState>((set) => ({
           activity: { ...m.activity, ...patch },
           ...(contentPatch !== undefined ? { content: contentPatch } : {}),
         };
+      }),
+    })),
+  setReaction: (id, reaction) =>
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== id) return m;
+        if (m.type !== "ai-response") return m;
+        return { ...m, reaction };
       }),
     })),
   selectOption: (messageId, optionIndex) =>

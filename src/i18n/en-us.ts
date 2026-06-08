@@ -176,6 +176,8 @@ export const EN_US: Translations = {
     title: "AXXA OS — AI Agent",
     topTabs: {
       providers: "Providers",
+      appearance: "Appearance",
+      usage: "Usage",
       outros: "Other",
     },
     tabs: {

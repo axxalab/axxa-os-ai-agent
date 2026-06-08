@@ -17,6 +17,8 @@ export interface ChatMessageStored {
   type: "user" | "ai-response";
   content: string;
   timestamp: number;
+  /** Reaction do user no ai-response (persiste like/dislike entre reloads). */
+  reaction?: "like" | "dislike" | null;
 }
 
 export interface ChatData {
@@ -116,10 +118,38 @@ function renderBody(chat: ChatData): string {
   const sections = chat.messages
     .map((m) => {
       const label = m.type === "user" ? "You" : "Assistant";
-      return `## ${label}\n\n${m.content.trim()}\n`;
+      // Marca de reaction como linha HTML comment invisível no markdown
+      // (sobrevive ao parse manual + invisivel em qualquer render)
+      const meta: string[] = [];
+      if (m.timestamp) meta.push(`ts=${m.timestamp}`);
+      if (m.reaction) meta.push(`reaction=${m.reaction}`);
+      const metaLine = meta.length > 0 ? `<!-- axxa: ${meta.join(" ")} -->\n` : "";
+      return `## ${label}\n\n${metaLine}${m.content.trim()}\n`;
     })
     .join("\n");
   return `${heading}\n${sections}`;
+}
+
+/** Extrai metadata da linha HTML comment + retorna content limpo. */
+function parseMessageMeta(content: string): {
+  cleanContent: string;
+  timestamp?: number;
+  reaction?: "like" | "dislike" | null;
+} {
+  const match = content.match(/^\s*<!--\s*axxa:\s*([^>]+?)\s*-->\s*\n?/);
+  if (!match) return { cleanContent: content };
+  const meta = match[1];
+  const cleanContent = content.slice(match[0].length);
+  let timestamp: number | undefined;
+  let reaction: "like" | "dislike" | null | undefined;
+  for (const part of meta.split(/\s+/)) {
+    const [k, v] = part.split("=");
+    if (k === "ts" && v) timestamp = parseInt(v, 10);
+    else if (k === "reaction" && (v === "like" || v === "dislike")) {
+      reaction = v;
+    }
+  }
+  return { cleanContent, timestamp, reaction };
 }
 
 function renderChatMarkdown(chat: ChatData): string {
@@ -202,11 +232,15 @@ function parseBody(body: string): ChatMessageStored[] {
   for (let i = 0; i < starts.length; i++) {
     const cur = starts[i];
     const next = starts[i + 1];
-    const content = body.slice(cur.start, next ? next.start - (next ? `## ${next.type === "user" ? "You" : "Assistant"}`.length : 0) : body.length);
+    const rawContent = body.slice(cur.start, next ? next.start - (next ? `## ${next.type === "user" ? "You" : "Assistant"}`.length : 0) : body.length);
+    // Extrai metadata (timestamp + reaction) da linha HTML comment
+    const { cleanContent, timestamp, reaction } = parseMessageMeta(rawContent.trim());
     messages.push({
       type: cur.type,
-      content: content.trim(),
-      timestamp: Date.now(), // timestamp original perdido — usa now() como fallback
+      content: cleanContent.trim(),
+      // Restaura timestamp original se salvo; fallback now()
+      timestamp: timestamp ?? Date.now(),
+      ...(reaction != null ? { reaction } : {}),
     });
   }
   return messages;
