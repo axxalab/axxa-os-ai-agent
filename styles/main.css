@@ -158,18 +158,35 @@ body.is-mobile .workspace-tab-container:has(.workspace-leaf-content[data-type="a
   background-color: var(--background-primary) !important;
 }
 
-/* === Mobile-navbar bg fix (v0.1.59) ===
-   .mobile-navbar é SIBLING do .workspace-drawer (não descendente).
-   Selector anterior com :has() dentro do drawer não matchava.
-   Target global em mobile + outros chromes inferiores do Obsidian
-   (footer, nav-buttons, tab-options) pra eliminar strip horizontal
-   branco/escuro embaixo. */
+/* === Mobile-navbar "5px transparent" trick (v0.1.60) ===
+   Sugestao do user: em vez de bg-primary (que ainda mostrava strip
+   por causa de border/box-shadow do tema), deixa navbar com altura
+   minima + background transparente. Visualmente invisivel + elemento
+   preservado pro Obsidian (estrutura intacta).
+   Resultado: text-area do AXXA aparece edge-to-edge atras. */
 body.is-mobile .mobile-navbar,
 body.is-mobile .workspace-drawer-footer,
 body.is-mobile .nav-buttons-container,
 body.is-mobile .workspace-drawer-tab-options {
-  background: var(--background-primary) !important;
-  background-color: var(--background-primary) !important;
+  height: 5px !important;
+  min-height: 0 !important;
+  max-height: 5px !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Conteudo interno (icones de navegacao) escondido pra evitar parecer
+   meio-cortado no 5px de altura */
+body.is-mobile .mobile-navbar > *,
+body.is-mobile .workspace-drawer-footer > *,
+body.is-mobile .nav-buttons-container > *,
+body.is-mobile .workspace-drawer-tab-options > * {
+  visibility: hidden !important;
 }
 
 /* Fallback browsers velhos sem :has() — aplica mais amplo */
