@@ -4050,6 +4050,63 @@ body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora-
 }
 
 /* =====================================================
+ * Mobile navbar tint (v0.1.74)
+ *
+ * Quando AxxaView está aberto no mobile, planta body.axxa-host-active +
+ * body.axxa-bg-{preset}. Aqui define --axxa-navbar-tint per preset
+ * (mesmas cores do themeColor.ts pro OS status bar) e aplica na
+ * .mobile-navbar. Resultado: navbar de baixo tinta matching o preset,
+ * fechando o loop edge-to-edge (status bar OS + drawer host + navbar).
+ *
+ * Cores flat (sem gradient) pra navbar manter visual de barra sólida —
+ * gradients aplicados na navbar ficariam estranhos com os ícones.
+ * ===================================================== */
+
+/* === Tint vars per preset (light + dark) === */
+body.axxa-host-active.axxa-bg-sunset { --axxa-navbar-tint: #ffeae0; }
+body.theme-dark.axxa-host-active.axxa-bg-sunset { --axxa-navbar-tint: #2a1f1c; }
+
+body.axxa-host-active.axxa-bg-ocean { --axxa-navbar-tint: #dff0f5; }
+body.theme-dark.axxa-host-active.axxa-bg-ocean { --axxa-navbar-tint: #172a32; }
+
+body.axxa-host-active.axxa-bg-forest { --axxa-navbar-tint: #dff0e8; }
+body.theme-dark.axxa-host-active.axxa-bg-forest { --axxa-navbar-tint: #162e2a; }
+
+body.axxa-host-active.axxa-bg-violet { --axxa-navbar-tint: #e8dff5; }
+body.theme-dark.axxa-host-active.axxa-bg-violet { --axxa-navbar-tint: #241a3a; }
+
+body.axxa-host-active.axxa-bg-mono { --axxa-navbar-tint: #eaeaea; }
+body.theme-dark.axxa-host-active.axxa-bg-mono { --axxa-navbar-tint: #1c1c1c; }
+
+body.axxa-host-active.axxa-bg-aurora { --axxa-navbar-tint: #dff0e3; }
+body.theme-dark.axxa-host-active.axxa-bg-aurora { --axxa-navbar-tint: #172a1f; }
+
+body.axxa-host-active.axxa-bg-spotlight { --axxa-navbar-tint: #f5ecd5; }
+body.theme-dark.axxa-host-active.axxa-bg-spotlight { --axxa-navbar-tint: #332a1c; }
+
+body.axxa-host-active.axxa-bg-nebula { --axxa-navbar-tint: #f0dfea; }
+body.theme-dark.axxa-host-active.axxa-bg-nebula { --axxa-navbar-tint: #2e1a28; }
+
+body.axxa-host-active.axxa-bg-pulse { --axxa-navbar-tint: #dcdef0; }
+body.theme-dark.axxa-host-active.axxa-bg-pulse { --axxa-navbar-tint: #1c1d35; }
+
+body.axxa-host-active.axxa-bg-flow { --axxa-navbar-tint: #e3dcf0; }
+body.theme-dark.axxa-host-active.axxa-bg-flow { --axxa-navbar-tint: #241f35; }
+
+body.axxa-host-active.axxa-bg-aurora-live { --axxa-navbar-tint: #dff0e3; }
+body.theme-dark.axxa-host-active.axxa-bg-aurora-live { --axxa-navbar-tint: #172a1f; }
+
+/* === Apply tint — só quando a var foi definida (preset != none) === */
+body.axxa-host-active .mobile-navbar {
+  background: var(--axxa-navbar-tint, var(--background-secondary)) !important;
+  transition: background 0.3s ease;
+}
+
+/* "none" preserva o default do tema (não seta --axxa-navbar-tint, fallback
+   pra var(--background-secondary) acima funciona quando classe ausente
+   também). */
+
+/* =====================================================
  * Background picker (Settings → Outros → Aparência)
  * Grid de swatches com preview do gradient real
  * ===================================================== */

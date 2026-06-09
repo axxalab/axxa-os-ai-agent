@@ -26,6 +26,8 @@ export class AxxaView extends ItemView {
   private themeColorUnsub: (() => void) | null = null;
   /** Observer pra detectar troca de tema claro/escuro do Obsidian. */
   private themeObserver: MutationObserver | null = null;
+  /** Unsubscribe do navbar tint (mobile-navbar bottom). */
+  private navbarTintUnsub: (() => void) | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: AxxaPlugin) {
     super(leaf);
@@ -52,14 +54,53 @@ export class AxxaView extends ItemView {
 
     this.setupDrawerHost();
     this.setupThemeColor();
+    this.setupNavbarTint();
     this.setupMobileKeyboardObserver();
   }
 
   async onClose() {
     this.teardownDrawerHost();
     this.teardownThemeColor();
+    this.teardownNavbarTint();
     this.teardownMobileKeyboardObserver();
     this.root?.unmount();
+  }
+
+  /**
+   * Navbar tint (mobile): planta `axxa-host-active` + `axxa-bg-{preset}`
+   * no <body> enquanto AXXA está aberto. CSS então tinta a `.mobile-navbar`
+   * matching a cor dominante do preset (mesmas cores do theme-color).
+   *
+   * Cleanup remove as classes no onClose pra navbar voltar ao default
+   * quando o user fecha a view (ou troca pra outra leaf type).
+   */
+  private setupNavbarTint() {
+    if (!Platform.isMobile) return;
+    const body = this.containerEl.doc.body;
+
+    const apply = () => {
+      body.classList.add("axxa-host-active");
+      // Remove qualquer axxa-bg-* anterior do body antes de plantar o novo
+      Array.from(body.classList).forEach((c) => {
+        if (c.startsWith("axxa-bg-")) body.classList.remove(c);
+      });
+      body.classList.add(
+        "axxa-bg-" + (this.plugin.settings.background || "none")
+      );
+    };
+
+    apply();
+    this.navbarTintUnsub = this.plugin.onSettingsChange(apply);
+  }
+
+  private teardownNavbarTint() {
+    this.navbarTintUnsub?.();
+    this.navbarTintUnsub = null;
+    const body = this.containerEl.doc.body;
+    body.classList.remove("axxa-host-active");
+    Array.from(body.classList).forEach((c) => {
+      if (c.startsWith("axxa-bg-")) body.classList.remove(c);
+    });
   }
 
   /**
