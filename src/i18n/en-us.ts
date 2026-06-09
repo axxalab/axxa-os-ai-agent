@@ -96,6 +96,12 @@ export const EN_US: Translations = {
     vaultQaDesc: "Search notes as context",
     agent: "Agent",
     agentDesc: "Reads, creates, edits and organizes vault files",
+    coder: "Coder",
+    coderDesc: "Edit code with diff preview (coming soon)",
+    study: "Study",
+    studyDesc: "Flashcards, quizzes and study summaries (coming soon)",
+    soonBadge: "soon",
+    comingSoon: (name: string) => `${name} mode is coming soon.`,
   },
 
   agent: {

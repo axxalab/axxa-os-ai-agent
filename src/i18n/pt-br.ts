@@ -96,6 +96,12 @@ export const PT_BR = {
     vaultQaDesc: "Busca notas como contexto",
     agent: "Agent",
     agentDesc: "Lê, cria, edita e organiza arquivos do vault",
+    coder: "Coder",
+    coderDesc: "Edita código com diff preview (em breve)",
+    study: "Study",
+    studyDesc: "Flashcards, quizzes e resumos de estudo (em breve)",
+    soonBadge: "em breve",
+    comingSoon: (name: string) => `O modo ${name} chega em breve.`,
   },
 
   agent: {

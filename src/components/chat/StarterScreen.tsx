@@ -4,6 +4,7 @@
 //   - Recent chats list (últimos 5 chats salvos) — clique carrega
 //   - Quando user manda primeira msg, AxxaApp chama lockSession()
 
+import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
 import {
@@ -182,11 +183,15 @@ interface StarterScreenProps {
   onLoadChat: (chatId: string, chatMode: string) => void;
 }
 
-// MODES_ICONS — só os ícones e ids ficam aqui. Nomes/descrições vêm do i18n.
-const MODES_META = [
-  { id: "chat" as const, icon: "message-square" },
-  { id: "vault-qa" as const, icon: "library" },
-  { id: "agent" as const, icon: "bot" },
+// MODES_META — só os ícones e ids ficam aqui. Nomes/descrições vêm do i18n.
+// `soon: true` = mock visual (UI presente, lógica vem depois). Não é
+// selecionável ainda — clicar mostra Notice "em breve".
+const MODES_META: { id: string; icon: string; soon?: boolean }[] = [
+  { id: "chat", icon: "message-square" },
+  { id: "vault-qa", icon: "library" },
+  { id: "agent", icon: "bot" },
+  { id: "coder", icon: "code-2", soon: true },
+  { id: "study", icon: "graduation-cap", soon: true },
 ];
 
 function formatRelativeDate(iso: string): string {
@@ -229,11 +234,15 @@ export function StarterScreen({
   const modeLabel = (id: string) => {
     if (id === "vault-qa") return t.modes.vaultQa;
     if (id === "agent") return t.modes.agent;
+    if (id === "coder") return t.modes.coder;
+    if (id === "study") return t.modes.study;
     return t.modes.chat;
   };
   const modeDesc = (id: string) => {
     if (id === "vault-qa") return t.modes.vaultQaDesc;
     if (id === "agent") return t.modes.agentDesc;
+    if (id === "coder") return t.modes.coderDesc;
+    if (id === "study") return t.modes.studyDesc;
     return t.modes.chatDesc;
   };
 
@@ -255,13 +264,25 @@ export function StarterScreen({
               aria-selected={m.id === mode}
               className={
                 "axxa-starter-segment-btn" +
-                (m.id === mode ? " axxa-starter-segment-active" : "")
+                (m.id === mode ? " axxa-starter-segment-active" : "") +
+                (m.soon ? " axxa-starter-segment-soon" : "")
               }
-              onClick={() => onModeChange(m.id)}
-              title={modeDesc(m.id)}
+              onClick={() => {
+                if (m.soon) {
+                  new Notice(t.modes.comingSoon(modeLabel(m.id)));
+                  return;
+                }
+                onModeChange(m.id);
+              }}
+              title={m.soon ? t.modes.comingSoon(modeLabel(m.id)) : modeDesc(m.id)}
             >
               <Icon name={m.icon} />
               <span className="axxa-starter-segment-label">{modeLabel(m.id)}</span>
+              {m.soon && (
+                <span className="axxa-starter-segment-badge">
+                  {t.modes.soonBadge}
+                </span>
+              )}
             </button>
           ))}
         </div>

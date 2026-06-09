@@ -24,6 +24,12 @@ export interface AIResponseMessage extends BaseMessage {
   content: string;
   /** Reaction do user — persiste no .md, sobrevive a reload. */
   reaction?: "like" | "dislike" | null;
+  /** True quando essa "resposta" é uma mensagem de erro do sistema (rate limit,
+   *  network, etc.), não uma resposta real do LLM. Mensagens com isError:
+   *   - NÃO entram no history enviado ao provider (não poluem o contexto)
+   *   - NÃO são persistidas no .md (somem ao recarregar o chat)
+   *  Renderizam normalmente na UI pro user ver o que aconteceu. */
+  isError?: boolean;
 }
 
 /**

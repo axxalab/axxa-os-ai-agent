@@ -317,7 +317,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const timer = window.setTimeout(() => {
       const userOrAi = messages.filter(
         (m): m is UserMessage | AIResponseMessage =>
-          m.type === "user" || m.type === "ai-response"
+          m.type === "user" ||
+          // Erros (isError) não são persistidos — são efêmeros por design
+          (m.type === "ai-response" && !m.isError)
       );
       if (userOrAi.length === 0) return;
       const chat: ChatData = {
@@ -526,8 +528,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
       // Pega só user/assistant do store. Última user msg ganha attachments
       // multimodais se foram passados pra essa chamada.
-      const storeMsgs = useChatStore.getState().messages
-        .filter((m) => m.type === "user" || m.type === "ai-response");
+      const storeMsgs = useChatStore
+        .getState()
+        .messages.filter(
+          (m) =>
+            m.type === "user" || (m.type === "ai-response" && !m.isError)
+        );
       const historyConverted: ProviderMessage[] = storeMsgs.map((m, idx) => {
         const base = {
           role: (m.type === "user" ? "user" : "assistant") as "user" | "assistant",
@@ -609,6 +615,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         addMessage({
           type: "ai-response",
           content: `${t.ai.errorPrefix} ${errorMsg}`,
+          isError: true,
         });
       }
     } finally {
@@ -699,7 +706,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // Última user msg recebe attachments multimodais se vieram.
     const storeMsgs = useChatStore
       .getState()
-      .messages.filter((m) => m.type === "user" || m.type === "ai-response");
+      .messages.filter(
+        (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
+      );
     const conversationHistory: ProviderMessage[] = storeMsgs.map((m, idx) => {
       const isLastUser =
         idx === storeMsgs.length - 1 && m.type === "user";
@@ -1069,6 +1078,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         addMessage({
           type: "ai-response",
           content: `${t.ai.errorPrefix} ${errorMsg}`,
+          isError: true,
         });
       }
     } finally {

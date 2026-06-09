@@ -1957,10 +1957,10 @@ body.theme-dark .axxa-recording-indicator {
   width: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px 16px calc(var(--axxa-composer-h, 100px) + 24px) 16px;
+  padding: 14px 14px calc(var(--axxa-composer-h, 100px) + 20px) 14px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 13px;
   box-sizing: border-box;
 }
 
@@ -2033,18 +2033,19 @@ body.theme-dark .axxa-recording-indicator {
      line-height + height:auto + min-height:0 explícitos pra Obsidian não
      comprimir o container abaixo da altura natural do label (bug recorrente
      em buttons-as-card herdarem line-height global agressivo). */
+  position: relative;
   flex: 1 1 0;
-  min-width: 56px;
-  padding: 8px 4px 10px;
+  min-width: 52px;
+  padding: 7px 4px 8px;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   border-radius: 14px;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
   line-height: 1.4 !important;
   height: auto !important;
   min-height: 0;
@@ -2087,6 +2088,31 @@ body.theme-dark .axxa-recording-indicator {
   color: var(--text-accent) !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
   font-weight: 600;
+}
+
+/* Modos mock "em breve" (Coder / Study) — UI presente, lógica futura.
+   Opacity reduzida sinaliza indisponível; badge laranja no canto reforça. */
+.axxa-starter-segment-soon {
+  opacity: 0.45;
+}
+.axxa-starter-segment-soon:hover {
+  opacity: 0.65;
+}
+.axxa-starter-segment-badge {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 5px;
+  background: var(--color-orange, #ec7b3e);
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* Model select */
