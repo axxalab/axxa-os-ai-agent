@@ -1512,6 +1512,16 @@ body.is-mobile.axxa-fullscreen
     0 24px 56px rgba(0, 0, 0, 0.10);
 }
 
+/* Backgrounds animados (live): o backdrop-blur do pill captura a camada-base
+   (pseudo-element em z-index:0), não a animação vibrante — então o pill fica
+   mais "apagado" que nos backgrounds estáticos. Deixa o pill mais translúcido
+   nos 3 live pra igualar o visual. (v0.1.91) */
+.axxa-root.axxa-bg-pulse .axxa-composer-pill,
+.axxa-root.axxa-bg-flow .axxa-composer-pill,
+.axxa-root.axxa-bg-aurora-live .axxa-composer-pill {
+  background: color-mix(in srgb, var(--background-modifier-form-field) 62%, transparent);
+}
+
 /* Fallback browsers sem color-mix (Safari < 16.2) */
 @supports not (color: color-mix(in srgb, red, blue)) {
   .axxa-composer-pill {
@@ -4320,6 +4330,13 @@ body.theme-dark.axxa-host-active.axxa-bg-aurora-live { --axxa-navbar-tint: #172a
 body.axxa-host-active .mobile-navbar {
   background: var(--axxa-navbar-tint, var(--background-secondary)) !important;
   transition: background 0.3s ease;
+}
+
+/* edge-to-edge: com um preset ativo, funde a navbar nativa ao bg tintado
+   removendo a borda/sombra de separação. "none" mantém o visual default. (v0.1.91) */
+body.axxa-host-active:not(.axxa-bg-none) .mobile-navbar {
+  border-top: none !important;
+  box-shadow: none !important;
 }
 
 /* "none" preserva o default do tema (não seta --axxa-navbar-tint, fallback

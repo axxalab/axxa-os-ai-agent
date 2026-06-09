@@ -26,7 +26,7 @@
 //   chat_id: chat de origem (linkável)
 //   ---
 
-import type { App } from "obsidian";
+import { TFile, type App } from "obsidian";
 import { ensureFolder } from "../components/_shared/chatPersistence";
 
 export type GenerationMediaType = "image" | "audio" | "video";
@@ -178,7 +178,7 @@ export async function saveGeneration(
 ): Promise<SaveGenerationResult> {
   const subfolder = TYPE_TO_FOLDER[meta.type];
   const folder = `${basePath}/${subfolder}`;
-  await ensureFolder(app.vault.adapter, folder);
+  await ensureFolderVault(app, folder);
 
   const ext = extFromMime(meta.mime, meta.type);
   const slug = slugify(meta.prompt);
@@ -191,12 +191,64 @@ export async function saveGeneration(
     data instanceof Uint8Array
       ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
       : (data as ArrayBuffer);
-  await app.vault.adapter.writeBinary(mediaPath, buffer);
+
+  // Escreve preferindo a Vault API: registra o arquivo no índice do Obsidian na
+  // hora, então o ![[wikilink]] do sidecar resolve imediatamente. O
+  // adapter.writeBinary não registra → embed quebrado até reindex. (v0.1.91)
+  await writeBinaryVaultFirst(app, mediaPath, buffer);
 
   const sidecar = buildSidecar(meta, mediaPath);
-  await app.vault.adapter.write(sidecarPath, sidecar);
+  await writeTextVaultFirst(app, sidecarPath, sidecar);
 
   return { mediaPath, sidecarPath };
+}
+
+/** Cria a pasta registrando-a na Vault API quando possível (fallback adapter). */
+async function ensureFolderVault(app: App, folder: string): Promise<void> {
+  if (app.vault.getAbstractFileByPath(folder)) return;
+  try {
+    await app.vault.createFolder(folder);
+  } catch {
+    // Já existe no disco (criada via adapter antes) ou parent não registrado.
+    await ensureFolder(app.vault.adapter, folder);
+  }
+}
+
+/** Escreve binário via Vault API (registra TFile → wikilink resolve na hora);
+ *  cai pro adapter se a Vault API recusar (pasta oculta/não registrada). */
+async function writeBinaryVaultFirst(
+  app: App,
+  path: string,
+  buffer: ArrayBuffer
+): Promise<void> {
+  const existing = app.vault.getAbstractFileByPath(path);
+  if (existing instanceof TFile) {
+    await app.vault.modifyBinary(existing, buffer);
+    return;
+  }
+  try {
+    await app.vault.createBinary(path, buffer);
+  } catch {
+    await app.vault.adapter.writeBinary(path, buffer);
+  }
+}
+
+/** Idem pra texto (sidecar .md). */
+async function writeTextVaultFirst(
+  app: App,
+  path: string,
+  text: string
+): Promise<void> {
+  const existing = app.vault.getAbstractFileByPath(path);
+  if (existing instanceof TFile) {
+    await app.vault.modify(existing, text);
+    return;
+  }
+  try {
+    await app.vault.create(path, text);
+  } catch {
+    await app.vault.adapter.write(path, text);
+  }
 }
 
 /** Mapeia mime → extensão. Fallback por type. */
