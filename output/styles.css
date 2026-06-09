@@ -5282,3 +5282,190 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   flex: 1 1 auto;
   min-width: 0;
 }
+
+/* =====================================================
+ * Model picker — trigger + bottom-sheet de cards (v0.1.92)
+ * Substitui o <select> nativo (feio no mobile). Reusa o overlay/sheet do
+ * PlusModal (.axxa-plus-overlay / .axxa-plus-sheet / .axxa-plus-handle).
+ * ===================================================== */
+
+/* Trigger que abre o sheet (no lugar do <select>) */
+.axxa-model-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  line-height: 1.2;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.axxa-model-trigger:hover {
+  border-color: var(--interactive-accent);
+}
+.axxa-model-trigger-logo {
+  display: flex;
+  flex: 0 0 auto;
+}
+.axxa-model-trigger-logo .axxa-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.axxa-model-trigger-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-model-trigger-chevron {
+  display: flex;
+  flex: 0 0 auto;
+  opacity: 0.55;
+}
+.axxa-model-trigger-chevron .axxa-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Sheet — corpo scrollável, um pouco mais alto que o PlusModal */
+.axxa-model-sheet {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.axxa-model-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 10px;
+}
+.axxa-model-sheet-title {
+  font-size: var(--font-ui-large);
+  font-weight: 700;
+  color: var(--text-normal);
+}
+.axxa-model-sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.axxa-model-sheet-close .axxa-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.axxa-model-sheet-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--safe-area-inset-bottom, 0px);
+}
+.axxa-model-sheet-group {
+  margin-bottom: 10px;
+}
+.axxa-model-sheet-group-label {
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 6px;
+}
+
+/* Card de opção de modelo */
+.axxa-model-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  margin: 2px 0;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.axxa-model-opt:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-model-opt-active {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+.axxa-model-opt-logo {
+  display: flex;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--background-primary);
+}
+.axxa-model-opt-logo .axxa-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.axxa-model-opt-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.axxa-model-opt-name {
+  font-weight: 600;
+  font-size: var(--font-ui-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-model-opt-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-model-opt-check {
+  display: flex;
+  flex: 0 0 auto;
+  color: var(--interactive-accent);
+}
+.axxa-model-opt-check .axxa-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Logo no card de info do modelo (abaixo do trigger) */
+.axxa-model-card-logo {
+  display: inline-flex;
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+.axxa-model-card-logo .axxa-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Logo nas abas de provider (StarterScreen) */
+.axxa-starter-segment-btn .axxa-icon svg {
+  width: 22px;
+  height: 22px;
+}

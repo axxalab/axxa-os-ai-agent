@@ -4,6 +4,7 @@
 //   - Recent chats list (últimos 5 chats salvos) — clique carrega
 //   - Quando user manda primeira msg, AxxaApp chama lockSession()
 
+import { useState, useEffect } from "react";
 import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
@@ -49,6 +50,42 @@ const CHIP_COLORS = {
   tokens: "var(--color-green, #06d6a0)",
 } as const;
 
+// Logo de marca por provider (abas + fallback dos cards de modelo).
+const PROVIDER_LOGO: Record<string, string> = {
+  openai: "logo-openai",
+  anthropic: "logo-claude-color",
+  gemini: "logo-gemini-color",
+  openrouter: "logo-openrouter",
+  nim: "logo-nvidia-color",
+  ollama: "logo-ollama",
+};
+
+// model-id → logo do VENDOR real do modelo (ex: um llama no OpenRouter mostra a
+// Meta). 1ª regra que casa vence; fallback no logo do provider. (v0.1.92)
+const MODEL_LOGO_RULES: [RegExp, string][] = [
+  [/claude/, "logo-claude-color"],
+  [/(gemini[\w.-]*image|nano-?banana)/, "logo-nanobanana-color"],
+  [/(gemini|imagen|gemma|palm|bison)/, "logo-gemini-color"],
+  [/(llama|meta-)/, "logo-meta-color"],
+  [/qwen/, "logo-qwen-color"],
+  [/(mistral|mixtral|codestral|pixtral|ministral)/, "logo-mistral-color"],
+  [/deepseek/, "logo-deepseek-color"],
+  [/flux/, "logo-flux"],
+  [/(stable-?diffusion|sdxl|stability)/, "logo-stability-color"],
+  [/(gpt|^o[1-9]|davinci|dall|whisper|tts|chatgpt|text-embedding)/, "logo-openai"],
+  [/(nemotron|nvidia)/, "logo-nvidia-color"],
+];
+
+/** Resolve o logo de um modelo: tenta o vendor do modelo, senão o do provider. */
+function modelLogo(provider: string, model: string): string {
+  const id = (model || "").toLowerCase();
+  const tail = id.includes("/") ? id.slice(id.lastIndexOf("/") + 1) : id;
+  for (const [re, logo] of MODEL_LOGO_RULES) {
+    if (re.test(tail) || re.test(id)) return logo;
+  }
+  return PROVIDER_LOGO[provider] ?? "logo-openai";
+}
+
 /**
  * Card de info do modelo — descrição + categoria + cost + context window +
  * badges. Aparece abaixo do <select> da starter.
@@ -90,6 +127,9 @@ function ModelInfoCard({
   return (
     <div className="axxa-model-card">
       <div className="axxa-model-card-head">
+        <span className="axxa-model-card-logo">
+          <Icon name={modelLogo(provider, model)} />
+        </span>
         <span className="axxa-model-card-category">
           {CATEGORY_LABELS[card.category]}
         </span>
@@ -120,6 +160,106 @@ function ModelInfoCard({
             {b.label}
           </InfoChip>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Bottom-sheet de seleção de modelo — substitui o <select> nativo (horrível no
+ * mobile). Cards com logo da marca do modelo + nome + descrição, agrupados por
+ * categoria. Reusa o overlay/sheet do PlusModal pra consistência. (v0.1.92)
+ */
+function ModelPickerSheet({
+  provider,
+  model,
+  modelOptions,
+  onSelect,
+  onClose,
+}: {
+  provider: string;
+  model: string;
+  modelOptions: string[];
+  onSelect: (model: string) => void;
+  onClose: () => void;
+}) {
+  const t = useT();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const grouped = groupModelsByCategory(provider, modelOptions);
+  const cats = CATEGORY_ORDER.filter((c) => grouped.has(c));
+
+  return (
+    <div className="axxa-plus-overlay" onClick={onClose}>
+      <div
+        className="axxa-plus-sheet axxa-model-sheet"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t.starter.modelLabel}
+      >
+        <div className="axxa-plus-handle" />
+        <div className="axxa-model-sheet-head">
+          <span className="axxa-model-sheet-title">{t.starter.modelLabel}</span>
+          <button
+            type="button"
+            className="axxa-model-sheet-close"
+            onClick={onClose}
+            aria-label="Fechar"
+          >
+            <Icon name="x" />
+          </button>
+        </div>
+        <div className="axxa-model-sheet-body">
+          {cats.map((cat) => (
+            <div key={cat} className="axxa-model-sheet-group">
+              <div className="axxa-model-sheet-group-label">
+                {CATEGORY_LABELS[cat]}
+              </div>
+              {(grouped.get(cat) ?? []).map((m) => {
+                const info = getModelFullInfo(provider, m);
+                const active = m === model;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    className={
+                      "axxa-model-opt" +
+                      (active ? " axxa-model-opt-active" : "")
+                    }
+                    onClick={() => {
+                      onSelect(m);
+                      onClose();
+                    }}
+                  >
+                    <span className="axxa-model-opt-logo">
+                      <Icon name={modelLogo(provider, m)} />
+                    </span>
+                    <span className="axxa-model-opt-main">
+                      <span className="axxa-model-opt-name">{m}</span>
+                      {info.card.description && (
+                        <span className="axxa-model-opt-desc">
+                          {info.card.description}
+                        </span>
+                      )}
+                    </span>
+                    {active && (
+                      <span className="axxa-model-opt-check">
+                        <Icon name="check" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -157,12 +297,12 @@ function modeChipIcon(mode: string): string {
 }
 
 const PROVIDERS = [
-  { id: "openai", name: "OpenAI", icon: "brand-openai" },
-  { id: "anthropic", name: "Anthropic", icon: "brand-anthropic" },
-  { id: "gemini", name: "Gemini", icon: "brand-gemini" },
-  { id: "openrouter", name: "OpenRouter", icon: "brand-openrouter" },
-  { id: "nim", name: "Nvidia NIM", icon: "brand-nim" },
-  { id: "ollama", name: "Ollama", icon: "brand-ollama" },
+  { id: "openai", name: "OpenAI", icon: "logo-openai" },
+  { id: "anthropic", name: "Anthropic", icon: "logo-claude-color" },
+  { id: "gemini", name: "Gemini", icon: "logo-gemini-color" },
+  { id: "openrouter", name: "OpenRouter", icon: "logo-openrouter" },
+  { id: "nim", name: "Nvidia NIM", icon: "logo-nvidia-color" },
+  { id: "ollama", name: "Ollama", icon: "logo-ollama" },
 ];
 
 interface StarterScreenProps {
@@ -227,6 +367,7 @@ export function StarterScreen({
 }: StarterScreenProps) {
   const t = useT();
   const modelOptions = activeModels[provider] ?? [];
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Resolve name/desc dos modos via i18n (chat / vault-qa / agent).
   const modeLabel = (id: string) => {
@@ -311,30 +452,33 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.modelLabel}</label>
-        <select
-          className="dropdown axxa-starter-model"
-          value={model}
-          onChange={(e) => onModelChange(e.target.value)}
+        <button
+          type="button"
+          className="axxa-model-trigger"
+          onClick={() => setPickerOpen(true)}
+          aria-haspopup="dialog"
         >
-          {!modelOptions.includes(model) && (
-            <option value={model}>{model}</option>
-          )}
-          {(() => {
-            // Agrupa modelos por categoria via <optgroup>
-            const grouped = groupModelsByCategory(provider, modelOptions);
-            return CATEGORY_ORDER.filter((cat) => grouped.has(cat)).map(
-              (cat) => (
-                <optgroup key={cat} label={CATEGORY_LABELS[cat]}>
-                  {(grouped.get(cat) ?? []).map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </optgroup>
-              )
-            );
-          })()}
-        </select>
+          <span className="axxa-model-trigger-logo">
+            <Icon name={modelLogo(provider, model)} />
+          </span>
+          <span className="axxa-model-trigger-name">{model}</span>
+          <span className="axxa-model-trigger-chevron">
+            <Icon name="chevron-down" />
+          </span>
+        </button>
+        {pickerOpen && (
+          <ModelPickerSheet
+            provider={provider}
+            model={model}
+            modelOptions={
+              modelOptions.includes(model)
+                ? modelOptions
+                : [model, ...modelOptions]
+            }
+            onSelect={onModelChange}
+            onClose={() => setPickerOpen(false)}
+          />
+        )}
         {/* Model card: descrição + cost + caps */}
         <ModelInfoCard provider={provider} model={model} />
       </div>

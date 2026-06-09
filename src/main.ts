@@ -8,6 +8,7 @@ import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 import { VectorIndex, loadIndex } from "./rag/vectorIndex";
 import { indexVault } from "./rag/indexer";
 import { registerBrandIcons } from "./components/_shared/brandIcons";
+import { registerBrandLogos } from "./components/_shared/brandLogos";
 import type {
   EffortConfig,
   EffortLevel,
@@ -193,6 +194,8 @@ export default class AxxaPlugin extends Plugin {
     // Registra os SVG marks dos providers (brand-openai/anthropic/etc).
     // Depois disso, setIcon(el, "brand-openai") funciona em qualquer lugar.
     registerBrandIcons();
+    // Logos de marca coloridos (providers + modelos) — <Icon name="logo-openai" />
+    registerBrandLogos();
 
     // Carrega índice RAG do disco se já existe. Falhas são silenciosas —
     // só significa que o user ainda não rodou "Indexar vault".
