@@ -314,6 +314,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   const starterModel = modelFor(providerSel);
 
+  // [DIAG v0.1.98 — TEMP] loga o que o render enxerga dos seletores. Remover
+  // depois de diagnosticar o bug de "seleção não reflete ao vivo".
+  console.log("[axxa/sel] RENDER", {
+    providerSel,
+    starterModel,
+    effort,
+    mode,
+  });
+
   // ============================================================
   // Carrega lista de chats recentes (todos os modos) quando chat tá vazio
   // ============================================================
@@ -1707,12 +1716,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const handlePlusClick = () => setPlusOpen(true);
   const handlePlusClose = () => setPlusOpen(false);
   const handleSelectEffort = async (level: EffortLevel) => {
+    console.log("[axxa/sel] handleSelectEffort →", level); // [DIAG TEMP]
     setEffort(level);
     plugin.settings.defaultEffort = level;
     await plugin.saveSettings();
   };
 
   const handleStarterProvider = async (p: string) => {
+    console.log("[axxa/sel] handleStarterProvider →", p); // [DIAG TEMP]
     setProviderSel(p);
     plugin.settings.defaultProvider = p;
     await plugin.saveSettings();
@@ -1725,6 +1736,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   };
 
   const handleStarterModel = async (m: string) => {
+    console.log("[axxa/sel] handleStarterModel →", m, "provider:", providerSel); // [DIAG TEMP]
     switch (providerSel) {
       case "anthropic":
         setAnthropicModelSel(m);
