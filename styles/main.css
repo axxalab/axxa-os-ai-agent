@@ -3793,7 +3793,9 @@ body.theme-dark .axxa-bg-mono {
   will-change: transform, filter, background-position;
 }
 
-/* Conteúdo acima da camada animada */
+/* Conteúdo acima da camada animada. Exclui .axxa-header pra não rebaixar o
+   z-index:1000 dele (senão o conteúdo do chat sobreporia o header ao rolar,
+   e o menu "..." ficaria preso atrás). */
 :is(.axxa-root, .workspace-drawer-active-tab-container.axxa-host):is(
     .axxa-bg-aurora,
     .axxa-bg-nebula,
@@ -3804,7 +3806,7 @@ body.theme-dark .axxa-bg-mono {
     .axxa-bg-spectrum,
     .axxa-bg-lagoon
   )
-  > * {
+  > *:not(.axxa-header) {
   position: relative;
   z-index: 1;
 }

@@ -8,6 +8,7 @@
 // 2 do bloco quando o título tá ativo.
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "../_shared/Icon";
 import { useT } from "../../i18n";
 
@@ -74,6 +75,9 @@ export function Header({
   );
   const moreRef = useRef<HTMLDivElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
+  // Popover é portalado pro <body> (escapa o stacking context do header e
+  // qualquer overflow/transform de ancestral) — ref separada pro click-outside.
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   const openMenu = () => {
     const r = moreBtnRef.current?.getBoundingClientRect();
@@ -85,7 +89,11 @@ export function Header({
     if (!menuOpen) return;
     const close = () => setMenuOpen(false);
     const onDoc = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) close();
+      const target = e.target as Node;
+      // Popover vive no <body> (portal) — checar as duas refs antes de fechar.
+      if (moreRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      close();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
@@ -201,62 +209,67 @@ export function Header({
           >
             <Icon name="more-vertical" />
           </button>
-          {menuOpen && (
-            <div
-              className="axxa-popover-menu"
-              role="menu"
-              style={
-                menuPos ? { top: menuPos.top, right: menuPos.right } : undefined
-              }
-            >
-              <button
-                type="button"
-                role="menuitem"
-                className={
-                  "axxa-popover-item" +
-                  (personaActive ? " axxa-popover-item-active" : "")
+          {menuOpen &&
+            createPortal(
+              <div
+                ref={popoverRef}
+                className="axxa-popover-menu"
+                role="menu"
+                style={
+                  menuPos
+                    ? { top: menuPos.top, right: menuPos.right }
+                    : undefined
                 }
-                onClick={() => {
-                  onEditPersona();
-                  setMenuOpen(false);
-                }}
               >
-                <Icon name="drama" />
-                <span className="axxa-popover-label">
-                  {personaActive ? t.header.personaActive : t.header.persona}
-                </span>
-                <Icon name="chevron-right" className="axxa-popover-chevron" />
-              </button>
-              {canCopy && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={
+                    "axxa-popover-item" +
+                    (personaActive ? " axxa-popover-item-active" : "")
+                  }
+                  onClick={() => {
+                    onEditPersona();
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Icon name="drama" />
+                  <span className="axxa-popover-label">
+                    {personaActive ? t.header.personaActive : t.header.persona}
+                  </span>
+                  <Icon name="chevron-right" className="axxa-popover-chevron" />
+                </button>
+                {canCopy && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="axxa-popover-item"
+                    onClick={() => {
+                      onCopyConversation();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <Icon name="copy" />
+                    <span>{t.header.copyConversation}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   role="menuitem"
                   className="axxa-popover-item"
                   onClick={() => {
-                    onCopyConversation();
+                    onToggleFullscreen();
                     setMenuOpen(false);
                   }}
                 >
-                  <Icon name="copy" />
-                  <span>{t.header.copyConversation}</span>
+                  <Icon name={fullscreen ? "minimize" : "maximize"} />
+                  <span>
+                    {fullscreen ? t.header.exitFullscreen : t.header.fullscreen}
+                  </span>
                 </button>
-              )}
-              <button
-                type="button"
-                role="menuitem"
-                className="axxa-popover-item"
-                onClick={() => {
-                  onToggleFullscreen();
-                  setMenuOpen(false);
-                }}
-              >
-                <Icon name={fullscreen ? "minimize" : "maximize"} />
-                <span>
-                  {fullscreen ? t.header.exitFullscreen : t.header.fullscreen}
-                </span>
-              </button>
-            </div>
-          )}
+              </div>,
+              (moreRef.current?.ownerDocument ?? document).body
+            )}
         </div>
       </div>
     </header>
