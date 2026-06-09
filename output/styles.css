@@ -5469,3 +5469,80 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   width: 22px;
   height: 22px;
 }
+
+/* =====================================================
+ * Provider segmented — só ícone mono, StarterScreen + Settings (v0.1.93)
+ * .axxa-provider-seg reusa o pill .axxa-settings-subtabs; .axxa-subtab-icon
+ * deixa o botão quadrado, sem label, com ícone maior.
+ * ===================================================== */
+.axxa-provider-seg {
+  overflow-x: visible;
+}
+.axxa-subtab-icon {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 8px;
+}
+.axxa-subtab-icon .axxa-icon {
+  display: flex;
+}
+.axxa-subtab-icon .axxa-icon svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+/* Model field + dropdown (lista suspensa ancorada, sem modal) — v0.1.93 */
+.axxa-model-field {
+  position: relative;
+}
+.axxa-model-trigger-chevron {
+  transition: transform 0.18s ease;
+}
+.axxa-model-trigger-open .axxa-model-trigger-chevron {
+  transform: rotate(180deg);
+}
+.axxa-model-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  max-height: min(340px, 60vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+}
+.axxa-model-dd-group {
+  margin-bottom: 6px;
+}
+.axxa-model-dd-group-label {
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 6px;
+}
+
+/* Effort — rating de raios (1 low → 5 max) (v0.1.93) */
+.axxa-effort-bolts-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.axxa-effort-bolt {
+  display: inline-flex;
+}
+.axxa-effort-bolt svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}

@@ -4,14 +4,13 @@
 //   - Recent chats list (últimos 5 chats salvos) — clique carrega
 //   - Quando user manda primeira msg, AxxaApp chama lockSession()
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
-  EFFORT_EMOJIS,
   EFFORT_DESCRIPTIONS,
   type EffortLevel,
 } from "../_shared/effort";
@@ -53,10 +52,10 @@ const CHIP_COLORS = {
 // Logo de marca por provider (abas + fallback dos cards de modelo).
 const PROVIDER_LOGO: Record<string, string> = {
   openai: "logo-openai",
-  anthropic: "logo-claude-color",
-  gemini: "logo-gemini-color",
+  anthropic: "logo-anthropic",
+  gemini: "logo-gemini",
   openrouter: "logo-openrouter",
-  nim: "logo-nvidia-color",
+  nim: "logo-nvidia",
   ollama: "logo-ollama",
 };
 
@@ -166,101 +165,62 @@ function ModelInfoCard({
 }
 
 /**
- * Bottom-sheet de seleção de modelo — substitui o <select> nativo (horrível no
- * mobile). Cards com logo da marca do modelo + nome + descrição, agrupados por
- * categoria. Reusa o overlay/sheet do PlusModal pra consistência. (v0.1.92)
+ * Dropdown (lista suspensa) de seleção de modelo — ancorado no trigger, sem
+ * overlay/modal. Scrollável e responsivo. Cards com logo + nome + descrição,
+ * agrupados por categoria. Estruturado pra reuso futuro no Settings. (v0.1.93)
  */
-function ModelPickerSheet({
+function ModelDropdown({
   provider,
   model,
   modelOptions,
   onSelect,
-  onClose,
 }: {
   provider: string;
   model: string;
   modelOptions: string[];
   onSelect: (model: string) => void;
-  onClose: () => void;
 }) {
-  const t = useT();
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const grouped = groupModelsByCategory(provider, modelOptions);
   const cats = CATEGORY_ORDER.filter((c) => grouped.has(c));
 
   return (
-    <div className="axxa-plus-overlay" onClick={onClose}>
-      <div
-        className="axxa-plus-sheet axxa-model-sheet"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t.starter.modelLabel}
-      >
-        <div className="axxa-plus-handle" />
-        <div className="axxa-model-sheet-head">
-          <span className="axxa-model-sheet-title">{t.starter.modelLabel}</span>
-          <button
-            type="button"
-            className="axxa-model-sheet-close"
-            onClick={onClose}
-            aria-label="Fechar"
-          >
-            <Icon name="x" />
-          </button>
-        </div>
-        <div className="axxa-model-sheet-body">
-          {cats.map((cat) => (
-            <div key={cat} className="axxa-model-sheet-group">
-              <div className="axxa-model-sheet-group-label">
-                {CATEGORY_LABELS[cat]}
-              </div>
-              {(grouped.get(cat) ?? []).map((m) => {
-                const info = getModelFullInfo(provider, m);
-                const active = m === model;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    className={
-                      "axxa-model-opt" +
-                      (active ? " axxa-model-opt-active" : "")
-                    }
-                    onClick={() => {
-                      onSelect(m);
-                      onClose();
-                    }}
-                  >
-                    <span className="axxa-model-opt-logo">
-                      <Icon name={modelLogo(provider, m)} />
+    <div className="axxa-model-dropdown" role="listbox">
+      {cats.map((cat) => (
+        <div key={cat} className="axxa-model-dd-group">
+          <div className="axxa-model-dd-group-label">{CATEGORY_LABELS[cat]}</div>
+          {(grouped.get(cat) ?? []).map((m) => {
+            const info = getModelFullInfo(provider, m);
+            const active = m === model;
+            return (
+              <button
+                key={m}
+                type="button"
+                role="option"
+                aria-selected={active}
+                className={"axxa-model-opt" + (active ? " axxa-model-opt-active" : "")}
+                onClick={() => onSelect(m)}
+              >
+                <span className="axxa-model-opt-logo">
+                  <Icon name={modelLogo(provider, m)} />
+                </span>
+                <span className="axxa-model-opt-main">
+                  <span className="axxa-model-opt-name">{m}</span>
+                  {info.card.description && (
+                    <span className="axxa-model-opt-desc">
+                      {info.card.description}
                     </span>
-                    <span className="axxa-model-opt-main">
-                      <span className="axxa-model-opt-name">{m}</span>
-                      {info.card.description && (
-                        <span className="axxa-model-opt-desc">
-                          {info.card.description}
-                        </span>
-                      )}
-                    </span>
-                    {active && (
-                      <span className="axxa-model-opt-check">
-                        <Icon name="check" />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+                  )}
+                </span>
+                {active && (
+                  <span className="axxa-model-opt-check">
+                    <Icon name="check" />
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -298,10 +258,10 @@ function modeChipIcon(mode: string): string {
 
 const PROVIDERS = [
   { id: "openai", name: "OpenAI", icon: "logo-openai" },
-  { id: "anthropic", name: "Anthropic", icon: "logo-claude-color" },
-  { id: "gemini", name: "Gemini", icon: "logo-gemini-color" },
+  { id: "anthropic", name: "Anthropic", icon: "logo-anthropic" },
+  { id: "gemini", name: "Gemini", icon: "logo-gemini" },
   { id: "openrouter", name: "OpenRouter", icon: "logo-openrouter" },
-  { id: "nim", name: "Nvidia NIM", icon: "logo-nvidia-color" },
+  { id: "nim", name: "Nvidia NIM", icon: "logo-nvidia" },
   { id: "ollama", name: "Ollama", icon: "logo-ollama" },
 ];
 
@@ -368,6 +328,29 @@ export function StarterScreen({
   const t = useT();
   const modelOptions = activeModels[provider] ?? [];
   const [pickerOpen, setPickerOpen] = useState(false);
+  const modelFieldRef = useRef<HTMLDivElement>(null);
+
+  // Fecha o dropdown de modelo ao clicar fora ou apertar Escape.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (
+        modelFieldRef.current &&
+        !modelFieldRef.current.contains(e.target as Node)
+      ) {
+        setPickerOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPickerOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [pickerOpen]);
 
   // Resolve name/desc dos modos via i18n (chat / vault-qa / agent).
   const modeLabel = (id: string) => {
@@ -429,22 +412,22 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.providerLabel}</label>
-        <div className="axxa-starter-segment" role="tablist">
+        <div className="axxa-settings-subtabs axxa-provider-seg" role="tablist">
           {PROVIDERS.map((p) => (
             <button
               key={p.id}
               type="button"
               role="tab"
               aria-selected={p.id === provider}
+              aria-label={p.name}
               className={
-                "axxa-starter-segment-btn" +
-                (p.id === provider ? " axxa-starter-segment-active" : "")
+                "axxa-subtab-btn axxa-subtab-icon" +
+                (p.id === provider ? " axxa-subtab-active" : "")
               }
               onClick={() => onProviderChange(p.id)}
               title={p.name}
             >
               <Icon name={p.icon} />
-              <span className="axxa-starter-segment-label">{p.name}</span>
             </button>
           ))}
         </div>
@@ -452,42 +435,49 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.modelLabel}</label>
-        <button
-          type="button"
-          className="axxa-model-trigger"
-          onClick={() => setPickerOpen(true)}
-          aria-haspopup="dialog"
-        >
-          <span className="axxa-model-trigger-logo">
-            <Icon name={modelLogo(provider, model)} />
-          </span>
-          <span className="axxa-model-trigger-name">{model}</span>
-          <span className="axxa-model-trigger-chevron">
-            <Icon name="chevron-down" />
-          </span>
-        </button>
-        {pickerOpen && (
-          <ModelPickerSheet
-            provider={provider}
-            model={model}
-            modelOptions={
-              modelOptions.includes(model)
-                ? modelOptions
-                : [model, ...modelOptions]
+        <div className="axxa-model-field" ref={modelFieldRef}>
+          <button
+            type="button"
+            className={
+              "axxa-model-trigger" + (pickerOpen ? " axxa-model-trigger-open" : "")
             }
-            onSelect={onModelChange}
-            onClose={() => setPickerOpen(false)}
-          />
-        )}
+            onClick={() => setPickerOpen((o) => !o)}
+            aria-haspopup="listbox"
+            aria-expanded={pickerOpen}
+          >
+            <span className="axxa-model-trigger-logo">
+              <Icon name={modelLogo(provider, model)} />
+            </span>
+            <span className="axxa-model-trigger-name">{model}</span>
+            <span className="axxa-model-trigger-chevron">
+              <Icon name="chevron-down" />
+            </span>
+          </button>
+          {pickerOpen && (
+            <ModelDropdown
+              provider={provider}
+              model={model}
+              modelOptions={
+                modelOptions.includes(model)
+                  ? modelOptions
+                  : [model, ...modelOptions]
+              }
+              onSelect={(m) => {
+                onModelChange(m);
+                setPickerOpen(false);
+              }}
+            />
+          )}
+        </div>
         {/* Model card: descrição + cost + caps */}
         <ModelInfoCard provider={provider} model={model} />
       </div>
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.effortLabel}</label>
-        {/* v0.1.66: emoji-based segmented pilled control */}
-        <div className="axxa-starter-effort axxa-starter-effort-emoji">
-          {EFFORT_LEVELS.map((level) => {
+        {/* v0.1.93: rating de raios — 1 bolt (low) → 5 bolts (max) */}
+        <div className="axxa-starter-effort axxa-starter-effort-bolts">
+          {EFFORT_LEVELS.map((level, idx) => {
             const active = level === effort;
             return (
               <button
@@ -500,8 +490,10 @@ export function StarterScreen({
                 title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
                 aria-label={EFFORT_LABELS[level]}
               >
-                <span className="axxa-starter-effort-emoji-icon">
-                  {EFFORT_EMOJIS[level]}
+                <span className="axxa-effort-bolts-row">
+                  {Array.from({ length: idx + 1 }).map((_, i) => (
+                    <Icon key={i} name="zap" className="axxa-effort-bolt" />
+                  ))}
                 </span>
               </button>
             );

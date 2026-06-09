@@ -18,6 +18,7 @@ import {
   Notice,
   TFolder,
   normalizePath,
+  setIcon,
 } from "obsidian";
 import type AxxaPlugin from "../../main";
 import { openaiProvider } from "../../providers/openai";
@@ -416,30 +417,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
   // Tab "Providers" — header (default + intro) + sub-tabs
   // ============================================================
   private renderProvidersTab(parent: HTMLElement, t: Translations) {
-    // Provider padrão — vive dentro do tema "Providers"
-    new Setting(parent)
-      .setName(t.settings.defaultProvider)
-      .setDesc(t.settings.defaultProviderDesc)
-      .addDropdown((dd) =>
-        dd
-          .addOption("openai", "OpenAI")
-          .addOption("anthropic", "Anthropic (Claude)")
-          .addOption("gemini", "Google Gemini")
-          .addOption("openrouter", "OpenRouter")
-          .addOption("nim", "Nvidia NIM")
-          .addOption("ollama", "Ollama (local)")
-          .setValue(this.plugin.settings.defaultProvider)
-          .onChange(async (value) => {
-            this.plugin.settings.defaultProvider = value;
-            await this.plugin.saveSettings();
-            this.display();
-          })
-      );
-
     // Sub-tabs estilo segmented control (pill container)
     // Ordem: big labs (OpenAI · Anthropic · Gemini) → agregadores
     // (OpenRouter · NIM) → local (Ollama). flex-wrap quebra em mobile.
-    const subTabsEl = parent.createDiv({ cls: "axxa-settings-subtabs" });
+    const subTabsEl = parent.createDiv({
+      cls: "axxa-settings-subtabs axxa-provider-seg",
+    });
     this.createProviderSubTab(subTabsEl, "openai", t.settings.tabs.openai);
     this.createProviderSubTab(subTabsEl, "anthropic", t.settings.tabs.anthropic);
     this.createProviderSubTab(subTabsEl, "gemini", t.settings.tabs.gemini);
@@ -471,20 +454,27 @@ export class AxxaSettingsTab extends PluginSettingTab {
     }
   }
 
-  /** Botão de sub-tab dos providers (com bolinha pro default) */
+  /** Botão de sub-tab dos providers — só ícone mono (igual à StarterScreen). */
   private createProviderSubTab(
     parent: HTMLElement,
     id: ProviderTabId,
     label: string
   ) {
-    const isDefault = id === this.plugin.settings.defaultProvider;
+    const LOGO: Record<string, string> = {
+      openai: "logo-openai",
+      anthropic: "logo-anthropic",
+      gemini: "logo-gemini",
+      openrouter: "logo-openrouter",
+      nim: "logo-nvidia",
+      ollama: "logo-ollama",
+    };
     const btn = parent.createEl("button", {
       cls:
-        "axxa-subtab-btn" +
-        (this.activeProviderTab === id ? " axxa-subtab-active" : "") +
-        (isDefault ? " axxa-subtab-default" : ""),
-      text: label,
+        "axxa-subtab-btn axxa-subtab-icon" +
+        (this.activeProviderTab === id ? " axxa-subtab-active" : ""),
+      attr: { "aria-label": label, title: label },
     });
+    setIcon(btn, LOGO[id] ?? "");
     btn.onclick = () => {
       this.activeProviderTab = id;
       this.display();
