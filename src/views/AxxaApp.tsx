@@ -1680,6 +1680,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             mode={activeMode}
             placeholder={placeholderForMode(activeMode, t.composer)}
             onSaveAudio={handleSaveAudio}
+            onAddAudio={(path, durationMs, alias) =>
+              setPendingAttachments((prev) => [
+                ...prev,
+                {
+                  id: makeAttachmentId(),
+                  attachment: { type: "audio", path, durationMs },
+                  name: alias,
+                },
+              ])
+            }
             commands={axxaCommands}
             visibleChips={plugin.settings.composerChips}
             visionEnabled={getModelCapabilities(activeProviderId, activeModel).vision}

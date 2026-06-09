@@ -110,6 +110,9 @@ interface ComposerProps {
   /** Callback chamado quando user seleciona uma nota via @ autocomplete OU
    *  cola um wikilink. Caller lê o conteúdo e adiciona ao pending attachments. */
   onPickNote?: (path: string, isFolder: boolean) => void;
+  /** Callback quando um áudio gravado (hold-to-record) deve virar anexo (chip).
+   *  Recebe o path salvo no vault, a duração em ms e o alias legível ("Áudio 0:05"). */
+  onAddAudio?: (path: string, durationMs: number, alias: string) => void;
 }
 
 export type { PendingImage };
@@ -224,6 +227,7 @@ export function Composer({
   onAddImage,
   onRemoveAttachment,
   onPickNote,
+  onAddAudio,
 }: ComposerProps) {
   const t = useT();
   const app = useApp();
@@ -255,6 +259,8 @@ export function Composer({
   onAddImageRef.current = onAddImage;
   const onPickNoteRef = useRef(onPickNote);
   onPickNoteRef.current = onPickNote;
+  const onAddAudioRef = useRef(onAddAudio);
+  onAddAudioRef.current = onAddAudio;
 
   // Converte File/Blob em PendingImage via FileReader (data URL).
   const blobToPendingImage = (blob: Blob, name: string): Promise<PendingImage> =>
@@ -594,11 +600,13 @@ export function Composer({
         return;
       }
       new Notice(t.recording.saved(durationStr));
-      // Insere wikilink no composer no cursor atual
+      // Áudio vira CHIP de anexo (não wikilink cru). No texto fica só o alias
+      // legível ("Áudio 0:05"), mesmo comportamento do @ wikilink.
+      const alias = t.recording.alias(durationStr);
+      onAddAudioRef.current?.(path, ms, alias);
       const view = viewRef.current;
       if (view) {
-        const wikilink = `[[${path}|${t.recording.alias(durationStr)}]] `;
-        view.dispatch(view.state.replaceSelection(wikilink));
+        view.dispatch(view.state.replaceSelection(alias + " "));
         view.focus();
       }
     };

@@ -2,7 +2,7 @@
 ## Plano de Ação Modular · Revisão Contínua
 
 > **Status:** 🟡 Em andamento — Módulos 0–4 ✅, 6.1+6.2 ✅ Agent 6-provider, 6.4 ✅ RAG multimodal, Sprints J/K.1/K.2/K.3 ✅, **K.4 ✅** (image gen + Usage tab), **L ✅** (deep polish mobile + fullscreen saga), **M ✅** (Effort Engine + fullscreen v2) · próximo: **Sprint N — Validação & Estabilização → Coder Mode (6.3) → caminho do Alpha** (ver seção 🎯 PRÓXIMOS PASSOS)  
-> **Versão:** 1.6 · plugin em **v0.1.74 (6 providers · 3 modos com streaming · multimodal · geração de imagem funcional · aba Usage com custos em USD · Effort Engine configurável por nível · fullscreen mobile + chrome polish do OS)**  
+> **Versão:** 1.6 · plugin em **v0.1.75 (6 providers · 3 modos com streaming · multimodal · geração de imagem funcional · aba Usage com custos em USD · Effort Engine configurável por nível · fullscreen mobile + chrome polish do OS · wikilink/áudio entram como anexo)**  
 > **Última revisão:** 09/06/2026 (pós-v0.1.74)  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
@@ -971,6 +971,7 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 08/06/2026 | Sprint L (v0.1.72) — fullscreen global REMOVIDO | A 1ª tentativa de fullscreen (v0.1.52→0.1.68) usava overrides globais do chrome do Obsidian → frágil, quebrava entre versões do app móvel. Decisão: remover tudo + debug overlay e reescrever escopado no Sprint M. Lição: nunca sobrescrever chrome nativo globalmente. |
 | 09/06/2026 | M.1 (v0.1.73) — `EffortConfig` central | Todos os params escaláveis (maxTokens, temperature, agentMaxTurns, toolRetryOnError, parallelToolCalls, loopDetectionWindow, topK/excerptChars) num objeto por nível em `effort.ts`. `DEFAULT_EFFORT_CONFIGS` + overrides do user (`settings.effortConfigs`, merge per-nível). UI: Settings → Effort com sub-tab por nível. Max "incansável" = agentMaxTurns 200 (0 = uncapped). |
 | 09/06/2026 | M.2 (v0.1.74) — Fullscreen mobile v2 escopado | Reescrito em `body.is-mobile.axxa-fullscreen` (toggle via menu "..." no Header, persiste). Drawer 100vw + esconde chrome SEM overrides globais. bg/preset pinta no container do drawer; `theme-color` do OS + navbar tint casam com o preset. |
+| 09/06/2026 | v0.1.75 — Wikilink/áudio viram anexo (não `[[cru]]`) | `@` pick, paste de wikilink e gravação de áudio agora inserem só o ALIAS legível no texto ("MinhaNota" / "Áudio 0:05") + adicionam o item como chip de anexo. **Fix do bug "wikilink de pasta não funciona":** detecção de pasta trocada de `constructor.name === "TFolder"` (quebra na minificação de prod) pra `instanceof TFolder`. **Lição:** nunca depender de `constructor.name` com classes do Obsidian em prod — usar `instanceof` com import de valor. |
 
 ---
 

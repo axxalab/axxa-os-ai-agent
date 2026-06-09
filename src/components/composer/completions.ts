@@ -5,7 +5,11 @@
 //
 // Usa @codemirror/autocomplete (mesma engine do autocomplete nativo do Obsidian).
 
-import type { App, TFile, TFolder, TAbstractFile } from "obsidian";
+// TFolder importado como VALOR (não type) pra usar `instanceof` em runtime —
+// `constructor.name === "TFolder"` quebra no build de produção do Obsidian,
+// que minifica os nomes das classes.
+import { TFolder } from "obsidian";
+import type { App, TFile } from "obsidian";
 import type {
   CompletionContext,
   CompletionResult,
@@ -36,11 +40,12 @@ function collectVaultPaths(app: App): WikiLinkOption[] {
       isFolder: false,
     });
   });
-  // Pastas (recursivo via getAllLoadedFiles — apenas TFolder)
-  const folders = app.vault.getAllLoadedFiles().filter((f: TAbstractFile) => {
-    const proto = Object.getPrototypeOf(f);
-    return proto && proto.constructor && proto.constructor.name === "TFolder";
-  }) as TFolder[];
+  // Pastas (recursivo via getAllLoadedFiles — apenas TFolder).
+  // `instanceof TFolder` é resiliente à minificação (compara a referência da
+  // classe, não o nome string como na implementação anterior — que falhava em prod).
+  const folders = app.vault
+    .getAllLoadedFiles()
+    .filter((f): f is TFolder => f instanceof TFolder);
   folders.forEach((f) => {
     if (f.path === "/" || !f.path) return;
     items.push({
@@ -97,8 +102,14 @@ export function wikilinkCompletionSource(
               fromArg: number,
               toArg: number
             ) => {
-              // Remove o "@query" do texto
-              view.dispatch({ changes: { from: fromArg, to: toArg, insert: "" } });
+              // Troca o "@query" pelo ALIAS legível (display sem a "/" final de
+              // pasta) — mantém a frase natural ("resuma a MinhaNota") em vez de
+              // remover tudo. O item entra como anexo via callback (chip), não
+              // como `[[path]]` cru no texto.
+              const alias = item.display.replace(/\/$/, "");
+              view.dispatch({
+                changes: { from: fromArg, to: toArg, insert: alias + " " },
+              });
               // Dispara callback (caller adiciona como anexo)
               Promise.resolve().then(() => onPickNote(item.path, item.isFolder));
             }
@@ -110,25 +121,35 @@ export function wikilinkCompletionSource(
 }
 
 /**
- * Detecta wikilinks `[[path]]` em texto colado/digitado e extrai eles.
+ * Detecta wikilinks `[[path]]` (ou `[[path|alias]]`) em texto colado/digitado,
+ * extrai os paths e substitui cada link pelo ALIAS legível no texto.
  *
- * Retorna: { cleanText, links: Array<{ path }> }
- * — cleanText: texto original sem os wikilinks (whitespace ao redor trimmed)
- * — links: array de paths extraídos (na ordem em que apareciam)
+ * Retorna: { cleanText, links: Array<{ path, alias }> }
+ * — cleanText: texto com cada `[[...]]` trocado pelo alias (ou basename do path)
+ * — links: paths + alias extraídos (na ordem em que apareciam)
  *
- * Suporta alias `[[path|alias]]` — pega só o `path`, descarta o alias.
+ * Ex: "veja [[Projetos/AXXA|AXXA]] hoje" → cleanText "veja AXXA hoje",
+ *     links [{ path: "Projetos/AXXA", alias: "AXXA" }]
  */
 export function extractWikilinks(text: string): {
   cleanText: string;
-  links: Array<{ path: string }>;
+  links: Array<{ path: string; alias: string }>;
 } {
-  const links: Array<{ path: string }> = [];
+  const links: Array<{ path: string; alias: string }> = [];
   // Regex pra `[[path]]` ou `[[path|alias]]`. Permite . _ - / espaço dentro.
-  const wikilinkRe = /\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]/g;
-  let cleanText = text.replace(wikilinkRe, (_full, path: string) => {
-    links.push({ path: path.trim() });
-    return ""; // remove o link do texto
-  });
+  const wikilinkRe = /\[\[([^\]|]+?)(?:\|([^\]]*))?\]\]/g;
+  let cleanText = text.replace(
+    wikilinkRe,
+    (_full, path: string, alias?: string) => {
+      const p = path.trim();
+      // Alias explícito > basename do path (sem extensão .md)
+      const display =
+        (alias && alias.trim()) ||
+        (p.split("/").pop() ?? p).replace(/\.md$/, "");
+      links.push({ path: p, alias: display });
+      return display; // deixa o alias legível no texto
+    }
+  );
   // Limpa whitespace duplicado deixado pelo replace
   cleanText = cleanText.replace(/[ \t]{2,}/g, " ").trim();
   return { cleanText, links };
