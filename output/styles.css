@@ -69,6 +69,36 @@ body.is-mobile
      position relative pra absolute do composer trabalhar */
   position: relative;
   z-index: 0;
+  /* v0.1.73: chain explícita pra .axxa-root preencher 100% do
+     .workspace-drawer-active-tab-container. Antes deixava gap visual
+     porque algumas situações (theme custom / drawer split) não setavam
+     height/width 100% em todos os links da chain. */
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  /* Flex column garante que .axxa-root (único filho) estica em altura
+     mesmo se algum reset do tema seta height:auto no view-content. */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chain explícita: cada elo precisa ser 100% × 100% pra axxa-root
+   herdar dimensões corretas até o drawer container. */
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] {
+  height: 100%;
+  width: 100%;
+}
+
+/* :has selectors são suportados em Obsidian 1.4+ (Chromium 105+).
+   Quando o drawer-active-tab-container contém AXXA, força a chain. */
+@supports selector(:has(*)) {
+  .workspace-drawer-active-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"])
+    .workspace-tab-container,
+  .workspace-drawer-active-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"])
+    .workspace-leaf:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
+    height: 100%;
+    width: 100%;
+  }
 }
 
 /* Drawer + teclado aberto → esconde header/tab options do drawer */
@@ -92,8 +122,15 @@ body.is-mobile
 .axxa-root {
   display: flex;
   flex-direction: column;
+  /* v0.1.73: 100% × 100% explícito + box-sizing pra preencher integralmente
+     o .workspace-drawer-active-tab-container. flex:1 + height:100% blindam
+     contra reset de tema que zera height dos flex children. */
   height: 100%;
+  width: 100%;
+  flex: 1 1 auto;
+  box-sizing: border-box;
   min-height: 0;
+  min-width: 0;
   /* v0.1.54: Cria stacking context novo pro AXXA OS ficar visualmente
      ACIMA de qualquer elemento interno do .workspace-leaf do Obsidian.
      Sem isso, em algumas situações (fullscreen / split panes) elementos
@@ -3197,6 +3234,51 @@ body.theme-dark .axxa-recording-indicator {
 
 .axxa-settings-subcontent {
   margin-top: 4px;
+}
+
+/* =====================================================
+ * Effort tab — header com título + botão reset
+ * Os campos em si reusam o estilo nativo do .setting-item do Obsidian
+ * ===================================================== */
+
+.axxa-effort-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-wrap: wrap;
+}
+
+.axxa-effort-title {
+  margin: 0;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+
+.axxa-effort-reset {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.axxa-effort-reset:hover {
+  background: var(--background-modifier-active-hover);
+  color: var(--text-normal);
+}
+
+/* Inputs numéricos do effort herdam o estilo nativo, só garantimos
+   width consistente pra ficar legível */
+.axxa-settings-subcontent .setting-item input[type="number"] {
+  min-width: 100px;
+  text-align: right;
 }
 
 /* =====================================================

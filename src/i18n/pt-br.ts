@@ -176,8 +176,49 @@ export const PT_BR = {
     topTabs: {
       providers: "Providers",
       appearance: "Aparência",
+      effort: "Effort",
       usage: "Usage",
       outros: "Outros",
+    },
+    effortTabs: {
+      low: "Low 🐢",
+      med: "Med ⚖️",
+      high: "High ⚡",
+      xhigh: "xHigh 🔥",
+      max: "Max 🚀",
+    },
+    effortIntro:
+      "Ajuste fino dos níveis de Effort. Cada nível tem sua sub-aba — campos vazios voltam aos defaults built-in. Max é uncapped por padrão (200 turns, 80% do contexto).",
+    effortReset: "Restaurar padrões deste nível",
+    effortResetConfirm: "Restaurar valores padrão deste nível? Seus overrides serão perdidos.",
+    effortResetDone: "Restaurado pros defaults.",
+    effortFields: {
+      maxTokens: "max_tokens (resposta)",
+      maxTokensDesc:
+        "Máximo de tokens que o modelo pode gerar na resposta. 0 = uncapped (usa % do context window do modelo).",
+      agentMaxTurns: "Agent: turnos máximos",
+      agentMaxTurnsDesc:
+        "Quantos rounds de tool-calling o Agent pode fazer antes de desistir. 0 = ilimitado (só anti-loop detection corta). Era 10 hardcoded em todos os níveis — agora cada effort tem o seu.",
+      temperature: "Temperatura",
+      temperatureDesc:
+        "Aleatoriedade da resposta (0-2). Baixa = preciso/repetitivo, alta = criativo/variado. -1 = não enviar (provider usa default).",
+      vaultTopK: "Vault Q&A: top-K notas",
+      vaultTopKDesc: "Quantas notas o modo Vault Q&A injeta como contexto.",
+      vaultExcerptChars: "Vault Q&A: chars por trecho",
+      vaultExcerptCharsDesc:
+        "Tamanho do excerto de cada nota injetado no system prompt.",
+      parallelToolCalls: "Tool calls em paralelo",
+      parallelToolCallsDesc:
+        "Quando o Agent pede várias tools no mesmo turno, executa em paralelo (mais rápido). Default ativo em high+.",
+      toolRetryOnError: "Retentar tools em erro",
+      toolRetryOnErrorDesc:
+        "Quantas vezes retentar tools que falham com erro transitório (network/timeout/locked). Erros estruturais (path errado) não são retentados.",
+      contextReservePercent: "Reserva de contexto (max)",
+      contextReservePercentDesc:
+        "Quando max_tokens=0 (uncapped), quantos % da janela do modelo usar pra resposta. 80% = sobra 20% pra prompt+system.",
+      loopDetectionWindow: "Detecção de loop (turnos)",
+      loopDetectionWindowDesc:
+        "Quantas chamadas repetidas iguais consecutivas viram um nudge automático pro Agent reconsiderar. 0 = desativado.",
     },
     tabs: {
       openai: "OpenAI",

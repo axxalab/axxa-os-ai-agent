@@ -174,8 +174,50 @@ export const EN_US: Translations = {
     topTabs: {
       providers: "Providers",
       appearance: "Appearance",
+      effort: "Effort",
       usage: "Usage",
       outros: "Other",
+    },
+    effortTabs: {
+      low: "Low 🐢",
+      med: "Med ⚖️",
+      high: "High ⚡",
+      xhigh: "xHigh 🔥",
+      max: "Max 🚀",
+    },
+    effortIntro:
+      "Fine-tune each Effort level. Each level has its own sub-tab — empty fields fall back to built-in defaults. Max is uncapped by default (200 turns, 80% of context).",
+    effortReset: "Reset this level to defaults",
+    effortResetConfirm: "Reset this level to default values? Your overrides will be lost.",
+    effortResetDone: "Restored to defaults.",
+    effortFields: {
+      maxTokens: "max_tokens (response)",
+      maxTokensDesc:
+        "Max tokens the model can generate. 0 = uncapped (uses % of model's context window).",
+      agentMaxTurns: "Agent: max turns",
+      agentMaxTurnsDesc:
+        "How many tool-calling rounds the Agent can do before giving up. 0 = unlimited (only anti-loop detection caps it). Was hardcoded to 10 — now each effort has its own.",
+      temperature: "Temperature",
+      temperatureDesc:
+        "Response randomness (0-2). Low = precise/repetitive, high = creative/varied. -1 = don't send (provider's default).",
+      vaultTopK: "Vault Q&A: top-K notes",
+      vaultTopKDesc:
+        "How many notes Vault Q&A mode injects as context.",
+      vaultExcerptChars: "Vault Q&A: chars per excerpt",
+      vaultExcerptCharsDesc:
+        "Excerpt size from each note injected into the system prompt.",
+      parallelToolCalls: "Parallel tool calls",
+      parallelToolCallsDesc:
+        "When the Agent requests multiple tools in the same turn, run them in parallel (faster). Default on for high+.",
+      toolRetryOnError: "Retry tools on error",
+      toolRetryOnErrorDesc:
+        "How many times to retry tools that fail with transient errors (network/timeout/locked). Structural errors (wrong path) are not retried.",
+      contextReservePercent: "Context reserve (max)",
+      contextReservePercentDesc:
+        "When max_tokens=0 (uncapped), how much % of the model's window to use for the response. 80% = leaves 20% for prompt+system.",
+      loopDetectionWindow: "Loop detection (turns)",
+      loopDetectionWindowDesc:
+        "How many identical repeated calls in a row trigger an auto-nudge for the Agent to reconsider. 0 = disabled.",
     },
     tabs: {
       openai: "OpenAI",

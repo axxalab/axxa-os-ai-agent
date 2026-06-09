@@ -57,6 +57,9 @@ export class OllamaProvider implements Provider {
       stream: false,
       options: {
         num_predict: req.maxTokens ?? 2000,
+        ...(typeof req.temperature === "number" && req.temperature >= 0
+          ? { temperature: req.temperature }
+          : {}),
       },
     };
     if (req.tools && req.tools.length > 0) {
@@ -160,6 +163,9 @@ export class OllamaProvider implements Provider {
       stream: true,
       options: {
         num_predict: req.maxTokens ?? 2000,
+        ...(typeof req.temperature === "number" && req.temperature >= 0
+          ? { temperature: req.temperature }
+          : {}),
       },
     };
     if (req.tools && req.tools.length > 0) {

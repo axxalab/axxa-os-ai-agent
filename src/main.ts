@@ -6,6 +6,10 @@ import { Plugin, WorkspaceLeaf, Platform } from "obsidian";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 import { VectorIndex, loadIndex } from "./rag/vectorIndex";
+import type {
+  EffortConfig,
+  EffortLevel,
+} from "./components/_shared/effort";
 
 interface AxxaSettings {
   openaiApiKey: string;
@@ -67,6 +71,11 @@ interface AxxaSettings {
   /** Quais chips aparecem nos cards da lista de chats (recent + conversations).
    *  IDs válidos: mode, model, date, messages, tokens */
   listChips: string[];
+  // ============ Effort overrides (v0.1.73) ============
+  /** Overrides do usuário pra cada nível de Effort. Campos ausentes caem nos
+   *  DEFAULT_EFFORT_CONFIGS built-in (src/components/_shared/effort.ts).
+   *  Configurado via Settings → Effort → sub-tab por nível. */
+  effortConfigs: Partial<Record<EffortLevel, Partial<EffortConfig>>>;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -140,6 +149,8 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   // Defaults slim — user pode adicionar mais via Settings → Outros → Chips
   composerChips: ["model", "effort", "speed", "in", "out"],
   listChips: ["mode", "model", "date"],
+  // Vazio = usa DEFAULT_EFFORT_CONFIGS sem overrides. User edita via Settings.
+  effortConfigs: {},
 };
 
 export default class AxxaPlugin extends Plugin {
@@ -259,6 +270,8 @@ export default class AxxaPlugin extends Plugin {
       ...DEFAULT_SETTINGS.activeModels,
       ...(saved.activeModels ?? {}),
     };
+    // Same pra effortConfigs — preserva overrides salvos do usuário.
+    this.settings.effortConfigs = saved.effortConfigs ?? {};
   }
 
   async saveSettings() {

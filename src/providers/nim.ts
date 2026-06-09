@@ -60,6 +60,9 @@ export class NimProvider implements Provider {
       messages: toOpenAIMessages(req.messages),
       max_tokens: req.maxTokens ?? 2000,
     };
+    if (typeof req.temperature === "number" && req.temperature >= 0) {
+      body.temperature = req.temperature;
+    }
     if (req.tools && req.tools.length > 0) {
       body.tools = req.tools.map((t) => ({
         type: "function",

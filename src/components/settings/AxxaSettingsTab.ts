@@ -20,6 +20,12 @@ import { openrouterProvider } from "../../providers/openrouter";
 import { nimProvider } from "../../providers/nim";
 import { ollamaProvider } from "../../providers/ollama";
 import { getTranslations, type Translations } from "../../i18n";
+import {
+  DEFAULT_EFFORT_CONFIGS,
+  EFFORT_LEVELS,
+  type EffortConfig,
+  type EffortLevel,
+} from "../_shared/effort";
 import { indexVault, type IndexProgress } from "../../rag/indexer";
 import { deleteIndex } from "../../rag/vectorIndex";
 import { EMBEDDING_MODELS } from "../../rag/types";
@@ -37,7 +43,7 @@ import {
   printUsageReport,
 } from "../../usage/export";
 
-type TopTabId = "providers" | "appearance" | "usage" | "outros";
+type TopTabId = "providers" | "appearance" | "effort" | "usage" | "outros";
 type ProviderTabId =
   | "openai"
   | "anthropic"
@@ -55,6 +61,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private activeProviderTab: ProviderTabId = "openai";
   /** Sub-tab quando topTab = outros (v0.1.39 reorganização) */
   private activeOutrosTab: OutrosTabId = "geral";
+  /** Sub-tab quando topTab = effort — qual nível está sendo editado */
+  private activeEffortTab: EffortLevel = "max";
   private unsubscribe?: () => void;
   /** Período em dias do filtro do Usage tab. 0 = tudo. Persistido em memória. */
   private usagePeriodDays = 0;
@@ -91,6 +99,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const topTabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
     this.createTopTabButton(topTabsEl, "providers", t.settings.topTabs.providers);
     this.createTopTabButton(topTabsEl, "appearance", t.settings.topTabs.appearance);
+    this.createTopTabButton(topTabsEl, "effort", t.settings.topTabs.effort);
     this.createTopTabButton(topTabsEl, "usage", t.settings.topTabs.usage);
     this.createTopTabButton(topTabsEl, "outros", t.settings.topTabs.outros);
 
@@ -105,6 +114,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
         break;
       case "appearance":
         this.renderAppearanceTab(contentEl, t);
+        break;
+      case "effort":
+        this.renderEffortTab(contentEl, t);
         break;
       case "usage":
         this.renderOutrosUsage(contentEl, t);
@@ -122,6 +134,246 @@ export class AxxaSettingsTab extends PluginSettingTab {
       cls: "setting-item-description",
     });
     this.renderOutrosUI(parent, t);
+  }
+
+  // ============================================================
+  // Top-tab Effort — sub-tabs por nível (Low / Med / High / xHigh / Max)
+  // Cada sub-tab edita TODOS os params do EffortConfig pra aquele nível.
+  // Vazio = usa default built-in (DEFAULT_EFFORT_CONFIGS).
+  // ============================================================
+  private renderEffortTab(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.effortIntro,
+      cls: "setting-item-description",
+    });
+
+    // Sub-tabs como segmented control — cada nível tem sua aba.
+    const subTabsEl = parent.createDiv({ cls: "axxa-settings-subtabs" });
+    const tabLabels = t.settings.effortTabs;
+    for (const lvl of EFFORT_LEVELS) {
+      this.createEffortSubTab(subTabsEl, lvl, tabLabels[lvl]);
+    }
+
+    // Conteúdo da sub-tab do nível selecionado
+    const subContentEl = parent.createDiv({ cls: "axxa-settings-subcontent" });
+    this.renderEffortLevelEditor(subContentEl, t, this.activeEffortTab);
+  }
+
+  /** Botão de sub-tab por nível de effort. Marca como default-bolinha o
+   *  nível atual do plugin (defaultEffort), igual aos providers. */
+  private createEffortSubTab(
+    parent: HTMLElement,
+    id: EffortLevel,
+    label: string
+  ) {
+    const isDefault = id === this.plugin.settings.defaultEffort;
+    const btn = parent.createEl("button", {
+      cls:
+        "axxa-subtab-btn" +
+        (this.activeEffortTab === id ? " axxa-subtab-active" : "") +
+        (isDefault ? " axxa-subtab-default" : ""),
+      text: label,
+    });
+    btn.onclick = () => {
+      this.activeEffortTab = id;
+      this.display();
+    };
+  }
+
+  /** Editor de UM nível de effort — todos os campos do EffortConfig.
+   *  Cada campo usa o override do user se existir, senão mostra o default
+   *  como placeholder e salva null quando o user limpa (volta ao default). */
+  private renderEffortLevelEditor(
+    parent: HTMLElement,
+    t: Translations,
+    level: EffortLevel
+  ) {
+    const fields = t.settings.effortFields;
+    const defaults = DEFAULT_EFFORT_CONFIGS[level];
+
+    // Helpers pra ler/escrever um campo do override do user. Quando o user
+    // limpa o input, removemos a chave (cai pro default automaticamente).
+    const readOverride = (): Partial<EffortConfig> =>
+      this.plugin.settings.effortConfigs[level] ?? {};
+    const writeOverride = async (patch: Partial<EffortConfig>) => {
+      const current = readOverride();
+      const next = { ...current, ...patch };
+      // Limpa chaves undefined pra não poluir o JSON salvo
+      for (const k of Object.keys(next) as Array<keyof EffortConfig>) {
+        if (next[k] === undefined) delete next[k];
+      }
+      this.plugin.settings.effortConfigs[level] = next;
+      await this.plugin.saveSettings();
+    };
+
+    // Header com resumo + botão de restaurar defaults
+    const header = parent.createDiv({ cls: "axxa-effort-header" });
+    header.createEl("h3", {
+      text: `${t.settings.effortTabs[level]}`,
+      cls: "axxa-effort-title",
+    });
+    const resetBtn = header.createEl("button", {
+      cls: "axxa-effort-reset",
+      text: t.settings.effortReset,
+      attr: { type: "button" },
+    });
+    resetBtn.onclick = async () => {
+      if (!confirm(t.settings.effortResetConfirm)) return;
+      delete this.plugin.settings.effortConfigs[level];
+      await this.plugin.saveSettings();
+      new Notice(t.settings.effortResetDone);
+      this.display();
+    };
+
+    // === Campo: max_tokens ===
+    this.addEffortNumberField(parent, {
+      name: fields.maxTokens,
+      desc: fields.maxTokensDesc,
+      placeholder: String(defaults.maxTokens),
+      min: 0,
+      max: 200000,
+      step: 256,
+      current: readOverride().maxTokens,
+      onSave: (v) => writeOverride({ maxTokens: v }),
+    });
+
+    // === Campo: agentMaxTurns ===
+    this.addEffortNumberField(parent, {
+      name: fields.agentMaxTurns,
+      desc: fields.agentMaxTurnsDesc,
+      placeholder: String(defaults.agentMaxTurns),
+      min: 0,
+      max: 1000,
+      step: 1,
+      current: readOverride().agentMaxTurns,
+      onSave: (v) => writeOverride({ agentMaxTurns: v }),
+    });
+
+    // === Campo: temperature ===
+    this.addEffortNumberField(parent, {
+      name: fields.temperature,
+      desc: fields.temperatureDesc,
+      placeholder: String(defaults.temperature),
+      min: -1,
+      max: 2,
+      step: 0.1,
+      current: readOverride().temperature,
+      onSave: (v) => writeOverride({ temperature: v }),
+    });
+
+    // === Campo: vaultTopK ===
+    this.addEffortNumberField(parent, {
+      name: fields.vaultTopK,
+      desc: fields.vaultTopKDesc,
+      placeholder: String(defaults.vaultTopK),
+      min: 1,
+      max: 100,
+      step: 1,
+      current: readOverride().vaultTopK,
+      onSave: (v) => writeOverride({ vaultTopK: v }),
+    });
+
+    // === Campo: vaultExcerptChars ===
+    this.addEffortNumberField(parent, {
+      name: fields.vaultExcerptChars,
+      desc: fields.vaultExcerptCharsDesc,
+      placeholder: String(defaults.vaultExcerptChars),
+      min: 100,
+      max: 10000,
+      step: 100,
+      current: readOverride().vaultExcerptChars,
+      onSave: (v) => writeOverride({ vaultExcerptChars: v }),
+    });
+
+    // === Campo: parallelToolCalls (toggle) ===
+    new Setting(parent)
+      .setName(fields.parallelToolCalls)
+      .setDesc(fields.parallelToolCallsDesc)
+      .addToggle((tog) =>
+        tog
+          .setValue(readOverride().parallelToolCalls ?? defaults.parallelToolCalls)
+          .onChange(async (val) => {
+            await writeOverride({ parallelToolCalls: val });
+          })
+      );
+
+    // === Campo: toolRetryOnError ===
+    this.addEffortNumberField(parent, {
+      name: fields.toolRetryOnError,
+      desc: fields.toolRetryOnErrorDesc,
+      placeholder: String(defaults.toolRetryOnError),
+      min: 0,
+      max: 20,
+      step: 1,
+      current: readOverride().toolRetryOnError,
+      onSave: (v) => writeOverride({ toolRetryOnError: v }),
+    });
+
+    // === Campo: contextReservePercent ===
+    this.addEffortNumberField(parent, {
+      name: fields.contextReservePercent,
+      desc: fields.contextReservePercentDesc,
+      placeholder: String(defaults.contextReservePercent),
+      min: 10,
+      max: 95,
+      step: 5,
+      current: readOverride().contextReservePercent,
+      onSave: (v) => writeOverride({ contextReservePercent: v }),
+    });
+
+    // === Campo: loopDetectionWindow ===
+    this.addEffortNumberField(parent, {
+      name: fields.loopDetectionWindow,
+      desc: fields.loopDetectionWindowDesc,
+      placeholder: String(defaults.loopDetectionWindow),
+      min: 0,
+      max: 20,
+      step: 1,
+      current: readOverride().loopDetectionWindow,
+      onSave: (v) => writeOverride({ loopDetectionWindow: v }),
+    });
+  }
+
+  /** Helper: campo numérico com placeholder=default. Limpar = remover override. */
+  private addEffortNumberField(
+    parent: HTMLElement,
+    opts: {
+      name: string;
+      desc: string;
+      placeholder: string;
+      min: number;
+      max: number;
+      step: number;
+      current: number | undefined;
+      onSave: (value: number | undefined) => Promise<void>;
+    }
+  ) {
+    new Setting(parent)
+      .setName(opts.name)
+      .setDesc(opts.desc)
+      .addText((text) => {
+        text.inputEl.type = "number";
+        text.inputEl.min = String(opts.min);
+        text.inputEl.max = String(opts.max);
+        text.inputEl.step = String(opts.step);
+        text.setPlaceholder(opts.placeholder);
+        if (opts.current !== undefined) {
+          text.setValue(String(opts.current));
+        }
+        text.onChange(async (raw) => {
+          const trimmed = raw.trim();
+          if (trimmed === "") {
+            // Vazio = volta ao default — remove o override
+            await opts.onSave(undefined);
+            return;
+          }
+          const num = Number(trimmed);
+          if (!isFinite(num)) return;
+          // Clamp aos limites pra evitar valores absurdos
+          const clamped = Math.max(opts.min, Math.min(opts.max, num));
+          await opts.onSave(clamped);
+        });
+      });
   }
 
   hide() {

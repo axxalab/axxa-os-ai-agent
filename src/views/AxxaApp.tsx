@@ -32,6 +32,7 @@ import { saveGeneration, type GenerationMediaType } from "../generation/save";
 import {
   effortToMaxTokensSmart,
   effortToVaultLookup,
+  resolveEffortConfig,
   type EffortLevel,
 } from "../components/_shared/effort";
 import { getContextWindow } from "../components/_shared/contextWindows";
@@ -374,13 +375,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       endStreamTimer,
     } = useChatStore.getState();
 
+    // Resolve config completo do effort atual (com overrides do usuário).
+    // Centraliza todos os params escaláveis em um objeto só.
+    const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
+
     // Modo Vault Q&A: busca notas relevantes ANTES da chamada
     // topK e excerptChars escalam com effort (low=3×300 ... max=12×2000)
     // Se índice RAG existe → busca semântica (cosine sim sobre embeddings).
     // Senão → fallback pra busca keyword (busca por título + ocorrências).
     let vaultContextBlock = "";
     if (activeMode === "vault-qa") {
-      const { topK, excerptChars } = effortToVaultLookup(effort);
+      const { topK, excerptChars } = effortToVaultLookup(
+        effort,
+        plugin.settings.effortConfigs
+      );
       const useRag =
         plugin.vectorIndex !== null && plugin.vectorIndex.size > 0;
 
@@ -534,7 +542,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         {
           model: activeModel,
           messages: history,
-          maxTokens: effortToMaxTokensSmart(effort, getContextWindow(activeModel)),
+          maxTokens: effortToMaxTokensSmart(
+            effort,
+            getContextWindow(activeModel),
+            plugin.settings.effortConfigs
+          ),
+          temperature: effortCfg.temperature,
         },
         apiKey,
         (token) => {
@@ -656,14 +669,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const permissionLevel: PermissionLevel = (plugin.settings.agentPermissionLevel ||
       "ask") as PermissionLevel;
 
-    // System prompt específico do agent
+    // Config do effort atual — agentMaxTurns, retry, loop detection, etc.
+    const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
+
+    // System prompt específico do agent — reforça uso eficiente das tools
+    // e atitude "incansável" pra effort alto (não desiste em max).
     const AGENT_SYSTEM_PROMPT =
       "Você é o AXXA Agent, um assistente integrado ao Obsidian com acesso direto " +
       "ao vault do usuário via ferramentas (tools). Responda em português. " +
       "Use as tools pra realizar a tarefa pedida — leia, crie, edite, mova ou delete " +
       "arquivos quando o user pedir. Pergunte ANTES se a intenção for ambígua. " +
       "Quando terminar, devolva uma resposta de texto resumindo o que fez. " +
-      "Pra editar arquivos, SEMPRE use vault_read antes pra ver o conteúdo exato.";
+      "Pra editar arquivos, SEMPRE use vault_read antes pra ver o conteúdo exato. " +
+      "Se uma tool falhar, AJUSTE a estratégia (path errado? formato? permissão?) " +
+      "antes de tentar de novo — nunca repita a MESMA call exata que acabou de falhar. " +
+      "Quando precisar listar muitos arquivos, prefira tool calls em paralelo (mesmo turn).";
 
     // Constrói history inicial — pega só user/assistant do store (chat anterior).
     // Última user msg recebe attachments multimodais se vieram.
@@ -696,14 +716,26 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     const apiKey = apiKeyFor(activeProviderId);
 
-    const MAX_TURNS = 10;
+    // MAX_TURNS agora vem do effort config — low=5, med=12, high=25,
+    // xhigh=60, max=200. User pode override via Settings → Effort.
+    // 0 = uncapped (loop detection é o único limite).
+    const MAX_TURNS = effortCfg.agentMaxTurns;
+    const isUncapped = MAX_TURNS === 0;
+    // Loop detection: guarda assinatura das últimas N tool calls pra detectar
+    // o LLM ficar batendo a mesma chamada em loop infinito. Quando detecta,
+    // injeta uma msg "tool" forçada pedindo pra mudar de estratégia.
+    const loopWindow = effortCfg.loopDetectionWindow;
+    const recentCallSignatures: string[] = [];
+    const makeSignature = (name: string, args: Record<string, unknown>) =>
+      `${name}::${JSON.stringify(args)}`;
+
     let turn = 0;
     let firstTurn = true;
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      while (turn < MAX_TURNS) {
+      while (isUncapped || turn < MAX_TURNS) {
         turn++;
 
         // Cria msg ai-response que vai ser preenchida token-a-token.
@@ -731,7 +763,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           {
             model: activeModel,
             messages: history,
-            maxTokens: effortToMaxTokensSmart(effort, getContextWindow(activeModel)),
+            maxTokens: effortToMaxTokensSmart(
+              effort,
+              getContextWindow(activeModel),
+              plugin.settings.effortConfigs
+            ),
+            temperature: effortCfg.temperature,
             tools,
           },
           apiKey,
@@ -770,6 +807,50 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           toolCalls: response.toolCalls,
         });
 
+        // Loop detection: assinatura = name + JSON(args). Se a mesma assinatura
+        // aparecer `loopWindow` vezes consecutivas, injetamos um nudge na
+        // history e cortamos o loop. Evita o LLM "ficar girando" sem entender
+        // que tá repetindo a mesma chamada que já falhou.
+        let loopDetected = false;
+        if (loopWindow > 0) {
+          for (const call of response.toolCalls) {
+            recentCallSignatures.push(makeSignature(call.name, call.arguments));
+          }
+          // Mantém só as últimas N×2 entries (gasta pouca memória)
+          if (recentCallSignatures.length > loopWindow * 4) {
+            recentCallSignatures.splice(
+              0,
+              recentCallSignatures.length - loopWindow * 4
+            );
+          }
+          const lastN = recentCallSignatures.slice(-loopWindow);
+          if (lastN.length === loopWindow && lastN.every((s) => s === lastN[0])) {
+            loopDetected = true;
+          }
+        }
+
+        // Executa as tool calls — em paralelo se effort permite e há >1 call,
+        // senão sequencial. Modais de confirmação são SEMPRE sequenciais
+        // (não dá pra abrir 2 ConfirmationModal ao mesmo tempo).
+        type CallResult = {
+          callId: string;
+          content: string;
+          activityId: string;
+          spec: ReturnType<typeof agentActivitySpec>;
+          meta: string;
+          ok: boolean;
+        };
+
+        // Pre-check de permissão (sequencial) e cria placeholders de activity.
+        // Isso garante que o usuário vê os modais um por vez e a ordem do
+        // resultado preserva a ordem em que o LLM pediu.
+        const preparedCalls: Array<{
+          call: typeof response.toolCalls[number];
+          def: ReturnType<typeof getToolDefinition>;
+          approved: boolean;
+          activityId: string;
+          spec: ReturnType<typeof agentActivitySpec>;
+        }> = [];
         for (const call of response.toolCalls) {
           const def = getToolDefinition(call.name);
           if (!def) {
@@ -787,7 +868,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             history.push({
               role: "tool",
               toolCallId: call.id,
-              content: `Tool "${call.name}" não existe.`,
+              content: `Tool "${call.name}" não existe. Use uma das tools disponíveis.`,
             });
             continue;
           }
@@ -817,12 +898,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             history.push({
               role: "tool",
               toolCallId: call.id,
-              content: "User negou esta ação. Considere outra abordagem ou pergunte ao user.",
+              content:
+                "User negou esta ação. NÃO tente repetir essa mesma chamada — considere outra abordagem ou pergunte ao user.",
             });
             continue;
           }
 
-          // Cria activity pending — ícone pulsa enquanto roda
           const spec = agentActivitySpec(call.name, call.arguments);
           const activityId = addMessage({
             type: "ai-comment",
@@ -835,39 +916,113 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               doneText: spec.doneText,
             },
           });
+          preparedCalls.push({ call, def, approved, activityId, spec });
+        }
+
+        // Executor com retry pra cada call individual.
+        const execCall = async (
+          prep: (typeof preparedCalls)[number]
+        ): Promise<CallResult> => {
+          const { call, activityId, spec } = prep;
           const executor = TOOL_REGISTRY[call.name];
-          try {
-            const result = await executor(plugin.app, call.arguments);
-            // Atualiza pra done — ícone vira check com pop, texto fica "Leu X"
-            // e content recebe meta (ex: "1.2k chars") em muted ao lado
-            const meta = summarizeToolResult(call.name, result);
-            updateActivity(activityId, { phase: "done" }, meta);
-            history.push({
-              role: "tool",
-              toolCallId: call.id,
-              content: result,
-            });
-          } catch (err) {
-            const msg =
-              err instanceof Error ? err.message : "Erro desconhecido.";
-            updateActivity(
-              activityId,
-              {
-                phase: "failed",
-                iconFailed: "x-circle",
-                failedText: spec.pendingText.replace(
-                  /^(Lendo|Editando|Criando|Movendo|Deletando|Listando|Executando)/,
-                  "Falhou em"
-                ),
-              },
-              msg
-            );
-            history.push({
-              role: "tool",
-              toolCallId: call.id,
-              content: `ERRO: ${msg}`,
-            });
+          const maxAttempts = 1 + Math.max(0, effortCfg.toolRetryOnError);
+          let lastErr: unknown = null;
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+              const result = await executor(plugin.app, call.arguments);
+              const meta = summarizeToolResult(call.name, result);
+              updateActivity(activityId, { phase: "done" }, meta);
+              return {
+                callId: call.id,
+                content: result,
+                activityId,
+                spec,
+                meta,
+                ok: true,
+              };
+            } catch (err) {
+              lastErr = err;
+              // Só retenta erros transitórios (network / fs lock). Path errado
+              // ou arg inválido não vão dar certo no retry — cai direto.
+              const msg =
+                err instanceof Error ? err.message.toLowerCase() : "";
+              const isTransient =
+                msg.includes("network") ||
+                msg.includes("timeout") ||
+                msg.includes("locked") ||
+                msg.includes("busy");
+              if (!isTransient || attempt === maxAttempts) break;
+            }
           }
+          const msg =
+            lastErr instanceof Error ? lastErr.message : "Erro desconhecido.";
+          updateActivity(
+            activityId,
+            {
+              phase: "failed",
+              iconFailed: "x-circle",
+              failedText: spec.pendingText.replace(
+                /^(Lendo|Editando|Criando|Movendo|Deletando|Listando|Executando)/,
+                "Falhou em"
+              ),
+            },
+            msg
+          );
+          return {
+            callId: call.id,
+            content: `ERRO: ${msg}. NÃO repita essa mesma chamada — ajuste path/args ou tente outra abordagem.`,
+            activityId,
+            spec,
+            meta: "",
+            ok: false,
+          };
+        };
+
+        let results: CallResult[];
+        if (effortCfg.parallelToolCalls && preparedCalls.length > 1) {
+          // Paralelo: roda todas ao mesmo tempo, espera todas terminarem.
+          // Cada call já tem seu próprio activity, não há disputa de UI.
+          results = await Promise.all(preparedCalls.map(execCall));
+        } else {
+          results = [];
+          for (const prep of preparedCalls) {
+            results.push(await execCall(prep));
+          }
+        }
+        for (const r of results) {
+          history.push({
+            role: "tool",
+            toolCallId: r.callId,
+            content: r.content,
+          });
+        }
+
+        // Se detectou loop, injeta nudge pro LLM e segue um turn — se ele
+        // insistir, dá outro turn e o próximo check vai cortar denovo.
+        // Se o loop for muito persistente (3 nudges seguidos), aborta de vez.
+        if (loopDetected) {
+          history.push({
+            role: "user",
+            content:
+              "⚠️ Detectei que você repetiu a mesma tool call exata várias vezes. " +
+              "Isso indica que sua abordagem atual não está funcionando. " +
+              "PARE de repetir, RECONSIDERE a estratégia (talvez você precise " +
+              "de informação adicional — tente vault_list/vault_read em outro path) " +
+              "OU pergunte ao usuário pra ele esclarecer. Não repita a mesma chamada.",
+          });
+          addMessage({
+            type: "ai-comment",
+            content: "",
+            activity: {
+              phase: "failed",
+              iconPending: "rotate-cw",
+              iconFailed: "alert-triangle",
+              pendingText: "Loop detectado — pedindo reconsideração",
+              failedText: "Loop detectado — pedi reconsideração ao agent",
+            },
+          });
+          // Limpa o histórico de assinaturas pra dar chance limpa ao retry
+          recentCallSignatures.length = 0;
         }
       }
       addMessage({

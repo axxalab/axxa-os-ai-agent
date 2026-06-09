@@ -80,6 +80,7 @@ interface AnthropicBody {
   stream?: boolean;
   system?: string;
   tools?: AnthropicTool[];
+  temperature?: number;
 }
 
 /**
@@ -209,6 +210,9 @@ function buildBody(req: ProviderRequest, stream: boolean): AnthropicBody {
     stream,
   };
   if (system) body.system = system;
+  if (typeof req.temperature === "number" && req.temperature >= 0) {
+    body.temperature = req.temperature;
+  }
   if (req.tools && req.tools.length > 0) {
     body.tools = req.tools.map((t) => ({
       name: t.name,

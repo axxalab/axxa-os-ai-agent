@@ -76,6 +76,9 @@ export interface ProviderRequest {
   maxTokens?: number;
   /** Tools disponíveis pro LLM. Agent mode envia, modos texto deixam vazio. */
   tools?: ProviderToolDefinition[];
+  /** Temperatura 0..2 — se omitido, provider usa default próprio.
+   *  Effort baixo = temp alta (criativo); effort alto = temp baixa (preciso). */
+  temperature?: number;
 }
 
 export interface ProviderResponse {
