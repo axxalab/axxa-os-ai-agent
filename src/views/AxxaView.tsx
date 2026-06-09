@@ -7,6 +7,10 @@ import { ItemView, WorkspaceLeaf, Platform } from "obsidian";
 import { Root, createRoot } from "react-dom/client";
 import { AxxaApp } from "./AxxaApp";
 import type AxxaPlugin from "../main";
+import {
+  applyThemeColor,
+  restoreThemeColor,
+} from "../components/_shared/themeColor";
 
 export const VIEW_TYPE_AXXA = "axxa-os-ai-agent";
 
@@ -18,6 +22,10 @@ export class AxxaView extends ItemView {
   private drawerHostEl: HTMLElement | null = null;
   /** Unsubscribe das settings — usado pra atualizar bg quando o user troca. */
   private drawerHostUnsub: (() => void) | null = null;
+  /** Unsubscribe do theme-color sync (OS status bar). */
+  private themeColorUnsub: (() => void) | null = null;
+  /** Observer pra detectar troca de tema claro/escuro do Obsidian. */
+  private themeObserver: MutationObserver | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: AxxaPlugin) {
     super(leaf);
@@ -43,13 +51,60 @@ export class AxxaView extends ItemView {
     this.root.render(<AxxaApp plugin={this.plugin} />);
 
     this.setupDrawerHost();
+    this.setupThemeColor();
     this.setupMobileKeyboardObserver();
   }
 
   async onClose() {
     this.teardownDrawerHost();
+    this.teardownThemeColor();
     this.teardownMobileKeyboardObserver();
     this.root?.unmount();
+  }
+
+  /**
+   * Theme color OS status bar (mobile): seta <meta name="theme-color">
+   * pra Android Chrome / Obsidian mobile colorir o status bar do sistema
+   * (onde fica bateria/relógio) matching o preset atual do user.
+   *
+   * Sync em 3 momentos:
+   *  - onOpen (initial apply)
+   *  - settings change (user troca preset)
+   *  - body.theme-dark toggle (user troca tema claro/escuro)
+   *
+   * Cleanup no onClose restaura o theme-color original do tema/Obsidian.
+   */
+  private setupThemeColor() {
+    if (!Platform.isMobile) return;
+    const doc = this.containerEl.doc;
+    const body = doc.body;
+
+    const update = () => {
+      const isDark = body.classList.contains("theme-dark");
+      applyThemeColor(
+        doc,
+        this.plugin.settings.background || "none",
+        isDark
+      );
+    };
+
+    update();
+    this.themeColorUnsub = this.plugin.onSettingsChange(update);
+
+    // Observa toggle de tema (Obsidian alterna body.theme-light/theme-dark)
+    this.themeObserver = new MutationObserver(update);
+    this.themeObserver.observe(body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+  }
+
+  private teardownThemeColor() {
+    this.themeColorUnsub?.();
+    this.themeColorUnsub = null;
+    this.themeObserver?.disconnect();
+    this.themeObserver = null;
+    restoreThemeColor();
   }
 
   /**
