@@ -1,11 +1,15 @@
 // src/components/chat/StarterScreen.tsx
-// Tela inicial quando chat tá vazio:
-//   - Provider buttons + model dropdown + effort row
-//   - Recent chats list (últimos 5 chats salvos) — clique carrega
+// Dashboard inicial quando chat tá vazio (v0.1.103):
+//   - Saudação por hora do dia + tagline
+//   - Visão geral: stat cards (conversas/mensagens/tokens/gasto) + atividade 14d
+//   - Nova conversa: provider buttons + model dropdown + effort row
+//   - Recent chats list (últimos 8 chats salvos) — clique carrega
+//   - Status: índice RAG + providers configurados (clique abre Settings)
 //   - Quando user manda primeira msg, AxxaApp chama lockSession()
 
-import { useState, useEffect, useRef, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { Notice } from "obsidian";
+import type AxxaPlugin from "../../main";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
 import {
@@ -16,7 +20,12 @@ import {
 } from "../_shared/effort";
 import type { ChatSummary } from "../_shared/chatPersistence";
 import { formatTokens } from "../_shared/contextWindows";
-import { useT } from "../../i18n";
+import {
+  aggregateFromSummaries,
+  lastNDays,
+  type UsageAggregate,
+} from "../../usage/aggregate";
+import { useT, type Translations } from "../../i18n";
 import {
   getModelCapabilities,
   capabilityBadges,
@@ -295,11 +304,16 @@ const PROVIDERS = [
 ];
 
 interface StarterScreenProps {
+  /** Plugin — fonte dos dados do dashboard (usage, vectorIndex, settings, versão). */
+  plugin: AxxaPlugin;
   provider: string;
   model: string;
   effort: string;
   mode: string;
   recentChats: ChatSummary[];
+  /** Todos os summaries da varredura que o AxxaApp já faz pros recentes —
+   *  alimenta os stats do dashboard sem IO extra. null = carregando. */
+  summaries: ChatSummary[] | null;
   /** Modelos ativos por provider — curado pelo user nas Settings.
    *  Substitui a lista hardcoded antiga: agora é o user que define o que aparece aqui. */
   activeModels: Record<string, string[]>;
@@ -310,6 +324,10 @@ interface StarterScreenProps {
   onEffortChange: (level: EffortLevel) => void;
   onModeChange: (mode: string) => void;
   onLoadChat: (chatId: string, chatMode: string) => void;
+  /** "Ver todas" na seção de recentes — abre a ConversationsList. */
+  onOpenConversations: () => void;
+  /** Clique nos cards de status (RAG / providers) — abre as Settings. */
+  onOpenSettings: () => void;
 }
 
 // MODES_META — só os ícones e ids ficam aqui. Nomes/descrições vêm do i18n.
@@ -321,31 +339,303 @@ const MODES_META: { id: string; icon: string; soon?: boolean }[] = [
   { id: "agent", icon: "bot" },
 ];
 
-function formatRelativeDate(iso: string): string {
+function formatRelativeDate(iso: string, t: Translations): string {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffMin = Math.floor(diffMs / 60_000);
-    if (diffMin < 1) return "agora";
+    if (diffMin < 1) return t.dashboard.relNow;
     if (diffMin < 60) return `${diffMin}min`;
     const diffH = Math.floor(diffMin / 60);
     if (diffH < 24) return `${diffH}h`;
     const diffD = Math.floor(diffH / 24);
     if (diffD < 7) return `${diffD}d`;
-    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    return d.toLocaleDateString(t.dashboard.dateLocale, {
+      day: "2-digit",
+      month: "short",
+    });
   } catch {
     return iso.slice(0, 10);
   }
 }
 
+/** Formato compacto pra contagens grandes: 1234 → "1.2k", 3400000 → "3.4M". */
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 10_000) return Math.round(n / 1_000) + "k";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
+  return String(n);
+}
+
+/** Saudação por hora do dia (5-11 manhã, 12-17 tarde, resto noite). */
+function greetingFor(hour: number, t: Translations): string {
+  if (hour >= 5 && hour < 12) return t.dashboard.greetingMorning;
+  if (hour >= 12 && hour < 18) return t.dashboard.greetingAfternoon;
+  return t.dashboard.greetingEvening;
+}
+
+/** Provider tem credencial configurada? (ollama não tem key — checa endpoint) */
+function providerConfigured(plugin: AxxaPlugin, id: string): boolean {
+  const s = plugin.settings;
+  switch (id) {
+    case "anthropic": return !!s.anthropicApiKey?.trim();
+    case "gemini": return !!s.geminiApiKey?.trim();
+    case "openrouter": return !!s.openrouterApiKey?.trim();
+    case "nim": return !!s.nimApiKey?.trim();
+    case "ollama": return !!s.ollamaEndpoint?.trim();
+    default: return !!s.openaiApiKey?.trim();
+  }
+}
+
+/**
+ * Cabeçalho de seção do dashboard — título com ícone à esquerda e ação
+ * opcional ("Ver todas") à direita.
+ */
+function SectionHead({
+  icon,
+  title,
+  actionLabel,
+  onAction,
+}: {
+  icon: string;
+  title: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="axxa-dash-secthead">
+      <span className="axxa-dash-secthead-title">
+        <Icon name={icon} />
+        {title}
+      </span>
+      {actionLabel && onAction && (
+        <button
+          type="button"
+          className="axxa-dash-secthead-action"
+          onClick={onAction}
+        >
+          {actionLabel}
+          <Icon name="chevron-right" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Stat card — label com micro-ícone colorido em cima, valor grande embaixo. */
+function StatCard({
+  icon,
+  color,
+  label,
+  value,
+  title,
+}: {
+  icon: string;
+  color: string;
+  label: string;
+  value: string;
+  /** Tooltip nativo — ex.: explicação do "*" de custo parcial. */
+  title?: string;
+}) {
+  return (
+    <div className="axxa-dash-stat" title={title}>
+      <span className="axxa-dash-stat-top">
+        <span className="axxa-dash-stat-icon" style={{ color }}>
+          <Icon name={icon} />
+        </span>
+        {label}
+      </span>
+      <span className="axxa-dash-stat-value">{value}</span>
+    </div>
+  );
+}
+
+/** Slot do chart: dia agregado ou null (placeholder enquanto carrega). */
+type DaySlot = ReturnType<typeof lastNDays>[number] | null;
+
+/**
+ * Mini bar chart dos últimos 14 dias — altura proporcional a tokens/dia.
+ * Sem lib: barras flex com height inline. Tooltip nativo por dia.
+ * agg=null (carregando) → barras fantasma na altura mínima.
+ */
+function ActivityChart({ agg }: { agg: UsageAggregate | null }) {
+  const t = useT();
+  const days: DaySlot[] = agg
+    ? lastNDays(agg.byDay, 14)
+    : new Array(14).fill(null);
+  const max = days.reduce(
+    (m, d) => Math.max(m, d ? d.bucket.tokensIn + d.bucket.tokensOut : 0),
+    0
+  );
+  const hasData = max > 0;
+
+  return (
+    <div className="axxa-dash-activity">
+      {agg && !hasData ? (
+        <div className="axxa-dash-activity-empty">
+          {t.dashboard.activityEmpty}
+        </div>
+      ) : (
+        <div className="axxa-dash-bars" aria-label={t.dashboard.activityLabel}>
+          {days.map((d, i) => {
+            const tokens = d ? d.bucket.tokensIn + d.bucket.tokensOut : 0;
+            const pct = hasData
+              ? Math.max(6, Math.round((tokens / max) * 100))
+              : 6;
+            const isToday = d != null && i === days.length - 1;
+            return (
+              <span
+                key={d?.day ?? i}
+                className={
+                  "axxa-dash-bar" +
+                  (tokens > 0 ? " axxa-dash-bar-on" : "") +
+                  (isToday ? " axxa-dash-bar-today" : "")
+                }
+                style={{ height: `${pct}%` }}
+                title={
+                  d
+                    ? `${d.day.slice(8, 10)}/${d.day.slice(5, 7)} — ${t.dashboard.activityDay(
+                        d.bucket.chats,
+                        formatTokens(tokens)
+                      )}`
+                    : undefined
+                }
+              />
+            );
+          })}
+        </div>
+      )}
+      <div className="axxa-dash-bars-caption">
+        <span>{t.dashboard.activityLabel}</span>
+        <span>{t.dashboard.activityToday}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Cards de status — índice RAG (chunks/notas + última indexação + warning de
+ * mismatch de modelo) e providers configurados. Clique abre as Settings.
+ */
+function StatusCards({
+  plugin,
+  onOpenSettings,
+}: {
+  plugin: AxxaPlugin;
+  onOpenSettings?: () => void;
+}) {
+  const t = useT();
+  const idx = plugin.vectorIndex;
+  const hasIndex = !!idx && idx.size > 0;
+  const mismatch =
+    hasIndex && idx!.model !== plugin.settings.ragEmbeddingModel;
+
+  const configured = PROVIDERS.filter((p) => providerConfigured(plugin, p.id));
+
+  const ragDot = mismatch
+    ? "axxa-dash-dot-warn"
+    : hasIndex
+      ? "axxa-dash-dot-ok"
+      : "axxa-dash-dot-off";
+
+  return (
+    <div className="axxa-dash-status">
+      <button
+        type="button"
+        className="axxa-dash-status-card"
+        onClick={onOpenSettings}
+        title={t.dashboard.ragTitle}
+      >
+        <span className="axxa-dash-status-icon">
+          <Icon name="library" />
+        </span>
+        <span className="axxa-dash-status-main">
+          <span className="axxa-dash-status-title">
+            <span className={"axxa-dash-dot " + ragDot} />
+            {t.dashboard.ragTitle}
+          </span>
+          <span className="axxa-dash-status-sub">
+            {hasIndex
+              ? t.dashboard.ragStats(formatCompact(idx!.size), idx!.fileCount)
+              : t.dashboard.ragEmpty}
+          </span>
+          {(mismatch || (hasIndex && idx!.lastIndexedAt)) && (
+            <span
+              className={
+                "axxa-dash-status-sub" +
+                (mismatch ? " axxa-dash-status-warn" : "")
+              }
+            >
+              {mismatch
+                ? t.dashboard.ragMismatch
+                : t.dashboard.ragLast(
+                    formatRelativeDate(idx!.lastIndexedAt, t)
+                  )}
+            </span>
+          )}
+        </span>
+        <span className="axxa-recent-chevron">
+          <Icon name="chevron-right" />
+        </span>
+      </button>
+
+      <button
+        type="button"
+        className="axxa-dash-status-card"
+        onClick={onOpenSettings}
+        title={t.dashboard.providersTitle}
+      >
+        <span className="axxa-dash-status-icon">
+          <Icon name="plug-zap" />
+        </span>
+        <span className="axxa-dash-status-main">
+          <span className="axxa-dash-status-title">
+            <span
+              className={
+                "axxa-dash-dot " +
+                (configured.length > 0 ? "axxa-dash-dot-ok" : "axxa-dash-dot-off")
+              }
+            />
+            {t.dashboard.providersTitle}
+          </span>
+          <span className="axxa-dash-status-sub">
+            {t.dashboard.providersCount(configured.length, PROVIDERS.length)}
+          </span>
+          <span className="axxa-dash-provider-icons">
+            {PROVIDERS.map((p) => (
+              <span
+                key={p.id}
+                className={
+                  "axxa-dash-provider-ic" +
+                  (providerConfigured(plugin, p.id)
+                    ? " axxa-dash-provider-ic-on"
+                    : "")
+                }
+                title={p.name}
+              >
+                <Icon name={"brand-" + p.id} />
+              </span>
+            ))}
+          </span>
+        </span>
+        <span className="axxa-recent-chevron">
+          <Icon name="chevron-right" />
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function StarterScreen({
+  plugin,
   provider,
   model,
   effort,
   mode,
   recentChats,
+  summaries,
   activeModels,
   visibleChips,
   onProviderChange,
@@ -353,11 +643,36 @@ export function StarterScreen({
   onEffortChange,
   onModeChange,
   onLoadChat,
+  onOpenConversations,
+  onOpenSettings,
 }: StarterScreenProps) {
   const t = useT();
   const modelOptions = activeModels[provider] ?? [];
   const [pickerOpen, setPickerOpen] = useState(false);
   const modelFieldRef = useRef<HTMLDivElement>(null);
+
+  // Agregação de uso (todo o histórico) — derivada dos summaries que o
+  // AxxaApp já carregou pra lista de recentes. Zero IO aqui: só CPU
+  // (pricing por chat + buckets), memoizado por referência do array.
+  const agg: UsageAggregate | null = useMemo(
+    () => (summaries ? aggregateFromSummaries(summaries) : null),
+    [summaries]
+  );
+
+  // Stats derivadas — "—" enquanto carrega.
+  const totalMessages = agg
+    ? agg.chats.reduce((n, c) => n + c.messages, 0)
+    : null;
+  const statChats = agg ? formatCompact(agg.total.chats) : "—";
+  const statMessages = totalMessages != null ? formatCompact(totalMessages) : "—";
+  const statTokens = agg
+    ? formatTokens(agg.total.tokensIn + agg.total.tokensOut)
+    : "—";
+  const statCost = agg
+    ? formatUsd(agg.total.cost) + (agg.total.hasUnknownCost ? "*" : "")
+    : "—";
+
+  const greeting = greetingFor(new Date().getHours(), t);
 
   // Fecha o dropdown de modelo ao clicar fora ou apertar Escape.
   useEffect(() => {
@@ -398,12 +713,58 @@ export function StarterScreen({
   };
 
   return (
-    <div className="axxa-starter">
+    <div className="axxa-starter axxa-dash">
       <div className="axxa-starter-head">
-        <h2 className="axxa-starter-title">{t.starter.title}</h2>
-        <p className="axxa-starter-subtitle">{t.starter.subtitle}</p>
+        <h2 className="axxa-starter-title">{greeting} 👋</h2>
+        <p className="axxa-starter-subtitle">{t.dashboard.tagline}</p>
       </div>
 
+      {/* ===== Visão geral — stat cards + atividade 14d ===== */}
+      <div className="axxa-starter-section">
+        <SectionHead
+          icon="layout-dashboard"
+          title={t.dashboard.overviewLabel}
+        />
+        <div className="axxa-dash-stats">
+          <StatCard
+            icon="messages-square"
+            color={CHIP_COLORS.messages}
+            label={t.dashboard.statChats}
+            value={statChats}
+          />
+          <StatCard
+            icon="message-square"
+            color={CHIP_COLORS.mode}
+            label={t.dashboard.statMessages}
+            value={statMessages}
+          />
+          <StatCard
+            icon="sigma"
+            color="var(--color-blue, #4361ee)"
+            label={t.dashboard.statTokens}
+            value={statTokens}
+          />
+          <StatCard
+            icon="circle-dollar-sign"
+            color={CHIP_COLORS.tokens}
+            label={t.dashboard.statCost}
+            value={statCost}
+            title={
+              agg?.total.hasUnknownCost
+                ? t.settings.usagePartialFootnote
+                : undefined
+            }
+          />
+        </div>
+        <ActivityChart agg={agg} />
+      </div>
+
+      {/* ===== Nova conversa — setup (modo/provider/modelo/effort) ===== */}
+      <div className="axxa-dash-setup">
+      <SectionHead
+        icon="message-circle-plus"
+        title={t.dashboard.newChatLabel}
+      />
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.modeLabel}</label>
         <div className="axxa-starter-segment" role="tablist">
@@ -541,10 +902,17 @@ export function StarterScreen({
           })}
         </div>
       </div>
+      </div>
+      {/* ===== /Nova conversa ===== */}
 
       {recentChats.length > 0 && (
         <div className="axxa-starter-section">
-          <label className="axxa-starter-label">{t.starter.recentChatsLabel}</label>
+          <SectionHead
+            icon="history"
+            title={t.starter.recentChatsLabel}
+            actionLabel={t.dashboard.viewAll}
+            onAction={onOpenConversations}
+          />
           <div className="axxa-recent-list">
             {recentChats.map((c) => (
               <button
@@ -561,7 +929,7 @@ export function StarterScreen({
                   <span className="axxa-recent-top">
                     <span className="axxa-recent-title">{c.title}</span>
                     <span className="axxa-recent-date">
-                      {formatRelativeDate(c.date)}
+                      {formatRelativeDate(c.date, t)}
                     </span>
                   </span>
                   {/* Status line — só texto, sem fundo */}
@@ -602,6 +970,12 @@ export function StarterScreen({
           </div>
         </div>
       )}
+
+      {/* ===== Status — índice RAG + providers configurados ===== */}
+      <div className="axxa-starter-section">
+        <SectionHead icon="activity" title={t.dashboard.statusLabel} />
+        <StatusCards plugin={plugin} onOpenSettings={onOpenSettings} />
+      </div>
 
       <p className="axxa-starter-hint">{t.starter.hint}</p>
     </div>

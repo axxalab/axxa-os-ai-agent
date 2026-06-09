@@ -95,9 +95,6 @@ export const PT_BR = {
   },
 
   starter: {
-    title: "Nova conversa",
-    subtitle:
-      "Configure antes de começar — provider e modelo travam ao mandar a primeira mensagem.",
     modeLabel: "Modo",
     providerLabel: "Provider",
     modelLabel: "Modelo",
@@ -112,6 +109,40 @@ export const PT_BR = {
     capImageGenTooltip: "Gera imagens — salvas em axxa-ai/generation/images",
     capAudioGenTooltip: "Gera áudio — salvo em axxa-ai/generation/audio",
     capVideoGenTooltip: "Gera vídeo — salvo em axxa-ai/generation/video",
+  },
+
+  // Dashboard — starter virou home do plugin (v0.1.103): stats de uso,
+  // atividade, setup de nova conversa e status de RAG/providers.
+  dashboard: {
+    greetingMorning: "Bom dia",
+    greetingAfternoon: "Boa tarde",
+    greetingEvening: "Boa noite",
+    tagline: "Seu hub de IA no vault — configure abaixo e mande a primeira mensagem.",
+    overviewLabel: "Visão geral",
+    statChats: "Conversas",
+    statMessages: "Mensagens",
+    statTokens: "Tokens",
+    statCost: "Gasto estimado",
+    activityLabel: "Atividade · 14 dias",
+    activityEmpty: "Sem atividade ainda — sua primeira conversa aparece aqui.",
+    activityDay: (chats: number, tokens: string) =>
+      `${chats} conversa${chats === 1 ? "" : "s"} · ${tokens} tokens`,
+    activityToday: "hoje",
+    newChatLabel: "Nova conversa",
+    viewAll: "Ver todas",
+    statusLabel: "Status",
+    ragTitle: "Índice RAG",
+    ragStats: (chunks: string, files: number) =>
+      `${chunks} chunks · ${files} notas`,
+    ragLast: (when: string) => `última indexação: ${when}`,
+    ragEmpty: "Nenhuma nota indexada ainda",
+    ragMismatch: "Modelo de embedding mudou — reindexe",
+    providersTitle: "Providers",
+    providersCount: (n: number, total: number) =>
+      `${n}/${total} configurados`,
+    // Datas relativas (formatRelativeDate) — locale-aware (v0.1.103)
+    relNow: "agora",
+    dateLocale: "pt-BR",
   },
 
   modes: {

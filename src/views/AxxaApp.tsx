@@ -280,6 +280,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   );
   const [plusOpen, setPlusOpen] = useState(false);
   const [recentChats, setRecentChats] = useState<ChatSummary[]>([]);
+  // Todos os summaries da última varredura (null = carregando) — alimenta os
+  // stats do dashboard da StarterScreen sem segunda passada no disco (v0.1.103).
+  const [chatSummaries, setChatSummaries] = useState<ChatSummary[] | null>(null);
 
   // Mapeia provider id → modelo correspondente
   const modelFor = (providerId: string): string => {
@@ -315,15 +318,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const starterModel = modelFor(providerSel);
 
   // ============================================================
-  // Carrega lista de chats recentes (todos os modos) quando chat tá vazio
+  // Carrega lista de chats quando chat tá vazio — UMA varredura só:
+  // recentes = slice(0,8); o array completo vai pros stats do dashboard.
+  // (listAllChats lê todos os .md de qualquer jeito; o limit só corta depois)
   // ============================================================
   const isEmpty = messages.length === 0;
   useEffect(() => {
     if (!isEmpty) return;
-    listAllChats(plugin.app, plugin.settings.chatsPath, 8)
-      .then(setRecentChats)
+    listAllChats(plugin.app, plugin.settings.chatsPath, 100_000)
+      .then((all) => {
+        setChatSummaries(all);
+        setRecentChats(all.slice(0, 8));
+      })
       .catch((err) => {
         console.error("[axxa] listAllChats falhou:", err);
+        setChatSummaries([]);
         setRecentChats([]);
       });
   }, [isEmpty, plugin.app, plugin.settings.chatsPath]);
@@ -1640,6 +1649,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           c.id === currentChatId ? { ...c, title: newTitle } : c
         )
       );
+      setChatSummaries((prev) =>
+        prev
+          ? prev.map((c) =>
+              c.id === currentChatId ? { ...c, title: newTitle } : c
+            )
+          : prev
+      );
       new Notice(t.conversations.renameSuccess(newTitle));
     } catch (err) {
       const msg = err instanceof Error ? err.message : t.ai.unknownError;
@@ -1905,17 +1921,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           />
         ) : isEmpty ? (
           <StarterScreen
+            plugin={plugin}
             provider={providerSel}
             model={starterModel}
             effort={effort}
             mode={mode}
             recentChats={recentChats}
+            summaries={chatSummaries}
             activeModels={plugin.settings.activeModels}
             onProviderChange={handleStarterProvider}
             onModelChange={handleStarterModel}
             onEffortChange={handleSelectEffort}
             onModeChange={handleStarterMode}
             onLoadChat={handleLoadChat}
+            onOpenConversations={handleOpenConversations}
+            onOpenSettings={handleOpenSettings}
             visibleChips={plugin.settings.listChips}
           />
         ) : (

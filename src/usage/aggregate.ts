@@ -127,6 +127,18 @@ export async function aggregateUsage(
   periodDays = 0
 ): Promise<UsageAggregate> {
   const summaries = await listAllChats(app, chatsPath, 100_000);
+  return aggregateFromSummaries(summaries, periodDays);
+}
+
+/**
+ * Agrega summaries JÁ CARREGADOS — zero IO (v0.1.103). Permite reaproveitar
+ * uma única passada de listAllChats em quem precisa de recentes + stats
+ * (ex.: dashboard da StarterScreen), em vez de reler o disco.
+ */
+export function aggregateFromSummaries(
+  summaries: ChatSummary[],
+  periodDays = 0
+): UsageAggregate {
   const rawRows = summaries.map(summaryToRow);
   const rows = filterByPeriod(rawRows, periodDays);
 

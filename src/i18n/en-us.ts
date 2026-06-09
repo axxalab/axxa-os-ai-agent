@@ -95,9 +95,6 @@ export const EN_US: Translations = {
   },
 
   starter: {
-    title: "New conversation",
-    subtitle:
-      "Configure before starting — provider and model lock when you send the first message.",
     modeLabel: "Mode",
     providerLabel: "Provider",
     modelLabel: "Model",
@@ -112,6 +109,40 @@ export const EN_US: Translations = {
     capImageGenTooltip: "Generates images — saved to axxa-ai/generation/images",
     capAudioGenTooltip: "Generates audio — saved to axxa-ai/generation/audio",
     capVideoGenTooltip: "Generates video — saved to axxa-ai/generation/video",
+  },
+
+  // Dashboard — starter became the plugin home (v0.1.103): usage stats,
+  // activity, new-chat setup and RAG/provider status.
+  dashboard: {
+    greetingMorning: "Good morning",
+    greetingAfternoon: "Good afternoon",
+    greetingEvening: "Good evening",
+    tagline: "Your AI hub in the vault — configure below and send the first message.",
+    overviewLabel: "Overview",
+    statChats: "Chats",
+    statMessages: "Messages",
+    statTokens: "Tokens",
+    statCost: "Estimated spend",
+    activityLabel: "Activity · 14 days",
+    activityEmpty: "No activity yet — your first conversation shows up here.",
+    activityDay: (chats: number, tokens: string) =>
+      `${chats} chat${chats === 1 ? "" : "s"} · ${tokens} tokens`,
+    activityToday: "today",
+    newChatLabel: "New conversation",
+    viewAll: "View all",
+    statusLabel: "Status",
+    ragTitle: "RAG index",
+    ragStats: (chunks: string, files: number) =>
+      `${chunks} chunks · ${files} notes`,
+    ragLast: (when: string) => `last indexed: ${when}`,
+    ragEmpty: "No notes indexed yet",
+    ragMismatch: "Embedding model changed — reindex",
+    providersTitle: "Providers",
+    providersCount: (n: number, total: number) =>
+      `${n}/${total} configured`,
+    // Relative dates (formatRelativeDate) — locale-aware (v0.1.103)
+    relNow: "now",
+    dateLocale: "en-US",
   },
 
   modes: {
