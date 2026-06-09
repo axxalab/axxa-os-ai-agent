@@ -27,3 +27,6 @@ yarn-error.log
 # Config local (vault path do dev, etc.)
 .axxa.local.json
 
+# Config do vault Obsidian de teste (não faz parte do plugin)
+.obsidian/
+
