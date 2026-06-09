@@ -5719,3 +5719,81 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   border-left-color: var(--color-purple, #a370f7);
   background: color-mix(in srgb, var(--color-purple, #a370f7) 6%, var(--background-secondary));
 }
+
+/* =====================================================
+ * Effort — raios emoji, segmented igual aos providers (v0.1.95)
+ * Largura proporcional ao nº de raios (1 estreito → 5 largo), tudo cabe.
+ * ===================================================== */
+.axxa-effort-seg {
+  overflow-x: visible;
+}
+.axxa-effort-bolt-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  overflow: hidden;
+}
+.axxa-effort-bolt-btn[data-bolts="1"] { flex-grow: 1; }
+.axxa-effort-bolt-btn[data-bolts="2"] { flex-grow: 2; }
+.axxa-effort-bolt-btn[data-bolts="3"] { flex-grow: 3; }
+.axxa-effort-bolt-btn[data-bolts="4"] { flex-grow: 4; }
+.axxa-effort-bolt-btn[data-bolts="5"] { flex-grow: 5; }
+.axxa-effort-bolts-emoji {
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -2px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* =====================================================
+ * Popover menu (Header "...") — janelinha ancorada, sem Menu nativo (v0.1.95)
+ * ===================================================== */
+.axxa-header-more {
+  position: relative;
+  display: inline-flex;
+}
+.axxa-popover-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 184px;
+  padding: 5px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.26);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.axxa-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+.axxa-popover-item:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-popover-item .axxa-icon svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.axxa-popover-item-active {
+  color: var(--text-accent);
+}

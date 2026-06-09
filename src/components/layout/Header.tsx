@@ -8,7 +8,6 @@
 // 2 do bloco quando o título tá ativo.
 
 import { useEffect, useRef, useState } from "react";
-import { Menu } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { useT } from "../../i18n";
 
@@ -66,6 +65,27 @@ export function Header({
   }, [chatTitle]);
 
   const hasChat = chatTitle.trim().length > 0;
+
+  // Menu "..." — popover custom ancorado no botão (sem o Menu nativo do Obsidian).
+  const [menuOpen, setMenuOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   const commit = () => {
     const clean = draft.trim();
@@ -150,43 +170,70 @@ export function Header({
         >
           <Icon name="settings" />
         </button>
-        <button
-          type="button"
-          className="axxa-header-gear"
-          onClick={(e) => {
-            // Menu nativo do Obsidian — item único por enquanto, mais virão
-            const menu = new Menu();
-            menu.addItem((item) =>
-              item
-                .setTitle(
-                  personaActive ? t.header.personaActive : t.header.persona
-                )
-                .setIcon("drama")
-                .onClick(() => onEditPersona())
-            );
-            if (canCopy) {
-              menu.addItem((item) =>
-                item
-                  .setTitle(t.header.copyConversation)
-                  .setIcon("copy")
-                  .onClick(() => onCopyConversation())
-              );
+        <div className="axxa-header-more" ref={moreRef}>
+          <button
+            type="button"
+            className={
+              "axxa-header-gear" + (menuOpen ? " axxa-header-gear-active" : "")
             }
-            menu.addItem((item) =>
-              item
-                .setTitle(
-                  fullscreen ? t.header.exitFullscreen : t.header.fullscreen
-                )
-                .setIcon(fullscreen ? "minimize" : "maximize")
-                .onClick(() => onToggleFullscreen())
-            );
-            menu.showAtMouseEvent(e.nativeEvent);
-          }}
-          aria-label={t.header.moreOptions}
-          title={t.header.moreOptions}
-        >
-          <Icon name="more-vertical" />
-        </button>
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label={t.header.moreOptions}
+            title={t.header.moreOptions}
+          >
+            <Icon name="more-vertical" />
+          </button>
+          {menuOpen && (
+            <div className="axxa-popover-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                className={
+                  "axxa-popover-item" +
+                  (personaActive ? " axxa-popover-item-active" : "")
+                }
+                onClick={() => {
+                  onEditPersona();
+                  setMenuOpen(false);
+                }}
+              >
+                <Icon name="drama" />
+                <span>
+                  {personaActive ? t.header.personaActive : t.header.persona}
+                </span>
+              </button>
+              {canCopy && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="axxa-popover-item"
+                  onClick={() => {
+                    onCopyConversation();
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Icon name="copy" />
+                  <span>{t.header.copyConversation}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                className="axxa-popover-item"
+                onClick={() => {
+                  onToggleFullscreen();
+                  setMenuOpen(false);
+                }}
+              >
+                <Icon name={fullscreen ? "minimize" : "maximize"} />
+                <span>
+                  {fullscreen ? t.header.exitFullscreen : t.header.fullscreen}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

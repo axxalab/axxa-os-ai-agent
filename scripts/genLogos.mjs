@@ -52,7 +52,13 @@ for (const f of files) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
 
-  const wrapped = `<g transform="translate(${r(tx)} ${r(ty)}) scale(${r(
+  // Mono (svgl exporta fill="currentColor" no <svg>) → propaga currentColor pro
+  // <g> pra seguir o tema do Obsidian (sem isso, paths sem fill viram preto).
+  // Coloridos preservam os fills próprios dos paths.
+  const svgOpen = raw.match(/<svg[^>]*>/i)?.[0] ?? "";
+  const isMono = /fill\s*=\s*"currentColor"/i.test(svgOpen);
+  const gFill = isMono ? ' fill="currentColor"' : "";
+  const wrapped = `<g${gFill} transform="translate(${r(tx)} ${r(ty)}) scale(${r(
     scale
   )})">${inner}</g>`;
 

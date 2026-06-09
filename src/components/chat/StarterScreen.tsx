@@ -504,25 +504,28 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.effortLabel}</label>
-        {/* v0.1.93: rating de raios — 1 bolt (low) → 5 bolts (max) */}
-        <div className="axxa-starter-effort axxa-starter-effort-bolts">
+        {/* v0.1.95: raios em emoji, segmented igual aos providers; largura
+            proporcional — 1 raio estreito → 5 raios largo, tudo cabe na tela */}
+        <div className="axxa-settings-subtabs axxa-effort-seg" role="tablist">
           {EFFORT_LEVELS.map((level, idx) => {
             const active = level === effort;
             return (
               <button
                 key={level}
                 type="button"
+                role="tab"
+                aria-selected={active}
+                data-bolts={idx + 1}
                 className={
-                  "axxa-starter-effort-btn" + (active ? " axxa-starter-effort-active" : "")
+                  "axxa-subtab-btn axxa-effort-bolt-btn" +
+                  (active ? " axxa-subtab-active" : "")
                 }
                 onClick={() => onEffortChange(level)}
                 title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
                 aria-label={EFFORT_LABELS[level]}
               >
-                <span className="axxa-effort-bolts-row">
-                  {Array.from({ length: idx + 1 }).map((_, i) => (
-                    <Icon key={i} name="zap" className="axxa-effort-bolt" />
-                  ))}
+                <span className="axxa-effort-bolts-emoji">
+                  {"⚡".repeat(idx + 1)}
                 </span>
               </button>
             );
