@@ -35,6 +35,7 @@ yarn-error.log
 # README.md é público e fica tracked.
 ACTION-PLAN.md
 AGENTS.md
+QA-CHECKLIST.md
 DESIGN-SYSTEM.md
 MASTER-PLAN.md
 PROMPT-MESTRE.md
