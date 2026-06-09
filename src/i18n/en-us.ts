@@ -36,6 +36,9 @@ export const EN_US: Translations = {
     copy: "Copy",
     regenerate: "Regenerate",
     delete: "Delete",
+    edit: "Edit",
+    cancel: "Cancel",
+    saveResend: "Save & resend",
   },
 
   header: {

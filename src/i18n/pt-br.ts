@@ -36,6 +36,9 @@ export const PT_BR = {
     copy: "Copiar",
     regenerate: "Regenerar",
     delete: "Deletar",
+    edit: "Editar",
+    cancel: "Cancelar",
+    saveResend: "Salvar e reenviar",
   },
 
   header: {

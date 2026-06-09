@@ -1315,6 +1315,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Regenerar: remove o ai-response (e qualquer msg posterior) e re-roda
   // streamReply usando a user-msg que precedia. Ignora se já tá streamando.
+  // Regenerar com BRANCHING: a resposta atual vira uma variante e a nova é
+  // gerada NA MESMA bolha — o user navega entre versões com ‹ N/M ›.
   const handleRegenerate = async (aiMessageId: string) => {
     if (useChatStore.getState().isLoading) return;
     const current = useChatStore.getState().messages;
@@ -1323,18 +1325,82 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     );
     if (aiIdx < 0) return;
 
-    // Acha a user-msg imediatamente anterior
-    let userIdx = aiIdx - 1;
-    while (userIdx >= 0 && current[userIdx].type !== "user") userIdx--;
-    if (userIdx < 0) return;
+    // Remove só o que vem DEPOIS da resposta — a bolha fica e vira variante.
+    useChatStore.getState().setMessages(current.slice(0, aiIdx + 1));
 
-    const userMsg = current[userIdx];
-    if (userMsg.type !== "user") return;
+    const {
+      beginVariant,
+      syncVariant,
+      appendToMessage,
+      setLoading,
+      setStreamingMessageId,
+      addUsage,
+      startStreamTimer,
+      tickStreamTokens,
+      endStreamTimer,
+    } = useChatStore.getState();
 
-    // Remove tudo de aiIdx em diante (ai-response + qualquer ai-comment posterior)
-    useChatStore.getState().setMessages(current.slice(0, aiIdx));
+    // History = tudo ANTES da resposta sendo regenerada (sem erros).
+    const before = current
+      .slice(0, aiIdx)
+      .filter(
+        (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
+      ) as Array<UserMessage | AIResponseMessage>;
+    const personaBase = useChatStore.getState().sessionPersona.trim();
+    const history: ProviderMessage[] = [
+      { role: "system", content: personaBase || t.systemPrompt.base },
+      ...before.map((m) => ({
+        role: (m.type === "user" ? "user" : "assistant") as
+          | "user"
+          | "assistant",
+        content: m.content,
+      })),
+    ];
 
-    await streamReply(userMsg.content);
+    beginVariant(aiMessageId); // arquiva a versão atual + abre variante vazia
+    setLoading(true);
+    setStreamingMessageId(aiMessageId);
+    const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
+    const maxTokens = effortToMaxTokensSmart(
+      effort,
+      getContextWindow(activeModel),
+      plugin.settings.effortConfigs
+    );
+    const controller = new AbortController();
+    abortRef.current = controller;
+    try {
+      startStreamTimer();
+      await activeProvider.streamChat(
+        {
+          model: activeModel,
+          messages: history,
+          maxTokens,
+          temperature: effortCfg.temperature,
+        },
+        apiKeyFor(activeProviderId),
+        (token) => {
+          appendToMessage(aiMessageId, token);
+          tickStreamTokens(token);
+        },
+        (usage) => addUsage(usage.input, usage.output),
+        controller.signal
+      );
+      endStreamTimer();
+      syncVariant(aiMessageId);
+    } catch (err) {
+      syncVariant(aiMessageId);
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        console.error("[axxa] regenerar falhou:", err);
+        new Notice(
+          `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`
+        );
+      }
+    } finally {
+      setLoading(false);
+      setStreamingMessageId(null);
+      endStreamTimer();
+      abortRef.current = null;
+    }
   };
 
   // Continuar: emenda uma resposta cortada no limite de tokens NA MESMA bolha.
@@ -1457,10 +1523,28 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     useChatStore.getState().removeMessage(messageId);
   };
 
+  // Editar: trunca a conversa a partir da user-msg editada e re-envia o texto
+  // novo (gera resposta nova). Mesmo dispatch do handleSend (agent vs chat).
+  const handleEditMessage = async (messageId: string, newContent: string) => {
+    if (useChatStore.getState().isLoading) return;
+    const current = useChatStore.getState().messages;
+    const idx = current.findIndex(
+      (m) => m.id === messageId && m.type === "user"
+    );
+    if (idx < 0) return;
+    const text = newContent.trim();
+    if (!text) return;
+    useChatStore.getState().setMessages(current.slice(0, idx));
+    useChatStore.getState().addMessage({ type: "user", content: text });
+    if (activeMode === "agent") await runAgentTurn(text);
+    else await streamReply(text);
+  };
+
   const chatActions: ChatActions = {
     regenerate: handleRegenerate,
     deleteMessage: handleDeleteMessage,
     continueResponse: continueReply,
+    editMessage: handleEditMessage,
   };
 
   const handleStop = () => abortRef.current?.abort();

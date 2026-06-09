@@ -31,6 +31,8 @@ function Timestamp({ ts }: { ts: number }) {
 export function UserBubble({ msg }: { msg: UserMessage }) {
   const actions = useChatActions();
   const t = useT();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(msg.content);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(msg.content).catch((err) =>
@@ -38,9 +40,22 @@ export function UserBubble({ msg }: { msg: UserMessage }) {
     );
   };
 
+  const startEdit = () => {
+    setDraft(msg.content);
+    setEditing(true);
+  };
+
+  const saveEdit = () => {
+    const text = draft.trim();
+    setEditing(false);
+    // Re-envia só se mudou de fato (trunca a conversa dali e regenera)
+    if (text && text !== msg.content) actions.editMessage(msg.id, text);
+  };
+
   const menuHandlers = useMessageContextMenu(() => {
     const items: MessageMenuItem[] = [
       { title: t.menu.copy, icon: "copy", onClick: handleCopy },
+      { title: t.menu.edit, icon: "pencil", onClick: startEdit },
       {
         title: t.menu.delete,
         icon: "trash-2",
@@ -51,9 +66,56 @@ export function UserBubble({ msg }: { msg: UserMessage }) {
     return items;
   });
 
+  if (editing) {
+    return (
+      <div className="axxa-msg axxa-msg-user">
+        <div className="axxa-bubble axxa-bubble-user axxa-bubble-editing">
+          <textarea
+            className="axxa-edit-textarea"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={Math.min(8, draft.split("\n").length + 1)}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                saveEdit();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                setEditing(false);
+              }
+            }}
+          />
+        </div>
+        <div className="axxa-edit-actions">
+          <button
+            type="button"
+            className="axxa-edit-btn"
+            onClick={() => setEditing(false)}
+          >
+            {t.menu.cancel}
+          </button>
+          <button
+            type="button"
+            className="axxa-edit-btn axxa-edit-btn-primary"
+            onClick={saveEdit}
+          >
+            {t.menu.saveResend}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="axxa-msg axxa-msg-user" {...menuHandlers}>
-      <div className="axxa-bubble axxa-bubble-user">{msg.content}</div>
+      <div
+        className="axxa-bubble axxa-bubble-user"
+        onDoubleClick={startEdit}
+        title={t.menu.edit}
+      >
+        {msg.content}
+      </div>
       <Timestamp ts={msg.timestamp} />
     </div>
   );
@@ -66,6 +128,7 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   // Reaction agora vem do store (persiste no .md). Local state era perdido
   // a cada reload — não rastreava feedback do user de forma confiável.
   const setReaction = useChatStore((s) => s.setReaction);
+  const navigateVariant = useChatStore((s) => s.navigateVariant);
   const liked = msg.reaction === "like" ? true : msg.reaction === "dislike" ? false : null;
   // Esconde footer enquanto essa msg específica tá sendo streamada
   const streamingId = useChatStore((s) => s.streamingMessageId);
@@ -131,6 +194,35 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
       )}
       {!isStreaming && (
         <div className="axxa-response-footer">
+          {msg.variants && msg.variants.length > 1 && (
+            <div className="axxa-variant-nav" aria-label="Versões da resposta">
+              <button
+                type="button"
+                className="axxa-variant-arrow"
+                onClick={() => navigateVariant(msg.id, -1)}
+                disabled={(msg.variantIndex ?? 0) <= 0}
+                aria-label="Versão anterior"
+              >
+                <Icon name="chevron-left" />
+              </button>
+              <span className="axxa-variant-count">
+                {(msg.variantIndex ?? msg.variants.length - 1) + 1}/
+                {msg.variants.length}
+              </span>
+              <button
+                type="button"
+                className="axxa-variant-arrow"
+                onClick={() => navigateVariant(msg.id, 1)}
+                disabled={
+                  (msg.variantIndex ?? msg.variants.length - 1) >=
+                  msg.variants.length - 1
+                }
+                aria-label="Próxima versão"
+              >
+                <Icon name="chevron-right" />
+              </button>
+            </div>
+          )}
           <button
             type="button"
             className="axxa-footer-btn"

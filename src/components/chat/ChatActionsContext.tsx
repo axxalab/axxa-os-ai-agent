@@ -17,6 +17,8 @@ export interface ChatActions {
   deleteMessage: (messageId: string) => void;
   /** Continua uma resposta cortada no limite — emenda tokens na MESMA bolha. */
   continueResponse: (aiMessageId: string) => void;
+  /** Edita uma user-msg: trunca a conversa dali e re-envia o texto editado. */
+  editMessage: (messageId: string, newContent: string) => void;
 }
 
 export const ChatActionsContext = createContext<ChatActions | null>(null);

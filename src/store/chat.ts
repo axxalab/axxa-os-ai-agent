@@ -33,6 +33,10 @@ export interface AIResponseMessage extends BaseMessage {
   /** True quando a resposta foi cortada no limite de tokens (output ≈ maxTokens).
    *  Mostra um botão "Continuar" no footer pra emendar de onde parou. */
   truncated?: boolean;
+  /** Versões geradas ao regenerar (branching). content = variants[variantIndex].
+   *  Ausente/≤1 = sem ramificação. Permite navegar ‹ 1/N › entre respostas. */
+  variants?: string[];
+  variantIndex?: number;
 }
 
 /**
@@ -130,6 +134,12 @@ interface ChatState {
   setReaction: (id: string, reaction: "like" | "dislike" | null) => void;
   /** Marca/desmarca uma ai-response como truncada (cortada no limite de tokens). */
   setTruncated: (id: string, truncated: boolean) => void;
+  /** Inicia uma nova variante: arquiva o content atual e abre uma vazia. */
+  beginVariant: (id: string) => void;
+  /** Sincroniza variants[variantIndex] com o content atual (após o stream). */
+  syncVariant: (id: string) => void;
+  /** Navega entre variantes (dir -1/+1), atualizando o content exibido. */
+  navigateVariant: (id: string, dir: number) => void;
   selectOption: (messageId: string, optionIndex: number) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
@@ -233,6 +243,43 @@ export const useChatStore = create<ChatState>((set) => ({
       messages: state.messages.map((m) =>
         m.id === id && m.type === "ai-response" ? { ...m, truncated } : m
       ),
+    })),
+  beginVariant: (id) =>
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== id || m.type !== "ai-response") return m;
+        // Primeira regeneração: arquiva o content atual como variante 0
+        const variants =
+          m.variants && m.variants.length > 0 ? m.variants : [m.content];
+        return {
+          ...m,
+          variants: [...variants, ""],
+          variantIndex: variants.length,
+          content: "",
+          truncated: false,
+        };
+      }),
+    })),
+  syncVariant: (id) =>
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== id || m.type !== "ai-response") return m;
+        if (!m.variants || m.variantIndex === undefined) return m;
+        const variants = [...m.variants];
+        variants[m.variantIndex] = m.content;
+        return { ...m, variants };
+      }),
+    })),
+  navigateVariant: (id, dir) =>
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== id || m.type !== "ai-response" || !m.variants) return m;
+        const n = m.variants.length;
+        let i = (m.variantIndex ?? n - 1) + dir;
+        if (i < 0) i = 0;
+        if (i > n - 1) i = n - 1;
+        return { ...m, variantIndex: i, content: m.variants[i] };
+      }),
     })),
   selectOption: (messageId, optionIndex) =>
     set((state) => ({
