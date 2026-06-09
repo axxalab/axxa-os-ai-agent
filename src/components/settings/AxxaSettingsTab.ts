@@ -891,6 +891,26 @@ export class AxxaSettingsTab extends PluginSettingTab {
         this.attachFolderAutocomplete(text.inputEl);
       });
 
+    // Debug overlay toggle (v0.1.69)
+    new Setting(parent)
+      .setName(t.settings.debugOverlay)
+      .setDesc(t.settings.debugOverlayDesc)
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.debugOverlay)
+          .onChange(async (value) => {
+            this.plugin.settings.debugOverlay = value;
+            await this.plugin.saveSettings();
+            // Aplica imediato pro user ver na sidebar sem precisar
+            // remontar a view AXXA
+            if (value) {
+              document.body.setAttribute("data-axxa-debug", "1");
+            } else {
+              document.body.removeAttribute("data-axxa-debug");
+            }
+          });
+      });
+
     parent.createEl("h3", { text: t.settings.comingSoon });
     const todo = parent.createEl("ul");
     t.settings.comingSoonItems.forEach((item) => {

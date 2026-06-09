@@ -285,6 +285,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     };
   }, [plugin.settings.mobileFullscreen]);
 
+  // Debug overlay — toggle via Settings → Outros → Geral.
+  // Aplica/remove o data-axxa-debug no body que ativa as regras CSS
+  // que desenham outlines coloridos + labels em elementos Obsidian.
+  useEffect(() => {
+    const body = document.body;
+    if (plugin.settings.debugOverlay) {
+      body.setAttribute("data-axxa-debug", "1");
+    } else {
+      body.removeAttribute("data-axxa-debug");
+    }
+    return () => {
+      body.removeAttribute("data-axxa-debug");
+    };
+  }, [plugin.settings.debugOverlay]);
+
   // Lê traduções na hora — atualiza no próximo render (após forceRender acima)
   const t = getTranslations(plugin.settings.language);
 
