@@ -16,6 +16,9 @@ import { getEmbeddingSpec } from "./types";
 const OPENAI_EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings";
 const OPENROUTER_EMBEDDINGS_ENDPOINT =
   "https://openrouter.ai/api/v1/embeddings";
+const GEMINI_EMBEDDINGS_ENDPOINT =
+  "https://generativelanguage.googleapis.com/v1beta/openai/embeddings";
+const NIM_EMBEDDINGS_ENDPOINT = "https://integrate.api.nvidia.com/v1/embeddings";
 
 interface OpenAIEmbeddingResponse {
   data: { embedding: number[]; index: number }[];
@@ -35,6 +38,8 @@ export type EmbedInput =
 export interface EmbedCredentials {
   openaiApiKey: string;
   openrouterApiKey: string;
+  geminiApiKey?: string;
+  nimApiKey?: string;
 }
 
 /**
@@ -62,15 +67,22 @@ export function arrayBufferToDataUrl(
  * mas mantemos batches menores (16) pra controlar tamanho e progresso.
  * Devolve embeddings na MESMA ordem dos inputs.
  */
-export async function embedBatch(
+/**
+ * Embeda textos num endpoint OpenAI-compatible (/embeddings). Reusado por
+ * OpenAI, Gemini (/v1beta/openai/) e NIM (integrate.api.nvidia.com).
+ * `extraBody` injeta params específicos (ex: NIM exige `input_type`).
+ */
+async function embedOpenAICompat(
   texts: string[],
   apiKey: string,
-  model = "text-embedding-3-small",
-  dimensions?: number
+  model: string,
+  endpoint: string,
+  label: string,
+  opts?: { dimensions?: number; extraBody?: Record<string, unknown> }
 ): Promise<number[][]> {
   if (!apiKey || !apiKey.trim()) {
     throw new ProviderError(
-      "API key da OpenAI não configurada. Necessária pra embeddings.",
+      `API key ${label} não configurada. Necessária pra embeddings.`,
       "no-key"
     );
   }
@@ -79,27 +91,33 @@ export async function embedBatch(
   let res;
   try {
     res = await requestUrl({
-      url: OPENAI_EMBEDDINGS_ENDPOINT,
+      url: endpoint,
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      // `dimensions` (Matryoshka) — reduz o vetor na origem. Só text-embedding-3-*.
+      // `dimensions` (Matryoshka) só em modelos que suportam (OpenAI 3-*, Gemini).
       body: JSON.stringify({
         model,
         input: texts,
-        ...(dimensions && dimensions > 0 ? { dimensions } : {}),
+        ...(opts?.dimensions && opts.dimensions > 0
+          ? { dimensions: opts.dimensions }
+          : {}),
+        ...(opts?.extraBody ?? {}),
       }),
       throw: false,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erro de rede.";
-    throw new ProviderError(`Falha ao chamar embeddings: ${msg}`, "network");
+    throw new ProviderError(
+      `Falha ao chamar embeddings ${label}: ${msg}`,
+      "network"
+    );
   }
 
-  if (res.status === 401) {
-    throw new ProviderError("API key da OpenAI inválida.", "invalid-key");
+  if (res.status === 401 || res.status === 403) {
+    throw new ProviderError(`API key ${label} inválida.`, "invalid-key");
   }
   if (res.status === 429) {
     throw new ProviderError(
@@ -109,7 +127,7 @@ export async function embedBatch(
   }
   if (res.status >= 400) {
     throw new ProviderError(
-      `Embeddings retornou ${res.status}: ${res.text?.slice(0, 200) ?? ""}`,
+      `Embeddings ${label} retornou ${res.status}: ${res.text?.slice(0, 200) ?? ""}`,
       "unknown"
     );
   }
@@ -120,11 +138,28 @@ export async function embedBatch(
   } catch {
     throw new ProviderError("Resposta de embeddings inválida.", "unknown");
   }
-  // OpenAI devolve em ordem de `index` — ordenar pra garantir
+  // Devolve em ordem de `index` — ordenar pra garantir
   return parsed.data
     .slice()
     .sort((a, b) => a.index - b.index)
     .map((d) => d.embedding);
+}
+
+/** OpenAI text-embedding-3-* / ada-002 (batch nativo). */
+export async function embedBatch(
+  texts: string[],
+  apiKey: string,
+  model = "text-embedding-3-small",
+  dimensions?: number
+): Promise<number[][]> {
+  return embedOpenAICompat(
+    texts,
+    apiKey,
+    model,
+    OPENAI_EMBEDDINGS_ENDPOINT,
+    "OpenAI",
+    { dimensions }
+  );
 }
 
 /** Embeda 1 texto (helper). */
@@ -319,8 +354,30 @@ export async function embedItems(
     // OpenRouter (Nemotron VL) não suporta `dimensions` — ignora.
     return embedBatchOpenRouter(items, creds.openrouterApiKey, model);
   }
-  // OpenAI path — extrai só os textos. `dimensions` aplica aqui (Matryoshka).
+  // Texto puro pros endpoints OpenAI-compat (OpenAI / Gemini / NIM)
   const texts = items.map((i) => (i.kind === "text" ? i.text : ""));
+  if (spec.provider === "gemini") {
+    return embedOpenAICompat(
+      texts,
+      creds.geminiApiKey ?? "",
+      model,
+      GEMINI_EMBEDDINGS_ENDPOINT,
+      "Gemini",
+      { dimensions: spec.supportsDimensions ? dimensions : undefined }
+    );
+  }
+  if (spec.provider === "nim") {
+    // Modelos QA do NIM exigem input_type; "passage" pra indexar/buscar.
+    return embedOpenAICompat(
+      texts,
+      creds.nimApiKey ?? "",
+      model,
+      NIM_EMBEDDINGS_ENDPOINT,
+      "NIM",
+      { extraBody: { input_type: "passage" } }
+    );
+  }
+  // OpenAI path — `dimensions` aplica aqui (Matryoshka).
   return embedBatch(texts, creds.openaiApiKey, model, dimensions);
 }
 

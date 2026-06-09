@@ -443,6 +443,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           creds: {
             openaiApiKey: plugin.settings.openaiApiKey,
             openrouterApiKey: plugin.settings.openrouterApiKey,
+            geminiApiKey: plugin.settings.geminiApiKey,
+            nimApiKey: plugin.settings.nimApiKey,
           },
           query: userText,
           topK,
@@ -965,6 +967,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                   embed: {
                     openaiApiKey: plugin.settings.openaiApiKey,
                     openrouterApiKey: plugin.settings.openrouterApiKey,
+                    geminiApiKey: plugin.settings.geminiApiKey,
+                    nimApiKey: plugin.settings.nimApiKey,
                   },
                 },
                 call.arguments

@@ -1617,6 +1617,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
         app: this.plugin.app,
         openaiApiKey: this.plugin.settings.openaiApiKey,
         openrouterApiKey: this.plugin.settings.openrouterApiKey,
+        geminiApiKey: this.plugin.settings.geminiApiKey,
+        nimApiKey: this.plugin.settings.nimApiKey,
         model: this.plugin.settings.ragEmbeddingModel,
         profile: this.plugin.settings.ragQuantProfile,
         indexPath: this.plugin.settings.ragIndexPath,

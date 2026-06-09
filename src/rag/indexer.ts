@@ -54,6 +54,8 @@ export interface IndexerOptions {
   /** API keys de TODOS os providers (router escolhe via spec do modelo). */
   openaiApiKey: string;
   openrouterApiKey: string;
+  geminiApiKey?: string;
+  nimApiKey?: string;
   model: string;
   /** Perfil de quantização (precision/balanced/light/minimal). */
   profile: string;
@@ -142,6 +144,8 @@ export async function indexVault(
     app,
     openaiApiKey,
     openrouterApiKey,
+    geminiApiKey,
+    nimApiKey,
     model,
     profile,
     indexPath,
@@ -151,7 +155,7 @@ export async function indexVault(
   } = opts;
   const spec = getEmbeddingSpec(model);
   const prof = getQuantProfile(profile);
-  const creds = { openaiApiKey, openrouterApiKey };
+  const creds = { openaiApiKey, openrouterApiKey, geminiApiKey, nimApiKey };
   // Dim efetiva: reduzida (Matryoshka) só se o modelo suporta `dimensions`.
   // Senão, perfis "Leve/Mínimo" caem pra dim cheia (só a precisão int8 vale).
   const effectiveDim =

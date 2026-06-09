@@ -62,7 +62,7 @@ export interface SearchResult {
 }
 
 /** Provider de embeddings disponíveis. */
-export type EmbeddingProvider = "openai" | "openrouter";
+export type EmbeddingProvider = "openai" | "openrouter" | "gemini" | "nim";
 
 /** Modelo + dimensão associada. */
 export interface EmbeddingModelSpec {
@@ -109,6 +109,48 @@ export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
     pricePerMillion: 0,
     supportsImage: true,
     free: true,
+  },
+  // ── Gemini (endpoint OpenAI-compat /v1beta/openai/embeddings) ──
+  {
+    provider: "gemini",
+    model: "gemini-embedding-001",
+    dim: 3072,
+    maxInputTokens: 2048,
+    pricePerMillion: 0.15,
+    supportsDimensions: true,
+  },
+  {
+    provider: "gemini",
+    model: "text-embedding-004",
+    dim: 768,
+    maxInputTokens: 2048,
+    pricePerMillion: 0,
+    free: true,
+  },
+  // ── Nvidia NIM (endpoint OpenAI-compat /v1/embeddings; usa input_type) ──
+  {
+    provider: "nim",
+    model: "nvidia/nv-embedqa-e5-v5",
+    dim: 1024,
+    maxInputTokens: 512,
+    pricePerMillion: 0,
+    free: true,
+  },
+  {
+    provider: "nim",
+    model: "nvidia/llama-3.2-nv-embedqa-1b-v2",
+    dim: 2048,
+    maxInputTokens: 8192,
+    pricePerMillion: 0,
+    free: true,
+  },
+  // ── OpenAI legacy ──
+  {
+    provider: "openai",
+    model: "text-embedding-ada-002",
+    dim: 1536,
+    maxInputTokens: 8191,
+    pricePerMillion: 0.1,
   },
 ];
 

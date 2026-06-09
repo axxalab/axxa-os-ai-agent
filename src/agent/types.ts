@@ -26,8 +26,13 @@ export interface ToolContext {
   app: App;
   /** Índice vetorial RAG — null se ainda não foi indexado. */
   vectorIndex: VectorIndex | null;
-  /** Credenciais pra busca semântica (embedQuery). */
-  embed: { openaiApiKey: string; openrouterApiKey: string };
+  /** Credenciais pra busca semântica (embedQuery / hybridSearch). */
+  embed: {
+    openaiApiKey: string;
+    openrouterApiKey: string;
+    geminiApiKey?: string;
+    nimApiKey?: string;
+  };
 }
 
 /** Definição de uma ferramenta — vai pro `tools` array do provider request. */

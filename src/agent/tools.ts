@@ -272,6 +272,8 @@ export async function toolVaultSearch(
     creds: {
       openaiApiKey: ctx.embed.openaiApiKey,
       openrouterApiKey: ctx.embed.openrouterApiKey,
+      geminiApiKey: ctx.embed.geminiApiKey,
+      nimApiKey: ctx.embed.nimApiKey,
     },
     query,
     topK,

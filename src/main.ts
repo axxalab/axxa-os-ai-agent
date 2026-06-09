@@ -315,6 +315,8 @@ export default class AxxaPlugin extends Plugin {
         app: this.app,
         openaiApiKey: this.settings.openaiApiKey,
         openrouterApiKey: this.settings.openrouterApiKey,
+        geminiApiKey: this.settings.geminiApiKey,
+        nimApiKey: this.settings.nimApiKey,
         model: this.settings.ragEmbeddingModel,
         profile: this.settings.ragQuantProfile,
         indexPath: this.settings.ragIndexPath,
