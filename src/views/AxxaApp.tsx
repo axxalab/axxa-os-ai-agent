@@ -971,7 +971,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 call.arguments
               );
               const meta = summarizeToolResult(call.name, result);
-              updateActivity(activityId, { phase: "done" }, meta);
+              // Detalhe expansível do chip (estilo Claude Code) — snippet do
+              // resultado, truncado pra não estourar a timeline.
+              const detail =
+                result && result.length > 800
+                  ? result.slice(0, 800).trimEnd() + "\n…"
+                  : result || undefined;
+              updateActivity(activityId, { phase: "done", detail }, meta);
               return {
                 callId: call.id,
                 content: result,

@@ -61,6 +61,9 @@ export interface ActivityMeta {
   doneText?: string;
   /** Texto quando failed. Default: "Falhou: " + error message. */
   failedText?: string;
+  /** Conteúdo expansível (snippet do resultado) — mostrado no chip ao clicar
+   *  no chevron, estilo Claude Code (v0.1.111). */
+  detail?: string;
 }
 
 export interface AICommentMessage extends BaseMessage {

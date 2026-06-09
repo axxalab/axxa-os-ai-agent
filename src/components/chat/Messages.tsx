@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import { Icon } from "../_shared/Icon";
+import { hapticTick } from "../_shared/haptics";
 import { Markdown } from "../_shared/Markdown";
 import { formatTime } from "../_shared/timestamps";
 import { useChatStore } from "../../store/chat";
@@ -303,18 +304,21 @@ export function AIComment({ msg }: { msg: AICommentMessage }) {
 }
 
 /**
- * ActivityComment — render compacto inspirado no Claude Code.
+ * ActivityComment — CHIP de tool estilo Claude Code mobile (v0.1.111).
  *
- * Estados visuais:
- *   pending → ícone pulsa (scale 1↔1.15, opacity 1↔0.6) + texto em itálico
- *   done    → ícone fixo (check default) + texto normal + meta-result em muted
- *   failed  → ícone X vermelho + texto em vermelho-muted
+ * [ícone] ação ……………… +add/−del  ›
+ *                                    └ expande → snippet do resultado
  *
- * O texto é "ao vivo": pendingText durante pending, doneText quando termina.
- * Falback do doneText: pendingText (continua mostrando o que foi feito).
+ * Estados:
+ *   pending → ícone pulsa, sem chevron (ainda rodando)
+ *   done    → ícone "pop", stat colorido (+verde / −vermelho / neutro),
+ *             chevron expande o detalhe (snippet do resultado)
+ *   failed  → ícone X vermelho, sem stat
  */
 function ActivityComment({ msg }: { msg: AICommentMessage }) {
   const activity = msg.activity!;
+  const [open, setOpen] = useState(false);
+
   const isPending = activity.phase === "pending";
   const isDone = activity.phase === "done";
   const isFailed = activity.phase === "failed";
@@ -325,33 +329,74 @@ function ActivityComment({ msg }: { msg: AICommentMessage }) {
       ? activity.iconFailed ?? "x"
       : activity.iconDone ?? "check";
 
-  const text = isPending
+  const label = isPending
     ? activity.pendingText
     : isFailed
       ? activity.failedText ?? activity.pendingText
       : activity.doneText ?? activity.pendingText;
 
+  // Stat = meta curto (ex: "1.2k chars", "+12 chars", "8 itens"). Cor pelo sinal.
+  const stat = msg.content && msg.content !== label ? msg.content : "";
+  const statTone = stat.startsWith("+")
+    ? "add"
+    : stat.startsWith("-")
+      ? "del"
+      : "neutral";
+
+  const detail = activity.detail?.trim();
+  const canExpand = !!detail && !isPending;
+
   return (
-    <div
-      className={
-        "axxa-activity axxa-activity-" + activity.phase
-      }
-      role={isPending ? "status" : undefined}
-      aria-live={isPending ? "polite" : undefined}
-    >
-      <span
+    <div className={"axxa-activity axxa-activity-" + activity.phase}>
+      <button
+        type="button"
         className={
-          "axxa-activity-icon" +
-          (isPending ? " axxa-activity-pulse" : "") +
-          (isDone ? " axxa-activity-pop" : "")
+          "axxa-activity-row" +
+          (canExpand ? " axxa-activity-row-expandable" : "")
         }
-        aria-hidden="true"
+        onClick={
+          canExpand
+            ? () => {
+                hapticTick();
+                setOpen((o) => !o);
+              }
+            : undefined
+        }
+        disabled={!canExpand}
+        aria-expanded={canExpand ? open : undefined}
+        role={isPending ? "status" : undefined}
+        aria-live={isPending ? "polite" : undefined}
       >
-        <Icon name={iconName} />
-      </span>
-      <span className="axxa-activity-text">{text}</span>
-      {msg.content && msg.content !== text && (
-        <span className="axxa-activity-meta">· {msg.content}</span>
+        <span
+          className={
+            "axxa-activity-icon" +
+            (isPending ? " axxa-activity-pulse" : "") +
+            (isDone ? " axxa-activity-pop" : "")
+          }
+          aria-hidden="true"
+        >
+          <Icon name={iconName} />
+        </span>
+        <span className="axxa-activity-text">{label}</span>
+        {stat && (
+          <span className={"axxa-activity-stat axxa-activity-stat-" + statTone}>
+            {stat}
+          </span>
+        )}
+        {canExpand && (
+          <span
+            className={
+              "axxa-activity-chevron" +
+              (open ? " axxa-activity-chevron-open" : "")
+            }
+            aria-hidden="true"
+          >
+            <Icon name="chevron-right" />
+          </span>
+        )}
+      </button>
+      {canExpand && open && (
+        <pre className="axxa-activity-detail">{detail}</pre>
       )}
     </div>
   );

@@ -692,16 +692,52 @@ body.is-mobile.axxa-fullscreen
  * estilo linha de log.
  * ===================================================== */
 
+/* Chip de tool — card arredondado, alinhado à esquerda (estilo Claude Code).
+   Cada activity é um chip; a narração da IA (ai-response) fica entre eles. */
 .axxa-activity {
+  align-self: flex-start;
+  max-width: 100%;
+  min-width: 0;
+  /* Aproxima chips consecutivos (o gap padrão de msg é 16px) — vira timeline */
+  margin: -6px 0;
+}
+
+.axxa-activity-row,
+.axxa-activity-row:focus,
+.axxa-activity-row:active {
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none !important;
+}
+
+.axxa-activity-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0 4px 4px;
-  font-size: var(--font-ui-smaller);
-  line-height: 1.4;
-  color: var(--text-muted);
+  width: 100%;
   max-width: 100%;
   min-width: 0;
+  padding: 7px 10px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.35;
+  text-align: left;
+  cursor: default;
+}
+
+.axxa-activity-row-expandable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+@media (hover: hover) {
+  .axxa-activity-row-expandable:hover {
+    background: color-mix(in srgb, var(--background-secondary) 90%, transparent);
+    border-color: var(--interactive-accent);
+  }
 }
 
 .axxa-activity-icon {
@@ -712,7 +748,6 @@ body.is-mobile.axxa-fullscreen
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  /* Transição entre estados — quando phase muda, troca de ícone com fade */
   transition: color 0.2s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -722,7 +757,7 @@ body.is-mobile.axxa-fullscreen
 }
 
 .axxa-activity-text {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -730,20 +765,57 @@ body.is-mobile.axxa-fullscreen
   font-weight: 500;
 }
 
-.axxa-activity-meta {
-  flex: 0 1 auto;
-  min-width: 0;
-  color: var(--text-faint);
+/* Stat (+add / −del / neutro) — números tabulares à direita */
+.axxa-activity-stat {
+  flex: 0 0 auto;
   font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: var(--text-faint);
+}
+.axxa-activity-stat-add {
+  color: var(--color-green, #06d6a0);
+}
+.axxa-activity-stat-del {
+  color: var(--text-error, #f87171);
+}
+
+/* Chevron de expandir — gira 90° quando aberto */
+.axxa-activity-chevron {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-faint);
+  transition: transform 0.2s ease;
+}
+.axxa-activity-chevron .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+.axxa-activity-chevron-open {
+  transform: rotate(90deg);
+}
+
+/* Detalhe expandido — snippet do resultado, mono, scrollável */
+.axxa-activity-detail {
+  margin: 4px 0 0 0;
+  padding: 8px 10px;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--background-primary-alt, var(--background-secondary));
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Estados */
-.axxa-activity-pending {
-  color: var(--text-muted);
-}
 .axxa-activity-pending .axxa-activity-text {
   font-style: italic;
 }
@@ -751,19 +823,17 @@ body.is-mobile.axxa-fullscreen
   color: var(--text-accent);
 }
 
-.axxa-activity-done {
+.axxa-activity-done .axxa-activity-text {
   color: var(--text-normal);
 }
 .axxa-activity-done .axxa-activity-icon {
   color: var(--color-green, #06d6a0);
 }
 
-.axxa-activity-failed {
-  color: var(--text-error, #f87171);
+.axxa-activity-failed .axxa-activity-row {
+  border-color: color-mix(in srgb, var(--text-error, #f87171) 45%, transparent);
 }
-.axxa-activity-failed .axxa-activity-icon {
-  color: var(--text-error, #f87171);
-}
+.axxa-activity-failed .axxa-activity-icon,
 .axxa-activity-failed .axxa-activity-text {
   color: var(--text-error, #f87171);
 }
