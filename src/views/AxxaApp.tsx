@@ -92,6 +92,13 @@ function agentActivitySpec(
   const shortPath = path.length > 48 ? "…" + path.slice(-46) : path;
 
   switch (toolName) {
+    case "vault_search":
+      return {
+        iconPending: "radar",
+        iconDone: "search-check",
+        pendingText: `Buscando "${String(args.query ?? "").slice(0, 40)}"`,
+        doneText: `Buscou "${String(args.query ?? "").slice(0, 40)}"`,
+      };
     case "vault_list":
       return {
         iconPending: "folder-search",
@@ -699,6 +706,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const AGENT_SYSTEM_PROMPT =
       "Você é o AXXA Agent, um assistente integrado ao Obsidian com acesso direto " +
       "ao vault do usuário via ferramentas (tools). Responda em português. " +
+      "Pra ENCONTRAR notas sobre um tema ou pergunta, use vault_search PRIMEIRO " +
+      "(busca semântica) em vez de listar pastas e ler arquivo por arquivo — é " +
+      "muito mais eficiente. " +
       "Use as tools pra realizar a tarefa pedida — leia, crie, edite, mova ou delete " +
       "arquivos quando o user pedir. Pergunte ANTES se a intenção for ambígua. " +
       "Quando terminar, devolva uma resposta de texto resumindo o que fez. " +
@@ -953,7 +963,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           let lastErr: unknown = null;
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-              const result = await executor(plugin.app, call.arguments);
+              const result = await executor(
+                {
+                  app: plugin.app,
+                  vectorIndex: plugin.vectorIndex,
+                  embed: {
+                    openaiApiKey: plugin.settings.openaiApiKey,
+                    openrouterApiKey: plugin.settings.openrouterApiKey,
+                  },
+                },
+                call.arguments
+              );
               const meta = summarizeToolResult(call.name, result);
               updateActivity(activityId, { phase: "done" }, meta);
               return {

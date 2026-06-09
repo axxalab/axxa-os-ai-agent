@@ -7,6 +7,9 @@
 // 3. Nosso código executa a tool, devolve o resultado
 // 4. Provider continua até dar a resposta de texto final
 
+import type { App } from "obsidian";
+import type { VectorIndex } from "../rag/vectorIndex";
+
 /** Quanto controle o user dá ao agent.
  *  - ask: confirma cada ação NÃO destrutiva via modal antes de executar
  *  - vault: pula confirmação pra read/list/create/edit. Destrutivo (delete/move)
@@ -15,6 +18,17 @@
  *
  * Delete SEMPRE pede confirmação independente do nível (safety net forte). */
 export type PermissionLevel = "ask" | "vault" | "yolo";
+
+/** Contexto passado aos executores de tools. Além do `app`, carrega o que
+ *  tools "inteligentes" (ex: vault_search) precisam: o índice RAG + credenciais
+ *  de embedding. Tools simples (list/read/...) usam só `ctx.app`. */
+export interface ToolContext {
+  app: App;
+  /** Índice vetorial RAG — null se ainda não foi indexado. */
+  vectorIndex: VectorIndex | null;
+  /** Credenciais pra busca semântica (embedQuery). */
+  embed: { openaiApiKey: string; openrouterApiKey: string };
+}
 
 /** Definição de uma ferramenta — vai pro `tools` array do provider request. */
 export interface ToolDefinition {

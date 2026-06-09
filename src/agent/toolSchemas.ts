@@ -8,6 +8,26 @@ import type { ToolDefinition } from "./types";
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
+    name: "vault_search",
+    description:
+      "Busca SEMÂNTICA por relevância nas notas do vault (usa o índice de embeddings; cai pra palavras-chave se não houver índice). USE ISTO PRIMEIRO pra encontrar notas relevantes a um tema ou pergunta — é muito mais eficiente que listar pastas e ler arquivos um a um. Retorna os trechos mais relevantes com o path de cada um (use vault_read pra abrir o arquivo inteiro depois).",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "O que procurar — tema, pergunta ou palavras-chave.",
+        },
+        topK: {
+          type: "number",
+          description: "Quantos trechos retornar (1-20, padrão 5).",
+        },
+      },
+      required: ["query"],
+    },
+    destructive: false,
+  },
+  {
     name: "vault_list",
     description:
       "Lista os arquivos e pastas dentro de uma pasta do vault. Use pra descobrir o que existe antes de criar/editar. Sem parâmetro = raiz do vault.",

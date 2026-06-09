@@ -9,6 +9,9 @@
 
 import type { App } from "obsidian";
 import { ensureFolder } from "../components/_shared/chatPersistence";
+import type { ToolContext } from "./types";
+import { embedQuery } from "../rag/embeddings";
+import { searchVault } from "../components/_shared/vaultSearch";
 
 const VAULT_ROOT_MAX_DEPTH = 32; // sanity check: ninguém precisa de 100 níveis
 
@@ -242,21 +245,94 @@ export async function toolVaultCreateFolder(
 }
 
 // ============================================================
+// Tool: vault_search (busca semântica RAG + fallback keyword)
+// ============================================================
+
+interface SearchArgs {
+  query: string;
+  topK?: number;
+}
+
+/**
+ * Busca por relevância nas notas. Se o índice vetorial tem entries, faz busca
+ * SEMÂNTICA (embed a query → cosine). Senão (ou se o embed falha), cai pra
+ * busca keyword. Dá ao agent "memória semântica" do vault — encontrar notas
+ * relevantes em 1 call, sem listar pastas e ler arquivo por arquivo.
+ */
+export async function toolVaultSearch(
+  ctx: ToolContext,
+  args: SearchArgs
+): Promise<string> {
+  const query = String(args.query ?? "").trim();
+  if (!query) throw new Error("Parâmetro 'query' vazio.");
+  const topK = Math.min(Math.max(Number(args.topK) || 5, 1), 20);
+
+  const idx = ctx.vectorIndex;
+
+  // 1. Busca semântica quando há índice populado
+  if (idx && idx.size > 0) {
+    try {
+      const vec = await embedQuery(
+        query,
+        {
+          openaiApiKey: ctx.embed.openaiApiKey,
+          openrouterApiKey: ctx.embed.openrouterApiKey,
+        },
+        idx.model
+      );
+      const results = idx.search(vec, topK, 0.3);
+      if (results.length > 0) {
+        const lines = results.map(
+          (r) =>
+            `### ${r.entry.path} (sim ${r.score.toFixed(2)})\n${r.entry.text.slice(0, 500)}`
+        );
+        return (
+          `Busca semântica (RAG) — ${results.length} trecho(s) relevante(s) pra "${query}":\n\n` +
+          lines.join("\n\n---\n\n")
+        );
+      }
+      // índice existe mas nada acima do threshold → tenta keyword abaixo
+    } catch {
+      // embed falhou (sem API key, rate limit, etc) → fallback keyword
+    }
+  }
+
+  // 2. Fallback keyword
+  const matches = await searchVault(ctx.app, query, topK, 500);
+  if (matches.length === 0) {
+    return `Nenhuma nota relevante pra "${query}". Tente outros termos ou use vault_list pra navegar.`;
+  }
+  const lines = matches.map(
+    (m) => `### ${m.path} (score ${m.score})\n${m.excerpt}`
+  );
+  return (
+    `Busca por palavras-chave — ${matches.length} nota(s) pra "${query}":\n\n` +
+    lines.join("\n\n---\n\n")
+  );
+}
+
+// ============================================================
 // Registry — executor central
 // ============================================================
 
-/** Mapa nome → função executor. AxxaApp/agent loop usa pra despachar. */
-export type ToolExecutor = (app: App, args: Record<string, unknown>) => Promise<string>;
+/** Mapa nome → função executor. AxxaApp/agent loop usa pra despachar.
+ *  Recebe ToolContext (app + RAG + creds) — tools simples usam só ctx.app. */
+export type ToolExecutor = (
+  ctx: ToolContext,
+  args: Record<string, unknown>
+) => Promise<string>;
 
 export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
-  vault_list: (app, args) => toolVaultList(app, args as unknown as ListArgs),
-  vault_read: (app, args) => toolVaultRead(app, args as unknown as ReadArgs),
-  vault_create: (app, args) =>
-    toolVaultCreate(app, args as unknown as CreateArgs),
-  vault_edit: (app, args) => toolVaultEdit(app, args as unknown as EditArgs),
-  vault_move: (app, args) => toolVaultMove(app, args as unknown as MoveArgs),
-  vault_delete: (app, args) =>
-    toolVaultDelete(app, args as unknown as DeleteArgs),
-  vault_create_folder: (app, args) =>
-    toolVaultCreateFolder(app, args as unknown as CreateFolderArgs),
+  vault_search: (ctx, args) =>
+    toolVaultSearch(ctx, args as unknown as SearchArgs),
+  vault_list: (ctx, args) => toolVaultList(ctx.app, args as unknown as ListArgs),
+  vault_read: (ctx, args) => toolVaultRead(ctx.app, args as unknown as ReadArgs),
+  vault_create: (ctx, args) =>
+    toolVaultCreate(ctx.app, args as unknown as CreateArgs),
+  vault_edit: (ctx, args) => toolVaultEdit(ctx.app, args as unknown as EditArgs),
+  vault_move: (ctx, args) => toolVaultMove(ctx.app, args as unknown as MoveArgs),
+  vault_delete: (ctx, args) =>
+    toolVaultDelete(ctx.app, args as unknown as DeleteArgs),
+  vault_create_folder: (ctx, args) =>
+    toolVaultCreateFolder(ctx.app, args as unknown as CreateFolderArgs),
 };
