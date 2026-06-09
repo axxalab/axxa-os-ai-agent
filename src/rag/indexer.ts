@@ -22,6 +22,7 @@ import {
   type EmbedInput,
 } from "./embeddings";
 import { saveIndex, VectorIndex } from "./vectorIndex";
+import { getQuantProfile, quantizeEmbedding } from "./quant";
 import {
   getEmbeddingSpec,
   imageMimeFromPath,
@@ -54,6 +55,8 @@ export interface IndexerOptions {
   openaiApiKey: string;
   openrouterApiKey: string;
   model: string;
+  /** Perfil de quantização (precision/balanced/light/minimal). */
+  profile: string;
   indexPath: string;
   /** Pastas a IGNORAR (paths absolutos no vault). Sempre inclui o indexPath. */
   excludePaths: string[];
@@ -140,21 +143,34 @@ export async function indexVault(
     openaiApiKey,
     openrouterApiKey,
     model,
+    profile,
     indexPath,
     excludePaths,
     onProgress,
     signal,
   } = opts;
   const spec = getEmbeddingSpec(model);
+  const prof = getQuantProfile(profile);
   const creds = { openaiApiKey, openrouterApiKey };
+  // Dim efetiva: reduzida (Matryoshka) só se o modelo suporta `dimensions`.
+  // Senão, perfis "Leve/Mínimo" caem pra dim cheia (só a precisão int8 vale).
+  const effectiveDim =
+    prof.targetDim > 0 && spec.supportsDimensions ? prof.targetDim : spec.dim;
+  const embedDims = spec.supportsDimensions ? effectiveDim : undefined;
 
-  // Se modelo mudou desde o índice anterior, começa do zero
-  const startFresh = !prev || prev.model !== model || prev.dim !== spec.dim;
+  // Recomeça do zero se modelo, dim OU precisão mudaram desde o índice anterior.
+  const startFresh =
+    !prev ||
+    prev.model !== model ||
+    prev.dim !== effectiveDim ||
+    prev.precision !== prof.precision;
   const index = startFresh
     ? new VectorIndex({
         provider: spec.provider,
         model: spec.model,
-        dim: spec.dim,
+        dim: effectiveDim,
+        precision: prof.precision,
+        profile: prof.id,
       })
     : prev;
 
@@ -304,7 +320,7 @@ export async function indexVault(
             kind: "text",
             text: t,
           }));
-          const embeddings = await embedItems(inputs, creds, model);
+          const embeddings = await embedItems(inputs, creds, model, embedDims);
           for (let j = 0; j < slice.length; j++) {
             fileEntries.push({
               path: item.file.path,
@@ -312,7 +328,7 @@ export async function indexVault(
               chunkIndex: i + j,
               chunkCount: chunks.length,
               text: slice[j],
-              embedding: embeddings[j],
+              embedding: quantizeEmbedding(embeddings[j], prof.precision),
               kind: "text",
             });
             tokensUsed += estimateTokens(embedTexts[j]);
@@ -323,7 +339,8 @@ export async function indexVault(
         const embeddings = await embedItems(
           [{ kind: "image", dataUrl: item.dataUrl }],
           creds,
-          model
+          model,
+          embedDims
         );
         fileEntries.push({
           path: item.file.path,
@@ -331,7 +348,7 @@ export async function indexVault(
           chunkIndex: 0,
           chunkCount: 1,
           text: `Image: ${item.file.name}`,
-          embedding: embeddings[0],
+          embedding: quantizeEmbedding(embeddings[0], prof.precision),
           kind: "image",
         });
         imagesEmbedded++;

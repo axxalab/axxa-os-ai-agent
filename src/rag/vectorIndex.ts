@@ -1,48 +1,45 @@
 // src/rag/vectorIndex.ts
-// Índice vetorial em memória + persistência JSON no vault.
+// Índice vetorial em memória + persistência no vault.
 //
-// Decisão arquitetural: cosine similarity é O(n × dim) por query — no Sprint F
-// isso é "suficientemente rápido" pra vaults de até ~10k chunks (typical user).
-// LanceDB ou hnswlib viram upgrade quando passar de 50k chunks.
+// v0.1.80 (RAG v2): vetores agora são TYPED ARRAYS unit-normalizados
+// (Float32Array ou Int8Array conforme o perfil de quantização). int8 usa 8× menos
+// memória que o `number[]` float64 antigo e acelera o score (typed array, sem
+// boxing). Persistência: embeddings viram base64 do buffer num único JSON.
 //
-// Persistência: 1 arquivo JSON em `<indexPath>/embeddings.json`. Float64
-// embeddings = grande mas legível/portável. WAL/compactação não são necessários
-// pra MVP (snapshot-on-save).
+// Busca: cosine ≈ dot product (vetores já unit-normalizados). Linear O(n×dim) —
+// suficiente até dezenas de milhares de chunks com int8 + dim reduzida.
 
 import type { App, DataAdapter } from "obsidian";
 import { ensureFolder } from "../components/_shared/chatPersistence";
-import type { IndexFile, SearchResult, VectorEntry } from "./types";
+import type {
+  IndexFile,
+  SearchResult,
+  StoredEntry,
+  VectorEntry,
+} from "./types";
+import {
+  base64ToTypedArray,
+  quantizeEmbedding,
+  scoreVectors,
+  typedArrayToBase64,
+  type QuantPrecision,
+} from "./quant";
 
 const INDEX_FILENAME = "embeddings.json";
-const INDEX_VERSION = 1;
+// v2: formato binário (base64 typed arrays) + precision/profile. Índices v1
+// (number[] float64) são descartados no load → user reindexa.
+const INDEX_VERSION = 2;
 
 // ============================================================
-// Cosine similarity — núcleo do search
-// ============================================================
-
-/** Devolve similaridade em [-1, 1]. 1 = vetores idênticos em direção. */
-export function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length) return 0;
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  const denom = Math.sqrt(normA) * Math.sqrt(normB);
-  return denom === 0 ? 0 : dot / denom;
-}
-
-// ============================================================
-// VectorIndex class — fonte de verdade em memória
+// VectorIndex — fonte de verdade em memória
 // ============================================================
 
 export class VectorIndex {
   provider: string;
   model: string;
   dim: number;
+  precision: QuantPrecision;
+  profile: string;
   entries: VectorEntry[];
   lastIndexedAt: string;
 
@@ -50,12 +47,16 @@ export class VectorIndex {
     provider: string;
     model: string;
     dim: number;
+    precision: QuantPrecision;
+    profile: string;
     entries?: VectorEntry[];
     lastIndexedAt?: string;
   }) {
     this.provider = opts.provider;
     this.model = opts.model;
     this.dim = opts.dim;
+    this.precision = opts.precision;
+    this.profile = opts.profile;
     this.entries = opts.entries ?? [];
     this.lastIndexedAt = opts.lastIndexedAt ?? "";
   }
@@ -83,7 +84,7 @@ export class VectorIndex {
     this.entries.push(...newEntries);
   }
 
-  /** Remove todos os entries de paths que não estão no `keepSet`. */
+  /** Remove entries de paths que não estão no `keepSet`. */
   pruneToPaths(keepSet: Set<string>) {
     this.entries = this.entries.filter((e) => keepSet.has(e.path));
   }
@@ -95,14 +96,15 @@ export class VectorIndex {
   }
 
   /**
-   * Busca top K entries por cosine similarity com o vetor da query.
-   * `minScore` (default 0.3) filtra resultados muito ruins — evita
-   * injetar contexto irrelevante quando a query é muito off-topic.
+   * Busca top K por cosine similarity. `queryRaw` = embedding CRU da query
+   * (number[]) — normalizamos + quantizamos aqui pra casar com o formato do
+   * índice (int8/float32). `minScore` (default 0.3) descarta off-topic.
    */
-  search(queryVec: number[], topK = 5, minScore = 0.3): SearchResult[] {
+  search(queryRaw: number[], topK = 5, minScore = 0.3): SearchResult[] {
+    const q = quantizeEmbedding(queryRaw, this.precision);
     const scored: SearchResult[] = [];
     for (const entry of this.entries) {
-      const score = cosineSimilarity(queryVec, entry.embedding);
+      const score = scoreVectors(q, entry.embedding, this.precision);
       if (score >= minScore) scored.push({ entry, score });
     }
     scored.sort((a, b) => b.score - a.score);
@@ -118,7 +120,7 @@ function indexFilePath(indexPath: string): string {
   return `${indexPath}/${INDEX_FILENAME}`;
 }
 
-/** Lê o índice do disco. Devolve null se não existe ou tá corrompido. */
+/** Lê o índice do disco. Devolve null se não existe, corrompido, ou versão antiga. */
 export async function loadIndex(
   adapter: DataAdapter,
   indexPath: string
@@ -130,15 +132,27 @@ export async function loadIndex(
     const parsed = JSON.parse(raw) as IndexFile;
     if (parsed.version !== INDEX_VERSION) {
       console.warn(
-        `[axxa/rag] versão do índice ${parsed.version} != esperado ${INDEX_VERSION} — descartando.`
+        `[axxa/rag] índice versão ${parsed.version} != ${INDEX_VERSION} — descartando (reindexe do zero).`
       );
       return null;
     }
+    const precision: QuantPrecision = parsed.precision ?? "float32";
+    const entries: VectorEntry[] = parsed.entries.map((s: StoredEntry) => ({
+      path: s.path,
+      hash: s.hash,
+      chunkIndex: s.chunkIndex,
+      chunkCount: s.chunkCount,
+      text: s.text,
+      kind: s.kind,
+      embedding: base64ToTypedArray(s.emb, precision),
+    }));
     return new VectorIndex({
       provider: parsed.provider,
       model: parsed.model,
       dim: parsed.dim,
-      entries: parsed.entries,
+      precision,
+      profile: parsed.profile ?? "balanced",
+      entries,
       lastIndexedAt: parsed.lastIndexedAt,
     });
   } catch (err) {
@@ -147,7 +161,7 @@ export async function loadIndex(
   }
 }
 
-/** Salva o índice no disco. Cria a pasta se não existe. */
+/** Salva o índice no disco (embeddings como base64 do typed array). */
 export async function saveIndex(
   app: App,
   indexPath: string,
@@ -155,16 +169,26 @@ export async function saveIndex(
 ): Promise<void> {
   await ensureFolder(app.vault.adapter, indexPath);
   const path = indexFilePath(indexPath);
+  const entries: StoredEntry[] = index.entries.map((e) => ({
+    path: e.path,
+    hash: e.hash,
+    chunkIndex: e.chunkIndex,
+    chunkCount: e.chunkCount,
+    text: e.text,
+    kind: e.kind,
+    emb: typedArrayToBase64(e.embedding),
+  }));
   const payload: IndexFile = {
     version: INDEX_VERSION,
     provider: index.provider,
     model: index.model,
     dim: index.dim,
+    precision: index.precision,
+    profile: index.profile,
     lastIndexedAt: index.lastIndexedAt,
     fileCount: index.fileCount,
-    entries: index.entries,
+    entries,
   };
-  // JSON pretty=0 — economia de bytes em vault grande
   await app.vault.adapter.write(path, JSON.stringify(payload));
 }
 

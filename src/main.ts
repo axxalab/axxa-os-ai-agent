@@ -57,6 +57,9 @@ interface AxxaSettings {
   ragEmbeddingProvider: string;
   /** Modelo de embedding (ex: text-embedding-3-small). */
   ragEmbeddingModel: string;
+  /** Perfil de quantização do índice RAG (precision/balanced/light/minimal) —
+   *  precisão (float32/int8) + dim alvo. Estilo Effort. v0.1.80. */
+  ragQuantProfile: string;
   /** Code wrap em blocos de código markdown. Default false (scroll horizontal).
    *  Quando true, aplica `.axxa-code-wrap` na .axxa-root → pre quebra linha. */
   codeWrap: boolean;
@@ -150,6 +153,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragIndexPath: "axxa-ai/index",
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",
+  ragQuantProfile: "balanced",
   codeWrap: false,
   agentPermissionLevel: "ask",
   // Defaults slim — user pode adicionar mais via Settings → Outros → Chips

@@ -65,7 +65,8 @@ export function arrayBufferToDataUrl(
 export async function embedBatch(
   texts: string[],
   apiKey: string,
-  model = "text-embedding-3-small"
+  model = "text-embedding-3-small",
+  dimensions?: number
 ): Promise<number[][]> {
   if (!apiKey || !apiKey.trim()) {
     throw new ProviderError(
@@ -84,9 +85,11 @@ export async function embedBatch(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
+      // `dimensions` (Matryoshka) — reduz o vetor na origem. Só text-embedding-3-*.
       body: JSON.stringify({
         model,
         input: texts,
+        ...(dimensions && dimensions > 0 ? { dimensions } : {}),
       }),
       throw: false,
     });
@@ -299,7 +302,8 @@ export async function embedBatchOpenRouter(
 export async function embedItems(
   items: EmbedInput[],
   creds: EmbedCredentials,
-  model: string
+  model: string,
+  dimensions?: number
 ): Promise<number[][]> {
   const spec = getEmbeddingSpec(model);
   const hasImage = items.some((i) => i.kind === "image");
@@ -312,20 +316,28 @@ export async function embedItems(
   }
 
   if (spec.provider === "openrouter") {
+    // OpenRouter (Nemotron VL) não suporta `dimensions` — ignora.
     return embedBatchOpenRouter(items, creds.openrouterApiKey, model);
   }
-  // OpenAI path — extrai só os textos
+  // OpenAI path — extrai só os textos. `dimensions` aplica aqui (Matryoshka).
   const texts = items.map((i) => (i.kind === "text" ? i.text : ""));
-  return embedBatch(texts, creds.openaiApiKey, model);
+  return embedBatch(texts, creds.openaiApiKey, model, dimensions);
 }
 
-/** Helper: embeda 1 texto usando o provider do modelo. */
+/** Helper: embeda 1 texto usando o provider do modelo. `dimensions` opcional
+ *  pra casar com a dim do índice (busca). */
 export async function embedQuery(
   text: string,
   creds: EmbedCredentials,
-  model: string
+  model: string,
+  dimensions?: number
 ): Promise<number[]> {
-  const [vec] = await embedItems([{ kind: "text", text }], creds, model);
+  const [vec] = await embedItems(
+    [{ kind: "text", text }],
+    creds,
+    model,
+    dimensions
+  );
   return vec;
 }
 

@@ -28,7 +28,14 @@ import {
 } from "../_shared/effort";
 import { indexVault, type IndexProgress } from "../../rag/indexer";
 import { deleteIndex } from "../../rag/vectorIndex";
-import { EMBEDDING_MODELS } from "../../rag/types";
+import { EMBEDDING_MODELS, getEmbeddingSpec } from "../../rag/types";
+import {
+  QUANT_PROFILE_IDS,
+  QUANT_PROFILE_LABELS,
+  QUANT_PROFILE_USES,
+  getQuantProfile,
+  recommendProfile,
+} from "../../rag/quant";
 import {
   aggregateUsage,
   sortBucketEntries,
@@ -1374,6 +1381,48 @@ export class AxxaSettingsTab extends PluginSettingTab {
         );
       });
 
+    // ---- Perfil de quantização (estilo Effort): recomenda pelo tamanho do vault ----
+    const noteCount = this.plugin.app.vault.getMarkdownFiles().length;
+    const recommended = recommendProfile(noteCount);
+    const embSpec = getEmbeddingSpec(this.plugin.settings.ragEmbeddingModel);
+    new Setting(section)
+      .setName(t.settings.ragProfileLabel)
+      .setDesc(
+        t.settings.ragProfileRecommend(
+          noteCount,
+          QUANT_PROFILE_LABELS[recommended] ?? recommended
+        )
+      )
+      .addDropdown((dd) => {
+        QUANT_PROFILE_IDS.forEach((id) => {
+          const p = getQuantProfile(id);
+          const star = id === recommended ? " ⭐" : "";
+          dd.addOption(id, `${p.emoji} ${QUANT_PROFILE_LABELS[id]}${star}`);
+        });
+        dd.setValue(this.plugin.settings.ragQuantProfile).onChange(
+          async (value) => {
+            this.plugin.settings.ragQuantProfile = value;
+            await this.plugin.saveSettings();
+            this.display(); // re-render pra atualizar a descrição do "melhor uso"
+          }
+        );
+      });
+    // "Melhor uso" do perfil + aviso quando o modelo não suporta dim reduzida
+    const profDescEl = section.createDiv({ cls: "axxa-rag-profile-desc" });
+    profDescEl.createSpan({
+      text: QUANT_PROFILE_USES[this.plugin.settings.ragQuantProfile] ?? "",
+    });
+    if (
+      getQuantProfile(this.plugin.settings.ragQuantProfile).targetDim > 0 &&
+      !embSpec.supportsDimensions
+    ) {
+      profDescEl.createEl("br");
+      profDescEl.createSpan({
+        text: t.settings.ragProfileNoDim,
+        cls: "axxa-rag-stats-warning",
+      });
+    }
+
     // ---- Index path ----
     new Setting(section)
       .setName(t.settings.ragIndexPath)
@@ -1448,6 +1497,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
       : "—";
     el.createSpan({
       text: t.settings.ragStats(idx.size, idx.fileCount, date),
+      cls: "axxa-rag-stats-line",
+    });
+    // Linha do perfil/precisão/dim com que o índice foi construído
+    el.createEl("br");
+    el.createSpan({
+      text: `${QUANT_PROFILE_LABELS[idx.profile] ?? idx.profile} · ${idx.precision} · ${idx.dim}d`,
       cls: "axxa-rag-stats-line",
     });
     // Aviso se modelo do índice ≠ modelo configurado
@@ -1550,6 +1605,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
         openaiApiKey: this.plugin.settings.openaiApiKey,
         openrouterApiKey: this.plugin.settings.openrouterApiKey,
         model: this.plugin.settings.ragEmbeddingModel,
+        profile: this.plugin.settings.ragQuantProfile,
         indexPath: this.plugin.settings.ragIndexPath,
         // Não indexa pastas internas do AXXA pra não poluir o vetor
         excludePaths: [

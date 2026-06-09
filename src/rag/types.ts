@@ -15,12 +15,26 @@ export interface VectorEntry {
   chunkIndex: number;
   /** Total de chunks do arquivo (pra UX/debug). Imagem = 1. */
   chunkCount: number;
-  /** Texto raw que foi embedado (max ~1500 chars). Pra imagem: "Image: filename.ext". */
+  /** Texto raw do chunk (pra excerpt na busca). Pra imagem: "Image: filename.ext". */
   text: string;
-  /** Vetor de embedding. Tamanho = dim do modelo. */
-  embedding: number[];
+  /** Vetor em memória — typed array UNIT-NORMALIZADO. Int8Array (×127) quando o
+   *  índice usa precisão int8, Float32Array quando float32. Tamanho = dim. */
+  embedding: Float32Array | Int8Array;
   /** Tipo do conteúdo. "text" = markdown chunk; "image" = arquivo de imagem inteiro. */
   kind?: "text" | "image";
+}
+
+/** Entry como persistido em disco — embedding vira base64 do buffer do typed
+ *  array (precisão vem do IndexFile, global do índice). */
+export interface StoredEntry {
+  path: string;
+  hash: string;
+  chunkIndex: number;
+  chunkCount: number;
+  text: string;
+  kind?: "text" | "image";
+  /** base64 do buffer (Int8Array ou Float32Array conforme IndexFile.precision). */
+  emb: string;
 }
 
 /** Formato persistido em disco — versionado pra migração futura. */
@@ -29,11 +43,15 @@ export interface IndexFile {
   provider: string;
   model: string;
   dim: number;
+  /** Precisão dos vetores (int8 / float32) — v0.1.80+ (RAG v2). */
+  precision: "float32" | "int8";
+  /** Id do perfil de quantização (precision/balanced/light/minimal). */
+  profile: string;
   /** ISO string da última indexação completa. */
   lastIndexedAt: string;
   /** Total de arquivos cobertos. */
   fileCount: number;
-  entries: VectorEntry[];
+  entries: StoredEntry[];
 }
 
 /** Resultado de uma busca — entry + score de similaridade. */
@@ -59,6 +77,9 @@ export interface EmbeddingModelSpec {
   pricePerMillion: number;
   /** Suporta embedding de imagens? VL models = true, text models = false. */
   supportsImage?: boolean;
+  /** Suporta dim reduzida via param `dimensions` (Matryoshka). OpenAI 3-* = true.
+   *  Quando false, perfis "Leve/Mínimo" caem pra int8 com a dim cheia do modelo. */
+  supportsDimensions?: boolean;
   /** Indica que é tier free do OpenRouter (rate limits mais apertados). */
   free?: boolean;
 }
@@ -70,6 +91,7 @@ export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
     dim: 1536,
     maxInputTokens: 8191,
     pricePerMillion: 0.02,
+    supportsDimensions: true,
   },
   {
     provider: "openai",
@@ -77,6 +99,7 @@ export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
     dim: 3072,
     maxInputTokens: 8191,
     pricePerMillion: 0.13,
+    supportsDimensions: true,
   },
   {
     provider: "openrouter",

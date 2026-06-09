@@ -377,6 +377,11 @@ export const EN_US: Translations = {
     ragStatsEmpty: "Empty index. Click 'Index vault' to start.",
     ragStatsMismatch:
       "⚠️ Configured model differs from saved index. Reindex to use the new model.",
+    ragProfileLabel: "Index profile (quantization)",
+    ragProfileRecommend: (count: number, name: string) =>
+      `Your vault: ${count} notes → recommended: ${name}`,
+    ragProfileNoDim:
+      "This model doesn't support reduced dim — using full dim with int8.",
     ragIndexingPhaseScanning: (done: number, total: number) =>
       `Scanning vault: ${done}/${total}`,
     ragIndexingPhaseEmbedding: (

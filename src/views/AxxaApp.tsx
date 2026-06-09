@@ -442,7 +442,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               openaiApiKey: plugin.settings.openaiApiKey,
               openrouterApiKey: plugin.settings.openrouterApiKey,
             },
-            plugin.vectorIndex!.model
+            plugin.vectorIndex!.model,
+            plugin.vectorIndex!.dim
           );
           const results = plugin.vectorIndex!.search(queryVec, topK, 0.3);
           if (results.length > 0) {

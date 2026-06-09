@@ -278,7 +278,8 @@ export async function toolVaultSearch(
           openaiApiKey: ctx.embed.openaiApiKey,
           openrouterApiKey: ctx.embed.openrouterApiKey,
         },
-        idx.model
+        idx.model,
+        idx.dim
       );
       const results = idx.search(vec, topK, 0.3);
       if (results.length > 0) {

@@ -378,6 +378,11 @@ export const PT_BR = {
     ragStatsEmpty: "Índice vazio. Clique em 'Indexar vault' pra começar.",
     ragStatsMismatch:
       "⚠️ Modelo configurado é diferente do índice salvo. Reindexe pra usar o novo modelo.",
+    ragProfileLabel: "Perfil do índice (quantização)",
+    ragProfileRecommend: (count: number, name: string) =>
+      `Seu vault: ${count} notas → recomendado: ${name}`,
+    ragProfileNoDim:
+      "Este modelo não suporta dim reduzida — usando dim cheia com int8.",
     ragIndexingPhaseScanning: (done: number, total: number) =>
       `Escaneando vault: ${done}/${total}`,
     ragIndexingPhaseEmbedding: (

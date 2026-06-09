@@ -4390,6 +4390,14 @@ body.axxa-host-active .mobile-navbar {
   font-style: italic;
 }
 
+/* Descrição do "melhor uso" do perfil de quantização (abaixo do dropdown) */
+.axxa-rag-profile-desc {
+  margin: -4px 0 8px 0;
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .axxa-rag-stats-line {
   color: var(--text-normal);
   font-family: var(--font-monospace);
