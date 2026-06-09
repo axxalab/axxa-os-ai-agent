@@ -260,6 +260,11 @@ export const EN_US: Translations = {
       usage: "Usage",
       outros: "Other",
     },
+    appearanceTabs: {
+      background: "Background",
+      chips: "Chips",
+      ui: "Interface",
+    },
     effortTabs: {
       low: "Low 🐢",
       med: "Med ⚖️",

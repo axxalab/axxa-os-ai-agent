@@ -28,6 +28,7 @@ import { openrouterProvider } from "../../providers/openrouter";
 import { nimProvider } from "../../providers/nim";
 import { ollamaProvider } from "../../providers/ollama";
 import { getTranslations, type Translations } from "../../i18n";
+import { hapticTick } from "../_shared/haptics";
 import {
   DEFAULT_EFFORT_CONFIGS,
   EFFORT_LEVELS,
@@ -67,6 +68,7 @@ type ProviderTabId =
   | "nim"
   | "ollama";
 type OutrosTabId = "geral" | "ui" | "agent" | "rag" | "usage";
+type AppearanceTabId = "background" | "chips" | "ui";
 
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
@@ -76,6 +78,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private activeProviderTab: ProviderTabId = "openai";
   /** Sub-tab quando topTab = outros (v0.1.39 reorganização) */
   private activeOutrosTab: OutrosTabId = "geral";
+  /** Sub-tab quando topTab = appearance (v0.1.107: Fundo / Chips / Interface) */
+  private activeAppearanceTab: AppearanceTabId = "background";
   /** Sub-tab quando topTab = effort — qual nível está sendo editado */
   private activeEffortTab: EffortLevel = "max";
   private unsubscribe?: () => void;
@@ -142,13 +146,106 @@ export class AxxaSettingsTab extends PluginSettingTab {
     }
   }
 
-  /** Top-tab Appearance — só backgrounds + chips + code wrap (movido de Outros → UI) */
+  /** Top-tab Appearance — sub-tabs (Fundo / Chips / Interface), mesmo padrão
+   *  segmented dos Providers (ícone + tooltip). v0.1.107 */
   private renderAppearanceTab(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
       text: t.settings.outrosUiIntro,
       cls: "setting-item-description",
     });
-    this.renderOutrosUI(parent, t);
+
+    // Sub-tabs icon-only (igual aos Providers)
+    const subTabsEl = parent.createDiv({
+      cls: "axxa-settings-subtabs axxa-provider-seg",
+    });
+    this.createAppearanceSubTab(
+      subTabsEl,
+      "background",
+      "palette",
+      t.settings.appearanceTabs.background
+    );
+    this.createAppearanceSubTab(
+      subTabsEl,
+      "chips",
+      "tags",
+      t.settings.appearanceTabs.chips
+    );
+    this.createAppearanceSubTab(
+      subTabsEl,
+      "ui",
+      "sliders-horizontal",
+      t.settings.appearanceTabs.ui
+    );
+
+    const subContentEl = parent.createDiv({ cls: "axxa-settings-subcontent" });
+    switch (this.activeAppearanceTab) {
+      case "background":
+        this.renderAppearanceBackground(subContentEl, t);
+        break;
+      case "chips":
+        this.renderAppearanceChips(subContentEl, t);
+        break;
+      case "ui":
+        this.renderAppearanceUI(subContentEl, t);
+        break;
+    }
+  }
+
+  /** Botão de sub-tab de Appearance — ícone mono + tooltip (igual providers). */
+  private createAppearanceSubTab(
+    parent: HTMLElement,
+    id: AppearanceTabId,
+    icon: string,
+    label: string
+  ) {
+    const btn = parent.createEl("button", {
+      cls:
+        "axxa-subtab-btn axxa-subtab-icon" +
+        (this.activeAppearanceTab === id ? " axxa-subtab-active" : ""),
+      attr: { "aria-label": label, title: label },
+    });
+    setIcon(btn, icon);
+    btn.onclick = () => {
+      hapticTick();
+      this.activeAppearanceTab = id;
+      this.display();
+    };
+  }
+
+  /** Appearance → Fundo: picker de backgrounds (8 static + 8 live). */
+  private renderAppearanceBackground(parent: HTMLElement, t: Translations) {
+    parent.createEl("h3", { text: t.settings.appearance });
+    parent.createEl("p", {
+      text: t.settings.appearanceDesc,
+      cls: "setting-item-description",
+    });
+    this.renderBackgroundPicker(parent, t);
+  }
+
+  /** Appearance → Chips: o que aparece nas listas e no status line. */
+  private renderAppearanceChips(parent: HTMLElement, t: Translations) {
+    parent.createEl("h3", { text: t.settings.chips });
+    parent.createEl("p", {
+      text: t.settings.chipsDesc,
+      cls: "setting-item-description",
+    });
+    this.renderChipsSection(parent, t);
+  }
+
+  /** Appearance → Interface: toggles de exibição (code wrap). */
+  private renderAppearanceUI(parent: HTMLElement, t: Translations) {
+    new Setting(parent)
+      .setName(t.settings.codeWrap)
+      .setDesc(t.settings.codeWrapDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.codeWrap)
+          .onChange(async (value) => {
+            hapticTick();
+            this.plugin.settings.codeWrap = value;
+            await this.plugin.saveSettings();
+          })
+      );
   }
 
   // ============================================================
@@ -190,6 +287,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       text: label,
     });
     btn.onclick = () => {
+      hapticTick();
       this.activeEffortTab = id;
       this.display();
     };
@@ -408,6 +506,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       text: label,
     });
     btn.onclick = () => {
+      hapticTick();
       this.activeTopTab = id;
       this.display();
     };
@@ -476,6 +575,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     });
     setIcon(btn, LOGO[id] ?? "");
     btn.onclick = () => {
+      hapticTick();
       this.activeProviderTab = id;
       this.display();
     };
@@ -1028,6 +1128,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       text: label,
     });
     btn.onclick = () => {
+      hapticTick();
       this.activeOutrosTab = id;
       this.display();
     };
@@ -1157,39 +1258,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
   }
 
   /** Sub-tab Interface — chips, aparência, code wrap */
-  private renderOutrosUI(parent: HTMLElement, t: Translations) {
-    parent.createEl("p", {
-      text: t.settings.outrosUiIntro,
-      cls: "setting-item-description",
-    });
-
-    new Setting(parent)
-      .setName(t.settings.codeWrap)
-      .setDesc(t.settings.codeWrapDesc)
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.codeWrap)
-          .onChange(async (value) => {
-            this.plugin.settings.codeWrap = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
-    parent.createEl("h3", { text: t.settings.chips });
-    parent.createEl("p", {
-      text: t.settings.chipsDesc,
-      cls: "setting-item-description",
-    });
-    this.renderChipsSection(parent, t);
-
-    parent.createEl("h3", { text: t.settings.appearance });
-    parent.createEl("p", {
-      text: t.settings.appearanceDesc,
-      cls: "setting-item-description",
-    });
-    this.renderBackgroundPicker(parent, t);
-  }
-
   /** Sub-tab Agent — permissão */
   private renderOutrosAgent(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
@@ -1702,6 +1770,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
         text: t.settings.backgroundLabels[id],
       });
       btn.onclick = async () => {
+        hapticTick();
         this.plugin.settings.background = id;
         await this.plugin.saveSettings();
         // Re-render Settings pra atualizar qual swatch tá ativo

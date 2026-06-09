@@ -262,6 +262,11 @@ export const PT_BR = {
       usage: "Usage",
       outros: "Outros",
     },
+    appearanceTabs: {
+      background: "Fundo",
+      chips: "Chips",
+      ui: "Interface",
+    },
     effortTabs: {
       low: "Low 🐢",
       med: "Med ⚖️",
