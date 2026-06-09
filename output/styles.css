@@ -126,13 +126,24 @@ body.is-mobile
  * Resultado: app fullscreen real visualmente, com bg edge-to-edge.
  * ===================================================== */
 
-/* Container 100vw */
+/* Drawer = tela INTEIRA, edge to edge real (v0.1.112).
+   Largura 100vw + ancorado nas 4 bordas. Altura via 100dvh (viewport real do
+   mobile — 100vh não conta as barras do sistema e deixava gap). NÃO força a
+   altura com o teclado aberto: aí o Obsidian encolhe o drawer pro composer
+   subir, e travar 100dvh esconderia o input atrás do teclado. */
 body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right {
   width: 100vw !important;
   min-width: 100vw !important;
   max-width: 100vw !important;
   left: 0 !important;
   right: 0 !important;
+}
+body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right {
+  top: 0 !important;
+  bottom: 0 !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: none !important;
 }
 
 /* Esconde os chrome nativos do Obsidian no drawer direito */
@@ -149,11 +160,17 @@ body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-inn
   padding-top: 0 !important;
 }
 
-/* Conteúdo ocupa tela toda */
+/* Cadeia INTEIRA preenche 100% do drawer — sem gap em nenhuma borda. Cada elo
+   precisa ser 100% pra o 100dvh do drawer chegar até a .axxa-root/view-content. */
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-inner,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-active-tab-container,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tab-container,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf,
 body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf-content,
 body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .view-content {
-  height: 100vh !important;
-  max-height: 100vh !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  width: 100% !important;
 }
 
 /* No fullscreen, sem navbar visível — padding-bottom só pra safe-area */
