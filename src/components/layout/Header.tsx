@@ -8,7 +8,6 @@
 // 2 do bloco quando o título tá ativo.
 
 import { useEffect, useRef, useState } from "react";
-import { Menu } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { useT } from "../../i18n";
 
@@ -21,10 +20,6 @@ interface HeaderProps {
   onOpenConversations: () => void;
   /** Recebe novo título quando user edita inline. Chama mesmo se vazio? — não. */
   onRenameChat: (newTitle: string) => void;
-  /** Estado atual do modo fullscreen (mobile-only feature). */
-  fullscreen: boolean;
-  /** Toggle do modo fullscreen — sidebar direita ocupa 100vw em mobile. */
-  onToggleFullscreen: () => void;
 }
 
 export function Header({
@@ -34,8 +29,6 @@ export function Header({
   onNewChat,
   onOpenConversations,
   onRenameChat,
-  fullscreen,
-  onToggleFullscreen,
 }: HeaderProps) {
   const t = useT();
   const [draft, setDraft] = useState(chatTitle);
@@ -120,26 +113,6 @@ export function Header({
           title={t.header.openSettings}
         >
           <Icon name="settings" />
-        </button>
-        <button
-          type="button"
-          className="axxa-header-gear"
-          onClick={(e) => {
-            const menu = new Menu();
-            menu.addItem((item) =>
-              item
-                .setTitle(
-                  fullscreen ? t.header.exitFullscreen : t.header.fullscreen
-                )
-                .setIcon(fullscreen ? "minimize" : "maximize")
-                .onClick(() => onToggleFullscreen())
-            );
-            menu.showAtMouseEvent(e.nativeEvent);
-          }}
-          aria-label={t.header.moreOptions}
-          title={t.header.moreOptions}
-        >
-          <Icon name="more-vertical" />
         </button>
       </div>
     </header>

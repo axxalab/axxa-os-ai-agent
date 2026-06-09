@@ -4,63 +4,42 @@
  *   - SEMPRE CSS variables do Obsidian (var(--*))
  *   - Mobile first: touch targets 44px, sem hover-only
  *   - TODOS os radius em pill (999px) — decisão de design
+ *
+ * v0.1.72: removido fullscreen module + debug overlay + TODOS os
+ * overrides em elementos nativos do Obsidian (.mobile-navbar,
+ * .workspace-drawer-*, .titlebar, .status-bar, etc.). AXXA agora
+ * apenas HERDA o tema/layout do Obsidian, sem escrever sobre.
  */
 
 /* =====================================================
- * View-content padding — versão MANUAL TESTADA pelo dev,
- * funcionando 100%. NÃO alterar sem confirmação.
- * Usa --copilot-status-bar-clearance (var setada pelo
- * plugin Copilot quando instalado; fallback 0px senão).
+ * View-content padding — minimo essencial pra layout do composer FAB
+ * Usa --copilot-status-bar-clearance (var setada pelo plugin Copilot
+ * quando instalado; fallback 0px senao).
  * ===================================================== */
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
     padding-left: 0;
     padding-right: 0;
     padding-top: 0 !important;
-
     padding-bottom: calc(
         var(--safe-area-inset-bottom, 0px) +
         var(--copilot-status-bar-clearance, 0px) +
         var(--size-4-1)
     ) !important;
-
-    /* v0.1.71: bg do view-content = bg-primary (mesmo da .axxa-root).
-       Sem isso, a padding-bottom area mostra o bg default escuro
-       do Obsidian (visivel no print do user como "dark strip"
-       abaixo do composer). Agora o text area se estende visualmente
-       ate o final, igual a area em white do print referencia. */
-    background: var(--background-primary) !important;
-}
-
-/* Esconde .status-bar do Obsidian quando dentro do leaf do AXXA OS
-   (em alguns devices/temas aparece em mobile, gerando strip de ~22px). */
-.workspace-leaf-content[data-type="axxa-os-ai-agent"] .status-bar,
-.workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]) .status-bar {
-  display: none !important;
-}
-
-/* Reset margins/padding default no .workspace-leaf que poderiam criar
-   strip horizontal entre o leaf e nosso conteudo */
-.workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
-  padding-top: 0 !important;
-  margin-top: 0 !important;
 }
 
 body.is-mobile
 .workspace-tab-container
 .workspace-leaf-content[data-type="axxa-os-ai-agent"]
 .view-content {
-
     padding-bottom: var(--size-4-1) !important;
 }
 
 @supports selector(body:has(*)) {
-
     body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
     .workspace-tab-container
     .workspace-leaf-content[data-type="axxa-os-ai-agent"]
     .view-content {
-
         padding-bottom: calc(
             var(--navbar-height, 50px) +
             max(
@@ -70,186 +49,6 @@ body.is-mobile
             var(--size-4-1)
         ) !important;
     }
-}
-
-/* =====================================================
- * Fullscreen Mode mobile (v0.1.51)
- *
- * Toggle via header menu "..." → "Full-screen".
- * v0.1.71: Aplica .axxa-fullscreen-active no <body> APENAS quando AXXA eh
- * a active leaf (antes era .axxa-fullscreen sempre — vazava pra outras
- * views como editor de markdown).
- * Sidebar direita ocupa 100vw, esconde drawer-header / tab-options /
- * tab-header-container / drawer-footer pra dar impressão de app standalone.
- * ===================================================== */
-
-/* Container 100vw */
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right {
-  width: 100vw !important;
-  min-width: 100vw !important;
-  max-width: 100vw !important;
-  left: 0 !important;
-  right: 0 !important;
-}
-
-/* Esconde os chrome nativos do Obsidian no drawer direito */
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-header,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-tab-options,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-tab-header-container,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-footer,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .nav-buttons-container {
-  display: none !important;
-}
-
-/* Remove padding-top fantasma do drawer-inner */
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-inner {
-  padding-top: 0 !important;
-}
-
-/* Conteúdo ocupa tela toda — overrideia padding-bottom da regra existente
-   pra eliminar gap "vazio" embaixo (no fullscreen não temos navbar). */
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-leaf-content,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .view-content {
-  height: 100vh !important;
-  max-height: 100vh !important;
-}
-
-body.is-mobile.axxa-fullscreen
-.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  /* No fullscreen, sem navbar — só safe-area é necessária */
-  padding-bottom: calc(var(--safe-area-inset-bottom, 0px) + var(--size-4-1)) !important;
-}
-
-/* === Nav bar / safe-area area bg matching (v0.1.52) ===
-   Sem isso, a region embaixo (safe-area zone, atrás de onde a OS nav bar
-   ficaria) mostra o body/drawer default (branco no light, cinza escuro
-   no dark) — visualmente quebra a impressão de fullscreen.
-   Forçamos background-primary em TODOS os containers prováveis. */
-
-body.axxa-fullscreen-active,
-html:has(body.axxa-fullscreen-active),
-body.axxa-fullscreen-active .app-container,
-body.axxa-fullscreen-active .horizontal-main-container,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-leaf,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-leaf-content,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-tab-container,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-inner,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .view-content {
-  background: var(--background-primary) !important;
-  background-color: var(--background-primary) !important;
-}
-
-/* Mobile-navbar (a barra inferior nativa do Obsidian — não da OS) também
-   herda a cor quando visível no fullscreen. */
-body.is-mobile.axxa-fullscreen-active .mobile-navbar {
-  background: var(--background-primary) !important;
-  background-color: var(--background-primary) !important;
-}
-
-/* === Edge-to-edge bg (v0.1.57 → v0.1.62 REVERTIDO em non-fullscreen) ===
-   v0.1.62: revertido em non-fullscreen a pedido do user.
-   Non-fullscreen mantem layout default do Obsidian (navbar, footers,
-   etc visiveis e funcionais).
-   Aplica background-primary apenas em FULLSCREEN. */
-body.is-mobile.axxa-fullscreen-active .workspace-leaf-content[data-type="axxa-os-ai-agent"],
-body.is-mobile.axxa-fullscreen-active .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content,
-body.is-mobile.axxa-fullscreen-active .workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]),
-body.is-mobile.axxa-fullscreen-active .workspace-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
-  background: var(--background-primary) !important;
-  background-color: var(--background-primary) !important;
-}
-
-/* === DRAWER-TAB-OPTIONS hide (v0.1.67) ===
-   Identificado via debug overlay como o culpado pelo strip horizontal
-   embaixo em non-fullscreen mode. Eh o seletor de tab que mostra
-   "AXXA OS" com chevron.
-   Aplica 5px transparent SO neste elemento, SO quando AXXA eh a
-   active leaf do drawer direito. Demais elementos Obsidian permanecem
-   default (Obsidian preserva navegacao). */
-body.is-mobile .workspace-drawer.mod-right:has(.workspace-leaf-content.is-active[data-type="axxa-os-ai-agent"]) .workspace-drawer-tab-options,
-body.is-mobile .workspace-drawer.mod-right:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) .workspace-drawer-tab-options {
-  height: 5px !important;
-  min-height: 0 !important;
-  max-height: 5px !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  pointer-events: none !important;
-}
-
-body.is-mobile .workspace-drawer.mod-right:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) .workspace-drawer-tab-options > * {
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-
-/* === Obsidian native chrome "5px transparent" trick (v0.1.62) ===
-   APLICA APENAS NO FULLSCREEN (revertido em v0.1.62 a pedido do user
-   — non-fullscreen deve manter elementos Obsidian funcionais/visiveis).
-   Substitui o display:none anterior (v0.1.51): elementos ficam com
-   5px transparent em vez de none — visualmente identico mas preserva
-   layout estrutural. */
-body.is-mobile.axxa-fullscreen-active .mobile-navbar,
-body.is-mobile.axxa-fullscreen-active .mobile-toolbar,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer-footer,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer-tab-options,
-body.is-mobile.axxa-fullscreen-active .nav-buttons-container,
-body.is-mobile.axxa-fullscreen-active .titlebar,
-body.is-mobile.axxa-fullscreen-active .status-bar {
-  height: 5px !important;
-  min-height: 0 !important;
-  max-height: 5px !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  pointer-events: none !important;
-}
-
-body.is-mobile.axxa-fullscreen-active .mobile-navbar > *,
-body.is-mobile.axxa-fullscreen-active .mobile-toolbar > *,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer-footer > *,
-body.is-mobile.axxa-fullscreen-active .workspace-drawer-tab-options > *,
-body.is-mobile.axxa-fullscreen-active .nav-buttons-container > *,
-body.is-mobile.axxa-fullscreen-active .titlebar > *,
-body.is-mobile.axxa-fullscreen-active .status-bar > * {
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-
-/* v0.1.70: REVERTIDO o hide agressivo de workspace-split, ribbon,
-   workspace-drawer.mod-left, workspace-leaves. Estava quebrando o
-   Obsidian inteiro fora do AXXA. Fullscreen agora mantem apenas o
-   essencial: drawer-tab-options 5px (preserva navegacao do AXXA OS). */
-
-/* Fallback browsers velhos sem :has() — aplica mais amplo em fullscreen */
-@supports not selector(html:has(*)) {
-  body.is-mobile.axxa-fullscreen-active .workspace-leaf-content[data-type="axxa-os-ai-agent"],
-  body.is-mobile.axxa-fullscreen-active .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-    background: var(--background-primary) !important;
-  }
-}
-
-/* Padding superior do header pra escapar do status bar nativo no fullscreen.
-   Em devices com notch, env(safe-area-inset-top) pode ser >40, então max(). */
-body.is-mobile.axxa-fullscreen-active .axxa-header {
-  padding-top: max(40px, env(safe-area-inset-top, 40px)) !important;
-}
-
-/* Fallback @supports — :has() não funciona em alguns browsers velhos.
-   Vai pegar só body, mas ja resolve 90% dos casos */
-@supports not selector(html:has(*)) {
-  body.axxa-fullscreen-active {
-    /* Mesma regra acima, só pra dar redundância no fallback path */
-    background: var(--background-primary) !important;
-  }
 }
 
 /* === Z-index defensivo (v0.1.54) ===
@@ -271,93 +70,6 @@ body.is-mobile.axxa-fullscreen-active .axxa-header {
   position: relative;
   z-index: 0;
 }
-
-/* =====================================================
- * AXXA DEBUG OVERLAY (v0.1.70 - compactado)
- * Toggle: Settings → Outros → Geral → "Debug overlay"
- * Ou via JS: body.setAttribute('data-axxa-debug', '1')
- *
- * Destaca elementos Obsidian + AXXA com outline colorido.
- * Cada classe = uma cor pra identificacao visual rapida.
- * ===================================================== */
-
-/* Regras base compartilhadas pra todos labels do debug */
-body[data-axxa-debug] [class*="-debug-target"]::before,
-body[data-axxa-debug] .mobile-navbar::before,
-body[data-axxa-debug] .mobile-toolbar::before,
-body[data-axxa-debug] .workspace-drawer-footer::before,
-body[data-axxa-debug] .nav-buttons-container::before,
-body[data-axxa-debug] .status-bar::before,
-body[data-axxa-debug] .workspace-drawer-tab-options::before,
-body[data-axxa-debug] .titlebar::before,
-body[data-axxa-debug] .view-header::before,
-body[data-axxa-debug] .workspace-split.mod-root::before,
-body[data-axxa-debug] .workspace-ribbon::before,
-body[data-axxa-debug] .axxa-composer::before,
-body[data-axxa-debug] .axxa-header::before,
-body[data-axxa-debug] .axxa-composer-info::before {
-  position: absolute !important;
-  top: 0;
-  left: 0;
-  padding: 2px 6px !important;
-  font-size: 9px !important;
-  z-index: 99999 !important;
-  font-family: var(--font-monospace) !important;
-  color: var(--color-base-100) !important;
-}
-
-/* Cores por elemento (background do label + outline) */
-body[data-axxa-debug] .mobile-navbar { outline: 3px solid #ff3366 !important; outline-offset: -3px !important; }
-body[data-axxa-debug] .mobile-navbar::before { content: ".mobile-navbar" !important; background: #ff3366 !important; }
-
-body[data-axxa-debug] .mobile-toolbar { outline: 3px solid #ff9933 !important; }
-body[data-axxa-debug] .mobile-toolbar::before { content: ".mobile-toolbar" !important; background: #ff9933 !important; }
-
-body[data-axxa-debug] .workspace-drawer-footer { outline: 3px solid #ffff33 !important; }
-body[data-axxa-debug] .workspace-drawer-footer::before { content: ".workspace-drawer-footer" !important; background: #ffff33 !important; color: #000 !important; }
-
-body[data-axxa-debug] .nav-buttons-container { outline: 3px solid #33ff66 !important; }
-body[data-axxa-debug] .nav-buttons-container::before { content: ".nav-buttons-container" !important; background: #33ff66 !important; color: #000 !important; }
-
-body[data-axxa-debug] .status-bar { outline: 3px solid #33ccff !important; }
-body[data-axxa-debug] .status-bar::before { content: ".status-bar" !important; background: #33ccff !important; }
-
-body[data-axxa-debug] .workspace-drawer-tab-options { outline: 3px solid #cc33ff !important; }
-body[data-axxa-debug] .workspace-drawer-tab-options::before { content: ".workspace-drawer-tab-options" !important; background: #cc33ff !important; }
-
-body[data-axxa-debug] .titlebar { outline: 3px solid #ff33cc !important; }
-body[data-axxa-debug] .titlebar::before { content: ".titlebar" !important; background: #ff33cc !important; }
-
-body[data-axxa-debug] .view-header { outline: 3px solid #ff66cc !important; }
-body[data-axxa-debug] .view-header::before { content: ".view-header" !important; background: #ff66cc !important; }
-
-body[data-axxa-debug] .workspace-split.mod-root { outline: 3px dotted #00ff00 !important; }
-body[data-axxa-debug] .workspace-split.mod-root::before { content: ".workspace-split.mod-root" !important; background: #00ff00 !important; color: #000 !important; }
-
-body[data-axxa-debug] .workspace-ribbon { outline: 3px solid #aa00ff !important; }
-body[data-axxa-debug] .workspace-ribbon::before { content: ".workspace-ribbon" !important; background: #aa00ff !important; }
-
-/* Containers wrapper sem label (so outline) */
-body[data-axxa-debug] .workspace-drawer-inner { outline: 2px dashed #00cccc !important; }
-body[data-axxa-debug] .workspace-leaf { outline: 2px dashed #aaaa00 !important; }
-body[data-axxa-debug] .view-content { outline: 2px dashed #00aa55 !important; }
-body[data-axxa-debug] .view-header-title-container { outline: 3px dashed #ff9999 !important; }
-body[data-axxa-debug] .workspace-tabs { outline: 2px dashed #ffaa00 !important; }
-
-/* AXXA OS elementos (a barra que aparece e nao matchou nenhum Obsidian
-   provavelmente esta aqui — entao destacamos os AXXA tambem) */
-body[data-axxa-debug] .axxa-composer { outline: 3px solid #00ffff !important; outline-offset: -3px !important; }
-body[data-axxa-debug] .axxa-composer::before { content: ".axxa-composer" !important; background: #00ffff !important; color: #000 !important; }
-
-body[data-axxa-debug] .axxa-header { outline: 3px solid #ffcc00 !important; outline-offset: -3px !important; }
-body[data-axxa-debug] .axxa-header::before { content: ".axxa-header" !important; background: #ffcc00 !important; color: #000 !important; }
-
-body[data-axxa-debug] .axxa-composer-info { outline: 3px solid #ff00aa !important; outline-offset: -3px !important; }
-body[data-axxa-debug] .axxa-composer-info::before { content: ".axxa-composer-info" !important; background: #ff00aa !important; }
-
-body[data-axxa-debug] .axxa-back-to-bottom { outline: 3px solid #00cc88 !important; }
-body[data-axxa-debug] .axxa-chat-area-wrapper { outline: 2px dashed #cc6600 !important; }
-body[data-axxa-debug] .axxa-incompat-banner { outline: 3px solid #6600cc !important; }
 
 /* Drawer + teclado aberto → esconde header/tab options do drawer */
 body.is-mobile

@@ -42,9 +42,6 @@ export const PT_BR = {
     newChat: "Nova conversa",
     openSettings: "Configurações",
     conversations: "Conversas",
-    moreOptions: "Mais opções",
-    fullscreen: "Tela cheia (mobile)",
-    exitFullscreen: "Sair da tela cheia",
   },
 
   conversations: {
@@ -264,9 +261,6 @@ export const PT_BR = {
     generationPath: "Pasta de gerações",
     generationPathDesc:
       "Onde mídias geradas (imagem/áudio/vídeo) são salvas. Cada saída gera 2 arquivos: a mídia + sidecar .md com frontmatter (prompt, modelo, provider).",
-    debugOverlay: "Debug overlay",
-    debugOverlayDesc:
-      "Desenha outlines coloridos + labels em elementos do Obsidian/AXXA — útil pra investigar problemas de layout. Cada cor = uma classe diferente. Ativa direto na sidebar.",
     comingSoon: "Em breve",
     comingSoonItems: [
       "Audio recorder (mic) — Sprint E",

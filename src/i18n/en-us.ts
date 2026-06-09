@@ -42,9 +42,6 @@ export const EN_US: Translations = {
     newChat: "New conversation",
     openSettings: "Settings",
     conversations: "Conversations",
-    moreOptions: "More options",
-    fullscreen: "Full-screen (mobile)",
-    exitFullscreen: "Exit full-screen",
   },
 
   conversations: {
@@ -262,9 +259,6 @@ export const EN_US: Translations = {
     generationPath: "Generation folder",
     generationPathDesc:
       "Where generated media (image/audio/video) is saved. Each output creates 2 files: the media + a .md sidecar with frontmatter (prompt, model, provider).",
-    debugOverlay: "Debug overlay",
-    debugOverlayDesc:
-      "Draws colored outlines + labels on Obsidian/AXXA elements — useful for investigating layout issues. Each color = a different class. Applies directly in the sidebar.",
     comingSoon: "Coming soon",
     comingSoonItems: [
       "Audio recorder (mic) — Sprint E",

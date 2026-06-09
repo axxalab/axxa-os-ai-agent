@@ -68,65 +68,6 @@ function makeId(): string {
 }
 
 /**
- * Aplica/remove o modo fullscreen mobile.
- *
- * Adiciona/remove a class `axxa-fullscreen` no <body>. O CSS escopado em
- * `body.axxa-fullscreen.is-mobile` faz o resto (sidebar 100vw, esconde
- * tabs/headers nativos do Obsidian).
- *
- * Também atualiza `<meta name="theme-color">` pra que o OS pinte
- * a status bar e a nav bar nativa com `--background-primary` —
- * impressão de "true fullscreen" mesmo com a barra do sistema visível.
- */
-function applyMobileFullscreen(enabled: boolean): void {
-  const body = document.body;
-  body.classList.toggle("axxa-fullscreen", enabled);
-}
-
-/**
- * Atualiza o `<meta name="theme-color">` pra que o OS pinte a status bar
- * e a nav bar nativa com `--background-primary`.
- *
- * Independente de fullscreen — chamado sempre que AXXA monta em mobile,
- * pra que a area da OS nav bar (gesture handle OU 3-button nav) mostre
- * o mesmo bg do chat. Resultado: text-area parece edge-to-edge.
- *
- * `enabled=false` restaura o theme-color original (cleanup ao unmount).
- */
-function applyThemeColor(enabled: boolean): void {
-  let metaThemeColor = document.querySelector(
-    'meta[name="theme-color"]'
-  ) as HTMLMetaElement | null;
-  if (enabled) {
-    const cs = getComputedStyle(document.body);
-    const bg =
-      cs.getPropertyValue("--background-primary").trim() ||
-      cs.backgroundColor ||
-      "#000000";
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement("meta");
-      metaThemeColor.name = "theme-color";
-      document.head.appendChild(metaThemeColor);
-      metaThemeColor.setAttribute("data-axxa-managed", "true");
-    }
-    if (!metaThemeColor.getAttribute("data-axxa-original")) {
-      metaThemeColor.setAttribute(
-        "data-axxa-original",
-        metaThemeColor.content || ""
-      );
-    }
-    metaThemeColor.content = bg;
-  } else if (metaThemeColor?.getAttribute("data-axxa-managed") === "true") {
-    const original = metaThemeColor.getAttribute("data-axxa-original") || "";
-    if (original) {
-      metaThemeColor.content = original;
-    } else {
-      metaThemeColor.remove();
-    }
-  }
-}
-
-/**
  * Spec de activity para cada tool — define ícone Lucide + textos pending/done
  * que aparecem na timeline estilo Claude Code.
  *
@@ -271,34 +212,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     return unsub;
   }, [plugin]);
 
-  // Aplica o modo fullscreen mobile no mount + reapplica quando settings mudar.
-  // theme-color do OS = --background-primary APENAS quando fullscreen ativo
-  // (revertido em v0.1.62 — non-fullscreen mantem theme-color default
-  // do Obsidian, sem alterar OS nav bar).
-  useEffect(() => {
-    const enabled = plugin.settings.mobileFullscreen;
-    applyMobileFullscreen(enabled);
-    applyThemeColor(enabled);
-    return () => {
-      applyMobileFullscreen(false);
-      applyThemeColor(false);
-    };
-  }, [plugin.settings.mobileFullscreen]);
-
-  // Debug overlay — toggle via Settings → Outros → Geral.
-  // Aplica/remove o data-axxa-debug no body que ativa as regras CSS
-  // que desenham outlines coloridos + labels em elementos Obsidian.
-  useEffect(() => {
-    const body = document.body;
-    if (plugin.settings.debugOverlay) {
-      body.setAttribute("data-axxa-debug", "1");
-    } else {
-      body.removeAttribute("data-axxa-debug");
-    }
-    return () => {
-      body.removeAttribute("data-axxa-debug");
-    };
-  }, [plugin.settings.debugOverlay]);
+  // v0.1.72: removido fullscreen + theme-color + debug overlay.
+  // AXXA agora apenas HERDA o tema/layout nativo do Obsidian, sem mexer
+  // em elementos do host (nav bar, status bar, meta theme-color, etc.)
 
   // Lê traduções na hora — atualiza no próximo render (após forceRender acima)
   const t = getTranslations(plugin.settings.language);
@@ -1533,12 +1449,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onNewChat={handleNewChat}
             onOpenConversations={handleOpenConversations}
             onRenameChat={handleHeaderRename}
-            fullscreen={plugin.settings.mobileFullscreen}
-            onToggleFullscreen={async () => {
-              plugin.settings.mobileFullscreen = !plugin.settings.mobileFullscreen;
-              await plugin.saveSettings();
-              applyMobileFullscreen(plugin.settings.mobileFullscreen);
-            }}
           />
         {view === "conversations" ? (
           <ConversationsList
