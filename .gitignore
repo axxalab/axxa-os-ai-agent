@@ -30,3 +30,13 @@ yarn-error.log
 # Config do vault Obsidian de teste (não faz parte do plugin)
 .obsidian/
 
+# Docs internos de orientação / planejamento (NÃO fazem parte do repo público
+# nem da submissão ao Obsidian). Continuam no disco do dev, só saem do git.
+# README.md é público e fica tracked.
+ACTION-PLAN.md
+AGENTS.md
+DESIGN-SYSTEM.md
+MASTER-PLAN.md
+PROMPT-MESTRE.md
+VIABILIDADE-FINANCEIRA.md
+

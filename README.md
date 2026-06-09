@@ -1,628 +1,224 @@
 # AXXA OS — AI Agent
-## Estrutura Completa do Projeto | Plugin Obsidian
 
-> **Versão do Documento:** 1.0  
-> **Status:** Pré-desenvolvimento — Aprovação e Alinhamento  
-> **Stack:** TypeScript · Obsidian Plugin API · esbuild · React (UI interna)
+> **Your AI workspace, native to Obsidian.** Chat, ask your vault, and let an agent act on your notes — across 6 LLM providers, with your own API keys. Mobile-first.
+
+[![Version](https://img.shields.io/badge/version-0.1.89-6c5ce7)](manifest.json)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Obsidian](https://img.shields.io/badge/Obsidian-1.4.0%2B-7c3aed)](https://obsidian.md)
+[![Mobile](https://img.shields.io/badge/mobile-supported-success)](#)
+
+AXXA OS — AI Agent turns Obsidian into a full AI workspace. It feels like a native feature, not a bolted-on panel: a chat lives in the right sidebar (a drawer on mobile), talks to the model of your choice, and — when you let it — reads, searches, and edits the notes in your vault. Bring your own keys, pick any of six providers, and keep every conversation as plain Markdown inside your vault.
+
+> 🇧🇷 **Versão em português** mais abaixo → [Pular para PT-BR](#-axxa-os--ai-agent-português).
 
 ---
 
-## 1. VISÃO GERAL
+## ✨ Highlights
 
-**AXXA OS** é um ecossistema operacional para gestão da vida. O **AI Agent** é o core desse sistema — um plugin nativo para Obsidian que traz um assistente de IA completo diretamente integrado ao Vault, com modos de operação distintos, gestão de arquivos, memória contextual e expansão via MCP.
+- **4 modes, one panel** — Chat, Vault Q&A (RAG over your notes), Agent (tool-calling on your files), and Coder *(in development)*.
+- **6 providers, bring your own key** — OpenAI, Anthropic (Claude), Google Gemini, OpenRouter, Nvidia NIM, and local Ollama. Switch freely; your keys never leave your device.
+- **Talk to your vault** — local semantic search (RAG) with hybrid keyword + vector ranking and wikilink-graph awareness. 8 embedding models across 4 providers, including free options.
+- **An agent that acts** — create, read, edit, move, and delete notes through a safe, permissioned tool layer. Destructive actions always ask first.
+- **Image generation** — generate images right in the chat (OpenAI & Gemini) and save them into your vault with metadata sidecars.
+- **Real cost tracking** — a Usage dashboard estimates spend in USD per provider, model, mode, and day, with PDF / Markdown / HTML export.
+- **Everything is Markdown** — chats, generated media, and skills are saved as `.md` files in your vault. Portable, versionable, yours.
+- **Mobile-first** — built for the Obsidian mobile drawer first: edge-to-edge composer, hold-to-record audio, haptics, keyboard-aware layout, screen wake-lock during generation.
+- **Bilingual UI** — Portuguese (BR) and English, auto-detected from your locale.
 
-### Identidade do Produto
+> 📸 *Screenshots coming soon — desktop sidebar + mobile drawer.*
 
-| Atributo | Valor |
+---
+
+## 🚀 Installation
+
+### From Obsidian (recommended, once published)
+
+1. Open **Settings → Community plugins**.
+2. Make sure **Restricted mode** is off.
+3. Click **Browse**, search for **AXXA OS — AI Agent**, and install.
+4. **Enable** the plugin. Open it from the ribbon icon or the command palette (**"AXXA OS: Open"**).
+
+### Manual installation
+
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](../../releases).
+2. Copy them into your vault at `<vault>/.obsidian/plugins/axxa-os-ai-agent/`.
+3. Reload Obsidian and enable the plugin in **Settings → Community plugins**.
+
+> **Requires** Obsidian **1.4.0+**. Works on desktop and mobile.
+
+---
+
+## ⚡ Quick start
+
+1. Open the plugin and go to **Settings → Providers**.
+2. Pick a provider and paste your API key (see the [provider table](#-providers) for where to get one). Ollama needs only a local endpoint — no key.
+3. Open a new chat: choose **provider → model → mode → effort** on the starter screen.
+4. Type and send. Your conversation is saved automatically as Markdown in your vault.
+
+That's it. The first message **locks** the provider, model, and mode for that conversation, so a chat stays consistent end-to-end. New settings apply to new chats.
+
+---
+
+## 🧠 The four modes
+
+| Mode | What it does |
 |---|---|
-| Nome Público | AXXA OS — AI Agent |
-| ID do Plugin | `axxa-os-ai-agent` |
-| Plataforma | Obsidian Community Plugins |
-| Modelo de Negócio | Free + Premium (Stripe) |
-| Target | Mobile First (iOS/Android), Desktop compatível |
-| Filosofia de UI | Native Obsidian feel — como se fosse feature nativa |
+| **Chat** | Classic conversational AI with streaming responses, Markdown rendering, and code blocks with copy buttons. No vault access. |
+| **Vault Q&A** | Retrieval-augmented chat grounded in *your* notes. Local semantic search finds the relevant passages and feeds them to the model as context. |
+| **Agent** | The model can use tools to act on your vault — search, list, read, create, edit, move, delete files and folders — under a permission system with confirmations for destructive actions. |
+| **Coder** *(in development)* | A code-focused agent with diff previews before applying edits. Reuses the Agent's tool + permission layer. |
 
 ---
 
-## 2. PROVIDERS SUPORTADOS
+## 🔌 Providers
 
-### Alpha (v0.1)
-| Provider | Tipo | Auth |
+All providers use **BYOK** (bring your own key). You only need a key for the provider(s) you actually use.
+
+| Provider | Type | Get a key |
 |---|---|---|
-| OpenAI | Cloud | BYOK (API Key) |
-| Anthropic | Cloud | BYOK (API Key) |
-| OpenRouter | Cloud Proxy | BYOK (API Key) |
-| Ollama / LLaMA | Local | Endpoint configurável |
+| **OpenAI** | Cloud | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| **Anthropic (Claude)** | Cloud | [console.anthropic.com](https://console.anthropic.com/) |
+| **Google Gemini** | Cloud | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| **OpenRouter** | Cloud proxy (many models) | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| **Nvidia NIM** | Cloud | [build.nvidia.com](https://build.nvidia.com/) |
+| **Ollama** | Local (no key) | [ollama.com](https://ollama.com/) — set your local endpoint in Settings |
 
-### Futuro (v0.3+)
-- Google Gemini
-- Groq
-- Azure OpenAI
-- Cohere
-
-### Regra de Sessão
-Uma vez iniciado o chat, **provider, modelo, modo e effort ficam travados** para aquela sessão. Mudanças só se aplicam a novos chats.
+Each provider's model list can be fetched live from its API, and the UI shows per-model capability badges (vision, tools, streaming, free tier, image/audio/video generation) so you always know what a model can do in a given mode. An **incompatibility banner** warns you (and suggests a swap) if a model can't do what the current mode needs.
 
 ---
 
-## 3. MODOS DE OPERAÇÃO
+## 🔎 Vault Q&A & RAG
 
-### 3.1 CHAT
-- Conversacional clássico
-- Sem acesso ao Vault por padrão
-- Histórico persistido como `.md` em `.axxa/chats/`
+AXXA builds a **local** semantic index of your vault — nothing is uploaded except the text sent to your chosen embedding API.
 
-### 3.2 VAULT Q&A
-- RAG local com indexação vetorial do Vault
-- **Stack de indexação:** LanceDB (embutido, zero-config)
-- Suporte a: Notes, PDFs (texto), imagens (metadados), áudio (metadados)
-- Reindexação incremental automática ao detectar mudanças no Vault
-- Pastas indexadas configuráveis nas Settings (com search vinculado às pastas existentes)
-
-### 3.3 AGENT
-- Acesso semântico a qualquer tema de arquivo no Vault
-- Operações: criar, editar, mover, renomear, deletar arquivos e pastas
-- Governado pelo sistema de permissões `/permissions`
-- Confirmações inline antes de ações destrutivas (conforme nível)
-
-### 3.4 CODER
-- Acesso restrito a arquivos de código (`.js`, `.ts`, `.py`, `.css`, `.json`, etc.)
-- Mesmo sistema de permissões do AGENT
-- Syntax highlighting no output
-- Diff preview antes de aplicar edições
+- **8 embedding models** across **4 providers**: OpenAI (`text-embedding-3-small/large`, `ada-002`), Gemini (`gemini-embedding-001`, `text-embedding-004`), Nvidia NIM (`nv-embedqa-e5-v5`, `llama-3.2-nv-embedqa-1b-v2`), and OpenRouter's free multimodal Nemotron VL — so you can run RAG even without a paid key.
+- **Hybrid search** combines semantic similarity with keyword (BM25) ranking, then re-ranks using your vault's wikilink graph.
+- **Structural chunking** preserves heading breadcrumbs and note context (title, tags, aliases, links).
+- **Selectable quantization** (precision → minimal) trades index size for memory, the same way Effort trades depth for speed.
+- **Incremental indexing** re-embeds only changed files (detected by hash) and is mobile-safe — it won't blow up memory on phones.
 
 ---
 
-## 4. SISTEMA DE PERMISSÕES
+## 🛠️ Agent mode & safety
 
-Inspirado no modelo Claude Code / Codex. Três níveis:
+The Agent can operate on your vault through a small, explicit set of tools: `vault_search`, `vault_list`, `vault_read`, `vault_create`, `vault_edit`, `vault_move`, `vault_delete`, and `vault_create_folder`.
 
-```
-/permissions basic   → Pede confirmação para cada ação (padrão)
-/permissions vault   → Leitura e escrita livre no Vault (sem confirmações)
-/permissions yolo    → Acesso total, incluindo arquivos ocultos e dotfiles (.)
-```
+Three permission levels control how much it can do without asking:
 
-### Escopo de Configuração
-- **Global:** configurável nas Obsidian Settings do plugin
-- **Por sessão:** via comando `/permissions [nível]` no chat
-- **Log de ações:** cada operação de escrita/deleção é registrada em `.axxa/logs/agent.md`
+- **Ask** — confirm every action that changes files *(default, safest)*.
+- **Vault** — auto-approve create/edit/move; still confirm deletes.
+- **YOLO** — auto-approve everything *except* irreversible deletes, which **always** ask.
+
+All file paths are sandboxed (no path traversal), and a confirmation dialog shows you exactly what the agent wants to do before any destructive change.
 
 ---
 
-## 5. SISTEMA DE ÁUDIO
+## 💸 Usage & cost tracking
 
-| Função | Solução |
+A built-in **Usage** dashboard reads your saved chats and estimates real spend in **USD**, broken down by provider, model, mode, and day (with a 30-day heatmap). Export the report as **PDF, Markdown, or HTML**. Token counts are tracked live during streaming, including tokens/second.
+
+---
+
+## 🎚️ Effort
+
+A single **Effort** selector (Low → Max) scales how hard the model works: max tokens, agent turn limits, temperature, parallel tool calls, retry behavior, and how much of your vault gets pulled into context. Every parameter is tunable per level in Settings.
+
+---
+
+## 🔐 Privacy & network use
+
+AXXA OS — AI Agent is **bring-your-own-key** and stores everything locally. Specifically:
+
+- **Your API keys** are stored locally in the plugin's data file inside your vault (`.obsidian/plugins/axxa-os-ai-agent/data.json`) and are sent **only** to the corresponding provider's official API endpoint. If you use Obsidian Sync or back up your vault, treat that file as a secret. *(Migration to Obsidian's OS-level secret storage is planned.)*
+- **Network requests** are made **only** to the LLM/embedding/image provider you choose (OpenAI, Anthropic, Google, OpenRouter, Nvidia, or your local Ollama), to send your prompts and vault context and stream back responses.
+- **Vault content** leaves your device only as part of the prompts/embeddings you explicitly send to your chosen provider. The semantic index itself is stored locally in your vault.
+- **No telemetry, no analytics, no tracking.** AXXA does not phone home.
+- **Chats, generated media, and settings** are saved as plain files inside your vault.
+
+When you use a third-party provider, your data is subject to **that provider's** terms and privacy policy. Review them before sending sensitive content.
+
+---
+
+## 🗺️ Roadmap
+
+- **Now:** validation & stabilization across all 6 providers; real screenshots.
+- **Next:** Coder mode with diff previews; Skills (custom system prompts as `.md`); Projects (link chats to `[[projects]]`); Whisper audio transcription.
+- **Later:** MCP connectors (Notion, Linear, GitHub, …); optional Premium (cross-device sync, automatic media transcription).
+
+---
+
+## 💜 Support
+
+If AXXA OS — AI Agent helps your workflow, consider [supporting development](https://axxa.lab/support). Built by **Axxa Lab**.
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) © 2026 Axxa Lab.
+
+---
+---
+
+# 🇧🇷 AXXA OS — AI Agent (Português)
+
+> **Seu workspace de IA, nativo no Obsidian.** Converse, pergunte ao seu vault e deixe um agente agir nas suas notas — em 6 provedores de LLM, com suas próprias chaves. Mobile-first.
+
+O AXXA OS — AI Agent transforma o Obsidian num workspace de IA completo. Parece uma feature nativa, não um painel colado: o chat fica na sidebar direita (drawer no mobile), fala com o modelo que você escolher e — quando você permite — lê, busca e edita as notas do seu vault. Use suas próprias chaves, escolha entre seis provedores, e guarde cada conversa como Markdown puro dentro do vault.
+
+## ✨ Destaques
+
+- **4 modos, um painel** — Chat, Vault Q&A (RAG sobre suas notas), Agente (tool-calling nos seus arquivos) e Coder *(em desenvolvimento)*.
+- **6 provedores, com sua própria chave** — OpenAI, Anthropic (Claude), Google Gemini, OpenRouter, Nvidia NIM e Ollama local. Troque à vontade; suas chaves não saem do seu aparelho.
+- **Converse com o vault** — busca semântica local (RAG) com ranqueamento híbrido (palavra-chave + vetor) e consciência do grafo de wikilinks. 8 modelos de embedding em 4 provedores, incluindo opções gratuitas.
+- **Um agente que age** — criar, ler, editar, mover e deletar notas por uma camada de ferramentas com permissões. Ações destrutivas sempre pedem confirmação.
+- **Geração de imagem** — gere imagens direto no chat (OpenAI e Gemini) e salve no vault com metadados.
+- **Controle de custo real** — painel de Uso estima o gasto em USD por provedor, modelo, modo e dia, com export em PDF / Markdown / HTML.
+- **Tudo é Markdown** — conversas, mídia gerada e skills viram arquivos `.md` no seu vault. Portátil, versionável, seu.
+- **Mobile-first** — feito pro drawer do Obsidian mobile primeiro: composer edge-to-edge, gravação de áudio segurando, háptico, layout que respeita o teclado, wake-lock de tela durante a geração.
+- **Interface bilíngue** — Português (BR) e Inglês, detectados pelo locale.
+
+## 🚀 Instalação
+
+**Pela loja do Obsidian (recomendado, após publicação):** Settings → Community plugins → Browse → busque **AXXA OS — AI Agent** → Install → Enable.
+
+**Manual:** baixe `main.js`, `manifest.json` e `styles.css` da [última release](../../releases) e copie pra `<vault>/.obsidian/plugins/axxa-os-ai-agent/`. Recarregue o Obsidian e ative o plugin.
+
+> **Requer** Obsidian **1.4.0+**. Funciona em desktop e mobile.
+
+## ⚡ Começo rápido
+
+1. Abra o plugin e vá em **Settings → Providers**.
+2. Escolha um provedor e cole sua chave de API (veja a [tabela de provedores](#-providers) pra onde gerar). Ollama precisa só de um endpoint local — sem chave.
+3. Abra um chat novo: escolha **provedor → modelo → modo → effort** na tela inicial.
+4. Digite e envie. A conversa é salva automaticamente como Markdown no seu vault.
+
+A primeira mensagem **trava** provedor, modelo e modo daquela conversa, mantendo o chat consistente do início ao fim. Configurações novas valem pra chats novos.
+
+## 🧠 Os quatro modos
+
+| Modo | O que faz |
 |---|---|
-| Transcrição (STT) | **Whisper** (OpenAI) — default |
-| Fallback local | **Whisper.cpp / local TTS** |
-| Input | Gravar áudio direto no campo de texto |
-| Output | Text-to-speech (futuro) |
-| Configuração | Painel dedicado em Settings → Audio |
+| **Chat** | IA conversacional clássica com respostas em streaming, render de Markdown e blocos de código com botão de copiar. Sem acesso ao vault. |
+| **Vault Q&A** | Chat com RAG ancorado nas *suas* notas. A busca semântica local encontra os trechos relevantes e os passa ao modelo como contexto. |
+| **Agente** | O modelo usa ferramentas pra agir no vault — buscar, listar, ler, criar, editar, mover, deletar arquivos e pastas — sob um sistema de permissões com confirmação pra ações destrutivas. |
+| **Coder** *(em desenvolvimento)* | Agente focado em código, com preview de diff antes de aplicar. Reusa a camada de ferramentas e permissões do Agente. |
+
+## 🔐 Privacidade & uso de rede
+
+O AXXA é **BYOK** (suas próprias chaves) e guarda tudo localmente:
+
+- **Suas chaves** ficam salvas localmente no arquivo de dados do plugin dentro do seu vault (`.obsidian/plugins/axxa-os-ai-agent/data.json`) e são enviadas **apenas** pra API oficial do provedor correspondente. Se você usa Obsidian Sync ou faz backup do vault, trate esse arquivo como segredo. *(Migração pro armazenamento seguro do SO está planejada.)*
+- **Requisições de rede** acontecem **só** com o provedor que você escolher (OpenAI, Anthropic, Google, OpenRouter, Nvidia ou seu Ollama local), pra mandar seus prompts/contexto e receber as respostas.
+- **Conteúdo do vault** sai do aparelho apenas como parte dos prompts/embeddings que você explicitamente envia. O índice semântico fica salvo localmente no vault.
+- **Sem telemetria, sem analytics, sem rastreio.** O AXXA não "liga pra casa".
+
+Ao usar um provedor terceiro, seus dados ficam sujeitos aos termos e à política de privacidade **daquele provedor**. Revise antes de enviar conteúdo sensível.
+
+## 📄 Licença
+
+[MIT](LICENSE) © 2026 Axxa Lab.
 
 ---
 
-## 6. MEDIA INDEX
-
-| Tipo | Alpha | Premium Futuro |
-|---|---|---|
-| Notes (.md) | ✅ Indexado + RAG | — |
-| Folders | ✅ Estrutura mapeada | — |
-| Text files | ✅ Indexado | — |
-| Images | ✅ Referência/metadados | 🔒 OCR + análise visual |
-| Videos | ✅ Referência (título, path, duração) | 🔒 Transcrição automática |
-| Áudio | ✅ Referência (título, path, duração) | 🔒 Transcrição automática |
-
----
-
-## 7. EFFORT SELECTOR
-
-Mapeamento de temperatura e profundidade de raciocínio:
-
-| Nível | Descrição | Tokens Aprox. |
-|---|---|---|
-| Low | Rápido, direto | ~500 |
-| Med | Balanceado | ~1.500 |
-| High | Detalhado | ~4.000 |
-| xHigh | Aprofundado, multi-etapas | ~8.000 |
-| Max | Exaustivo, reasoning completo | ~16.000+ |
-
----
-
-## 8. UI / UX — INTERFACE PRINCIPAL
-
-### 8.1 Posicionamento
-- **Sempre na sidebar direita** (desktop e mobile)
-- Mobile: abre como **drawer lateral** — toda a gestão do frontend do plugin acontece nesse drawer
-- Detecção automática de mobile/desktop para adaptar comportamentos
-
-### 8.2 Layout Principal (ChatGPT Composer Style)
-
-```
-┌─────────────────────────────────┐
-│  [AXXA OS] ⚡ Model • Mode      │  ← Header com status
-├─────────────────────────────────┤
-│                                 │
-│   Área de mensagens             │
-│   (scrollable, WhatsApp-like)   │
-│                                 │
-│   [Hoje, 14:32] ─────────       │  ← Day separators
-│                                 │
-│   ┌──────────────────────┐      │
-│   │ Mensagem do usuário  │      │  ← Balloons (resizable)
-│   └──────────────────────┘      │
-│                                 │
-│   ┌──────────────────────┐      │
-│   │ Resposta do AI       │      │
-│   └──────────────────────┘      │
-│                                 │
-├─────────────────────────────────┤
-│ [Status] model • mode • tokens  │  ← Status line
-├─────────────────────────────────┤
-│  📎  [  Campo de texto...  ] 🎤 │  ← Composer
-│                          [Send] │
-└─────────────────────────────────┘
-```
-
-### 8.3 Composer (campo de texto)
-- Igual ao ChatGPT em comportamento e feel
-- Expande verticalmente conforme o texto cresce
-- Shift+Enter = nova linha / Enter = enviar
-- Botão 📎 = attach (arquivos do Vault ou upload)
-- Botão 🎤 = gravar áudio (hold-to-record, igual WhatsApp)
-- Botão ▶ = enviar (muda para stop durante geração)
-
-### 8.4 Mensagens
-- Balloons resizáveis
-- Long press / hover = menu de ações (copiar, favoritar ⭐, reenviar, deletar)
-- Day separators automáticos ("Hoje", "Ontem", "dd/mm")
-- Markdown renderizado no output do AI
-- Code blocks com syntax highlight e botão de copy
-
-### 8.5 Status Line
-Localização: **dentro do plugin, logo acima ou abaixo do composer** (estilo GPT Codex)
-
-```
-● Connected | claude-opus-4 | Agent | 42k/128k ctx | 1,234 tokens used
-```
-
-### 8.6 Backgrounds
-- Configurável: cor sólida, gradiente suave, ou textura (respeitando o tema Obsidian ativo)
-- CSS variables para não quebrar temas como Minimal
-
----
-
-## 9. ESTRUTURA DE PASTAS DO VAULT (Default)
-
-```
-📁 .axxa/                          ← Pasta raiz do plugin (oculta)
-├── 📁 chats/                      ← Histórico de conversas
-│   ├── 2025-06-05-chat-001.md
-│   └── 2025-06-05-qa-002.md
-├── 📁 projects/                   ← Projetos vinculados a chats
-│   └── [project-name]/
-├── 📁 skills/                     ← Skills criadas pelo usuário
-│   ├── revisor-de-texto.md
-│   └── programador-python.md
-├── 📁 logs/                       ← Logs de operações do Agent
-│   └── agent.md
-├── 📁 exports/                    ← Skills exportadas
-├── 📁 index/                      ← Index vetorial (LanceDB)
-│   └── vault.lancedb
-└── 📄 permissions.md              ← Arquivo de permissões da sessão
-```
-
-> **Todos os paths são configuráveis nas Settings.** O search de pastas é vinculado às pastas existentes no Vault para facilitar a seleção.
-
----
-
-## 10. FORMATO DOS CHATS SALVOS
-
-Cada output/conversa gera um `.md` com frontmatter estruturado:
-
-```yaml
----
-title: "Conversa sobre arquitetura do plugin"
-date: 2025-06-05T14:32:00
-mode: agent
-provider: anthropic
-model: claude-opus-4-6
-effort: high
-projects:
-  - "[[AXXA OS]]"
-tags:
-  - axxa-chat
-  - agent
-  - architecture
-favorite: false
-tokens_used: 2847
----
-```
-
----
-
-## 11. SKILL MANAGEMENT
-
-### O que é uma Skill
-Uma skill é um **system prompt customizado** com metadados, que define comportamento, tom e capacidades do modelo para um contexto específico.
-
-### Estrutura de uma Skill (.md)
-
-```yaml
----
-skill-name: "Revisor de Texto PT-BR"
-description: "Revisa textos em português com foco em clareza e coesão"
-mode: chat
-provider: any
-language: pt-br
-version: 1.0
-tags: [escrita, revisão, português]
----
-
-Você é um revisor de textos especializado...
-[conteúdo do system prompt]
-```
-
-### Interface de Skills
-- Tela própria dentro de **Settings → Skills**
-- CRUD completo (criar, editar, duplicar, deletar)
-- Import/Export em `.md` ou `.html`
-- Preview do system prompt
-- Vincular skill a um modo específico
-
----
-
-## 12. PROJECT MANAGEMENT
-
-- **Cada chat pode ser vinculado a múltiplos projetos**
-- Projetos são identificados como wikilinks `[[Nome do Projeto]]` no frontmatter
-- No chat, comando `/project [nome]` vincula o chat ao projeto
-- A pasta do projeto no Vault pode ser indexada automaticamente ao vincular
-- View "Last Chats" mostra histórico filtrado por projeto
-
----
-
-## 13. MCP CONNECT (v0.2 — Primeiro Update Pós-Alpha)
-
-### Integrações Planejadas
-| Serviço | Read | Write |
-|---|---|---|
-| Notion | ✅ | ✅ |
-| ClickUp | ✅ | ✅ |
-| Figma | ✅ | ✅ |
-| Google Drive | ✅ | ✅ |
-| Linear | ✅ | ✅ |
-| GitHub | ✅ | ✅ |
-
-### Modelo de Autenticação
-- OAuth por serviço, tokens armazenados no Obsidian keystore
-- Configurado em **Settings → Integrations**
-- Por sessão, o usuário pode habilitar/desabilitar integrações
-
----
-
-## 14. MULTILANGUAGE
-
-- PT-BR (default para AXXA)
-- EN-US
-- Detecção automática pelo locale do sistema
-- Override manual nas Settings
-
----
-
-## 15. PREMIUM / STRIPE
-
-### Free (Community)
-- Todos os modos (CHAT, Q&A, AGENT, CODER)
-- BYOK todos os providers listados
-- Skills ilimitadas
-- Histórico ilimitado local
-- Media Index (referência)
-
-### Premium (via Stripe)
-- Login with Google (sync entre devices)
-- Media transcrição automática (vídeo/áudio)
-- Priority support
-- [Reservado para futuras features]
-
-### Modelo de Auth
-- Stripe Checkout para pagamento
-- Login with Google (OAuth) para sessão
-- Token JWT armazenado no plugin
-- Verificação de licença no startup
-
----
-
-## 16. OBSIDIAN SETTINGS (Painel Oficial)
-
-Dentro de **Obsidian → Settings → Community Plugins → AXXA OS AI Agent:**
-
-```
-AXXA OS — AI Agent Settings
-├── 🔑 API Keys & Providers
-│   ├── OpenAI API Key
-│   ├── Anthropic API Key
-│   ├── OpenRouter API Key
-│   └── Ollama Endpoint
-│
-├── 🎯 Default Preferences
-│   ├── Default Provider
-│   ├── Default Model
-│   ├── Default Mode
-│   ├── Default Effort
-│   └── Default Language
-│
-├── 📁 Vault Storage
-│   ├── Chats Folder Path [search picker]
-│   ├── Skills Folder Path [search picker]
-│   ├── Projects Folder Path [search picker]
-│   └── Logs Folder Path [search picker]
-│
-├── 🔒 Permissions
-│   └── Default Permission Level [basic/vault/yolo]
-│
-├── 🎤 Audio
-│   ├── STT Provider [Whisper / Local / Custom]
-│   └── Whisper API Key (se diferente do OpenAI principal)
-│
-├── 🎨 Appearance
-│   ├── Chat Background
-│   ├── Message Balloon Style
-│   └── Status Line Position
-│
-├── 🧠 Skills
-│   └── [Gerenciar Skills →]
-│
-├── 🔌 Integrations (MCP)
-│   └── [Configurar Integrações →]
-│
-└── 👤 Account
-    ├── Login with Google
-    └── Subscription Status
-```
-
----
-
-## 17. STACK TÉCNICA
-
-### Core
-| Camada | Tecnologia |
-|---|---|
-| Linguagem | TypeScript 5.x |
-| Build | esbuild (template oficial Obsidian) |
-| API Base | Obsidian Plugin API (ItemView, WorkspaceLeaf) |
-| UI Interna | React 18 + CSS Modules |
-| State | Zustand |
-| Indexação | LanceDB (embutido) |
-| Embeddings | OpenAI text-embedding-3-small / Ollama local |
-
-### AI / LLM
-| Camada | Tecnologia |
-|---|---|
-| HTTP Client | Fetch nativo (sem axios) |
-| Streaming | SSE (Server-Sent Events) |
-| Providers | OpenAI SDK compatível para todos |
-| Audio STT | Whisper API / Whisper.cpp |
-
-### Storage / Persistência
-| Camada | Tecnologia |
-|---|---|
-| Dados do plugin | `plugin.loadData()` / `plugin.saveData()` (Obsidian nativo) |
-| Chats | `.md` files no Vault |
-| Skills | `.md` files no Vault |
-| Vetores | LanceDB local no `.axxa/index/` |
-| Secrets | Obsidian SecretStorage API |
-
-### Premium / Auth
-| Camada | Tecnologia |
-|---|---|
-| Pagamento | Stripe Checkout (link externo) |
-| Auth | Google OAuth 2.0 |
-| Backend mínimo | Supabase (auth + license validation) |
-| Token | JWT verificado no plugin startup |
-
----
-
-## 18. ESTRUTURA DE ARQUIVOS DO PLUGIN
-
-```
-axxa-os-ai-agent/
-├── src/
-│   ├── main.ts                    ← Entry point (extends Plugin)
-│   ├── views/
-│   │   ├── AxxaView.ts            ← ItemView principal (sidebar)
-│   │   └── AxxaView.tsx           ← React root do panel
-│   │
-│   ├── components/
-│   │   ├── ChatPanel/
-│   │   │   ├── ChatPanel.tsx
-│   │   │   ├── MessageList.tsx
-│   │   │   ├── MessageBubble.tsx
-│   │   │   ├── DaySeparator.tsx
-│   │   │   └── FavoriteBar.tsx
-│   │   ├── Composer/
-│   │   │   ├── Composer.tsx
-│   │   │   ├── AttachButton.tsx
-│   │   │   ├── AudioRecorder.tsx
-│   │   │   └── SendButton.tsx
-│   │   ├── StatusLine/
-│   │   │   └── StatusLine.tsx
-│   │   ├── ModeSelector/
-│   │   │   └── ModeSelector.tsx
-│   │   ├── SkillsManager/
-│   │   │   └── SkillsManager.tsx
-│   │   └── SettingsTab/
-│   │       └── AxxaSettingsTab.ts  ← Obsidian PluginSettingTab
-│   │
-│   ├── providers/
-│   │   ├── index.ts
-│   │   ├── openai.ts
-│   │   ├── anthropic.ts
-│   │   ├── openrouter.ts
-│   │   └── ollama.ts
-│   │
-│   ├── modes/
-│   │   ├── chat.ts
-│   │   ├── vaultQA.ts
-│   │   ├── agent.ts
-│   │   └── coder.ts
-│   │
-│   ├── vault/
-│   │   ├── VaultManager.ts        ← CRUD de arquivos
-│   │   ├── VaultIndexer.ts        ← LanceDB indexing
-│   │   ├── PermissionsManager.ts  ← /permissions logic
-│   │   └── ProjectLinker.ts       ← Frontmatter + wikilinks
-│   │
-│   ├── skills/
-│   │   ├── SkillsManager.ts
-│   │   └── SkillParser.ts
-│   │
-│   ├── audio/
-│   │   ├── AudioRecorder.ts
-│   │   └── WhisperSTT.ts
-│   │
-│   ├── auth/
-│   │   ├── StripeAuth.ts
-│   │   └── GoogleAuth.ts
-│   │
-│   ├── store/
-│   │   ├── chatStore.ts           ← Zustand
-│   │   ├── settingsStore.ts
-│   │   └── sessionStore.ts
-│   │
-│   ├── types/
-│   │   ├── index.ts
-│   │   ├── providers.ts
-│   │   ├── messages.ts
-│   │   └── skills.ts
-│   │
-│   └── utils/
-│       ├── formatters.ts
-│       ├── markdown.ts
-│       └── mobile.ts              ← Mobile detection helpers
-│
-├── styles/
-│   └── main.css                   ← CSS variables, respeita tema Obsidian
-│
-├── manifest.json
-├── package.json
-├── tsconfig.json
-├── esbuild.config.mjs
-└── AGENTS.md                      ← Instructions para AI coding agents
-```
-
----
-
-## 19. ROADMAP DE DESENVOLVIMENTO
-
-### 🔴 ALPHA — v0.1 (MVP)
-**Objetivo:** Plugin funcional e publicável no Community Plugins
-
-| Feature | Prioridade |
-|---|---|
-| Sidebar view (ItemView) — desktop + mobile drawer | 🔴 P0 |
-| Chat mode com OpenAI | 🔴 P0 |
-| Streaming de respostas | 🔴 P0 |
-| Salvar chats como .md no Vault | 🔴 P0 |
-| Settings básico (API key, provider, model) | 🔴 P0 |
-| Chat mode com Anthropic | 🔴 P0 |
-| Chat mode com OpenRouter | 🔴 P1 |
-| Chat mode com Ollama local | 🔴 P1 |
-| Effort selector (Low → Max) | 🔴 P1 |
-| Status line | 🔴 P1 |
-| Day separators no chat | 🔴 P1 |
-| Composer estilo GPT (resize, enter/shift) | 🔴 P1 |
-| Markdown rendering no output | 🔴 P1 |
-| Mensagens favoritas ⭐ | 🔴 P2 |
-| Last chats view | 🔴 P2 |
-| Vault Q&A básico (context stuffing) | 🔴 P2 |
-| Background configurável | 🔴 P2 |
-| Multilanguage PT-BR/EN | 🔴 P2 |
-
-### 🟡 v0.2 — Primeiro Update Pós-Alpha
-| Feature | Prioridade |
-|---|---|
-| AGENT mode completo | 🟡 |
-| CODER mode completo | 🟡 |
-| Sistema de permissões `/permissions` | 🟡 |
-| Vault Q&A com LanceDB (RAG real) | 🟡 |
-| Skills management (UI + CRUD) | 🟡 |
-| Audio record + Whisper STT | 🟡 |
-| Project management + wikilinks | 🟡 |
-| MCP Connect (Notion + ClickUp) | 🟡 |
-| Attach files do Vault | 🟡 |
-| Log de ações do agent | 🟡 |
-
-### 🟢 v0.3 — Features Avançadas
-| Feature | Prioridade |
-|---|---|
-| MCP Connect (Figma + Google Drive + GitHub) | 🟢 |
-| Premium / Stripe / Google Login | 🟢 |
-| Media Index (transcrição vídeo/áudio) | 🟢 |
-| Skills import/export | 🟢 |
-| Reindexação incremental automática | 🟢 |
-| Mobile UX polish completo | 🟢 |
-| Themes (WhatsApp bg, etc.) | 🟢 |
-
-### 🔵 v1.0 — Release Público
-| Feature | Prioridade |
-|---|---|
-| Compatibilidade verificada com top 20 plugins | 🔵 |
-| Plugin review scorecard Obsidian limpo | 🔵 |
-| Documentação completa | 🔵 |
-| Site de landing AXXA OS | 🔵 |
-| Changelog público | 🔵 |
-
----
-
-## 20. REGRAS DE DESENVOLVIMENTO (para o Vibe Coding com Claude)
-
-1. **Sempre basear no template oficial** `obsidianmd/obsidian-sample-plugin`
-2. **Não usar axios** — fetch nativo apenas
-3. **Não usar React fora da UI interna** — lógica de Vault usa API Obsidian pura
-4. **CSS Variables obrigatório** — usar `var(--background-primary)`, `var(--text-normal)`, etc. do tema ativo
-5. **Mobile first** — testar todo componente no contexto de drawer antes do desktop
-6. **Nunca usar `eval()` ou `innerHTML` direto** — requisito do plugin review
-7. **Secrets sempre via `SecretStorage`** — nunca em `localStorage`
-8. **Sem dependências externas desnecessárias** — bundle size é crítico para Obsidian mobile
-9. **AGENTS.md na raiz** — instruções para qualquer AI agent que trabalhar no projeto
-10. **Commits semânticos** — `feat:`, `fix:`, `refactor:`, `docs:` etc.
-
----
-
-## 21. MANIFEST.JSON (Base)
-
-```json
-{
-  "id": "axxa-os-ai-agent",
-  "name": "AXXA OS — AI Agent",
-  "version": "0.1.0",
-  "minAppVersion": "1.4.0",
-  "description": "AI Agent nativo para seu Vault. Chat, Q&A, Agent e Coder modes com suporte a múltiplos providers.",
-  "author": "Axxa Lab",
-  "authorUrl": "https://axxa.lab",
-  "fundingUrl": "https://axxa.lab/support",
-  "isDesktopOnly": false
-}
-```
-
-> `isDesktopOnly: false` — obrigatório para mobile support
-
----
-
-## 22. DECISÕES DE ARQUITETURA — JUSTIFICATIVAS
-
-| Decisão | Alternativa Descartada | Motivo |
-|---|---|---|
-| LanceDB para RAG | ChromaDB, Pinecone | Zero-config, embutido, sem servidor |
-| React para UI | Svelte, Vue, DOM puro | Ecossistema, componentização, state management |
-| Zustand para state | Redux, Context | Leve, sem boilerplate, ideal para plugins |
-| esbuild | Vite, Webpack | Template oficial Obsidian, menor bundle |
-| Supabase para auth | Firebase, backend próprio | Auth + DB mínimo, sem ops |
-| Stripe Checkout | PayPal, outro gateway | Mais usado por devs indie, fácil integração |
-| MD para skills/chats | SQLite, JSON | Nativo Obsidian, editável pelo usuário, versionável |
-
----
-
-*Documento gerado para vibe coding com Claude — AXXA Lab*
-*Próximo passo: Setup do repositório + scaffold do plugin*
+*Built with 💜 by Axxa Lab · Feito com 💜 pela Axxa Lab*
