@@ -1512,15 +1512,8 @@ body.is-mobile.axxa-fullscreen
     0 24px 56px rgba(0, 0, 0, 0.10);
 }
 
-/* Backgrounds animados (live): o backdrop-blur do pill captura a camada-base
-   (pseudo-element em z-index:0), não a animação vibrante — então o pill fica
-   mais "apagado" que nos backgrounds estáticos. Deixa o pill mais translúcido
-   nos 3 live pra igualar o visual. (v0.1.91) */
-.axxa-root.axxa-bg-pulse .axxa-composer-pill,
-.axxa-root.axxa-bg-flow .axxa-composer-pill,
-.axxa-root.axxa-bg-aurora-live .axxa-composer-pill {
-  background: color-mix(in srgb, var(--background-modifier-form-field) 62%, transparent);
-}
+/* Composer é IDÊNTICO em TODOS os backgrounds — nenhuma regra por preset.
+   (removido o override por bg animado de v0.1.91: zero diferença entre temas) */
 
 /* Fallback browsers sem color-mix (Safari < 16.2) */
 @supports not (color: color-mix(in srgb, red, blue)) {
@@ -5796,4 +5789,18 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 .axxa-popover-item-active {
   color: var(--text-accent);
+}
+
+/* =====================================================
+ * Scrollbar do drawer/view tintada pelo preset (v0.1.96)
+ * --axxa-navbar-tint vem do body.axxa-host-active.axxa-bg-X (cascata).
+ * "none" não seta a var → cai no default do Obsidian.
+ * ===================================================== */
+.axxa-root ::-webkit-scrollbar-thumb,
+.workspace-drawer-active-tab-container.axxa-host ::-webkit-scrollbar-thumb {
+  background: var(--axxa-navbar-tint, var(--scrollbar-thumb-bg));
+}
+.axxa-root ::-webkit-scrollbar-thumb:hover,
+.workspace-drawer-active-tab-container.axxa-host ::-webkit-scrollbar-thumb:hover {
+  background: var(--axxa-navbar-tint, var(--scrollbar-active-thumb-bg));
 }
