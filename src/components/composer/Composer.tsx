@@ -324,12 +324,20 @@ export function Composer({
   const recordingTimerRef = useRef<number | null>(null);
   // Flag: se true, descarta o áudio em vez de salvar (sliding-finger-off)
   const cancelRecordingRef = useRef(false);
+  // Guard anti-acidente do hold-to-record: só grava após 180ms PARADO no botão.
+  // Tap rápido ou movimento (scroll) cancela antes de começar — evita ativar o
+  // mic ao descer o scroll perto do botão durante/após o streaming.
+  const micHoldTimerRef = useRef<number | null>(null);
+  const micStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   // Cleanup do MediaRecorder no unmount (libera o mic se ainda tava ativo)
   useEffect(() => {
     return () => {
       if (recordingTimerRef.current !== null) {
         window.clearInterval(recordingTimerRef.current);
+      }
+      if (micHoldTimerRef.current !== null) {
+        window.clearTimeout(micHoldTimerRef.current);
       }
       const rec = mediaRecorderRef.current;
       if (rec && rec.state !== "inactive") {
@@ -683,9 +691,48 @@ export function Composer({
     onClick = handleSendClick;
   }
 
-  // Press/release só são "armados" no modo mic — em send/stop, undefined
-  const onMicPressStart = isMicMode ? () => startRecording() : undefined;
-  const onMicPressEnd = isMicMode ? () => stopRecording(false) : undefined;
+  // Arma o hold: agenda a gravação pra 180ms depois (PARADO). Se o dedo se
+  // mover (scroll) ou soltar antes, cancela — só hold deliberado grava.
+  const armMic = (x: number, y: number) => {
+    micStartPosRef.current = { x, y };
+    if (micHoldTimerRef.current !== null) {
+      window.clearTimeout(micHoldTimerRef.current);
+    }
+    micHoldTimerRef.current = window.setTimeout(() => {
+      micHoldTimerRef.current = null;
+      startRecording();
+    }, 180);
+  };
+
+  const moveMic = (x: number, y: number) => {
+    const start = micStartPosRef.current;
+    if (!start || micHoldTimerRef.current === null) return;
+    if (Math.hypot(x - start.x, y - start.y) > 10) {
+      // Movimento detectado = scroll, não hold → cancela antes de gravar
+      window.clearTimeout(micHoldTimerRef.current);
+      micHoldTimerRef.current = null;
+      micStartPosRef.current = null;
+    }
+  };
+
+  const endMic = () => {
+    micStartPosRef.current = null;
+    if (micHoldTimerRef.current !== null) {
+      // Soltou antes do hold disparar → era tap/scroll, não grava
+      window.clearTimeout(micHoldTimerRef.current);
+      micHoldTimerRef.current = null;
+      return;
+    }
+    stopRecording(false);
+  };
+
+  const cancelMicArm = () => {
+    if (micHoldTimerRef.current !== null) {
+      window.clearTimeout(micHoldTimerRef.current);
+      micHoldTimerRef.current = null;
+    }
+    micStartPosRef.current = null;
+  };
 
   const contextTotal = getContextWindow(modelName);
   const tokensTotal = tokensIn + tokensOut;
@@ -812,22 +859,38 @@ export function Composer({
             (isRecording ? " axxa-composer-recording" : "")
           }
           onClick={onClick}
-          onMouseDown={onMicPressStart}
+          onMouseDown={(e) => {
+            if (isMicMode) armMic(e.clientX, e.clientY);
+          }}
+          onMouseMove={(e) => {
+            if (isMicMode) moveMic(e.clientX, e.clientY);
+          }}
+          onMouseUp={() => {
+            if (isMicMode) endMic();
+          }}
+          onMouseLeave={() => {
+            if (isMicMode) cancelMicArm();
+          }}
           onTouchStart={(e) => {
-            if (onMicPressStart) {
-              // Previne click depois — em mobile, touch dispara click sintético
-              e.preventDefault();
-              onMicPressStart();
-            }
+            if (!isMicMode) return;
+            // Previne click sintético depois (mobile)
+            e.preventDefault();
+            const tch = e.touches[0];
+            armMic(tch.clientX, tch.clientY);
           }}
-          onMouseUp={onMicPressEnd}
+          onTouchMove={(e) => {
+            if (!isMicMode) return;
+            const tch = e.touches[0];
+            moveMic(tch.clientX, tch.clientY);
+          }}
           onTouchEnd={(e) => {
-            if (onMicPressEnd) {
-              e.preventDefault();
-              onMicPressEnd();
-            }
+            if (!isMicMode) return;
+            e.preventDefault();
+            endMic();
           }}
-          onTouchCancel={onMicPressEnd}
+          onTouchCancel={() => {
+            if (isMicMode) endMic();
+          }}
           aria-label={label}
           title={label}
         >
