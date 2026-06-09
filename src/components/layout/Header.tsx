@@ -25,6 +25,14 @@ interface HeaderProps {
   fullscreen: boolean;
   /** Toggle do fullscreen — persiste em settings.mobileFullscreen. */
   onToggleFullscreen: () => void;
+  /** Toggle do campo de busca dentro da conversa atual. */
+  onToggleSearch: () => void;
+  /** Busca aberta — destaca o ícone. */
+  searchActive: boolean;
+  /** Copia a conversa atual (markdown) pro clipboard. */
+  onCopyConversation: () => void;
+  /** Há conversa pra copiar (esconde o item do menu se vazio). */
+  canCopy: boolean;
 }
 
 export function Header({
@@ -36,6 +44,10 @@ export function Header({
   onRenameChat,
   fullscreen,
   onToggleFullscreen,
+  onToggleSearch,
+  searchActive,
+  onCopyConversation,
+  canCopy,
 }: HeaderProps) {
   const t = useT();
   const [draft, setDraft] = useState(chatTitle);
@@ -96,6 +108,17 @@ export function Header({
       <div className="axxa-header-actions">
         <button
           type="button"
+          className={
+            "axxa-header-gear" + (searchActive ? " axxa-header-gear-active" : "")
+          }
+          onClick={onToggleSearch}
+          aria-label={t.header.search}
+          title={t.header.search}
+        >
+          <Icon name="search" />
+        </button>
+        <button
+          type="button"
           className="axxa-header-gear"
           onClick={onOpenConversations}
           aria-label={t.header.conversations}
@@ -127,6 +150,14 @@ export function Header({
           onClick={(e) => {
             // Menu nativo do Obsidian — item único por enquanto, mais virão
             const menu = new Menu();
+            if (canCopy) {
+              menu.addItem((item) =>
+                item
+                  .setTitle(t.header.copyConversation)
+                  .setIcon("copy")
+                  .onClick(() => onCopyConversation())
+              );
+            }
             menu.addItem((item) =>
               item
                 .setTitle(

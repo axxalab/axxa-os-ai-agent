@@ -361,6 +361,59 @@ body.is-mobile.axxa-fullscreen
   z-index: 800;
 }
 
+/* Busca dentro da conversa — barra acima da chat area + contador */
+.axxa-chat-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin: 0 8px 6px;
+  border-radius: 12px;
+  background: var(--background-modifier-form-field);
+  flex-shrink: 0;
+  z-index: 850;
+}
+.axxa-chat-search .axxa-icon .svg-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+.axxa-chat-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  padding: 2px 0 !important;
+  height: auto !important;
+}
+.axxa-chat-search-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.axxa-chat-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 2px;
+}
+.axxa-chat-search-clear .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.axxa-chat-search-count {
+  padding: 4px 14px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 .axxa-chat-area {
   flex: 1 1 auto;
   min-height: 0;

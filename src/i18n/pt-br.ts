@@ -45,6 +45,17 @@ export const PT_BR = {
     moreOptions: "Mais opções",
     fullscreen: "Tela cheia (mobile)",
     exitFullscreen: "Sair da tela cheia",
+    search: "Buscar na conversa",
+    copyConversation: "Copiar conversa",
+    copyConversationDone: "Conversa copiada",
+  },
+
+  chat: {
+    searchPlaceholder: "Buscar nesta conversa…",
+    searchResults: (n: number) => `${n} resultado${n === 1 ? "" : "s"}`,
+    searchNoResults: "Nenhum resultado nesta conversa.",
+    continueLabel: "Continuar",
+    continueTitle: "Resposta cortada no limite — continuar de onde parou",
   },
 
   conversations: {

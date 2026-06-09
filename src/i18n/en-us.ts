@@ -45,6 +45,17 @@ export const EN_US: Translations = {
     moreOptions: "More options",
     fullscreen: "Full-screen (mobile)",
     exitFullscreen: "Exit full-screen",
+    search: "Search conversation",
+    copyConversation: "Copy conversation",
+    copyConversationDone: "Conversation copied",
+  },
+
+  chat: {
+    searchPlaceholder: "Search this conversation…",
+    searchResults: (n: number) => `${n} result${n === 1 ? "" : "s"}`,
+    searchNoResults: "No results in this conversation.",
+    continueLabel: "Continue",
+    continueTitle: "Response cut at the limit — continue where it stopped",
   },
 
   conversations: {
