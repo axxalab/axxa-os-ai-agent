@@ -36,6 +36,7 @@ import {
   type EffortLevel,
 } from "../components/_shared/effort";
 import { getContextWindow } from "../components/_shared/contextWindows";
+import { useWakeLock } from "../components/_shared/useWakeLock";
 import {
   saveChat,
   loadChat,
@@ -242,6 +243,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const currentChatId = useChatStore((s) => s.currentChatId);
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Mantém a tela ligada enquanto a IA gera (chat / agent / geração de mídia).
+  // Evita que a tela apague por inatividade e congele o stream no mobile.
+  useWakeLock(isLoading);
 
   // View state: chat (default) ou conversations (tela cheia de todas conversas)
   const [view, setView] = useState<"chat" | "conversations">("chat");

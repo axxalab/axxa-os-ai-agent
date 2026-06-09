@@ -1732,8 +1732,6 @@ body.is-mobile.axxa-fullscreen
   border: none;
   padding: 2px 0;
   overflow-x: hidden;
-  /* Altura cresce com texto — só clamp em viewports gigantes */
-  max-height: 40vh;
   display: flex;
   align-items: stretch;
 }
@@ -1742,13 +1740,23 @@ body.is-mobile.axxa-fullscreen
 .axxa-composer-editor .cm-scroller,
 .axxa-composer-editor .cm-content {
   overflow-x: hidden !important;
-  /* Height auto — sem 100% ou min-height fixo que forçaria scroll */
-  height: auto !important;
   min-height: 0 !important;
 }
 
+/* Auto-grow até 40vh, depois SCROLL INTERNO com a virtualização do CM6.
+   Antes: height:auto + overflow:visible em TUDO desligava a virtualização —
+   colar texto grande renderizava todas as linhas no DOM e travava. Agora o
+   .cm-scroller vira o viewport scrollável (max-height + overflow-y auto) e o
+   CodeMirror volta a renderizar só o trecho visível. */
+.axxa-composer-editor .cm-scroller {
+  max-height: 40vh;
+  overflow-y: auto !important;
+}
 .axxa-composer-editor .cm-editor {
   width: 100%;
+}
+.axxa-composer-editor .cm-content {
+  height: auto !important;
 }
 
 /* Placeholder SEMPRE single-line (v0.1.39). O texto do user continua

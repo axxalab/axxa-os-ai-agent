@@ -462,7 +462,10 @@ export function Composer({
           "&.cm-focused": { outline: "none" },
           ".cm-scroller": {
             overflowX: "hidden",
-            overflowY: "visible",
+            // overflowY auto + maxHeight = viewport scrollável → o CM6 volta a
+            // virtualizar (colar texto grande deixa de renderizar tudo no DOM).
+            overflowY: "auto",
+            maxHeight: "40vh",
             fontFamily: "var(--font-text)",
             fontSize: "var(--font-ui-medium)",
             lineHeight: "1.5",
