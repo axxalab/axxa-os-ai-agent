@@ -1427,21 +1427,10 @@ body.is-mobile.axxa-fullscreen
   isolation: isolate;
 }
 
-/* Camada extra de bg sólido por trás (caso o blur falhe + opacity
-   ainda mostre algo): pseudo ::before com bg solido cobre o que
-   está visualmente atrás.
-   v0.1.64: bg do pseudo = --background-modifier-form-field (era
-   --background-primary, criava efeito de status line nao herdar
-   o bg do text field) */
-.axxa-composer-info::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 14px;
-  background: var(--background-modifier-form-field);
-  opacity: 0.6;
-  z-index: -1;
-}
+/* v0.1.102: removido o ::before sólido da status line — ele era um scrim
+   opaco extra que tampava o bg (pior no live). Agora a status é GLASS PURO
+   (só o bg 80% form-field + blur), igual ao pill e ao send. O resto do
+   composer é transparente → o bg (incl. animado) passa por trás. */
 
 /* Fallback browsers sem color-mix (Safari < 16.2) */
 @supports not (color: color-mix(in srgb, red, blue)) {
