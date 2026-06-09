@@ -219,31 +219,10 @@ body.is-mobile.axxa-fullscreen .status-bar > * {
   pointer-events: none !important;
 }
 
-/* === Fullscreen TRUE: hide tudo que nao seja AXXA (v0.1.68) ===
-   Em fullscreen, eliminar QUALQUER leaf do Obsidian que nao seja
-   AXXA OS — incluindo notes abertas no main pane atras do drawer,
-   view-headers de outras leaves, status bars com word counts,
-   etc. Verdadeiro app-mode. */
-body.is-mobile.axxa-fullscreen .workspace-split.mod-root,
-body.is-mobile.axxa-fullscreen .workspace-tabs.mod-root,
-body.is-mobile.axxa-fullscreen .workspace-leaf-resize-handle,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-left,
-body.is-mobile.axxa-fullscreen .workspace-ribbon {
-  display: none !important;
-}
-
-/* Esconde leaves que NAO sao AXXA OS (notes abertas, search panel, etc) */
-body.is-mobile.axxa-fullscreen .workspace-leaf:not(:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"])) {
-  display: none !important;
-}
-
-/* View-header de outras leaves (titulo + stats da nota ativa) */
-body.is-mobile.axxa-fullscreen .view-header:not(:has([data-type="axxa-os-ai-agent"])),
-body.is-mobile.axxa-fullscreen .workspace-leaf-content:not([data-type="axxa-os-ai-agent"]) .view-header,
-body.is-mobile.axxa-fullscreen .workspace-leaf-content:not([data-type="axxa-os-ai-agent"]) .view-header-title-container,
-body.is-mobile.axxa-fullscreen .workspace-leaf-content:not([data-type="axxa-os-ai-agent"]) .view-header-title {
-  display: none !important;
-}
+/* v0.1.70: REVERTIDO o hide agressivo de workspace-split, ribbon,
+   workspace-drawer.mod-left, workspace-leaves. Estava quebrando o
+   Obsidian inteiro fora do AXXA. Fullscreen agora mantem apenas o
+   essencial: drawer-tab-options 5px (preserva navegacao do AXXA OS). */
 
 /* Fallback browsers velhos sem :has() — aplica mais amplo em fullscreen */
 @supports not selector(html:has(*)) {
@@ -289,151 +268,91 @@ body.is-mobile.axxa-fullscreen .axxa-header {
 }
 
 /* =====================================================
- * AXXA DEBUG OVERLAY (v0.1.66)
+ * AXXA DEBUG OVERLAY (v0.1.70 - compactado)
+ * Toggle: Settings → Outros → Geral → "Debug overlay"
+ * Ou via JS: body.setAttribute('data-axxa-debug', '1')
  *
- * Ativa com: document.body.setAttribute('data-axxa-debug', '1')
- * Desativa com: document.body.removeAttribute('data-axxa-debug')
- *
- * Desenha outlines coloridos + labels em cada elemento Obsidian
- * suspeito de causar a "barra horizontal" embaixo. Cada cor =
- * uma classe diferente — descobre qual elemento esta criando o problema.
+ * Destaca elementos Obsidian + AXXA com outline colorido.
+ * Cada classe = uma cor pra identificacao visual rapida.
  * ===================================================== */
 
-body[data-axxa-debug] .mobile-navbar {
-  outline: 3px solid #ff3366 !important;
-  outline-offset: -3px !important;
-}
-body[data-axxa-debug] .mobile-navbar::before {
-  content: ".mobile-navbar" !important;
+/* Regras base compartilhadas pra todos labels do debug */
+body[data-axxa-debug] [class*="-debug-target"]::before,
+body[data-axxa-debug] .mobile-navbar::before,
+body[data-axxa-debug] .mobile-toolbar::before,
+body[data-axxa-debug] .workspace-drawer-footer::before,
+body[data-axxa-debug] .nav-buttons-container::before,
+body[data-axxa-debug] .status-bar::before,
+body[data-axxa-debug] .workspace-drawer-tab-options::before,
+body[data-axxa-debug] .titlebar::before,
+body[data-axxa-debug] .view-header::before,
+body[data-axxa-debug] .workspace-split.mod-root::before,
+body[data-axxa-debug] .workspace-ribbon::before,
+body[data-axxa-debug] .axxa-composer::before,
+body[data-axxa-debug] .axxa-header::before,
+body[data-axxa-debug] .axxa-composer-info::before {
   position: absolute !important;
-  top: 0; left: 0;
-  background: #ff3366 !important;
-  color: white !important;
+  top: 0;
+  left: 0;
   padding: 2px 6px !important;
   font-size: 9px !important;
   z-index: 99999 !important;
-  font-family: monospace !important;
+  font-family: var(--font-monospace) !important;
+  color: var(--color-base-100) !important;
 }
 
-body[data-axxa-debug] .mobile-toolbar {
-  outline: 3px solid #ff9933 !important;
-}
-body[data-axxa-debug] .mobile-toolbar::before {
-  content: ".mobile-toolbar" !important;
-  position: absolute !important; top: 0; left: 0;
-  background: #ff9933 !important; color: white !important;
-  padding: 2px 6px !important; font-size: 9px !important;
-  z-index: 99999 !important; font-family: monospace !important;
-}
+/* Cores por elemento (background do label + outline) */
+body[data-axxa-debug] .mobile-navbar { outline: 3px solid #ff3366 !important; outline-offset: -3px !important; }
+body[data-axxa-debug] .mobile-navbar::before { content: ".mobile-navbar" !important; background: #ff3366 !important; }
 
-body[data-axxa-debug] .workspace-drawer-footer {
-  outline: 3px solid #ffff33 !important;
-}
-body[data-axxa-debug] .workspace-drawer-footer::before {
-  content: ".workspace-drawer-footer" !important;
-  position: absolute !important; top: 0; left: 0;
-  background: #ffff33 !important; color: black !important;
-  padding: 2px 6px !important; font-size: 9px !important;
-  z-index: 99999 !important; font-family: monospace !important;
-}
+body[data-axxa-debug] .mobile-toolbar { outline: 3px solid #ff9933 !important; }
+body[data-axxa-debug] .mobile-toolbar::before { content: ".mobile-toolbar" !important; background: #ff9933 !important; }
 
-body[data-axxa-debug] .nav-buttons-container {
-  outline: 3px solid #33ff66 !important;
-}
-body[data-axxa-debug] .nav-buttons-container::before {
-  content: ".nav-buttons-container" !important;
-  position: absolute !important; top: 0; left: 0;
-  background: #33ff66 !important; color: black !important;
-  padding: 2px 6px !important; font-size: 9px !important;
-  z-index: 99999 !important; font-family: monospace !important;
-}
+body[data-axxa-debug] .workspace-drawer-footer { outline: 3px solid #ffff33 !important; }
+body[data-axxa-debug] .workspace-drawer-footer::before { content: ".workspace-drawer-footer" !important; background: #ffff33 !important; color: #000 !important; }
 
-body[data-axxa-debug] .status-bar {
-  outline: 3px solid #33ccff !important;
-}
-body[data-axxa-debug] .status-bar::before {
-  content: ".status-bar" !important;
-  position: absolute !important; top: 0; left: 0;
-  background: #33ccff !important; color: white !important;
-  padding: 2px 6px !important; font-size: 9px !important;
-  z-index: 99999 !important; font-family: monospace !important;
-}
+body[data-axxa-debug] .nav-buttons-container { outline: 3px solid #33ff66 !important; }
+body[data-axxa-debug] .nav-buttons-container::before { content: ".nav-buttons-container" !important; background: #33ff66 !important; color: #000 !important; }
 
-body[data-axxa-debug] .workspace-drawer-tab-options {
-  outline: 3px solid #cc33ff !important;
-}
-body[data-axxa-debug] .workspace-drawer-tab-options::before {
-  content: ".workspace-drawer-tab-options" !important;
-  position: absolute !important; top: 0; left: 0;
-  background: #cc33ff !important; color: white !important;
-  padding: 2px 6px !important; font-size: 9px !important;
-  z-index: 99999 !important; font-family: monospace !important;
-}
+body[data-axxa-debug] .status-bar { outline: 3px solid #33ccff !important; }
+body[data-axxa-debug] .status-bar::before { content: ".status-bar" !important; background: #33ccff !important; }
 
-body[data-axxa-debug] .titlebar {
-  outline: 3px solid #ff33cc !important;
-}
-body[data-axxa-debug] .titlebar::before {
-  content: ".titlebar" !important;
-  position: absolute !important; top: 0; left: 0;
-  background: #ff33cc !important; color: white !important;
-  padding: 2px 6px !important; font-size: 9px !important;
-  z-index: 99999 !important; font-family: monospace !important;
-}
+body[data-axxa-debug] .workspace-drawer-tab-options { outline: 3px solid #cc33ff !important; }
+body[data-axxa-debug] .workspace-drawer-tab-options::before { content: ".workspace-drawer-tab-options" !important; background: #cc33ff !important; }
 
-body[data-axxa-debug] .workspace-drawer-inner {
-  outline: 2px dashed #00cccc !important;
-}
+body[data-axxa-debug] .titlebar { outline: 3px solid #ff33cc !important; }
+body[data-axxa-debug] .titlebar::before { content: ".titlebar" !important; background: #ff33cc !important; }
 
-body[data-axxa-debug] .workspace-leaf {
-  outline: 2px dashed #aaaa00 !important;
-}
+body[data-axxa-debug] .view-header { outline: 3px solid #ff66cc !important; }
+body[data-axxa-debug] .view-header::before { content: ".view-header" !important; background: #ff66cc !important; }
 
-body[data-axxa-debug] .view-content {
-  outline: 2px dashed #00aa55 !important;
-}
+body[data-axxa-debug] .workspace-split.mod-root { outline: 3px dotted #00ff00 !important; }
+body[data-axxa-debug] .workspace-split.mod-root::before { content: ".workspace-split.mod-root" !important; background: #00ff00 !important; color: #000 !important; }
 
-/* v0.1.68: novas classes adicionadas ao debug overlay */
-body[data-axxa-debug] .view-header {
-  outline: 3px solid #ff66cc !important;
-}
-body[data-axxa-debug] .view-header::before {
-  content: ".view-header" !important;
-  position: absolute !important; top: 0; left: 0;
-  background: #ff66cc !important; color: white !important;
-  padding: 2px 6px !important; font-size: 9px !important;
-  z-index: 99999 !important; font-family: monospace !important;
-}
+body[data-axxa-debug] .workspace-ribbon { outline: 3px solid #aa00ff !important; }
+body[data-axxa-debug] .workspace-ribbon::before { content: ".workspace-ribbon" !important; background: #aa00ff !important; }
 
-body[data-axxa-debug] .view-header-title-container {
-  outline: 3px dashed #ff9999 !important;
-}
+/* Containers wrapper sem label (so outline) */
+body[data-axxa-debug] .workspace-drawer-inner { outline: 2px dashed #00cccc !important; }
+body[data-axxa-debug] .workspace-leaf { outline: 2px dashed #aaaa00 !important; }
+body[data-axxa-debug] .view-content { outline: 2px dashed #00aa55 !important; }
+body[data-axxa-debug] .view-header-title-container { outline: 3px dashed #ff9999 !important; }
+body[data-axxa-debug] .workspace-tabs { outline: 2px dashed #ffaa00 !important; }
 
-body[data-axxa-debug] .workspace-split.mod-root {
-  outline: 3px dotted #00ff00 !important;
-}
-body[data-axxa-debug] .workspace-split.mod-root::before {
-  content: ".workspace-split.mod-root" !important;
-  position: absolute !important; top: 0; left: 0;
-  background: #00ff00 !important; color: black !important;
-  padding: 2px 6px !important; font-size: 9px !important;
-  z-index: 99999 !important; font-family: monospace !important;
-}
+/* AXXA OS elementos (a barra que aparece e nao matchou nenhum Obsidian
+   provavelmente esta aqui — entao destacamos os AXXA tambem) */
+body[data-axxa-debug] .axxa-composer { outline: 3px solid #00ffff !important; outline-offset: -3px !important; }
+body[data-axxa-debug] .axxa-composer::before { content: ".axxa-composer" !important; background: #00ffff !important; color: #000 !important; }
 
-body[data-axxa-debug] .workspace-tabs {
-  outline: 2px dashed #ffaa00 !important;
-}
+body[data-axxa-debug] .axxa-header { outline: 3px solid #ffcc00 !important; outline-offset: -3px !important; }
+body[data-axxa-debug] .axxa-header::before { content: ".axxa-header" !important; background: #ffcc00 !important; color: #000 !important; }
 
-body[data-axxa-debug] .workspace-ribbon {
-  outline: 3px solid #aa00ff !important;
-}
-body[data-axxa-debug] .workspace-ribbon::before {
-  content: ".workspace-ribbon" !important;
-  position: absolute !important; top: 0; left: 0;
-  background: #aa00ff !important; color: white !important;
-  padding: 2px 6px !important; font-size: 9px !important;
-  z-index: 99999 !important; font-family: monospace !important;
-}
+body[data-axxa-debug] .axxa-composer-info { outline: 3px solid #ff00aa !important; outline-offset: -3px !important; }
+body[data-axxa-debug] .axxa-composer-info::before { content: ".axxa-composer-info" !important; background: #ff00aa !important; }
+
+body[data-axxa-debug] .axxa-back-to-bottom { outline: 3px solid #00cc88 !important; }
+body[data-axxa-debug] .axxa-chat-area-wrapper { outline: 2px dashed #cc6600 !important; }
+body[data-axxa-debug] .axxa-incompat-banner { outline: 3px solid #6600cc !important; }
 
 /* Drawer + teclado aberto → esconde header/tab options do drawer */
 body.is-mobile
