@@ -3548,636 +3548,538 @@ body.is-mobile .axxa-code-copy {
   -webkit-overflow-scrolling: touch;
 }
 
-/* ---------- LINEARES (originais, com mais opacidade) ---------- */
+/* =====================================================
+ * ESTÁTICOS (8) — sistema tokenizado v0.1.106
+ *
+ * Cada preset define só a var --axxa-bg-img (camadas de gradiente, SEM a cor
+ * base). UMA regra de paint compartilhada aplica a var em todos os carriers:
+ * view principal, Settings, swatch do picker e o drawer host (mobile).
+ * Dark mode = override só da var. Antes: o mesmo gradiente repetido ~8×.
+ * ===================================================== */
 
-/* Sunset — laranja → rosa quente */
-.axxa-root.axxa-bg-sunset,
-.axxa-settings-root.axxa-bg-sunset {
-  background:
-    linear-gradient(135deg, rgba(255, 126, 95, 0.18), rgba(254, 180, 123, 0.10) 60%, transparent),
-    var(--background-primary) !important;
-}
-body.theme-dark .axxa-root.axxa-bg-sunset,
-body.theme-dark .axxa-settings-root.axxa-bg-sunset {
-  background:
-    linear-gradient(135deg, rgba(255, 126, 95, 0.26), rgba(254, 180, 123, 0.16) 60%, transparent),
-    var(--background-primary) !important;
-}
-
-/* Ocean — cyan → azul */
-.axxa-root.axxa-bg-ocean,
-.axxa-settings-root.axxa-bg-ocean {
-  background:
-    linear-gradient(135deg, rgba(33, 147, 176, 0.20), rgba(109, 213, 237, 0.10) 60%, transparent),
-    var(--background-primary) !important;
-}
-body.theme-dark .axxa-root.axxa-bg-ocean,
-body.theme-dark .axxa-settings-root.axxa-bg-ocean {
-  background:
-    linear-gradient(135deg, rgba(33, 147, 176, 0.28), rgba(109, 213, 237, 0.16) 60%, transparent),
-    var(--background-primary) !important;
-}
-
-/* Forest — verde → teal */
-.axxa-root.axxa-bg-forest,
-.axxa-settings-root.axxa-bg-forest {
-  background:
-    linear-gradient(135deg, rgba(17, 153, 142, 0.20), rgba(56, 239, 125, 0.10) 60%, transparent),
-    var(--background-primary) !important;
-}
-body.theme-dark .axxa-root.axxa-bg-forest,
-body.theme-dark .axxa-settings-root.axxa-bg-forest {
-  background:
-    linear-gradient(135deg, rgba(17, 153, 142, 0.28), rgba(56, 239, 125, 0.16) 60%, transparent),
-    var(--background-primary) !important;
+/* Paint compartilhado — consome --axxa-bg-img. !important pra vencer
+   Obsidian/temas/.workspace-leaf-content. */
+:is(
+    .axxa-root,
+    .axxa-settings-root,
+    .axxa-bg-swatch,
+    .workspace-drawer-active-tab-container.axxa-host
+  ):is(
+    .axxa-bg-dawn,
+    .axxa-bg-ocean,
+    .axxa-bg-forest,
+    .axxa-bg-violet,
+    .axxa-bg-rose,
+    .axxa-bg-amber,
+    .axxa-bg-slate,
+    .axxa-bg-mono
+  ) {
+  background-image: var(--axxa-bg-img) !important;
+  background-color: var(--background-primary) !important;
 }
 
-/* Violet — roxo → magenta */
-.axxa-root.axxa-bg-violet,
-.axxa-settings-root.axxa-bg-violet {
-  background:
-    linear-gradient(135deg, rgba(142, 45, 226, 0.20), rgba(74, 0, 224, 0.10) 60%, transparent),
-    var(--background-primary) !important;
+/* Dawn — pêssego → rosa quente (amanhecer) */
+.axxa-bg-dawn {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(255, 140, 105, 0.18),
+    rgba(255, 190, 150, 0.1) 55%,
+    transparent 82%
+  );
 }
-body.theme-dark .axxa-root.axxa-bg-violet,
-body.theme-dark .axxa-settings-root.axxa-bg-violet {
-  background:
-    linear-gradient(135deg, rgba(142, 45, 226, 0.30), rgba(74, 0, 224, 0.18) 60%, transparent),
-    var(--background-primary) !important;
-}
-
-/* Mono — cinza neutro elegante */
-.axxa-root.axxa-bg-mono,
-.axxa-settings-root.axxa-bg-mono {
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 50%, rgba(0, 0, 0, 0.08)),
-    var(--background-primary) !important;
-}
-body.theme-dark .axxa-root.axxa-bg-mono,
-body.theme-dark .axxa-settings-root.axxa-bg-mono {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 50%, rgba(255, 255, 255, 0.08)),
-    var(--background-primary) !important;
+body.theme-dark .axxa-bg-dawn {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(255, 140, 105, 0.28),
+    rgba(255, 190, 150, 0.16) 55%,
+    transparent 82%
+  );
 }
 
-/* ---------- RADIAIS (novos v0.1.26) ---------- */
-
-/* Aurora — verde topo-direita + roxo base-esquerda (mística, foco profundo) */
-.axxa-root.axxa-bg-aurora,
-.axxa-settings-root.axxa-bg-aurora {
-  background:
-    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.22), transparent 70%),
-    radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.22), transparent 70%),
-    var(--background-primary) !important;
+/* Ocean — teal → azul */
+.axxa-bg-ocean {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(34, 150, 180, 0.2),
+    rgba(110, 210, 235, 0.1) 60%,
+    transparent
+  );
 }
-body.theme-dark .axxa-root.axxa-bg-aurora,
-body.theme-dark .axxa-settings-root.axxa-bg-aurora {
-  background:
-    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.30), transparent 70%),
-    radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.30), transparent 70%),
-    var(--background-primary) !important;
-}
-
-/* Spotlight — círculo dourado quente no topo (acolhedor, "lendo à luz da lamparina") */
-.axxa-root.axxa-bg-spotlight,
-.axxa-settings-root.axxa-bg-spotlight {
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(252, 211, 77, 0.28), transparent 65%),
-    var(--background-primary) !important;
-}
-body.theme-dark .axxa-root.axxa-bg-spotlight,
-body.theme-dark .axxa-settings-root.axxa-bg-spotlight {
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(252, 211, 77, 0.20), transparent 65%),
-    var(--background-primary) !important;
+body.theme-dark .axxa-bg-ocean {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(34, 150, 180, 0.3),
+    rgba(110, 210, 235, 0.16) 60%,
+    transparent
+  );
 }
 
-/* Nebula — multi-ponto cósmico (azul / rosa / roxo) — vibe criativa */
-.axxa-root.axxa-bg-nebula,
-.axxa-settings-root.axxa-bg-nebula {
-  background:
-    radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.22), transparent 50%),
-    radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.22), transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.14), transparent 70%),
-    var(--background-primary) !important;
+/* Forest — esmeralda → verde */
+.axxa-bg-forest {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(20, 160, 110, 0.2),
+    rgba(90, 220, 140, 0.1) 60%,
+    transparent
+  );
 }
-body.theme-dark .axxa-root.axxa-bg-nebula,
-body.theme-dark .axxa-settings-root.axxa-bg-nebula {
-  background:
-    radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.30), transparent 50%),
-    radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.30), transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.20), transparent 70%),
-    var(--background-primary) !important;
+body.theme-dark .axxa-bg-forest {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(20, 160, 110, 0.3),
+    rgba(90, 220, 140, 0.16) 60%,
+    transparent
+  );
+}
+
+/* Violet — índigo → roxo */
+.axxa-bg-violet {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(120, 80, 235, 0.2),
+    rgba(170, 90, 247, 0.1) 60%,
+    transparent
+  );
+}
+body.theme-dark .axxa-bg-violet {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(120, 80, 235, 0.3),
+    rgba(170, 90, 247, 0.18) 60%,
+    transparent
+  );
+}
+
+/* Rose — rosa → magenta */
+.axxa-bg-rose {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(244, 114, 182, 0.2),
+    rgba(236, 72, 153, 0.1) 60%,
+    transparent
+  );
+}
+body.theme-dark .axxa-bg-rose {
+  --axxa-bg-img: linear-gradient(
+    135deg,
+    rgba(244, 114, 182, 0.3),
+    rgba(236, 72, 153, 0.18) 60%,
+    transparent
+  );
+}
+
+/* Amber — holofote dourado quente no topo */
+.axxa-bg-amber {
+  --axxa-bg-img: radial-gradient(
+    ellipse 85% 55% at 50% -12%,
+    rgba(250, 200, 90, 0.26),
+    transparent 66%
+  );
+}
+body.theme-dark .axxa-bg-amber {
+  --axxa-bg-img: radial-gradient(
+    ellipse 85% 55% at 50% -12%,
+    rgba(250, 200, 90, 0.22),
+    transparent 66%
+  );
+}
+
+/* Slate — azul-acinzentado frio nos cantos (neutro elegante) */
+.axxa-bg-slate {
+  --axxa-bg-img: radial-gradient(
+      ellipse 70% 60% at 92% 4%,
+      rgba(120, 140, 170, 0.18),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 70% 60% at 8% 100%,
+      rgba(90, 110, 140, 0.14),
+      transparent 70%
+    );
+}
+body.theme-dark .axxa-bg-slate {
+  --axxa-bg-img: radial-gradient(
+      ellipse 70% 60% at 92% 4%,
+      rgba(140, 160, 190, 0.24),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 70% 60% at 8% 100%,
+      rgba(110, 130, 165, 0.2),
+      transparent 70%
+    );
+}
+
+/* Mono — neutro cinza (topo + base) */
+.axxa-bg-mono {
+  --axxa-bg-img: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.06),
+    transparent 45%,
+    rgba(0, 0, 0, 0.06)
+  );
+}
+body.theme-dark .axxa-bg-mono {
+  --axxa-bg-img: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07),
+    transparent 45%,
+    rgba(255, 255, 255, 0.07)
+  );
 }
 
 /* =====================================================
- * BGs ANIMADOS — reagem ao estado do chat
- * Quando IA tá pensando/streamando, AxxaApp adiciona
- * .axxa-bg-active no .axxa-root → animations aceleram
+ * LIVE (8) — sistema tokenizado v0.1.106
  *
- * Estratégia: ::before pseudo com gradient + animation.
- * Pra ::before funcionar, .axxa-root precisa position:relative
- * (já tem) + overflow:hidden (vou garantir).
+ * Cada preset define só vars --axxa-live-* (gradiente + keyframe + duração).
+ * UMA camada ::before compartilhada (root / swatch / drawer host) consome as
+ * vars. Settings usa ::before fixed (mais abaixo). 4 keyframes reutilizáveis:
+ *   drift   → blobs orgânicos (translate + scale)
+ *   breathe → pulso radial central (scale + opacity)
+ *   sweep   → gradiente linear correndo (background-position)
+ *   hue     → ciclo de matiz (filter: hue-rotate)
+ * Quando a IA processa, AxxaApp adiciona .axxa-bg-active → acelera 3.5×.
+ *
+ * Carriers com overflow:hidden — em Settings isso quebraria o scroll, por
+ * isso lá o pseudo é position:fixed (sem overflow:hidden no container).
  * ===================================================== */
 
-/* Pulse — radial central pulsante.
-   NOTA: backgrounds animados NÃO se aplicam a .axxa-settings-root porque
-   overflow:hidden quebra o scroll da Settings. Em Settings esses bgs
-   resolvem só pra var(--background-primary) (sem animação). */
-.axxa-root.axxa-bg-pulse {
-  background: var(--background-primary);
+/* Base dos carriers live (view / swatch / drawer host) */
+:is(
+    .axxa-root,
+    .axxa-bg-swatch,
+    .workspace-drawer-active-tab-container.axxa-host
+  ):is(
+    .axxa-bg-aurora,
+    .axxa-bg-nebula,
+    .axxa-bg-pulse,
+    .axxa-bg-flow,
+    .axxa-bg-tide,
+    .axxa-bg-ember,
+    .axxa-bg-spectrum,
+    .axxa-bg-lagoon
+  ) {
   position: relative;
   overflow: hidden;
+  background-color: var(--background-primary) !important;
 }
 
-.axxa-root.axxa-bg-pulse::before {
+/* Camada animada compartilhada */
+:is(
+    .axxa-root,
+    .axxa-bg-swatch,
+    .workspace-drawer-active-tab-container.axxa-host
+  ):is(
+    .axxa-bg-aurora,
+    .axxa-bg-nebula,
+    .axxa-bg-pulse,
+    .axxa-bg-flow,
+    .axxa-bg-tide,
+    .axxa-bg-ember,
+    .axxa-bg-spectrum,
+    .axxa-bg-lagoon
+  )::before {
   content: "";
   position: absolute;
-  inset: -20%;
+  inset: -25%;
   pointer-events: none;
-  background: radial-gradient(
-    circle at 50% 40%,
-    rgba(99, 102, 241, 0.20),
-    transparent 55%
-  );
-  animation: axxa-bg-pulse-loop 6s ease-in-out infinite;
   z-index: 0;
+  background-image: var(--axxa-live-img);
+  background-size: var(--axxa-live-size, auto);
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: var(--axxa-live-name, axxa-bg-drift) var(--axxa-live-dur, 20s)
+    var(--axxa-live-ease, ease-in-out) infinite;
+  will-change: transform, filter, background-position;
 }
 
-body.theme-dark .axxa-root.axxa-bg-pulse::before {
-  background: radial-gradient(
-    circle at 50% 40%,
-    rgba(99, 102, 241, 0.28),
-    transparent 55%
-  );
-}
-
-@keyframes axxa-bg-pulse-loop {
-  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.7; }
-  50% { transform: scale(1.15) translate(0, 4%); opacity: 1; }
-}
-
-/* Acelera quando chat tá ativo (IA pensando/streamando) */
-.axxa-root.axxa-bg-pulse.axxa-bg-active::before {
-  animation-duration: 1.6s;
-}
-
-/* Flow — linear gradient correndo diagonal */
-.axxa-root.axxa-bg-flow {
-  background: var(--background-primary);
+/* Conteúdo acima da camada animada */
+:is(.axxa-root, .workspace-drawer-active-tab-container.axxa-host):is(
+    .axxa-bg-aurora,
+    .axxa-bg-nebula,
+    .axxa-bg-pulse,
+    .axxa-bg-flow,
+    .axxa-bg-tide,
+    .axxa-bg-ember,
+    .axxa-bg-spectrum,
+    .axxa-bg-lagoon
+  )
+  > * {
   position: relative;
-  overflow: hidden;
+  z-index: 1;
 }
 
-.axxa-root.axxa-bg-flow::before {
-  content: "";
-  position: absolute;
-  inset: -10%;
-  pointer-events: none;
-  background: linear-gradient(
+/* Acelera quando a IA processa (.axxa-bg-active) — 3.5× mais rápido */
+:is(.axxa-root, .axxa-bg-swatch).axxa-bg-active::before {
+  animation-duration: calc(var(--axxa-live-dur, 20s) / 3.5) !important;
+}
+
+/* ---- Keyframes reutilizáveis ---- */
+@keyframes axxa-bg-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(4%, 3%, 0) scale(1.12);
+  }
+  66% {
+    transform: translate3d(-3%, 5%, 0) scale(0.95);
+  }
+}
+@keyframes axxa-bg-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+}
+@keyframes axxa-bg-sweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+@keyframes axxa-bg-hue {
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+/* ---- Defs dos 8 presets live (light + dark) ---- */
+
+/* Aurora — blobs verde + roxo derivando */
+.axxa-bg-aurora {
+  --axxa-live-name: axxa-bg-drift;
+  --axxa-live-dur: 22s;
+  --axxa-live-img: radial-gradient(40% 50% at 25% 30%, rgba(34, 197, 94, 0.3), transparent 70%),
+    radial-gradient(45% 55% at 80% 70%, rgba(168, 85, 247, 0.3), transparent 70%);
+}
+body.theme-dark .axxa-bg-aurora {
+  --axxa-live-img: radial-gradient(40% 50% at 25% 30%, rgba(34, 197, 94, 0.4), transparent 70%),
+    radial-gradient(45% 55% at 80% 70%, rgba(168, 85, 247, 0.4), transparent 70%);
+}
+
+/* Nebula — poeira cósmica azul / rosa / roxo, deriva lenta */
+.axxa-bg-nebula {
+  --axxa-live-name: axxa-bg-drift;
+  --axxa-live-dur: 30s;
+  --axxa-live-img: radial-gradient(34% 44% at 18% 22%, rgba(56, 189, 248, 0.26), transparent 70%),
+    radial-gradient(34% 44% at 85% 78%, rgba(236, 72, 153, 0.26), transparent 70%),
+    radial-gradient(50% 60% at 55% 50%, rgba(168, 85, 247, 0.18), transparent 75%);
+}
+body.theme-dark .axxa-bg-nebula {
+  --axxa-live-img: radial-gradient(34% 44% at 18% 22%, rgba(56, 189, 248, 0.34), transparent 70%),
+    radial-gradient(34% 44% at 85% 78%, rgba(236, 72, 153, 0.34), transparent 70%),
+    radial-gradient(50% 60% at 55% 50%, rgba(168, 85, 247, 0.26), transparent 75%);
+}
+
+/* Pulse — respiração radial central índigo */
+.axxa-bg-pulse {
+  --axxa-live-name: axxa-bg-breathe;
+  --axxa-live-dur: 6s;
+  --axxa-live-img: radial-gradient(circle at 50% 42%, rgba(99, 102, 241, 0.22), transparent 58%);
+}
+body.theme-dark .axxa-bg-pulse {
+  --axxa-live-img: radial-gradient(circle at 50% 42%, rgba(99, 102, 241, 0.3), transparent 58%);
+}
+
+/* Flow — gradiente diagonal cyan → roxo → rosa correndo */
+.axxa-bg-flow {
+  --axxa-live-name: axxa-bg-sweep;
+  --axxa-live-dur: 18s;
+  --axxa-live-ease: ease;
+  --axxa-live-size: 300% 300%;
+  --axxa-live-img: linear-gradient(
     115deg,
-    rgba(56, 189, 248, 0.18),
-    rgba(168, 85, 247, 0.18),
-    rgba(236, 72, 153, 0.18),
-    rgba(56, 189, 248, 0.18)
+    rgba(56, 189, 248, 0.2),
+    rgba(168, 85, 247, 0.2),
+    rgba(236, 72, 153, 0.2),
+    rgba(56, 189, 248, 0.2)
   );
-  background-size: 300% 300%;
-  animation: axxa-bg-flow-loop 18s ease infinite;
-  z-index: 0;
 }
-
-body.theme-dark .axxa-root.axxa-bg-flow::before {
-  background: linear-gradient(
+body.theme-dark .axxa-bg-flow {
+  --axxa-live-img: linear-gradient(
     115deg,
     rgba(56, 189, 248, 0.26),
     rgba(168, 85, 247, 0.26),
     rgba(236, 72, 153, 0.26),
     rgba(56, 189, 248, 0.26)
   );
-  background-size: 300% 300%;
 }
 
-@keyframes axxa-bg-flow-loop {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.axxa-root.axxa-bg-flow.axxa-bg-active::before {
-  animation-duration: 4s;
-}
-
-/* Aurora Live — 2 radials se cruzando (translate) */
-.axxa-root.axxa-bg-aurora-live {
-  background: var(--background-primary);
-  position: relative;
-  overflow: hidden;
-}
-
-.axxa-root.axxa-bg-aurora-live::before,
-.axxa-root.axxa-bg-aurora-live::after {
-  content: "";
-  position: absolute;
-  width: 60%;
-  height: 60%;
-  pointer-events: none;
-  border-radius: 50%;
-  filter: blur(40px);
-  z-index: 0;
-}
-
-.axxa-root.axxa-bg-aurora-live::before {
-  top: -10%;
-  left: -10%;
-  background: radial-gradient(
-    circle,
-    rgba(34, 197, 94, 0.32) 0%,
-    transparent 70%
+/* Tide — maré horizontal cyan/teal */
+.axxa-bg-tide {
+  --axxa-live-name: axxa-bg-sweep;
+  --axxa-live-dur: 13s;
+  --axxa-live-size: 300% 100%;
+  --axxa-live-img: linear-gradient(
+    90deg,
+    rgba(20, 170, 180, 0.22),
+    rgba(80, 210, 220, 0.12),
+    rgba(20, 170, 180, 0.22)
   );
-  animation: axxa-bg-aurora-move-1 22s ease-in-out infinite;
 }
-
-.axxa-root.axxa-bg-aurora-live::after {
-  bottom: -10%;
-  right: -10%;
-  background: radial-gradient(
-    circle,
-    rgba(168, 85, 247, 0.32) 0%,
-    transparent 70%
-  );
-  animation: axxa-bg-aurora-move-2 26s ease-in-out infinite;
-}
-
-body.theme-dark .axxa-root.axxa-bg-aurora-live::before {
-  background: radial-gradient(
-    circle,
-    rgba(34, 197, 94, 0.40) 0%,
-    transparent 70%
+body.theme-dark .axxa-bg-tide {
+  --axxa-live-img: linear-gradient(
+    90deg,
+    rgba(20, 170, 180, 0.3),
+    rgba(80, 210, 220, 0.18),
+    rgba(20, 170, 180, 0.3)
   );
 }
 
-body.theme-dark .axxa-root.axxa-bg-aurora-live::after {
-  background: radial-gradient(
-    circle,
-    rgba(168, 85, 247, 0.40) 0%,
-    transparent 70%
-  );
+/* Ember — brasa quente laranja/vermelho derivando */
+.axxa-bg-ember {
+  --axxa-live-name: axxa-bg-drift;
+  --axxa-live-dur: 20s;
+  --axxa-live-img: radial-gradient(46% 56% at 30% 75%, rgba(249, 115, 22, 0.26), transparent 70%),
+    radial-gradient(40% 50% at 75% 25%, rgba(239, 68, 68, 0.22), transparent 70%);
+}
+body.theme-dark .axxa-bg-ember {
+  --axxa-live-img: radial-gradient(46% 56% at 30% 75%, rgba(249, 115, 22, 0.36), transparent 70%),
+    radial-gradient(40% 50% at 75% 25%, rgba(239, 68, 68, 0.32), transparent 70%);
 }
 
-@keyframes axxa-bg-aurora-move-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(40%, 30%) scale(1.2); }
-  66% { transform: translate(20%, 60%) scale(0.9); }
-}
-
-@keyframes axxa-bg-aurora-move-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(-40%, -20%) scale(1.1); }
-  66% { transform: translate(-15%, -50%) scale(1.3); }
-}
-
-.axxa-root.axxa-bg-aurora-live.axxa-bg-active::before {
-  animation-duration: 8s;
-}
-
-.axxa-root.axxa-bg-aurora-live.axxa-bg-active::after {
-  animation-duration: 9s;
-}
-
-/* =====================================================
- * Live BGs em Settings (v0.1.55)
- *
- * Settings precisa de overflow:auto (scroll). Pseudo-elements absolutos
- * dentro de container scrollable ficam ANCORADOS no documento, não no
- * viewport — perdem o efeito ao rolar.
- *
- * Fix: usar position:fixed nos pseudos pra eles ficarem ancorados no
- * viewport. Sem precisar de overflow:hidden no .axxa-settings-root
- * (que quebraria o scroll).
- * ===================================================== */
-
-/* Pulse — Settings */
-.axxa-settings-root.axxa-bg-pulse {
-  background: var(--background-primary) !important;
-  position: relative;
-  /* SEM overflow:hidden — preserva scroll vertical da settings */
-}
-.axxa-settings-root.axxa-bg-pulse::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    circle at 50% 40%,
-    rgba(99, 102, 241, 0.20),
-    transparent 55%
-  );
-  animation: axxa-bg-pulse-loop 6s ease-in-out infinite;
-  z-index: 0;
-}
-body.theme-dark .axxa-settings-root.axxa-bg-pulse::before {
-  background: radial-gradient(
-    circle at 50% 40%,
-    rgba(99, 102, 241, 0.28),
-    transparent 55%
-  );
-}
-
-/* Flow — Settings */
-.axxa-settings-root.axxa-bg-flow {
-  background: var(--background-primary) !important;
-  position: relative;
-}
-.axxa-settings-root.axxa-bg-flow::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    115deg,
+/* Spectrum — matiz do arco-íris ciclando (hue-rotate) */
+.axxa-bg-spectrum {
+  --axxa-live-name: axxa-bg-hue;
+  --axxa-live-dur: 16s;
+  --axxa-live-ease: linear;
+  --axxa-live-img: linear-gradient(
+    125deg,
     rgba(56, 189, 248, 0.18),
     rgba(168, 85, 247, 0.18),
-    rgba(236, 72, 153, 0.18),
+    rgba(244, 114, 182, 0.18),
+    rgba(250, 200, 90, 0.18),
     rgba(56, 189, 248, 0.18)
   );
-  background-size: 300% 300%;
-  animation: axxa-bg-flow-loop 18s ease infinite;
-  z-index: 0;
 }
-body.theme-dark .axxa-settings-root.axxa-bg-flow::before {
-  background: linear-gradient(
-    115deg,
-    rgba(56, 189, 248, 0.26),
-    rgba(168, 85, 247, 0.26),
-    rgba(236, 72, 153, 0.26),
-    rgba(56, 189, 248, 0.26)
-  );
-  background-size: 300% 300%;
-}
-
-/* Aurora Live — Settings */
-.axxa-settings-root.axxa-bg-aurora-live {
-  background: var(--background-primary) !important;
-  position: relative;
-}
-.axxa-settings-root.axxa-bg-aurora-live::before,
-.axxa-settings-root.axxa-bg-aurora-live::after {
-  content: "";
-  position: fixed;
-  width: 60vw;
-  height: 60vh;
-  pointer-events: none;
-  border-radius: 50%;
-  filter: blur(40px);
-  z-index: 0;
-}
-.axxa-settings-root.axxa-bg-aurora-live::before {
-  top: -10vh;
-  left: -10vw;
-  background: radial-gradient(
-    circle,
-    rgba(34, 197, 94, 0.32) 0%,
-    transparent 70%
-  );
-  animation: axxa-bg-aurora-move-1 22s ease-in-out infinite;
-}
-.axxa-settings-root.axxa-bg-aurora-live::after {
-  bottom: -10vh;
-  right: -10vw;
-  background: radial-gradient(
-    circle,
-    rgba(168, 85, 247, 0.32) 0%,
-    transparent 70%
-  );
-  animation: axxa-bg-aurora-move-2 26s ease-in-out infinite;
-}
-body.theme-dark .axxa-settings-root.axxa-bg-aurora-live::before {
-  background: radial-gradient(
-    circle,
-    rgba(34, 197, 94, 0.40) 0%,
-    transparent 70%
-  );
-}
-body.theme-dark .axxa-settings-root.axxa-bg-aurora-live::after {
-  background: radial-gradient(
-    circle,
-    rgba(168, 85, 247, 0.40) 0%,
-    transparent 70%
+body.theme-dark .axxa-bg-spectrum {
+  --axxa-live-img: linear-gradient(
+    125deg,
+    rgba(56, 189, 248, 0.24),
+    rgba(168, 85, 247, 0.24),
+    rgba(244, 114, 182, 0.24),
+    rgba(250, 200, 90, 0.24),
+    rgba(56, 189, 248, 0.24)
   );
 }
 
-/* Garante conteúdo do settings fica ACIMA das animações de bg */
-.axxa-settings-root.axxa-bg-pulse > *,
-.axxa-settings-root.axxa-bg-flow > *,
-.axxa-settings-root.axxa-bg-aurora-live > * {
-  position: relative;
-  z-index: 1;
+/* Lagoon — lagoa teal + verde, deriva gentil */
+.axxa-bg-lagoon {
+  --axxa-live-name: axxa-bg-drift;
+  --axxa-live-dur: 24s;
+  --axxa-live-img: radial-gradient(46% 56% at 22% 35%, rgba(13, 148, 136, 0.26), transparent 70%),
+    radial-gradient(46% 56% at 82% 68%, rgba(34, 197, 94, 0.22), transparent 70%);
 }
-
-/* Garante que o conteúdo do .axxa-root fica ACIMA do ::before animado.
-   Sem isso, a animação cobre as mensagens. */
-.axxa-root.axxa-bg-pulse > *,
-.axxa-root.axxa-bg-flow > *,
-.axxa-root.axxa-bg-aurora-live > * {
-  position: relative;
-  z-index: 1;
+body.theme-dark .axxa-bg-lagoon {
+  --axxa-live-img: radial-gradient(46% 56% at 22% 35%, rgba(13, 148, 136, 0.36), transparent 70%),
+    radial-gradient(46% 56% at 82% 68%, rgba(34, 197, 94, 0.32), transparent 70%);
 }
 
 /* =====================================================
- * Drawer host bg paint (v0.1.74)
+ * LIVE em Settings — pseudo position:fixed (v0.1.106)
  *
- * Quando AXXA está hospedado no .workspace-drawer-active-tab-container
- * (mobile drawer), o bg é pintado NO container em vez de na .axxa-root.
- * Razão: o drawer container tem margin-top + flex-direction:column-reverse
- * (Obsidian mobile) que o deixa MAIOR do que a área que axxa-root consegue
- * ocupar — gap visual no topo OU no fundo mostrando o
- * --background-modifier-hover do drawer em vez do nosso preset.
+ * Settings precisa de overflow:auto (scroll). Pseudo absoluto dentro de
+ * container scrollable fica ancorado no DOCUMENTO e "foge" ao rolar — por
+ * isso aqui é fixed (ancorado no viewport), sem overflow:hidden no container.
+ * Consome as MESMAS vars --axxa-live-* dos presets.
+ * ===================================================== */
+.axxa-settings-root:is(
+    .axxa-bg-aurora,
+    .axxa-bg-nebula,
+    .axxa-bg-pulse,
+    .axxa-bg-flow,
+    .axxa-bg-tide,
+    .axxa-bg-ember,
+    .axxa-bg-spectrum,
+    .axxa-bg-lagoon
+  ) {
+  position: relative;
+  background-color: var(--background-primary) !important;
+}
+.axxa-settings-root:is(
+    .axxa-bg-aurora,
+    .axxa-bg-nebula,
+    .axxa-bg-pulse,
+    .axxa-bg-flow,
+    .axxa-bg-tide,
+    .axxa-bg-ember,
+    .axxa-bg-spectrum,
+    .axxa-bg-lagoon
+  )::before {
+  content: "";
+  position: fixed;
+  inset: -25%;
+  pointer-events: none;
+  z-index: 0;
+  background-image: var(--axxa-live-img);
+  background-size: var(--axxa-live-size, auto);
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: var(--axxa-live-name, axxa-bg-drift) var(--axxa-live-dur, 20s)
+    var(--axxa-live-ease, ease-in-out) infinite;
+  will-change: transform, filter, background-position;
+}
+.axxa-settings-root:is(
+    .axxa-bg-aurora,
+    .axxa-bg-nebula,
+    .axxa-bg-pulse,
+    .axxa-bg-flow,
+    .axxa-bg-tide,
+    .axxa-bg-ember,
+    .axxa-bg-spectrum,
+    .axxa-bg-lagoon
+  )
+  > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Acessibilidade: prefers-reduced-motion zera TODA animação de bg */
+@media (prefers-reduced-motion: reduce) {
+  :is(
+      .axxa-root,
+      .axxa-settings-root,
+      .axxa-bg-swatch,
+      .workspace-drawer-active-tab-container.axxa-host
+    )::before {
+    animation: none !important;
+  }
+}
+
+/* =====================================================
+ * Drawer host (mobile · v0.1.74, tokenizado v0.1.106)
  *
- * Setup: AxxaView.setupDrawerHost() planta classes `axxa-host` +
- * `axxa-bg-{preset}` no drawer container. CSS abaixo pinta o bg/preset
- * NELE (edge-to-edge), e força axxa-root como transparente.
+ * No drawer mobile o bg é pintado NO .workspace-drawer-active-tab-container
+ * (não na .axxa-root) porque o container é maior que a área da root — pintar
+ * só na root deixaria um gap mostrando o --background-modifier-hover do drawer.
  *
- * Header e composer continuam translucent (color-mix bg-primary 40%) —
- * blur sobre o paint do host, igual glassmorphism.
+ * O PAINT (estático E live) vem das regras compartilhadas lá de cima — o host
+ * já está na lista de carriers. Aqui só: zera a root interna e fixa z-index.
  * ===================================================== */
 
-/* axxa-root transparente dentro do drawer host — o paint do drawer
-   container vira o canvas visual. */
+/* axxa-root transparente dentro do host — o paint do container é o canvas */
 .workspace-drawer-active-tab-container.axxa-host .axxa-root {
   background: transparent !important;
 }
 
-/* Desativa os pseudo-elementos animados de .axxa-root quando dentro do
-   host — eles agora moram no próprio container do drawer (abaixo). */
-.workspace-drawer-active-tab-container.axxa-host .axxa-root.axxa-bg-pulse::before,
-.workspace-drawer-active-tab-container.axxa-host .axxa-root.axxa-bg-flow::before,
-.workspace-drawer-active-tab-container.axxa-host .axxa-root.axxa-bg-aurora-live::before,
-.workspace-drawer-active-tab-container.axxa-host .axxa-root.axxa-bg-aurora-live::after {
+/* A camada animada da root é desativada no host (mora no container) */
+.workspace-drawer-active-tab-container.axxa-host .axxa-root::before {
   display: none !important;
 }
 
-/* === ESTÁTICOS no host === */
-
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-none {
-  background: var(--background-primary) !important;
-}
-
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-sunset {
-  background:
-    linear-gradient(135deg, rgba(255, 126, 95, 0.18), rgba(254, 180, 123, 0.10) 60%, transparent),
-    var(--background-primary) !important;
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-sunset {
-  background:
-    linear-gradient(135deg, rgba(255, 126, 95, 0.26), rgba(254, 180, 123, 0.16) 60%, transparent),
-    var(--background-primary) !important;
-}
-
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-ocean {
-  background:
-    linear-gradient(135deg, rgba(33, 147, 176, 0.20), rgba(109, 213, 237, 0.10) 60%, transparent),
-    var(--background-primary) !important;
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-ocean {
-  background:
-    linear-gradient(135deg, rgba(33, 147, 176, 0.28), rgba(109, 213, 237, 0.16) 60%, transparent),
-    var(--background-primary) !important;
-}
-
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-forest {
-  background:
-    linear-gradient(135deg, rgba(17, 153, 142, 0.20), rgba(56, 239, 125, 0.10) 60%, transparent),
-    var(--background-primary) !important;
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-forest {
-  background:
-    linear-gradient(135deg, rgba(17, 153, 142, 0.28), rgba(56, 239, 125, 0.16) 60%, transparent),
-    var(--background-primary) !important;
-}
-
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-violet {
-  background:
-    linear-gradient(135deg, rgba(142, 45, 226, 0.20), rgba(74, 0, 224, 0.10) 60%, transparent),
-    var(--background-primary) !important;
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-violet {
-  background:
-    linear-gradient(135deg, rgba(142, 45, 226, 0.30), rgba(74, 0, 224, 0.18) 60%, transparent),
-    var(--background-primary) !important;
-}
-
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-mono {
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 50%, rgba(0, 0, 0, 0.08)),
-    var(--background-primary) !important;
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-mono {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 50%, rgba(255, 255, 255, 0.08)),
-    var(--background-primary) !important;
-}
-
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora {
-  background:
-    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.22), transparent 70%),
-    radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.22), transparent 70%),
-    var(--background-primary) !important;
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora {
-  background:
-    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.30), transparent 70%),
-    radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.30), transparent 70%),
-    var(--background-primary) !important;
-}
-
-/* === ANIMADOS no host (pulse / flow / aurora-live) === */
-/* Cada um vira: host com position:relative + overflow:hidden + bg base,
-   e o gradient animado em ::before (ou ::after pra aurora-live).
-   Reusam keyframes axxa-bg-pulse-loop/axxa-bg-flow-loop/aurora-move-* */
-
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-pulse,
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-flow,
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora-live {
-  position: relative;
-  overflow: hidden;
-  background: var(--background-primary) !important;
-}
-
-/* Pulse no host */
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-pulse::before {
-  content: "";
-  position: absolute;
-  inset: -20%;
-  pointer-events: none;
-  background: radial-gradient(circle at 50% 40%, rgba(99, 102, 241, 0.20), transparent 55%);
-  animation: axxa-bg-pulse-loop 6s ease-in-out infinite;
-  z-index: 0;
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-pulse::before {
-  background: radial-gradient(circle at 50% 40%, rgba(99, 102, 241, 0.28), transparent 55%);
-}
-
-/* Flow no host */
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-flow::before {
-  content: "";
-  position: absolute;
-  inset: -10%;
-  pointer-events: none;
-  background: linear-gradient(
-    115deg,
-    rgba(56, 189, 248, 0.18),
-    rgba(168, 85, 247, 0.18),
-    rgba(236, 72, 153, 0.18),
-    rgba(56, 189, 248, 0.18)
-  );
-  background-size: 300% 300%;
-  animation: axxa-bg-flow-loop 18s ease infinite;
-  z-index: 0;
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-flow::before {
-  background: linear-gradient(
-    115deg,
-    rgba(56, 189, 248, 0.26),
-    rgba(168, 85, 247, 0.26),
-    rgba(236, 72, 153, 0.26),
-    rgba(56, 189, 248, 0.26)
-  );
-  background-size: 300% 300%;
-}
-
-/* Aurora-live no host (2 blobs animando) */
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora-live::before,
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora-live::after {
-  content: "";
-  position: absolute;
-  width: 60%;
-  height: 60%;
-  pointer-events: none;
-  border-radius: 50%;
-  filter: blur(40px);
-  z-index: 0;
-}
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora-live::before {
-  top: -10%;
-  left: -10%;
-  background: radial-gradient(circle, rgba(34, 197, 94, 0.32) 0%, transparent 70%);
-  animation: axxa-bg-aurora-move-1 22s ease-in-out infinite;
-}
-.workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora-live::after {
-  bottom: -10%;
-  right: -10%;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.32) 0%, transparent 70%);
-  animation: axxa-bg-aurora-move-2 26s ease-in-out infinite;
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora-live::before {
-  background: radial-gradient(circle, rgba(34, 197, 94, 0.40) 0%, transparent 70%);
-}
-body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora-live::after {
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.40) 0%, transparent 70%);
-}
-
-/* Garante .axxa-root e demais filhos ficam ACIMA dos pseudo-elementos
-   animados pintados no host. */
+/* Conteúdo acima do paint/camada animada do host */
 .workspace-drawer-active-tab-container.axxa-host > * {
   position: relative;
   z-index: 1;
@@ -4196,39 +4098,58 @@ body.theme-dark .workspace-drawer-active-tab-container.axxa-host.axxa-bg-aurora-
  * gradients aplicados na navbar ficariam estranhos com os ícones.
  * ===================================================== */
 
-/* === Tint vars per preset (light + dark) === */
-body.axxa-host-active.axxa-bg-sunset { --axxa-navbar-tint: #ffeae0; }
-body.theme-dark.axxa-host-active.axxa-bg-sunset { --axxa-navbar-tint: #2a1f1c; }
+/* === Tint vars per preset (light + dark) — espelha PRESET_THEME_COLORS
+       em themeColor.ts (status bar do OS). v0.1.106 === */
+
+/* Static */
+body.axxa-host-active.axxa-bg-dawn { --axxa-navbar-tint: #ffe9e0; }
+body.theme-dark.axxa-host-active.axxa-bg-dawn { --axxa-navbar-tint: #2a1f1c; }
 
 body.axxa-host-active.axxa-bg-ocean { --axxa-navbar-tint: #dff0f5; }
 body.theme-dark.axxa-host-active.axxa-bg-ocean { --axxa-navbar-tint: #172a32; }
 
-body.axxa-host-active.axxa-bg-forest { --axxa-navbar-tint: #dff0e8; }
-body.theme-dark.axxa-host-active.axxa-bg-forest { --axxa-navbar-tint: #162e2a; }
+body.axxa-host-active.axxa-bg-forest { --axxa-navbar-tint: #dff2e8; }
+body.theme-dark.axxa-host-active.axxa-bg-forest { --axxa-navbar-tint: #152e26; }
 
-body.axxa-host-active.axxa-bg-violet { --axxa-navbar-tint: #e8dff5; }
-body.theme-dark.axxa-host-active.axxa-bg-violet { --axxa-navbar-tint: #241a3a; }
+body.axxa-host-active.axxa-bg-violet { --axxa-navbar-tint: #e9e0f7; }
+body.theme-dark.axxa-host-active.axxa-bg-violet { --axxa-navbar-tint: #221a38; }
+
+body.axxa-host-active.axxa-bg-rose { --axxa-navbar-tint: #fbe2ef; }
+body.theme-dark.axxa-host-active.axxa-bg-rose { --axxa-navbar-tint: #2e1a28; }
+
+body.axxa-host-active.axxa-bg-amber { --axxa-navbar-tint: #f7eed3; }
+body.theme-dark.axxa-host-active.axxa-bg-amber { --axxa-navbar-tint: #322a18; }
+
+body.axxa-host-active.axxa-bg-slate { --axxa-navbar-tint: #e6eaf0; }
+body.theme-dark.axxa-host-active.axxa-bg-slate { --axxa-navbar-tint: #1c2230; }
 
 body.axxa-host-active.axxa-bg-mono { --axxa-navbar-tint: #eaeaea; }
 body.theme-dark.axxa-host-active.axxa-bg-mono { --axxa-navbar-tint: #1c1c1c; }
 
-body.axxa-host-active.axxa-bg-aurora { --axxa-navbar-tint: #dff0e3; }
-body.theme-dark.axxa-host-active.axxa-bg-aurora { --axxa-navbar-tint: #172a1f; }
+/* Live */
+body.axxa-host-active.axxa-bg-aurora { --axxa-navbar-tint: #dff2e6; }
+body.theme-dark.axxa-host-active.axxa-bg-aurora { --axxa-navbar-tint: #16261d; }
 
-body.axxa-host-active.axxa-bg-spotlight { --axxa-navbar-tint: #f5ecd5; }
-body.theme-dark.axxa-host-active.axxa-bg-spotlight { --axxa-navbar-tint: #332a1c; }
+body.axxa-host-active.axxa-bg-nebula { --axxa-navbar-tint: #ece0f2; }
+body.theme-dark.axxa-host-active.axxa-bg-nebula { --axxa-navbar-tint: #221a30; }
 
-body.axxa-host-active.axxa-bg-nebula { --axxa-navbar-tint: #f0dfea; }
-body.theme-dark.axxa-host-active.axxa-bg-nebula { --axxa-navbar-tint: #2e1a28; }
+body.axxa-host-active.axxa-bg-pulse { --axxa-navbar-tint: #e0e2f5; }
+body.theme-dark.axxa-host-active.axxa-bg-pulse { --axxa-navbar-tint: #1b1d33; }
 
-body.axxa-host-active.axxa-bg-pulse { --axxa-navbar-tint: #dcdef0; }
-body.theme-dark.axxa-host-active.axxa-bg-pulse { --axxa-navbar-tint: #1c1d35; }
+body.axxa-host-active.axxa-bg-flow { --axxa-navbar-tint: #e6e2f5; }
+body.theme-dark.axxa-host-active.axxa-bg-flow { --axxa-navbar-tint: #221d33; }
 
-body.axxa-host-active.axxa-bg-flow { --axxa-navbar-tint: #e3dcf0; }
-body.theme-dark.axxa-host-active.axxa-bg-flow { --axxa-navbar-tint: #241f35; }
+body.axxa-host-active.axxa-bg-tide { --axxa-navbar-tint: #dceff2; }
+body.theme-dark.axxa-host-active.axxa-bg-tide { --axxa-navbar-tint: #15282c; }
 
-body.axxa-host-active.axxa-bg-aurora-live { --axxa-navbar-tint: #dff0e3; }
-body.theme-dark.axxa-host-active.axxa-bg-aurora-live { --axxa-navbar-tint: #172a1f; }
+body.axxa-host-active.axxa-bg-ember { --axxa-navbar-tint: #f7e6db; }
+body.theme-dark.axxa-host-active.axxa-bg-ember { --axxa-navbar-tint: #2e1f18; }
+
+body.axxa-host-active.axxa-bg-spectrum { --axxa-navbar-tint: #e9e6f2; }
+body.theme-dark.axxa-host-active.axxa-bg-spectrum { --axxa-navbar-tint: #221f30; }
+
+body.axxa-host-active.axxa-bg-lagoon { --axxa-navbar-tint: #dcf0ec; }
+body.theme-dark.axxa-host-active.axxa-bg-lagoon { --axxa-navbar-tint: #142724; }
 
 /* === Apply tint — só quando a var foi definida (preset != none) === */
 body.axxa-host-active .mobile-navbar {
@@ -4303,8 +4224,11 @@ body.axxa-host-active:not(.axxa-bg-none) .mobile-navbar {
   outline-offset: -2px;
 }
 
-.axxa-bg-preview {
-  /* Cresce com o card; min/max garantem proporção sem encavalar */
+/* Swatch do picker — renderiza o preset REAL (classe `axxa-bg-swatch` +
+   `axxa-bg-<id>`); o paint (estático ou live animado) vem das MESMAS regras
+   compartilhadas lá de cima. Zero duplicação — o que você vê é o que ativa.
+   v0.1.106 (antes: 12 blocos .axxa-bg-preview-* repetindo os gradientes). */
+.axxa-bg-swatch {
   display: block;
   width: 100%;
   height: 72px;
@@ -4315,108 +4239,7 @@ body.axxa-host-active:not(.axxa-bg-none) .mobile-navbar {
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
-}
-
-.axxa-bg-preview-none {
   background: var(--background-primary);
-}
-
-.axxa-bg-preview-sunset {
-  background:
-    linear-gradient(135deg, rgba(255, 126, 95, 0.3), rgba(254, 180, 123, 0.18) 60%, transparent),
-    var(--background-primary);
-}
-
-.axxa-bg-preview-ocean {
-  background:
-    linear-gradient(135deg, rgba(33, 147, 176, 0.3), rgba(109, 213, 237, 0.18) 60%, transparent),
-    var(--background-primary);
-}
-
-.axxa-bg-preview-forest {
-  background:
-    linear-gradient(135deg, rgba(17, 153, 142, 0.3), rgba(56, 239, 125, 0.18) 60%, transparent),
-    var(--background-primary);
-}
-
-.axxa-bg-preview-violet {
-  background:
-    linear-gradient(135deg, rgba(142, 45, 226, 0.3), rgba(74, 0, 224, 0.18) 60%, transparent),
-    var(--background-primary);
-}
-
-.axxa-bg-preview-mono {
-  background:
-    linear-gradient(180deg, rgba(128, 128, 128, 0.18), transparent 50%, rgba(128, 128, 128, 0.18)),
-    var(--background-primary);
-}
-
-.axxa-bg-preview-aurora {
-  background:
-    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(34, 197, 94, 0.5), transparent 70%),
-    radial-gradient(ellipse 70% 60% at 15% 100%, rgba(168, 85, 247, 0.5), transparent 70%),
-    var(--background-primary);
-}
-
-.axxa-bg-preview-spotlight {
-  background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(252, 211, 77, 0.55), transparent 65%),
-    var(--background-primary);
-}
-
-.axxa-bg-preview-nebula {
-  background:
-    radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.45), transparent 50%),
-    radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.45), transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.30), transparent 70%),
-    var(--background-primary);
-}
-
-/* Animated bg previews — versão estática + animação pisca pra dar ideia */
-.axxa-bg-preview-pulse {
-  position: relative;
-  background: var(--background-primary);
-  overflow: hidden;
-}
-.axxa-bg-preview-pulse::after {
-  content: "";
-  position: absolute;
-  inset: -10%;
-  background: radial-gradient(circle at 50% 40%, rgba(99, 102, 241, 0.5), transparent 55%);
-  animation: axxa-bg-pulse-loop 3s ease-in-out infinite;
-}
-
-.axxa-bg-preview-flow {
-  background: linear-gradient(115deg, rgba(56, 189, 248, 0.4), rgba(168, 85, 247, 0.4), rgba(236, 72, 153, 0.4), rgba(56, 189, 248, 0.4));
-  background-size: 300% 300%;
-  animation: axxa-bg-flow-loop 6s ease infinite;
-}
-
-.axxa-bg-preview-aurora-live {
-  position: relative;
-  background: var(--background-primary);
-  overflow: hidden;
-}
-.axxa-bg-preview-aurora-live::before,
-.axxa-bg-preview-aurora-live::after {
-  content: "";
-  position: absolute;
-  width: 65%;
-  height: 65%;
-  border-radius: 50%;
-  filter: blur(12px);
-}
-.axxa-bg-preview-aurora-live::before {
-  top: -15%;
-  left: -15%;
-  background: radial-gradient(circle, rgba(34, 197, 94, 0.55) 0%, transparent 70%);
-  animation: axxa-bg-aurora-move-1 5s ease-in-out infinite;
-}
-.axxa-bg-preview-aurora-live::after {
-  bottom: -15%;
-  right: -15%;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.55) 0%, transparent 70%);
-  animation: axxa-bg-aurora-move-2 6s ease-in-out infinite;
 }
 
 .axxa-bg-option-label {
@@ -6461,12 +6284,12 @@ body.is-mobile .axxa-wave-area {
 }
 
 /* =====================================================
- * Bordas LIVE — só com um tema animado ativo (pulse / flow / aurora-live).
+ * Bordas LIVE — só com QUALQUER tema animado ativo (os 8 presets live).
  * As bordas dos cards do dashboard pulsam em accent + glow suave, no ritmo
  * do fundo. Escalonado por card pra parecer uma onda percorrendo a tela.
- * v0.1.105
+ * v0.1.105 · lista atualizada pros 8 live em v0.1.106
  * ===================================================== */
-.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+.axxa-root:is(.axxa-bg-aurora, .axxa-bg-nebula, .axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-tide, .axxa-bg-ember, .axxa-bg-spectrum, .axxa-bg-lagoon)
   :is(
     .axxa-dash-stat,
     .axxa-dash-activity,
@@ -6478,19 +6301,19 @@ body.is-mobile .axxa-wave-area {
 }
 
 /* Escalonamento (cascata) entre os 4 stat cards */
-.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+.axxa-root:is(.axxa-bg-aurora, .axxa-bg-nebula, .axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-tide, .axxa-bg-ember, .axxa-bg-spectrum, .axxa-bg-lagoon)
   .axxa-dash-stat:nth-child(2) {
   animation-delay: 0.5s;
 }
-.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+.axxa-root:is(.axxa-bg-aurora, .axxa-bg-nebula, .axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-tide, .axxa-bg-ember, .axxa-bg-spectrum, .axxa-bg-lagoon)
   .axxa-dash-stat:nth-child(3) {
   animation-delay: 1s;
 }
-.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+.axxa-root:is(.axxa-bg-aurora, .axxa-bg-nebula, .axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-tide, .axxa-bg-ember, .axxa-bg-spectrum, .axxa-bg-lagoon)
   .axxa-dash-stat:nth-child(4) {
   animation-delay: 1.5s;
 }
-.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+.axxa-root:is(.axxa-bg-aurora, .axxa-bg-nebula, .axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-tide, .axxa-bg-ember, .axxa-bg-spectrum, .axxa-bg-lagoon)
   .axxa-dash-activity {
   animation-delay: 0.8s;
 }
@@ -6513,7 +6336,7 @@ body.is-mobile .axxa-wave-area {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+  .axxa-root:is(.axxa-bg-aurora, .axxa-bg-nebula, .axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-tide, .axxa-bg-ember, .axxa-bg-spectrum, .axxa-bg-lagoon)
     :is(
       .axxa-dash-stat,
       .axxa-dash-activity,

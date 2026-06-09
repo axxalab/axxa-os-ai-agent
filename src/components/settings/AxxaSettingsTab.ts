@@ -1658,19 +1658,28 @@ export class AxxaSettingsTab extends PluginSettingTab {
   // Background picker — grid de swatches com preview do gradient
   // ============================================================
   private renderBackgroundPicker(parent: HTMLElement, t: Translations) {
+    // v0.1.106: novo conjunto — 8 estáticos + 8 live (animados). Os swatches
+    // renderizam o preset REAL (mesma classe axxa-bg-<id>), não um mock.
     const ids: Array<keyof typeof t.settings.backgroundLabels> = [
       "none",
-      "sunset",
+      // === Static (8) ===
+      "dawn",
       "ocean",
       "forest",
       "violet",
+      "rose",
+      "amber",
+      "slate",
       "mono",
+      // === Live (8) ===
       "aurora",
-      "spotlight",
       "nebula",
       "pulse",
       "flow",
-      "aurora-live",
+      "tide",
+      "ember",
+      "spectrum",
+      "lagoon",
     ];
     const current = this.plugin.settings.background || "none";
     const grid = parent.createDiv({ cls: "axxa-bg-grid" });
@@ -1686,7 +1695,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
           "aria-pressed": String(isActive),
         },
       });
-      btn.createDiv({ cls: "axxa-bg-preview axxa-bg-preview-" + id });
+      // Swatch = preset real (sizing .axxa-bg-swatch + classe axxa-bg-<id>)
+      btn.createDiv({ cls: "axxa-bg-swatch axxa-bg-" + id });
       btn.createSpan({
         cls: "axxa-bg-option-label",
         text: t.settings.backgroundLabels[id],

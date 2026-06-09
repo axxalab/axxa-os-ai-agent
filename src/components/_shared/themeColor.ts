@@ -22,22 +22,28 @@ export interface ThemeColorPair {
  *
  * null = preset "none" preserva o theme-color original do Obsidian/tema.
  */
+// v0.1.106: novo conjunto (8 static + 8 live). Cores espelham as vars
+// --axxa-navbar-tint em styles/main.css — mantenha os dois em sincronia.
 export const PRESET_THEME_COLORS: Record<string, ThemeColorPair | null> = {
   none: null,
-  // === Linear ===
-  sunset: { light: "#ffeae0", dark: "#2a1f1c" },
+  // === Static (8) ===
+  dawn: { light: "#ffe9e0", dark: "#2a1f1c" },
   ocean: { light: "#dff0f5", dark: "#172a32" },
-  forest: { light: "#dff0e8", dark: "#162e2a" },
-  violet: { light: "#e8dff5", dark: "#241a3a" },
+  forest: { light: "#dff2e8", dark: "#152e26" },
+  violet: { light: "#e9e0f7", dark: "#221a38" },
+  rose: { light: "#fbe2ef", dark: "#2e1a28" },
+  amber: { light: "#f7eed3", dark: "#322a18" },
+  slate: { light: "#e6eaf0", dark: "#1c2230" },
   mono: { light: "#eaeaea", dark: "#1c1c1c" },
-  // === Radial ===
-  aurora: { light: "#dff0e3", dark: "#172a1f" },
-  spotlight: { light: "#f5ecd5", dark: "#332a1c" },
-  nebula: { light: "#f0dfea", dark: "#2e1a28" },
   // === Live (animadas) ===
-  pulse: { light: "#dcdef0", dark: "#1c1d35" },
-  flow: { light: "#e3dcf0", dark: "#241f35" },
-  "aurora-live": { light: "#dff0e3", dark: "#172a1f" },
+  aurora: { light: "#dff2e6", dark: "#16261d" },
+  nebula: { light: "#ece0f2", dark: "#221a30" },
+  pulse: { light: "#e0e2f5", dark: "#1b1d33" },
+  flow: { light: "#e6e2f5", dark: "#221d33" },
+  tide: { light: "#dceff2", dark: "#15282c" },
+  ember: { light: "#f7e6db", dark: "#2e1f18" },
+  spectrum: { light: "#e9e6f2", dark: "#221f30" },
+  lagoon: { light: "#dcf0ec", dark: "#142724" },
 };
 
 // Estado module-level pra um único AxxaView na sessão. Se mais de uma

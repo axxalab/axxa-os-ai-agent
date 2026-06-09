@@ -43,8 +43,10 @@ interface AxxaSettings {
   chatsPath: string;
   skillsPath: string;
   language: string;
-  /** ID do background preset (none / sunset / ocean / forest / violet / mono).
-   *  Aplicado como classe `axxa-bg-<id>` na .axxa-root. */
+  /** ID do background preset (v0.1.106): none | 8 estáticos (dawn/ocean/forest/
+   *  violet/rose/amber/slate/mono) | 8 live (aurora/nebula/pulse/flow/tide/
+   *  ember/spectrum/lagoon). Aplicado como classe `axxa-bg-<id>` na .axxa-root.
+   *  Presets antigos salvos caem graciosamente em "sem fundo". */
   background: string;
   /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
   recordingsPath: string;
