@@ -49,6 +49,16 @@ const CHIP_COLORS = {
   tokens: "var(--color-green, #06d6a0)",
 } as const;
 
+// Cor por modo — escala sutil: chat (sóbrio) → vault → agent (mais forte).
+const MODE_COLOR: Record<string, string> = {
+  chat: "var(--text-muted)",
+  "vault-qa": "var(--color-cyan, #4cc9f0)",
+  agent: "var(--color-purple, #a370f7)",
+};
+function modeColor(mode: string): string {
+  return MODE_COLOR[mode] ?? "var(--text-muted)";
+}
+
 // Logo de marca por provider (abas + fallback dos cards de modelo).
 const PROVIDER_LOGO: Record<string, string> = {
   openai: "logo-openai",
@@ -102,64 +112,83 @@ function ModelInfoCard({
   const info = getModelFullInfo(provider, model);
   const { card, caps, pricing } = info;
 
-  // Linha de custo: tokens in/out OU por chamada (image), OU free
+  // Tier (pago/free) — vira pílula no header.
+  const tier = pricing.tier ?? "unknown";
+
+  // Linha de custo (números reais): tokens in/out, por imagem, ou por chars (TTS).
   let costLine: string | null = null;
-  if (pricing.tier === "free") {
-    costLine = "FREE";
-  } else if (pricing.imagePerCall != null) {
-    costLine = `${formatUsd(pricing.imagePerCall)} por imagem`;
+  if (pricing.imagePerCall != null) {
+    costLine = `${formatUsd(pricing.imagePerCall)} / imagem`;
+  } else if (pricing.charPerMillion != null) {
+    costLine = `${formatUsd(pricing.charPerMillion)} / 1M chars`;
   } else if (
     pricing.inputPerMillion != null ||
     pricing.outputPerMillion != null
   ) {
-    const inS =
-      pricing.inputPerMillion != null
-        ? formatUsd(pricing.inputPerMillion)
-        : "—";
-    const outS =
-      pricing.outputPerMillion != null
-        ? formatUsd(pricing.outputPerMillion)
-        : "—";
-    costLine = `${inS} in / ${outS} out · por 1M tokens`;
+    costLine = `${formatUsd(pricing.inputPerMillion)} in · ${formatUsd(
+      pricing.outputPerMillion
+    )} out / 1M`;
   }
+
+  // Badges de capacidade — "free" sai (a pílula de tier já cobre).
+  const badges = capabilityBadges(caps).filter((b) => b.id !== "free");
 
   return (
     <div className="axxa-model-card">
-      <div className="axxa-model-card-head">
-        <span className="axxa-model-card-logo">
+      <div className="axxa-model-card-top">
+        <span className="axxa-model-card-avatar">
           <Icon name={modelLogo(provider, model)} />
         </span>
-        <span className="axxa-model-card-category">
-          {CATEGORY_LABELS[card.category]}
+        <span className="axxa-model-card-id">
+          <span className="axxa-model-card-name">{model}</span>
+          <span className="axxa-model-card-cat">
+            {CATEGORY_LABELS[card.category]}
+          </span>
         </span>
+        <span className={"axxa-model-tier axxa-model-tier-" + tier}>
+          {tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?"}
+        </span>
+      </div>
+
+      {badges.length > 0 && (
+        <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
+          {badges.map((b) => (
+            <InfoChip
+              key={b.id}
+              icon={b.icon}
+              color={CAP_COLORS[b.id]}
+              title={modelCapTooltip(b.id, t)}
+            >
+              {b.label}
+            </InfoChip>
+          ))}
+        </div>
+      )}
+
+      <div className="axxa-model-stats">
         {card.contextWindow != null && (
-          <span className="axxa-model-card-ctx">
+          <span className="axxa-model-stat" title="Context window">
+            <Icon name="layers" />
             {formatContextWindow(card.contextWindow)} ctx
           </span>
         )}
         {costLine && (
-          <span className="axxa-model-card-cost">{costLine}</span>
+          <span className="axxa-model-stat axxa-model-stat-cost" title="Preço">
+            <Icon name="circle-dollar-sign" />
+            {costLine}
+          </span>
         )}
       </div>
-      <div className="axxa-model-card-desc">{card.description}</div>
+
+      {card.description && (
+        <div className="axxa-model-card-desc">{card.description}</div>
+      )}
       {card.goodFor && (
         <div className="axxa-model-card-goodfor">
-          <span className="axxa-model-card-goodfor-label">Bom pra:</span>{" "}
-          {card.goodFor}
+          <Icon name="sparkles" />
+          <span>{card.goodFor}</span>
         </div>
       )}
-      <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
-        {capabilityBadges(caps).map((b) => (
-          <InfoChip
-            key={b.id}
-            icon={b.icon}
-            color={CAP_COLORS[b.id]}
-            title={modelCapTooltip(b.id, t)}
-          >
-            {b.label}
-          </InfoChip>
-        ))}
-      </div>
     </div>
   );
 }
@@ -510,24 +539,31 @@ export function StarterScreen({
                 key={c.id}
                 type="button"
                 className="axxa-recent-item"
+                data-mode={c.mode}
                 onClick={() => onLoadChat(c.id, c.mode)}
               >
-                <div className="axxa-recent-title">{c.title}</div>
-                {/* Meta single-line — chips curados via Settings → Chips list */}
-                <div className="axxa-composer-info axxa-recent-meta">
+                <div className="axxa-recent-row">
+                  <span className="axxa-recent-logo">
+                    <Icon name={modelLogo(c.provider, c.model)} />
+                  </span>
+                  <span className="axxa-recent-title">{c.title}</span>
+                  <span className="axxa-recent-date">
+                    {formatRelativeDate(c.date)}
+                  </span>
+                  <span className="axxa-recent-chevron">
+                    <Icon name="chevron-right" />
+                  </span>
+                </div>
+                {/* Status line — chips curados via Settings → Chips list (date vai no topo) */}
+                <div className="axxa-composer-info axxa-recent-status">
                   {visibleChips.includes("mode") && (
-                    <InfoChip icon={modeChipIcon(c.mode)} color={CHIP_COLORS.mode}>
+                    <InfoChip icon={modeChipIcon(c.mode)} color={modeColor(c.mode)}>
                       {c.mode}
                     </InfoChip>
                   )}
                   {visibleChips.includes("model") && (
                     <InfoChip icon="cpu" color={CHIP_COLORS.model}>
                       {c.model}
-                    </InfoChip>
-                  )}
-                  {visibleChips.includes("date") && (
-                    <InfoChip icon="clock" color={CHIP_COLORS.date}>
-                      {formatRelativeDate(c.date)}
                     </InfoChip>
                   )}
                   {visibleChips.includes("messages") && (

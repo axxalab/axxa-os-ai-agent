@@ -5546,3 +5546,176 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   height: 13px;
   display: block;
 }
+
+/* =====================================================
+ * Model card premium (v0.1.94) — logo + nome + tier + caps + stats
+ * ===================================================== */
+.axxa-model-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.axxa-model-card-avatar {
+  display: flex;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+}
+.axxa-model-card-avatar .axxa-icon svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+.axxa-model-card-id {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.axxa-model-card-name {
+  font-weight: 700;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-model-card-cat {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.axxa-model-tier {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+.axxa-model-tier-free {
+  color: var(--color-green, #06d6a0);
+  background: color-mix(in srgb, var(--color-green, #06d6a0) 16%, transparent);
+}
+.axxa-model-tier-paid {
+  color: var(--text-muted);
+  background: var(--background-modifier-hover);
+}
+.axxa-model-tier-unknown {
+  display: none;
+}
+.axxa-model-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+.axxa-model-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.axxa-model-stat .axxa-icon svg {
+  width: 13px;
+  height: 13px;
+}
+.axxa-model-stat-cost {
+  color: var(--color-green, #06d6a0);
+  font-weight: 600;
+}
+.axxa-model-card-goodfor {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.axxa-model-card-goodfor .axxa-icon svg {
+  width: 12px;
+  height: 12px;
+  color: var(--color-yellow, #ffd166);
+}
+
+/* =====================================================
+ * Recent conversations redesign (v0.1.94)
+ * [logo] título · data · chevron  +  status line. Escala sutil por modo.
+ * ===================================================== */
+.axxa-recent-item {
+  border-left: 3px solid transparent;
+  padding: 8px 10px;
+  gap: 4px;
+}
+.axxa-recent-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.axxa-recent-logo {
+  display: flex;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: var(--background-primary);
+}
+.axxa-recent-logo .axxa-icon svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+.axxa-recent-row .axxa-recent-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-recent-date {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.axxa-recent-chevron {
+  flex: 0 0 auto;
+  display: flex;
+  color: var(--text-faint);
+}
+.axxa-recent-chevron .axxa-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.axxa-recent-status {
+  padding-left: 32px;
+  gap: 1px 8px;
+  font-size: 9px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+/* Escala por modo: chat sóbrio → vault → agent mais forte (sem exagero) */
+.axxa-recent-item[data-mode="vault-qa"] {
+  border-left-color: color-mix(in srgb, var(--color-cyan, #4cc9f0) 55%, transparent);
+}
+.axxa-recent-item[data-mode="agent"] {
+  border-left-color: var(--color-purple, #a370f7);
+  background: color-mix(in srgb, var(--color-purple, #a370f7) 6%, var(--background-secondary));
+}
