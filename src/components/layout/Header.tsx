@@ -33,6 +33,10 @@ interface HeaderProps {
   onCopyConversation: () => void;
   /** Há conversa pra copiar (esconde o item do menu se vazio). */
   canCopy: boolean;
+  /** Abre o modal de persona (system prompt custom) do chat. */
+  onEditPersona: () => void;
+  /** Persona ativa — destaca o item no menu. */
+  personaActive: boolean;
 }
 
 export function Header({
@@ -48,6 +52,8 @@ export function Header({
   searchActive,
   onCopyConversation,
   canCopy,
+  onEditPersona,
+  personaActive,
 }: HeaderProps) {
   const t = useT();
   const [draft, setDraft] = useState(chatTitle);
@@ -150,6 +156,14 @@ export function Header({
           onClick={(e) => {
             // Menu nativo do Obsidian — item único por enquanto, mais virão
             const menu = new Menu();
+            menu.addItem((item) =>
+              item
+                .setTitle(
+                  personaActive ? t.header.personaActive : t.header.persona
+                )
+                .setIcon("drama")
+                .onClick(() => onEditPersona())
+            );
             if (canCopy) {
               menu.addItem((item) =>
                 item

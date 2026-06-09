@@ -108,6 +108,8 @@ interface ChatState {
   sessionProvider: string | null;
   sessionModel: string | null;
   sessionMode: string | null;
+  /** Persona / system prompt custom do chat atual ("" = prompt padrão). */
+  sessionPersona: string;
   /** ID do chat atual (UUID). null antes da primeira msg. Usado pra save/load. */
   currentChatId: string | null;
   /** Título do chat atual (auto-gerado da primeira msg do user). */
@@ -143,6 +145,8 @@ interface ChatState {
   endStreamTimer: () => void;
   lockSession: (provider: string, model: string, mode?: string) => void;
   unlockSession: () => void;
+  /** Define a persona (system prompt custom) do chat atual. */
+  setSessionPersona: (persona: string) => void;
   setCurrentChatId: (id: string | null) => void;
   setCurrentChatTitle: (title: string) => void;
   /** Substitui o array de mensagens inteiro (usado ao carregar chat do disco). */
@@ -173,6 +177,7 @@ export const useChatStore = create<ChatState>((set) => ({
   sessionProvider: null,
   sessionModel: null,
   sessionMode: null,
+  sessionPersona: "",
   currentChatId: null,
   currentChatTitle: "",
   addMessage: (msg) => {
@@ -248,6 +253,7 @@ export const useChatStore = create<ChatState>((set) => ({
       sessionProvider: null,
       sessionModel: null,
       sessionMode: null,
+      sessionPersona: "",
     }),
   setLoading: (loading) => set({ isLoading: loading }),
   addUsage: (input, output) =>
@@ -290,6 +296,7 @@ export const useChatStore = create<ChatState>((set) => ({
     }),
   unlockSession: () =>
     set({ sessionProvider: null, sessionModel: null, sessionMode: null }),
+  setSessionPersona: (persona) => set({ sessionPersona: persona }),
   setCurrentChatId: (id) => set({ currentChatId: id }),
   setCurrentChatTitle: (title) => set({ currentChatTitle: title }),
   setMessages: (msgs) => set({ messages: msgs }),
@@ -304,6 +311,7 @@ export const useChatStore = create<ChatState>((set) => ({
       sessionProvider: null,
       sessionModel: null,
       sessionMode: null,
+      sessionPersona: "",
       currentChatId: null,
       currentChatTitle: "",
     }),

@@ -48,6 +48,8 @@ export const EN_US: Translations = {
     search: "Search conversation",
     copyConversation: "Copy conversation",
     copyConversationDone: "Conversation copied",
+    persona: "Chat persona",
+    personaActive: "Chat persona (active)",
   },
 
   chat: {
@@ -56,6 +58,15 @@ export const EN_US: Translations = {
     searchNoResults: "No results in this conversation.",
     continueLabel: "Continue",
     continueTitle: "Response cut at the limit — continue where it stopped",
+    personaTitle: "Chat persona",
+    personaDesc:
+      "Custom system instruction for this conversation — sets role, tone and rules. Empty = use the default.",
+    personaPlaceholder:
+      "E.g.: You are a skeptical tech reviewer. Be concise, flag risks first.",
+    personaSave: "Save",
+    personaClear: "Clear",
+    personaSet: "Persona set for this chat",
+    personaCleared: "Persona removed — using the default",
   },
 
   conversations: {

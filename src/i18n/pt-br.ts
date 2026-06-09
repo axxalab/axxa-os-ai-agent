@@ -48,6 +48,8 @@ export const PT_BR = {
     search: "Buscar na conversa",
     copyConversation: "Copiar conversa",
     copyConversationDone: "Conversa copiada",
+    persona: "Persona do chat",
+    personaActive: "Persona do chat (ativa)",
   },
 
   chat: {
@@ -56,6 +58,15 @@ export const PT_BR = {
     searchNoResults: "Nenhum resultado nesta conversa.",
     continueLabel: "Continuar",
     continueTitle: "Resposta cortada no limite — continuar de onde parou",
+    personaTitle: "Persona do chat",
+    personaDesc:
+      "Instrução de sistema custom pra esta conversa — define papel, tom e regras. Vazio = usa o padrão.",
+    personaPlaceholder:
+      "Ex: Você é um revisor técnico cético. Responda curto, aponte riscos primeiro.",
+    personaSave: "Salvar",
+    personaClear: "Limpar",
+    personaSet: "Persona definida pra este chat",
+    personaCleared: "Persona removida — usando o padrão",
   },
 
   conversations: {

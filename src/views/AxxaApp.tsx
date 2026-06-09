@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import type AxxaPlugin from "../main";
 import { Header } from "../components/layout/Header";
 import { Icon } from "../components/_shared/Icon";
+import { PersonaModal } from "../components/chat/PersonaModal";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
@@ -247,6 +248,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const sessionProvider = useChatStore((s) => s.sessionProvider);
   const sessionModel = useChatStore((s) => s.sessionModel);
   const sessionMode = useChatStore((s) => s.sessionMode);
+  const sessionPersona = useChatStore((s) => s.sessionPersona);
   const currentChatId = useChatStore((s) => s.currentChatId);
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
   const abortRef = useRef<AbortController | null>(null);
@@ -347,6 +349,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         effort,
         tokensIn,
         tokensOut,
+        persona: useChatStore.getState().sessionPersona || undefined,
         messages: userOrAi.map((m) => ({
           type: m.type as "user" | "ai-response",
           content: m.content,
@@ -371,6 +374,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     effort,
     tokensIn,
     tokensOut,
+    sessionPersona,
     plugin.app,
     plugin.settings.chatsPath,
   ]);
@@ -501,8 +505,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             noteAtts.map((n) => `### ${n.path}\n\n${n.content}`).join("\n\n---\n\n");
         }
       }
+      // Persona custom do chat (se definida) substitui o system prompt base.
+      const personaBase = useChatStore.getState().sessionPersona.trim();
       const fullSystem =
-        t.systemPrompt.base +
+        (personaBase || t.systemPrompt.base) +
         (vaultContextBlock.length > 0
           ? t.systemPrompt.vaultQaSuffix + vaultContextBlock
           : "") +
@@ -687,7 +693,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     // System prompt específico do agent — reforça uso eficiente das tools
     // e atitude "incansável" pra effort alto (não desiste em max).
+    const agentPersona = useChatStore.getState().sessionPersona.trim();
     const AGENT_SYSTEM_PROMPT =
+      (agentPersona ? agentPersona + "\n\n" : "") +
       "Você é o AXXA Agent, um assistente integrado ao Obsidian com acesso direto " +
       "ao vault do usuário via ferramentas (tools). Responda em português. " +
       "Pra ENCONTRAR notas sobre um tema ou pergunta, use vault_search PRIMEIRO " +
@@ -1587,6 +1595,24 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
+  const handleEditPersona = () => {
+    new PersonaModal(
+      plugin.app,
+      useChatStore.getState().sessionPersona,
+      {
+        title: t.chat.personaTitle,
+        desc: t.chat.personaDesc,
+        placeholder: t.chat.personaPlaceholder,
+        save: t.chat.personaSave,
+        clear: t.chat.personaClear,
+      },
+      (persona) => {
+        useChatStore.getState().setSessionPersona(persona);
+        new Notice(persona ? t.chat.personaSet : t.chat.personaCleared);
+      }
+    ).open();
+  };
+
   const handlePlusClick = () => setPlusOpen(true);
   const handlePlusClose = () => setPlusOpen(false);
   const handleSelectEffort = async (level: EffortLevel) => {
@@ -1664,6 +1690,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         lockSession,
         resetUsage,
         addUsage,
+        setSessionPersona,
       } = useChatStore.getState();
 
       setMessages(restored);
@@ -1674,6 +1701,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       resetUsage();
       addUsage(chat.tokensIn, chat.tokensOut);
       setEffort(chat.effort);
+      setSessionPersona(chat.persona ?? "");
     } catch (err) {
       console.error("[axxa] loadChat falhou:", err);
     }
@@ -1774,6 +1802,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             canCopy={messages.some(
               (m) => m.type === "user" || m.type === "ai-response"
             )}
+            onEditPersona={handleEditPersona}
+            personaActive={sessionPersona.trim().length > 0}
           />
         {view === "conversations" ? (
           <ConversationsList

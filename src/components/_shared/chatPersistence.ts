@@ -31,6 +31,8 @@ export interface ChatData {
   effort: string;
   tokensIn: number;
   tokensOut: number;
+  /** Persona / system prompt custom do chat ("" ou ausente = prompt padrão). */
+  persona?: string;
   messages: ChatMessageStored[];
 }
 
@@ -105,7 +107,7 @@ mode: ${yamlString(chat.mode)}
 provider: ${yamlString(chat.provider)}
 model: ${yamlString(chat.model)}
 effort: ${yamlString(chat.effort)}
-tokens_in: ${chat.tokensIn}
+${chat.persona ? `persona: ${yamlString(chat.persona)}\n` : ""}tokens_in: ${chat.tokensIn}
 tokens_out: ${chat.tokensOut}
 message_count: ${chat.messages.length}
 tags:
@@ -261,6 +263,7 @@ function parseChatMarkdown(content: string): ChatData {
     provider: String(fm.provider ?? "openai"),
     model: String(fm.model ?? ""),
     effort: String(fm.effort ?? "med"),
+    persona: fm.persona ? String(fm.persona) : undefined,
     tokensIn: Number(fm.tokens_in ?? 0),
     tokensOut: Number(fm.tokens_out ?? 0),
     messages,
