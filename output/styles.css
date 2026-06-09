@@ -219,6 +219,32 @@ body.is-mobile.axxa-fullscreen .status-bar > * {
   pointer-events: none !important;
 }
 
+/* === Fullscreen TRUE: hide tudo que nao seja AXXA (v0.1.68) ===
+   Em fullscreen, eliminar QUALQUER leaf do Obsidian que nao seja
+   AXXA OS — incluindo notes abertas no main pane atras do drawer,
+   view-headers de outras leaves, status bars com word counts,
+   etc. Verdadeiro app-mode. */
+body.is-mobile.axxa-fullscreen .workspace-split.mod-root,
+body.is-mobile.axxa-fullscreen .workspace-tabs.mod-root,
+body.is-mobile.axxa-fullscreen .workspace-leaf-resize-handle,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-left,
+body.is-mobile.axxa-fullscreen .workspace-ribbon {
+  display: none !important;
+}
+
+/* Esconde leaves que NAO sao AXXA OS (notes abertas, search panel, etc) */
+body.is-mobile.axxa-fullscreen .workspace-leaf:not(:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"])) {
+  display: none !important;
+}
+
+/* View-header de outras leaves (titulo + stats da nota ativa) */
+body.is-mobile.axxa-fullscreen .view-header:not(:has([data-type="axxa-os-ai-agent"])),
+body.is-mobile.axxa-fullscreen .workspace-leaf-content:not([data-type="axxa-os-ai-agent"]) .view-header,
+body.is-mobile.axxa-fullscreen .workspace-leaf-content:not([data-type="axxa-os-ai-agent"]) .view-header-title-container,
+body.is-mobile.axxa-fullscreen .workspace-leaf-content:not([data-type="axxa-os-ai-agent"]) .view-header-title {
+  display: none !important;
+}
+
 /* Fallback browsers velhos sem :has() — aplica mais amplo em fullscreen */
 @supports not selector(html:has(*)) {
   body.is-mobile.axxa-fullscreen .workspace-leaf-content[data-type="axxa-os-ai-agent"],
@@ -365,6 +391,48 @@ body[data-axxa-debug] .workspace-leaf {
 
 body[data-axxa-debug] .view-content {
   outline: 2px dashed #00aa55 !important;
+}
+
+/* v0.1.68: novas classes adicionadas ao debug overlay */
+body[data-axxa-debug] .view-header {
+  outline: 3px solid #ff66cc !important;
+}
+body[data-axxa-debug] .view-header::before {
+  content: ".view-header" !important;
+  position: absolute !important; top: 0; left: 0;
+  background: #ff66cc !important; color: white !important;
+  padding: 2px 6px !important; font-size: 9px !important;
+  z-index: 99999 !important; font-family: monospace !important;
+}
+
+body[data-axxa-debug] .view-header-title-container {
+  outline: 3px dashed #ff9999 !important;
+}
+
+body[data-axxa-debug] .workspace-split.mod-root {
+  outline: 3px dotted #00ff00 !important;
+}
+body[data-axxa-debug] .workspace-split.mod-root::before {
+  content: ".workspace-split.mod-root" !important;
+  position: absolute !important; top: 0; left: 0;
+  background: #00ff00 !important; color: black !important;
+  padding: 2px 6px !important; font-size: 9px !important;
+  z-index: 99999 !important; font-family: monospace !important;
+}
+
+body[data-axxa-debug] .workspace-tabs {
+  outline: 2px dashed #ffaa00 !important;
+}
+
+body[data-axxa-debug] .workspace-ribbon {
+  outline: 3px solid #aa00ff !important;
+}
+body[data-axxa-debug] .workspace-ribbon::before {
+  content: ".workspace-ribbon" !important;
+  position: absolute !important; top: 0; left: 0;
+  background: #aa00ff !important; color: white !important;
+  padding: 2px 6px !important; font-size: 9px !important;
+  z-index: 99999 !important; font-family: monospace !important;
 }
 
 /* Drawer + teclado aberto → esconde header/tab options do drawer */
