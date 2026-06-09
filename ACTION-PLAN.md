@@ -1,9 +1,9 @@
 # AXXA OS — Action Plan
 ## Plano de Ação Modular · Revisão Contínua
 
-> **Status:** 🟡 Em andamento — Módulos 0–4 ✅, 6.1+6.2 ✅ Agent 6-provider, 6.4 ✅ RAG multimodal, Sprints J/K.1/K.2/K.3 ✅ UX + streaming + multimodal + generation infra · próximo: **Sprint K.4 — Fix image gen + Usage tab + Coder Mode (6.3)**  
-> **Versão:** 1.5 · plugin em **v0.1.43 (6 providers + 3 modos com streaming + multimodal + DS badges + activity timeline Claude Code + generation infra wire + PlusModal v3 + composer invisível)**  
-> **Última revisão:** 08/06/2026 (pós-v0.1.43)  
+> **Status:** 🟡 Em andamento — Módulos 0–4 ✅, 6.1+6.2 ✅ Agent 6-provider, 6.4 ✅ RAG multimodal, Sprints J/K.1/K.2/K.3 ✅, **K.4 ✅** (image gen + Usage tab), **L ✅** (deep polish mobile + fullscreen saga), **M ✅** (Effort Engine + fullscreen v2) · próximo: **Sprint N — Validação & Estabilização → Coder Mode (6.3) → caminho do Alpha** (ver seção 🎯 PRÓXIMOS PASSOS)  
+> **Versão:** 1.6 · plugin em **v0.1.74 (6 providers · 3 modos com streaming · multimodal · geração de imagem funcional · aba Usage com custos em USD · Effort Engine configurável por nível · fullscreen mobile + chrome polish do OS)**  
+> **Última revisão:** 09/06/2026 (pós-v0.1.74)  
 > **Regra de ouro:** Cada módulo só avança quando o anterior está ✅
 
 ---
@@ -378,13 +378,21 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 
 ---
 
-## SPRINT K.4 — Image Gen Fix + Usage Tab (v0.1.44+) ⬜ Próximo
+## SPRINT K.4 — Image Gen Fix + Usage Tab (v0.1.44–v0.1.46 · v0.1.56) ✅ Concluído
 
-> **Objetivo:** Tornar a geração de imagem realmente funcional (hoje wired mas
+> **Objetivo:** Tornar a geração de imagem realmente funcional (era wired mas
 > quebrada em runtime) e expor a contabilidade real de gastos de tokens numa
-> tela dedicada que pode ser exportada como PDF/Markdown.
+> tela dedicada exportável como PDF/Markdown.
 >
-> **Status:** ⬜ Não iniciado. Especificação detalhada abaixo.
+> **Status:** ✅ Concluído. Entregue ao longo de:
+> - **v0.1.44** — geração de imagem funcional (fix do fluxo OpenAI) + folder picker nas Settings + autocomplete acima do cursor
+> - **v0.1.45** — aba Usage completa: `src/usage/pricing.ts` + `aggregate.ts` + `export.ts` (PDF/Markdown)
+> - **v0.1.46** — fix geração Gemini (params em snake_case) + OpenAI retry/org-error + model cards
+> - **v0.1.56** — Usage e Appearance promovidas a top-tabs nas Settings + reaction persistida
+>
+> A spec detalhada abaixo fica como referência histórica. Itens que sobraram
+> (NIM Visual GenAI · validação multi-modelo de image gen) migraram pro
+> **Sprint N — Validação & Estabilização** (ver 🎯 PRÓXIMOS PASSOS).
 
 ### K.4.1 Fix geração de imagem (BLOCKER)
 
@@ -488,13 +496,78 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - ✅ Modelos free aparecem com badge "FREE" em vez de $0.00
 
 ### K.4.3 Marco
-- ⬜ **🎯 MARCO:** Image gen funcional ponta-a-ponta + Usage como feature shippable
+- ✅ **🎯 MARCO:** Image gen funcional ponta-a-ponta (OpenAI + Gemini) + Usage como feature shippable (custos USD + export PDF/MD)
+- 🟡 NIM Visual GenAI (SDXL/FLUX) ainda não validado em runtime → backlog do Sprint N
 
 ### Notas técnicas
 - Calcular custo só em USD por enquanto — conversão de moeda fica como follow-up
 - Pricing.ts deve ser fácil de atualizar — talvez sourced de uma fonte externa (LiteLLM tem um JSON público com pricing de ~200 modelos: `https://github.com/BerriAI/litellm/blob/main/litellm/model_prices_and_context_window_backup.json`)
 - Não migrar dados antigos — chats salvos antes da v0.1.44 não têm o campo `cost` no frontmatter; agregador calcula on-the-fly via pricing lookup
 - PDF export usa `window.print()` com `@page` CSS — funciona em qualquer plataforma Electron. Mobile precisa do path Markdown
+
+---
+
+## SPRINT L — Mobile/UX Deep Polish + Fullscreen Saga (v0.1.47 → v0.1.72) ✅ Concluído
+
+> **Objetivo:** Levar o feel mobile de "funciona" pra "parece app nativo": composer
+> edge-to-edge cobrindo a safe-area e a navbar do OS, status bar do celular tingida
+> pelo preset, e o experimento de fullscreen no drawer. Período de muita iteração
+> visual guiada por testes no device (S23 FE).
+> **Status:** ✅ ~25 versões shippadas. O fullscreen foi adicionado, revertido e
+> REMOVIDO aqui — depois reintroduzido limpo no Sprint M (v0.1.74).
+
+### L.1 Composer & status line edge-to-edge (v0.1.47–v0.1.50, v0.1.57–v0.1.65)
+- ✅ Banner auto-suggest pra combos incompatíveis modo+provider+modelo (`IncompatibleBanner`, v0.1.48)
+- ✅ Wikilinks como anexo + composer FAB + text style consistente (v0.1.47)
+- ✅ Centralização X/Y do texto no composer + keyboard handling refinado + blur agressivo (v0.1.49, v0.1.50)
+- ✅ Text-area bg edge-to-edge cobrindo a OS nav bar nativa (v0.1.57); auditoria que eliminou barra horizontal ~20px (v0.1.58)
+- ✅ Unificação visual: header / status line / back-to-bottom usam o bg do text field (v0.1.63, v0.1.64)
+- ✅ Attach some quando o user digita; botão send ancorado embaixo (v0.1.65)
+
+### L.2 Tint da status bar do OS + navbar (v0.1.51, v0.1.59–v0.1.61)
+- ✅ `theme-color` do OS sincronizado — a status bar do celular acompanha o app (v0.1.51)
+- ✅ mobile-navbar bg + sombra da status line + ajuste do stop button (v0.1.59)
+- ✅ Truque do mobile-navbar 5px transparente (sugestão do dev) (v0.1.60)
+- ✅ Camadas de z-index (800/900/1000) + esconder nav do Obsidian agressivamente (v0.1.61)
+
+### L.3 Backgrounds & Settings (v0.1.55, v0.1.56)
+- ✅ `!important` nos presets + preview hug + bg ao vivo dentro das Settings (v0.1.55)
+- ✅ Usage e Appearance promovidas a top-tabs + reaction (like/dislike) persistida no `.md` (v0.1.56)
+
+### L.4 Fullscreen saga (v0.1.52–v0.1.54, v0.1.62, v0.1.66–v0.1.72)
+- ✅ Tentativa de TRUE fullscreen: esconder todo chrome do Obsidian que não seja AXXA (v0.1.68)
+- ✅ Debug overlay com toggle nas Settings pra inspecionar layout no device (v0.1.66, v0.1.69)
+- 🔁 Reverts: comportamento default do Obsidian restaurado (v0.1.62), break do fullscreen revertido (v0.1.70)
+- ✅ **Decisão:** módulo de fullscreen + debug overlay REMOVIDO por completo (v0.1.72) — abordagem global frágil demais; reescrito limpo e escopado no Sprint M
+
+> **Lição registrada:** mexer no chrome nativo do Obsidian (drawer-header, tabs,
+> navbar) é território escorregadio — cada versão do app móvel posiciona diferente.
+> A v2 (Sprint M) escopou tudo em `body.is-mobile.axxa-fullscreen` em vez de
+> overrides globais.
+
+---
+
+## SPRINT M — Effort Engine + Fullscreen Mobile v2 (v0.1.73 → v0.1.74) ✅ Concluído
+
+> **Objetivo:** Centralizar TODOS os parâmetros escaláveis num único `EffortConfig`
+> por nível (editável na UI) e reintroduzir o fullscreen mobile de forma limpa e
+> escopada (sem os overrides globais que quebraram no Sprint L).
+
+### M.1 Effort Engine (v0.1.73)
+- ✅ `EffortConfig` central em `src/components/_shared/effort.ts` — um objeto por nível (Low→Max) reúne: `maxTokens`, `temperature`, `agentMaxTurns`, `toolRetryOnError`, `parallelToolCalls`, `loopDetectionWindow` + lookup do Vault Q&A (`topK`/`excerptChars`)
+- ✅ `DEFAULT_EFFORT_CONFIGS` built-in + overrides do usuário via `settings.effortConfigs` (merge per-nível no loader, não pisa em config existente)
+- ✅ Nova aba **Settings → Effort** com sub-tab por nível pra editar cada param
+- ✅ Agent "incansável" no Max: `agentMaxTurns` sobe pra 200 (0 = uncapped, só loop-detection limita)
+- ✅ `effortToMaxTokensSmart()` clampa o maxTokens à context window real do modelo (`getContextWindow`)
+- ✅ Effort emojis + smart max no selector (v0.1.66 preparou, v0.1.73 fechou)
+- ✅ Fix `.axxa-root` fill (preset pinta a raiz inteira) + SVG marks únicos por provider via `addIcon` (ícones deixam de ser todos `zap`)
+
+### M.2 Fullscreen Mobile v2 (v0.1.74)
+- ✅ Reintroduzido via menu "..." no Header → toggle `mobileFullscreen` (persiste entre reloads)
+- ✅ Escopado em `body.is-mobile.axxa-fullscreen` — drawer ocupa 100vw + esconde chrome nativo SEM overrides globais
+- ✅ bg/preset pinta no container do drawer (não na `.axxa-root`) — corrige bloco de cor errado
+- ✅ `theme-color` do OS + tint da `.mobile-navbar` casam com o preset ativo
+- ✅ Header com `padding-top: 40px` (escapa a status bar) + bg transparente
 
 ---
 
@@ -892,12 +965,84 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 | 08/06/2026 | J.6 (v0.1.39) — Token/s via store + estimativa chars/3.5 | Não tem endpoint que devolve tokens-emitidos-no-stream em tempo real (só usage no final). Solução: estimar localmente. Cada token recebido contribui `Math.ceil(chunk.length / 3.5)` (heurística pra PT/EN). Razão de 3.5 vs 4: PT-BR tem mais chars/token que inglês. Store guarda startTime + token counter + computed tokensPerSec. AxxaApp dispara nos pontos certos. |
 | 08/06/2026 | J.6 (v0.1.39) — `.cm-placeholder` single-line | Placeholder do CodeMirror agora `white-space:nowrap + overflow:hidden + text-overflow:ellipsis`. Texto do user continua wrapping normal. Era assimétrico: o placeholder podia quebrar mas o composer queria parecer compacto. Fix: forçar single-line só no placeholder, deixa user wrappear normal. |
 | 08/06/2026 | J.6 (v0.1.39) — Settings "Outros" com 4 sub-tabs semânticas | Geral / Interface / Agent / RAG. Mesmo padrão segmented pill dos providers. Antes era 1 tab gigante com scroll de ~600px. UX profissional precisa de organização semântica — agrupar settings por intenção, não por ordem de implementação. |
+| 08/06/2026 | K.4.1 (v0.1.44) — Image gen funcional via fluxo OpenAI | Geração estava wired mas quebrada. Fix do request/response + folder picker nas Settings + autocomplete acima do cursor. Resultado salvo em `axxa-ai/generation/images/` com sidecar `.md` (frontmatter: prompt/model/provider/seed/dims). |
+| 08/06/2026 | K.4.2 (v0.1.45) — Aba Usage com custos em USD | `src/usage/{pricing,aggregate,export}.ts`. Pricing por modelo (USD/M tokens, free = badge). Aggregator percorre os `.md` de chats e quebra por provider/modelo/modo/dia. Export PDF (desktop via printToPDF) + Markdown (mobile). Custo calculado on-the-fly — chats antigos não migram. |
+| 08/06/2026 | v0.1.46 — Gemini image params em snake_case | Gemini rejeitava camelCase nos params de geração. Fix + OpenAI retry/org-error message + model cards no seletor. |
+| 08/06/2026 | Sprint L (v0.1.72) — fullscreen global REMOVIDO | A 1ª tentativa de fullscreen (v0.1.52→0.1.68) usava overrides globais do chrome do Obsidian → frágil, quebrava entre versões do app móvel. Decisão: remover tudo + debug overlay e reescrever escopado no Sprint M. Lição: nunca sobrescrever chrome nativo globalmente. |
+| 09/06/2026 | M.1 (v0.1.73) — `EffortConfig` central | Todos os params escaláveis (maxTokens, temperature, agentMaxTurns, toolRetryOnError, parallelToolCalls, loopDetectionWindow, topK/excerptChars) num objeto por nível em `effort.ts`. `DEFAULT_EFFORT_CONFIGS` + overrides do user (`settings.effortConfigs`, merge per-nível). UI: Settings → Effort com sub-tab por nível. Max "incansável" = agentMaxTurns 200 (0 = uncapped). |
+| 09/06/2026 | M.2 (v0.1.74) — Fullscreen mobile v2 escopado | Reescrito em `body.is-mobile.axxa-fullscreen` (toggle via menu "..." no Header, persiste). Drawer 100vw + esconde chrome SEM overrides globais. bg/preset pinta no container do drawer; `theme-color` do OS + navbar tint casam com o preset. |
 
 ---
 
-## Estado Atual & Handoff (08/06/2026)
+## 🎯 PRÓXIMOS PASSOS (Plano — 09/06/2026)
+> **Onde estamos:** 6 providers, 3 modos (chat/vault-qa/agent) com streaming, RAG
+> multimodal, geração de imagem, aba Usage com custos, Effort Engine e polish
+> mobile pesado — tudo em v0.1.74. **O que falta:** o 4º modo prometido (Coder),
+> validação real de muita coisa "escrita mas não testada", e o caminho de
+> lançamento. As 4 fases abaixo estão em ordem de dependência.
+
+### 📌 Recomendação
+**Começar pela Fase 1 (Validação).** É barata, de-risca tudo o que foi shippado
+no escuro e é pré-requisito honesto pra qualquer lançamento. Os quick wins
+(embeddings Gemini/NIM, README) encaixam em paralelo sem inflar o sprint.
+
+> Decisão a reavaliar: a nota de 07/06 (Decisões Técnicas) adiou o Alpha pra v0.3
+> "até RAG + Agent estarem prontos". Esses diferenciais JÁ existem — o gate agora é
+> **estabilidade comprovada**, não mais features. Por isso Validação vem primeiro.
+
+---
+
+### FASE 1 — Sprint N · Validação & Estabilização 🔴 (recomendado AGORA)
+> Antes de adicionar superfície nova, fechar o que está wired mas não testado com
+> chave real. Várias features "parecem prontas" e podem quebrar em runtime.
+
+- ⬜ **Matriz de smoke test**: 6 providers × 3 modos × (chat simples / tool calling) com chaves reais → preencher tabela ✅/❌
+- ⬜ **Image gen multi-modelo**: validar Gemini (Nano Banana — webfetch do shape atual antes) + implementar/validar **NIM Visual GenAI** (SDXL/FLUX — endpoint mudou? ver K.4.1)
+- ⬜ **Ollama tool calling**: testar com modelo local (`ollama pull llama3.1` / qwen2.5 / mistral-large) no Agent Mode
+- ⬜ **Aba Usage com dados reais**: custos estimados batem com a fatura dos provedores? Modelos sem preço caem em "—" sem quebrar a tabela?
+- ⬜ **Effort Engine**: confirmar que cada nível (Low→Max) altera comportamento de fato (maxTokens, agentMaxTurns, paralelismo) — testar Max "incansável" num agent task real
+- ⬜ Corrigir bugs encontrados + registrar a **matriz de compatibilidade no README**
+- 🎯 **Aceite:** tabela provider×modo×capacidade preenchida com resultados reais; image gen validado em ≥2 providers; zero crash conhecido no fluxo principal mobile
+
+### FASE 2 — Sprint O · Coder Mode (Módulo 6.3) + quick wins
+> Completar os 4 modos prometidos. Coder reaproveita quase toda a infra do Agent.
+
+- ⬜ 4º modo "Coder" no StarterScreen (ao lado de Chat / Vault Q&A / Agent)
+- ⬜ Reusa `TOOL_REGISTRY` + permissões do Agent; adiciona **diff preview** antes de aplicar (`vault_edit` em arquivos de código)
+- ⬜ Restrição a extensões de código (.ts/.js/.py/.css/.json/.md-com-código); syntax highlight já vem do MarkdownRenderer
+- ⬜ **Quick win paralelo (~1-2h):** embeddings Gemini (`gemini-embedding-001`) + NIM (`nv-embedqa-e5-v5`) — estende `EmbeddingProvider`, pluga 2 handlers, dropdown RAG vira 4 opções (default free pra quem não tem OpenAI key) — ver K.4.4
+- 🎯 **Aceite:** editar um `.ts` via chat com diff preview + confirmação; RAG funcionando com embeddings free
+
+### FASE 3 — Sprint P · Skills + Projects + Whisper (Módulo 7)
+> Diferenciais "vault-native" que ninguém mais tem.
+
+- ⬜ **Skills** (7.1): CRUD de system prompts em `.md` com frontmatter, vincular a modo, preview, import/export
+- ⬜ **Projects** (7.2): comando `/project`, wikilinks `[[projeto]]` no frontmatter do chat, filtro de chats por projeto
+- ⬜ **Whisper áudio** (K.4.5): transcrever os `.webm` já gravados → texto no composer + indexável no RAG (`/v1/audio/transcriptions`)
+- 🎯 **Aceite:** criar uma skill e usá-la numa conversa; vincular um chat a um projeto e filtrar por ele
+
+### FASE 4 — Sprint Q · Caminho do Alpha Público (Módulo 5) 🚀
+> Com os diferenciais prontos e estáveis, publicar.
+
+- ⬜ Auditoria de review do Obsidian: zero `eval()`/`innerHTML` direto, APIs proibidas, secrets fora de localStorage
+- ⬜ README com screenshots da UI atual + quick start (gerar API key em cada lab) + matriz dos 6 providers
+- ⬜ Demo video 60s (mobile + desktop) + landing page (Vercel) + waitlist
+- ⬜ GitHub Release (`main.js`/`manifest.json`/`styles.css`) + PR em `obsidianmd/obsidian-releases`
+- 🎯 **Aceite:** plugin submetido ao Community Plugins
+
+---
+
+### 🧹 Tech debt que vira candidato durante as fases
+- **Attachments não persistem no `.md`** → regen/reload de msg com imagem perde o anexo. Fix: subir pro vault (`axxa-ai/attachments/`) e gravar wikilink (encaixa na Fase 1/2)
+- **`AGENT_SYSTEM_PROMPT` em PT hardcoded** (AxxaApp) → mover pro i18n antes do EN-US ir a produção (Fase 4)
+- **ConversationsList sem paginação** (`listAllChats(..., 1000)`) → virtual scrolling quando vaults grandes aparecerem
+- **`RenameChatModal.ts` morto** → reusar em Skills/Projects (Fase 3) ou deletar
+
+---
+
+## Estado Atual & Handoff (09/06/2026)
 > **Lê isso primeiro se você é o próximo agente continuando o trabalho.**
-> Última sessão: v0.1.33 → v0.1.43 em 2 dias (Sprints I + J + K.1 + K.2 + K.3 completos).
+> Última sessão: v0.1.43 → v0.1.74 (Sprints **K.4 + L + M** completos: image gen funcional, aba Usage com custos, deep polish mobile + fullscreen saga, Effort Engine e fullscreen v2). Próximo plano detalhado em **🎯 PRÓXIMOS PASSOS** acima.
 
 ### O que tá funcionando hoje ✅
 
@@ -926,15 +1071,28 @@ Após cada sessão, marque o que foi concluído e atualize o status.
 - 12 backgrounds (none + 8 estáticos + 3 animados live)
 - Mobile responsive: drawer, teclado handler estilo Copilot, sticky-bottom scroll
 
+**Novidades pós-v0.1.43 (Sprints K.4 / L / M):**
+- Geração de imagem funcional (OpenAI + Gemini) → salva em `axxa-ai/generation/images/` com sidecar `.md` (`src/generation/save.ts`)
+- Aba **Usage**: custo estimado em USD por provider/modelo/modo/dia + top conversas caras + export PDF/Markdown (`src/usage/`)
+- **Effort Engine**: `EffortConfig` central editável por nível (maxTokens, agentMaxTurns, retry, paralelismo, loop-detection, lookup do Vault Q&A)
+- Mobile chrome: fullscreen v2 (menu "..."), `theme-color` do OS + navbar tint por preset, composer edge-to-edge
+- Banner de incompatibilidade (modo+provider+modelo) com sugestão de swap (`IncompatibleBanner`)
+- Reaction (like/dislike) persistida no `.md`
+
 ### O que ainda precisa de validação 🟡
 
 1. **Smoke test Gemini chat texto + agent** — plumbing tá correto pós v0.1.34, mas dev não confirmou com chave real ainda
 2. **Smoke test Ollama tool calling** — exige `ollama pull llama3.1` (ou qwen2.5, mistral-large) e mode Agent. v0.1.33 adicionou o wiring; ninguém testou com modelo local rodando
 3. **NIM chat com modelo customizado** — default `meta/llama-3.3-70b-instruct` confirmado existir. Outros 4 da seed precisam validação real (já saem em "Buscar da API", então user descobre fácil)
+4. **Image gen Gemini + NIM** — OpenAI validado (v0.1.44). Gemini Nano Banana (v0.1.46) e NIM Visual GenAI precisam confirmação em runtime com chave real
+5. **Aba Usage com dados reais** — pricing.ts precisa bater com faturas reais dos provedores; conferir modelos sem preço listado
 
-### Prioridades pro próximo sprint (Sprint K.4) 🎯
+> ⚠️ Esses itens são exatamente o escopo da **Fase 1 — Sprint N** (ver 🎯 PRÓXIMOS PASSOS no topo).
 
-Em ordem de impacto:
+### Backlog detalhado — specs dos itens do plano 🎯
+> K.4.1 (image gen) e K.4.2 (Usage) já ✅ concluídos. As specs abaixo permanecem
+> como referência pros itens que migraram pro Sprint N+ (Coder, embeddings,
+> Whisper, README). Priorização de alto nível vive em 🎯 PRÓXIMOS PASSOS.
 
 #### K.4.1 Fix geração de imagem (BLOCKER) — 🔴
 - **Status:** wired ponta-a-ponta mas quebrado em runtime (OpenAI/Gemini/NIM)
@@ -1032,5 +1190,5 @@ Plugin output em `output/main.js` + `output/manifest.json` + `output/styles.css`
 
 ---
 
-*AXXA OS — AI Agent · Action Plan v1.3 · revisado 08/06/2026 pós-Sprint J*  
+*AXXA OS — AI Agent · Action Plan v1.6 · revisado 09/06/2026 pós-Sprint M (v0.1.74)*  
 *"Cada módulo concluído é um passo irreversível."*
