@@ -16,10 +16,6 @@
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
     padding-left: 0;
     padding-right: 0;
-    /* v0.1.58: padding-top: 0 elimina a "barra horizontal ~20px" que
-       Obsidian colocava entre o topo da .view-content e nosso .axxa-header.
-       Era a default --size-4-5 (20px) do Obsidian view-content.
-       O .axxa-header tem seu proprio padding-top interno. */
     padding-top: 0 !important;
 
     padding-bottom: calc(
@@ -27,6 +23,13 @@
         var(--copilot-status-bar-clearance, 0px) +
         var(--size-4-1)
     ) !important;
+
+    /* v0.1.71: bg do view-content = bg-primary (mesmo da .axxa-root).
+       Sem isso, a padding-bottom area mostra o bg default escuro
+       do Obsidian (visivel no print do user como "dark strip"
+       abaixo do composer). Agora o text area se estende visualmente
+       ate o final, igual a area em white do print referencia. */
+    background: var(--background-primary) !important;
 }
 
 /* Esconde .status-bar do Obsidian quando dentro do leaf do AXXA OS
@@ -73,13 +76,15 @@ body.is-mobile
  * Fullscreen Mode mobile (v0.1.51)
  *
  * Toggle via header menu "..." → "Full-screen".
- * Aplica .axxa-fullscreen no <body>. Sidebar direita ocupa 100vw,
- * esconde drawer-header / tab-options / tab-header-container /
- * drawer-footer pra dar impressão de app standalone.
+ * v0.1.71: Aplica .axxa-fullscreen-active no <body> APENAS quando AXXA eh
+ * a active leaf (antes era .axxa-fullscreen sempre — vazava pra outras
+ * views como editor de markdown).
+ * Sidebar direita ocupa 100vw, esconde drawer-header / tab-options /
+ * tab-header-container / drawer-footer pra dar impressão de app standalone.
  * ===================================================== */
 
 /* Container 100vw */
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right {
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right {
   width: 100vw !important;
   min-width: 100vw !important;
   max-width: 100vw !important;
@@ -88,23 +93,23 @@ body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right {
 }
 
 /* Esconde os chrome nativos do Obsidian no drawer direito */
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-header,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-tab-options,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tab-header-container,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-footer,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .nav-buttons-container {
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-header,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-tab-options,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-tab-header-container,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-footer,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .nav-buttons-container {
   display: none !important;
 }
 
 /* Remove padding-top fantasma do drawer-inner */
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-inner {
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-inner {
   padding-top: 0 !important;
 }
 
 /* Conteúdo ocupa tela toda — overrideia padding-bottom da regra existente
    pra eliminar gap "vazio" embaixo (no fullscreen não temos navbar). */
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf-content,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .view-content {
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-leaf-content,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .view-content {
   height: 100vh !important;
   max-height: 100vh !important;
 }
@@ -121,23 +126,23 @@ body.is-mobile.axxa-fullscreen
    no dark) — visualmente quebra a impressão de fullscreen.
    Forçamos background-primary em TODOS os containers prováveis. */
 
-body.axxa-fullscreen,
-html:has(body.axxa-fullscreen),
-body.axxa-fullscreen .app-container,
-body.axxa-fullscreen .horizontal-main-container,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf-content,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tab-container,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-inner,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .view-content {
+body.axxa-fullscreen-active,
+html:has(body.axxa-fullscreen-active),
+body.axxa-fullscreen-active .app-container,
+body.axxa-fullscreen-active .horizontal-main-container,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-leaf,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-leaf-content,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-tab-container,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .workspace-drawer-inner,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer.mod-right .view-content {
   background: var(--background-primary) !important;
   background-color: var(--background-primary) !important;
 }
 
 /* Mobile-navbar (a barra inferior nativa do Obsidian — não da OS) também
    herda a cor quando visível no fullscreen. */
-body.is-mobile.axxa-fullscreen .mobile-navbar {
+body.is-mobile.axxa-fullscreen-active .mobile-navbar {
   background: var(--background-primary) !important;
   background-color: var(--background-primary) !important;
 }
@@ -147,10 +152,10 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
    Non-fullscreen mantem layout default do Obsidian (navbar, footers,
    etc visiveis e funcionais).
    Aplica background-primary apenas em FULLSCREEN. */
-body.is-mobile.axxa-fullscreen .workspace-leaf-content[data-type="axxa-os-ai-agent"],
-body.is-mobile.axxa-fullscreen .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content,
-body.is-mobile.axxa-fullscreen .workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]),
-body.is-mobile.axxa-fullscreen .workspace-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
+body.is-mobile.axxa-fullscreen-active .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+body.is-mobile.axxa-fullscreen-active .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content,
+body.is-mobile.axxa-fullscreen-active .workspace-leaf:has(> .workspace-leaf-content[data-type="axxa-os-ai-agent"]),
+body.is-mobile.axxa-fullscreen-active .workspace-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
   background: var(--background-primary) !important;
   background-color: var(--background-primary) !important;
 }
@@ -188,13 +193,13 @@ body.is-mobile .workspace-drawer.mod-right:has(.workspace-leaf-content[data-type
    Substitui o display:none anterior (v0.1.51): elementos ficam com
    5px transparent em vez de none — visualmente identico mas preserva
    layout estrutural. */
-body.is-mobile.axxa-fullscreen .mobile-navbar,
-body.is-mobile.axxa-fullscreen .mobile-toolbar,
-body.is-mobile.axxa-fullscreen .workspace-drawer-footer,
-body.is-mobile.axxa-fullscreen .workspace-drawer-tab-options,
-body.is-mobile.axxa-fullscreen .nav-buttons-container,
-body.is-mobile.axxa-fullscreen .titlebar,
-body.is-mobile.axxa-fullscreen .status-bar {
+body.is-mobile.axxa-fullscreen-active .mobile-navbar,
+body.is-mobile.axxa-fullscreen-active .mobile-toolbar,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer-footer,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer-tab-options,
+body.is-mobile.axxa-fullscreen-active .nav-buttons-container,
+body.is-mobile.axxa-fullscreen-active .titlebar,
+body.is-mobile.axxa-fullscreen-active .status-bar {
   height: 5px !important;
   min-height: 0 !important;
   max-height: 5px !important;
@@ -208,13 +213,13 @@ body.is-mobile.axxa-fullscreen .status-bar {
   pointer-events: none !important;
 }
 
-body.is-mobile.axxa-fullscreen .mobile-navbar > *,
-body.is-mobile.axxa-fullscreen .mobile-toolbar > *,
-body.is-mobile.axxa-fullscreen .workspace-drawer-footer > *,
-body.is-mobile.axxa-fullscreen .workspace-drawer-tab-options > *,
-body.is-mobile.axxa-fullscreen .nav-buttons-container > *,
-body.is-mobile.axxa-fullscreen .titlebar > *,
-body.is-mobile.axxa-fullscreen .status-bar > * {
+body.is-mobile.axxa-fullscreen-active .mobile-navbar > *,
+body.is-mobile.axxa-fullscreen-active .mobile-toolbar > *,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer-footer > *,
+body.is-mobile.axxa-fullscreen-active .workspace-drawer-tab-options > *,
+body.is-mobile.axxa-fullscreen-active .nav-buttons-container > *,
+body.is-mobile.axxa-fullscreen-active .titlebar > *,
+body.is-mobile.axxa-fullscreen-active .status-bar > * {
   visibility: hidden !important;
   pointer-events: none !important;
 }
@@ -226,22 +231,22 @@ body.is-mobile.axxa-fullscreen .status-bar > * {
 
 /* Fallback browsers velhos sem :has() — aplica mais amplo em fullscreen */
 @supports not selector(html:has(*)) {
-  body.is-mobile.axxa-fullscreen .workspace-leaf-content[data-type="axxa-os-ai-agent"],
-  body.is-mobile.axxa-fullscreen .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+  body.is-mobile.axxa-fullscreen-active .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+  body.is-mobile.axxa-fullscreen-active .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
     background: var(--background-primary) !important;
   }
 }
 
 /* Padding superior do header pra escapar do status bar nativo no fullscreen.
    Em devices com notch, env(safe-area-inset-top) pode ser >40, então max(). */
-body.is-mobile.axxa-fullscreen .axxa-header {
+body.is-mobile.axxa-fullscreen-active .axxa-header {
   padding-top: max(40px, env(safe-area-inset-top, 40px)) !important;
 }
 
 /* Fallback @supports — :has() não funciona em alguns browsers velhos.
    Vai pegar só body, mas ja resolve 90% dos casos */
 @supports not selector(html:has(*)) {
-  body.axxa-fullscreen {
+  body.axxa-fullscreen-active {
     /* Mesma regra acima, só pra dar redundância no fallback path */
     background: var(--background-primary) !important;
   }

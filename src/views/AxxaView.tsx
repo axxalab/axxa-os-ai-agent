@@ -39,11 +39,42 @@ export class AxxaView extends ItemView {
     this.root.render(<AxxaApp plugin={this.plugin} />);
 
     this.setupMobileKeyboardObserver();
+    this.setupActiveLeafObserver();
   }
 
   async onClose() {
     this.teardownMobileKeyboardObserver();
+    this.teardownActiveLeafObserver();
     this.root?.unmount();
+  }
+
+  /**
+   * Observer de active-leaf — controla quando body.axxa-fullscreen-active
+   * fica ativo. Permite que o CSS de fullscreen so afete a UI quando AXXA
+   * for a leaf ativa, evitando vazar pra editor de notes etc.
+   */
+  private activeLeafUnsubscribe: (() => void) | null = null;
+  private setupActiveLeafObserver() {
+    if (!Platform.isMobile) return;
+
+    const update = () => {
+      const activeLeaf = this.app.workspace.activeLeaf;
+      const isAxxaActive = activeLeaf?.view?.getViewType() === VIEW_TYPE_AXXA;
+      this.containerEl.doc.body.classList.toggle(
+        "axxa-fullscreen-active",
+        Boolean(isAxxaActive && this.plugin.settings.mobileFullscreen)
+      );
+    };
+
+    update();
+    const evt = this.app.workspace.on("active-leaf-change", update);
+    this.activeLeafUnsubscribe = () => this.app.workspace.offref(evt);
+  }
+
+  private teardownActiveLeafObserver() {
+    this.activeLeafUnsubscribe?.();
+    this.activeLeafUnsubscribe = null;
+    this.containerEl.doc.body.classList.remove("axxa-fullscreen-active");
   }
 
   /**
