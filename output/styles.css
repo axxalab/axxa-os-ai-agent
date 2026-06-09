@@ -1416,10 +1416,8 @@ body.is-mobile.axxa-fullscreen
   backdrop-filter: blur(20px) saturate(160%);
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.04),
-    0 3px 8px rgba(0, 0, 0, 0.06),
-    0 8px 20px rgba(0, 0, 0, 0.08);
+  /* v0.1.110: sem drop-shadow — o glass (blur + border) já separa do bg, e a
+     sombra pesada virava um borrão escuro atrás do composer sobre o fundo. */
   /* Position relative + isolation isolate pra criar stacking context
      novo, garantindo que shadows/overlays do Obsidian NÃO atravessem
      pra dentro/atras da status line. */
@@ -1493,12 +1491,8 @@ body.is-mobile.axxa-fullscreen
   padding: 6px 14px 6px 6px;
   transition: border-color 0.15s, box-shadow 0.15s;
   min-height: 0;
-  /* FAB shadow MAIS AGRESSIVA — destaca composer do chat por trás */
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.06),
-    0 4px 12px rgba(0, 0, 0, 0.10),
-    0 12px 32px rgba(0, 0, 0, 0.14),
-    0 24px 56px rgba(0, 0, 0, 0.10);
+  /* v0.1.110: drop-shadow removida — era o "borrão" escuro atrás do composer.
+     O glass (blur 20px + border) já dá a separação do chat/bg. */
 }
 
 /* Composer é IDÊNTICO em TODOS os backgrounds — nenhuma regra por preset.
@@ -3568,9 +3562,13 @@ body.is-mobile .axxa-code-copy {
  * 2D) · sweep (position 1D) · breathe (size). .axxa-bg-active acelera 3.5×.
  * ===================================================== */
 
-/* Paint compartilhado — !important pra vencer Obsidian/temas/leaf-content. */
+/* Paint compartilhado no FRAME MAIS PROFUNDO de cada contexto:
+   - view: .workspace-leaf-content[data-type] (sem o padding da navbar);
+   - Settings: .axxa-settings-root; swatch: .axxa-bg-swatch;
+   - drawer mobile: o host (cobre o gap do container).
+   !important pra vencer Obsidian/temas. */
 :is(
-    .axxa-root,
+    .workspace-leaf-content[data-type="axxa-os-ai-agent"],
     .axxa-settings-root,
     .axxa-bg-swatch,
     .workspace-drawer-active-tab-container.axxa-host
@@ -3591,19 +3589,17 @@ body.is-mobile .axxa-code-copy {
   animation-iteration-count: infinite;
 }
 
-/* No drawer o frame mais profundo é o host — a root fica transparente pra
-   não pintar por cima (e some o gap do container do drawer). */
+/* Frames intermediários transparentes → o bg do leaf-content/host é o único
+   canvas. Fim da faixa cinza nativa atrás do composer (era o padding-bottom
+   do .view-content mostrando o --background-primary do Obsidian). */
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content,
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .axxa-root,
 .workspace-drawer-active-tab-container.axxa-host .axxa-root {
   background: transparent !important;
 }
 
-/* IA processando (.axxa-bg-active na root) → acelera 3.5× */
-:is(
-    .axxa-root,
-    .axxa-settings-root,
-    .axxa-bg-swatch,
-    .workspace-drawer-active-tab-container.axxa-host
-  ).axxa-bg-active {
+/* IA processando (.axxa-bg-active na root) → acelera 3.5× o frame que pinta */
+.workspace-leaf-content[data-type="axxa-os-ai-agent"]:has(.axxa-bg-active) {
   animation-duration: calc(var(--axxa-bg-dur, 20s) / 3.5) !important;
 }
 
@@ -3644,7 +3640,7 @@ body.is-mobile .axxa-code-copy {
 /* Acessibilidade: reduced-motion congela o fundo */
 @media (prefers-reduced-motion: reduce) {
   :is(
-      .axxa-root,
+      .workspace-leaf-content[data-type="axxa-os-ai-agent"],
       .axxa-settings-root,
       .axxa-bg-swatch,
       .workspace-drawer-active-tab-container.axxa-host

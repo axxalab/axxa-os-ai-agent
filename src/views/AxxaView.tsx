@@ -28,6 +28,8 @@ export class AxxaView extends ItemView {
   private themeObserver: MutationObserver | null = null;
   /** Unsubscribe do navbar tint (mobile-navbar bottom). */
   private navbarTintUnsub: (() => void) | null = null;
+  /** Unsubscribe do bg pintado no leaf-content (frame nativo mais profundo). */
+  private leafBgUnsub: (() => void) | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: AxxaPlugin) {
     super(leaf);
@@ -52,6 +54,7 @@ export class AxxaView extends ItemView {
     this.root = createRoot(container);
     this.root.render(<AxxaApp plugin={this.plugin} />);
 
+    this.setupLeafBg();
     this.setupDrawerHost();
     this.setupThemeColor();
     this.setupNavbarTint();
@@ -59,11 +62,40 @@ export class AxxaView extends ItemView {
   }
 
   async onClose() {
+    this.teardownLeafBg();
     this.teardownDrawerHost();
     this.teardownThemeColor();
     this.teardownNavbarTint();
     this.teardownMobileKeyboardObserver();
     this.root?.unmount();
+  }
+
+  /**
+   * Pinta o background no FRAME MAIS PROFUNDO da view: o
+   * `.workspace-leaf-content[data-type=...]` (this.containerEl). Ele não tem o
+   * padding-bottom da navbar (que mora no .view-content), então cobre tudo —
+   * incluindo a faixa atrás do composer onde antes vazava o cinza nativo do
+   * .view-content. O CSS deixa .view-content e .axxa-root transparentes, então
+   * esse é o único canvas. Vale desktop e mobile (no drawer soma com o host).
+   */
+  private setupLeafBg() {
+    const el = this.containerEl;
+    const apply = () => {
+      Array.from(el.classList).forEach((c) => {
+        if (c.startsWith("axxa-bg-")) el.classList.remove(c);
+      });
+      el.classList.add("axxa-bg-" + (this.plugin.settings.background || "none"));
+    };
+    apply();
+    this.leafBgUnsub = this.plugin.onSettingsChange(apply);
+  }
+
+  private teardownLeafBg() {
+    this.leafBgUnsub?.();
+    this.leafBgUnsub = null;
+    Array.from(this.containerEl.classList).forEach((c) => {
+      if (c.startsWith("axxa-bg-")) this.containerEl.classList.remove(c);
+    });
   }
 
   /**
