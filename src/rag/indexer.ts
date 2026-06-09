@@ -12,7 +12,7 @@
 //
 // Cancelamento: aceita AbortSignal — checa antes/depois de cada batch.
 
-import type { App, TFile } from "obsidian";
+import type { App, CachedMetadata, TFile } from "obsidian";
 import {
   arrayBufferToDataUrl,
   chunkText,
@@ -82,6 +82,47 @@ const CHUNK_OVERLAP = 200;
  * estabilidade (não crasha).
  */
 const SAVE_EVERY_N_FILES = 25;
+
+/**
+ * Monta um cabeçalho de contexto Obsidian-native pra prefixar nos chunks antes
+ * de embedar. Melhora o recall porque a query passa a casar com título, tags,
+ * aliases e wikilinks mesmo quando esses termos não estão no corpo do chunk.
+ * Usa o `metadataCache` nativo do Obsidian (sem regex/parse YAML na mão).
+ *
+ * Ex: "Nota: Arquitetura · Tags: projeto, axxa · Links: RAG, Effort Engine"
+ */
+function buildObsidianContext(
+  file: TFile,
+  cache: CachedMetadata | null
+): string {
+  const parts: string[] = [`Nota: ${file.basename}`];
+  const fm = cache?.frontmatter;
+  if (fm) {
+    const aliases = fm.aliases ?? fm.alias;
+    if (aliases) {
+      const arr = Array.isArray(aliases) ? aliases : [aliases];
+      if (arr.length) parts.push(`Aliases: ${arr.join(", ")}`);
+    }
+  }
+  // Tags: frontmatter (tags/tag) + inline (#tag) — dedupe, sem o "#"
+  const tagSet = new Set<string>();
+  const fmTags = fm?.tags ?? fm?.tag;
+  if (fmTags) {
+    (Array.isArray(fmTags) ? fmTags : [fmTags]).forEach((tg) =>
+      tagSet.add(String(tg).replace(/^#/, ""))
+    );
+  }
+  cache?.tags?.forEach((t) => tagSet.add(t.tag.replace(/^#/, "")));
+  if (tagSet.size) parts.push(`Tags: ${Array.from(tagSet).join(", ")}`);
+  // Wikilinks do corpo — nomes/displayText, dedupe, cap 25 pra não inflar
+  if (cache?.links?.length) {
+    const linked = Array.from(
+      new Set(cache.links.map((l) => l.displayText || l.link))
+    ).slice(0, 25);
+    if (linked.length) parts.push(`Links: ${linked.join(", ")}`);
+  }
+  return parts.join(" · ");
+}
 
 /**
  * Indexa o vault. Reutiliza entries existentes pra arquivos NÃO modificados
@@ -247,14 +288,21 @@ export async function indexVault(
       const fileEntries: VectorEntry[] = [];
 
       if (item.kind === "text") {
-        // Chunkifica e embeda em batches (texto pode ter N chunks por arquivo)
+        // Contexto Obsidian-native (título · tags · aliases · wikilinks) —
+        // prefixado SÓ no texto que vai pro embed (enriquece recall). O `text`
+        // guardado na entry segue sendo o chunk puro (excerpt limpo na busca).
+        const cache = app.metadataCache.getFileCache(item.file);
+        const ctxHeader = buildObsidianContext(item.file, cache);
         const chunks = chunkText(item.content, CHUNK_MAX_CHARS, CHUNK_OVERLAP);
         for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
           if (signal?.aborted) throw new DOMException("cancelled", "AbortError");
           const slice = chunks.slice(i, i + BATCH_SIZE);
-          const inputs: EmbedInput[] = slice.map((c) => ({
+          const embedTexts = slice.map((c) =>
+            ctxHeader ? `${ctxHeader}\n\n${c}` : c
+          );
+          const inputs: EmbedInput[] = embedTexts.map((t) => ({
             kind: "text",
-            text: c,
+            text: t,
           }));
           const embeddings = await embedItems(inputs, creds, model);
           for (let j = 0; j < slice.length; j++) {
@@ -267,7 +315,7 @@ export async function indexVault(
               embedding: embeddings[j],
               kind: "text",
             });
-            tokensUsed += estimateTokens(slice[j]);
+            tokensUsed += estimateTokens(embedTexts[j]);
           }
         }
       } else {
