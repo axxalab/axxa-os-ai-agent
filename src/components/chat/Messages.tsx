@@ -108,7 +108,11 @@ export function UserBubble({ msg }: { msg: UserMessage }) {
   }
 
   return (
-    <div className="axxa-msg axxa-msg-user" {...menuHandlers}>
+    <div
+      className="axxa-msg axxa-msg-user"
+      data-msg-id={msg.id}
+      {...menuHandlers}
+    >
       <div
         className="axxa-bubble axxa-bubble-user"
         onDoubleClick={startEdit}
@@ -179,7 +183,11 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   });
 
   return (
-    <div className="axxa-msg axxa-msg-ai-response" {...menuHandlers}>
+    <div
+      className="axxa-msg axxa-msg-ai-response"
+      data-msg-id={msg.id}
+      {...menuHandlers}
+    >
       <Markdown content={msg.content} />
       {msg.truncated && !isStreaming && (
         <button

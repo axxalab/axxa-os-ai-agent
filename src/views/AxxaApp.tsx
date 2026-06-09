@@ -11,8 +11,8 @@
 import { useEffect, useRef, useState } from "react";
 import type AxxaPlugin from "../main";
 import { Header } from "../components/layout/Header";
-import { Icon } from "../components/_shared/Icon";
 import { PersonaModal } from "../components/chat/PersonaModal";
+import { ChatSearchModal } from "../components/chat/ChatSearchModal";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
@@ -260,8 +260,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // View state: chat (default) ou conversations (tela cheia de todas conversas)
   const [view, setView] = useState<"chat" | "conversations">("chat");
   // Busca dentro da conversa atual (toggle no Header → campo acima da ChatArea)
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [chatSearch, setChatSearch] = useState("");
+  // Alvo de destaque da busca (msg escolhida no modal). n = nonce p/ re-disparar.
+  const [searchTarget, setSearchTarget] = useState<{
+    id: string;
+    n: number;
+  } | null>(null);
   const [allChats, setAllChats] = useState<ChatSummary[]>([]);
 
   const [providerSel, setProviderSel] = useState(plugin.settings.defaultProvider);
@@ -1652,11 +1655,23 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
-  const handleToggleSearch = () => {
-    setSearchOpen((open) => {
-      if (open) setChatSearch(""); // fechar limpa a query
-      return !open;
-    });
+  const handleOpenSearch = () => {
+    const hits = useChatStore
+      .getState()
+      .messages.filter((m) => m.type === "user" || m.type === "ai-response")
+      .map((m) => ({
+        id: m.id,
+        role: m.type === "user" ? "Você" : "IA",
+        text: (m as { content: string }).content,
+      }));
+    if (hits.length === 0) return;
+    new ChatSearchModal(
+      plugin.app,
+      hits,
+      t.chat.searchPlaceholder,
+      t.chat.searchNoResults,
+      (id) => setSearchTarget({ id, n: Date.now() })
+    ).open();
   };
 
   const handleCopyConversation = async () => {
@@ -1880,8 +1895,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 !plugin.settings.mobileFullscreen;
               await plugin.saveSettings();
             }}
-            onToggleSearch={handleToggleSearch}
-            searchActive={searchOpen}
+            onToggleSearch={handleOpenSearch}
+            searchActive={false}
             onCopyConversation={handleCopyConversation}
             canCopy={messages.some(
               (m) => m.type === "user" || m.type === "ai-response"
@@ -1912,32 +1927,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             visibleChips={plugin.settings.listChips}
           />
         ) : (
-          <>
-            {searchOpen && (
-              <div className="axxa-chat-search">
-                <Icon name="search" />
-                <input
-                  className="axxa-chat-search-input"
-                  type="text"
-                  placeholder={t.chat.searchPlaceholder}
-                  value={chatSearch}
-                  onChange={(e) => setChatSearch(e.target.value)}
-                  autoFocus
-                />
-                {chatSearch && (
-                  <button
-                    type="button"
-                    className="axxa-chat-search-clear"
-                    onClick={() => setChatSearch("")}
-                    aria-label="Limpar busca"
-                  >
-                    <Icon name="x" />
-                  </button>
-                )}
-              </div>
-            )}
-            <ChatArea searchQuery={chatSearch} />
-          </>
+          <ChatArea highlightTarget={searchTarget} />
         )}
         {view === "chat" && showBanner && (
           <IncompatibleBanner
