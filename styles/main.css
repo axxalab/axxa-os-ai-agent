@@ -205,26 +205,16 @@ body.is-mobile.axxa-fullscreen
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 16px;
+  /* v0.1.74: padding-top 40px pra escapar OS status bar (bateria/relógio)
+     no mobile. Demais paddings (lateral/inferior) preservados. */
+  padding: 40px 16px 10px 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 30%, transparent);
   position: relative;
   z-index: 1000;
-  /* v0.1.66: blur MINIMO e bg-primary translucent (NAO usa form-field
-     como o composer pill). Visualmente DIFERENCIADO do text area:
-     - bg: bg-primary 40% (mais transparente que o composer 80%)
-     - blur: 6px (era 20px) — minimal, so pra evitar texto borrado
-     - sem saturate (era 160%) */
-  background: color-mix(in srgb, var(--background-primary) 40%, transparent);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-}
-
-/* Fallback browsers sem color-mix */
-@supports not (color: color-mix(in srgb, red, blue)) {
-  .axxa-header {
-    background: var(--background-primary);
-    opacity: 0.95;
-  }
+  /* v0.1.74: header TRANSPARENTE — bg do drawer host (preset) mostra
+     através edge-to-edge. Tipografia sólida fica legível sobre o preset
+     do user (igual glass mas sem blur/color-mix camada extra). */
+  background: transparent;
 }
 
 .axxa-header-title {
