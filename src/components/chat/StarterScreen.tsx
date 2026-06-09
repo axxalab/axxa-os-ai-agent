@@ -156,12 +156,12 @@ function modeChipIcon(mode: string): string {
 }
 
 const PROVIDERS = [
-  { id: "openai", name: "OpenAI", icon: "sparkles" },
-  { id: "anthropic", name: "Anthropic", icon: "bot" },
-  { id: "gemini", name: "Gemini", icon: "sparkle" },
-  { id: "openrouter", name: "OpenRouter", icon: "shuffle" },
-  { id: "nim", name: "Nvidia NIM", icon: "cpu" },
-  { id: "ollama", name: "Ollama", icon: "hard-drive" },
+  { id: "openai", name: "OpenAI", icon: "zap" },
+  { id: "anthropic", name: "Anthropic", icon: "zap" },
+  { id: "gemini", name: "Gemini", icon: "zap" },
+  { id: "openrouter", name: "OpenRouter", icon: "zap" },
+  { id: "nim", name: "Nvidia NIM", icon: "zap" },
+  { id: "ollama", name: "Ollama", icon: "zap" },
 ];
 
 interface StarterScreenProps {
