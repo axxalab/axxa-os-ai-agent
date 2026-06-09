@@ -77,6 +77,11 @@ interface AxxaSettings {
    *  DEFAULT_EFFORT_CONFIGS built-in (src/components/_shared/effort.ts).
    *  Configurado via Settings → Effort → sub-tab por nível. */
   effortConfigs: Partial<Record<EffortLevel, Partial<EffortConfig>>>;
+  // ============ Fullscreen mobile (v0.1.74 — reintroduzido) ============
+  /** Modo fullscreen mobile: drawer direito ocupa 100vw + esconde chrome
+   *  nativo do Obsidian (drawer-header, tabs, footer). Toggle via menu
+   *  "..." no Header. Persiste entre reloads. */
+  mobileFullscreen: boolean;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -152,6 +157,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   listChips: ["mode", "model", "date"],
   // Vazio = usa DEFAULT_EFFORT_CONFIGS sem overrides. User edita via Settings.
   effortConfigs: {},
+  mobileFullscreen: false,
 };
 
 export default class AxxaPlugin extends Plugin {

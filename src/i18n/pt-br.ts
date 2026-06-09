@@ -42,6 +42,9 @@ export const PT_BR = {
     newChat: "Nova conversa",
     openSettings: "Configurações",
     conversations: "Conversas",
+    moreOptions: "Mais opções",
+    fullscreen: "Tela cheia (mobile)",
+    exitFullscreen: "Sair da tela cheia",
   },
 
   conversations: {

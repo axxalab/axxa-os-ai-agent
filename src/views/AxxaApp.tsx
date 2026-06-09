@@ -213,9 +213,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     return unsub;
   }, [plugin]);
 
-  // v0.1.72: removido fullscreen + theme-color + debug overlay.
-  // AXXA agora apenas HERDA o tema/layout nativo do Obsidian, sem mexer
-  // em elementos do host (nav bar, status bar, meta theme-color, etc.)
+  // Fullscreen mobile (v0.1.74 reintro): toggle `axxa-fullscreen` no <body>
+  // quando user ativa via menu "..." do Header. CSS escopado em
+  // body.is-mobile.axxa-fullscreen faz o drawer ocupar 100vw + esconde
+  // chrome nativo do Obsidian (drawer-header, tabs, footer).
+  // theme-color OS + navbar tint já são geridos no AxxaView (não duplicar).
+  useEffect(() => {
+    const body = document.body;
+    body.classList.toggle("axxa-fullscreen", plugin.settings.mobileFullscreen);
+    return () => {
+      // Limpa ao desmontar — volta o drawer ao layout normal do Obsidian
+      body.classList.remove("axxa-fullscreen");
+    };
+  }, [plugin.settings.mobileFullscreen]);
 
   // Lê traduções na hora — atualiza no próximo render (após forceRender acima)
   const t = getTranslations(plugin.settings.language);
@@ -1604,6 +1614,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onNewChat={handleNewChat}
             onOpenConversations={handleOpenConversations}
             onRenameChat={handleHeaderRename}
+            fullscreen={plugin.settings.mobileFullscreen}
+            onToggleFullscreen={async () => {
+              plugin.settings.mobileFullscreen =
+                !plugin.settings.mobileFullscreen;
+              await plugin.saveSettings();
+            }}
           />
         {view === "conversations" ? (
           <ConversationsList

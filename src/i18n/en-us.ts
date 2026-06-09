@@ -42,6 +42,9 @@ export const EN_US: Translations = {
     newChat: "New conversation",
     openSettings: "Settings",
     conversations: "Conversations",
+    moreOptions: "More options",
+    fullscreen: "Full-screen (mobile)",
+    exitFullscreen: "Exit full-screen",
   },
 
   conversations: {
