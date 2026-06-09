@@ -123,10 +123,14 @@ export const PT_BR = {
     statMessages: "Mensagens",
     statTokens: "Tokens",
     statCost: "Gasto estimado",
-    activityLabel: "Atividade · 14 dias",
+    activityLabel: "Atividade · 7 dias",
+    activitySpend: "Gasto · 3 dias",
     activityEmpty: "Sem atividade ainda — sua primeira conversa aparece aqui.",
+    activitySpendEmpty: "Sem gasto nesse período.",
     activityDay: (chats: number, tokens: string) =>
       `${chats} conversa${chats === 1 ? "" : "s"} · ${tokens} tokens`,
+    activityBlock: (chats: number, cost: string) =>
+      `${chats} conversa${chats === 1 ? "" : "s"} · ${cost}`,
     activityToday: "hoje",
     newChatLabel: "Nova conversa",
     viewAll: "Ver todas",

@@ -5654,9 +5654,63 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   border: 1px solid var(--background-modifier-border);
 }
 
+/* Slider pill custom — trilho arredondado com preenchimento accent até o
+   thumb (--eff-fill em %), thumb redondo. appearance:none = arrastável de
+   verdade no webview (a aparência nativa do range travava em "só clique"). */
 .axxa-effort-range {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
+  height: 22px;
   margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.axxa-effort-range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--interactive-accent) 0 var(--eff-fill, 0%),
+    var(--background-modifier-border) var(--eff-fill, 0%) 100%
+  );
+}
+.axxa-effort-range::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+}
+.axxa-effort-range::-moz-range-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+}
+.axxa-effort-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -5px;
+  border-radius: 999px;
+  background: var(--background-primary);
+  border: 3px solid var(--interactive-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.12s ease;
+}
+.axxa-effort-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--interactive-accent);
+  border-radius: 999px;
+  background: var(--background-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.axxa-effort-range:active::-webkit-slider-thumb {
+  transform: scale(1.18);
+}
+.axxa-effort-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--interactive-accent) 35%, transparent);
 }
 
 .axxa-effort-scale {
@@ -5990,6 +6044,15 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   animation: axxa-wave-bob 5.5s ease-in-out infinite alternate;
 }
 
+/* Grupo interno ONDULA de verdade: swell vertical a partir da base + skew
+   alternado = a curva parece água em movimento. Em <g> separado pra não
+   distorcer o preenchimento (área). */
+.axxa-wave-undulate {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: axxa-wave-undulate 6.5s ease-in-out infinite;
+}
+
 /* Dot "ao vivo" no ponto de hoje — ping expandindo tipo radar */
 .axxa-wave-live {
   position: absolute;
@@ -6072,6 +6135,19 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   }
 }
 
+@keyframes axxa-wave-undulate {
+  0%,
+  100% {
+    transform: scaleY(1) skewX(0deg);
+  }
+  33% {
+    transform: scaleY(1.09) skewX(-0.7deg);
+  }
+  66% {
+    transform: scaleY(0.93) skewX(0.7deg);
+  }
+}
+
 /* Acessibilidade: sem movimento pra quem pediu reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .axxa-wave-line {
@@ -6083,7 +6159,8 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
     opacity: 0;
   }
   .axxa-wave-area,
-  .axxa-wave-bob {
+  .axxa-wave-bob,
+  .axxa-wave-undulate {
     animation: none;
   }
   .axxa-wave-live::after {
@@ -6092,13 +6169,49 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   }
 }
 
-.axxa-dash-bars-caption {
+/* Header da atividade — título (muda por modo) + toggle 7d/3d */
+.axxa-dash-activity-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px;
+}
+
+.axxa-dash-activity-title {
   font-size: 9px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
   color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.axxa-dash-actoggle-group {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  flex-shrink: 0;
+}
+
+.axxa-dash-actoggle {
+  padding: 2px 9px;
+  min-height: 0;
+  height: auto;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.axxa-dash-actoggle-active {
+  background: var(--background-primary) !important;
+  color: var(--text-accent) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .axxa-dash-activity-empty {
@@ -6307,22 +6420,21 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   }
 }
 
-/* Hover dos segments — os resets !important bloqueiam o hover nativo do
-   .clickable-icon (que não é !important), então reabilita explícito aqui.
-   Escopado em .axxa-dash (não vaza pras Settings) e atrás de (hover: hover)
-   (sem sticky hover no mobile). */
-@media (hover: hover) {
-  .axxa-dash .axxa-starter-segment-btn:not(.axxa-starter-segment-active):hover,
-  .axxa-dash .axxa-provider-seg .axxa-subtab-btn:not(.axxa-subtab-active):hover {
-    background: var(--background-modifier-hover) !important;
-    background-color: var(--background-modifier-hover) !important;
-  }
+/* Provider/Mode na dashboard: SÓ dois estados — selecionado (chip accent) e
+   normal (transparente). Sem fundo no hover (o reset !important já mata o
+   hover do clickable-icon; deliberado — v0.1.105). O selecionado vira um chip
+   de accent tint claro, não o "bloco preto" do --background-primary. */
+.axxa-dash .axxa-starter-segment-active,
+.axxa-dash .axxa-provider-seg .axxa-subtab-active {
+  background: color-mix(in srgb, var(--interactive-accent) 20%, transparent) !important;
+  color: var(--text-accent) !important;
+  box-shadow: none !important;
 }
 
-/* .clickable-icon dilui svg pra 85% (--icon-opacity) — restaura 100% no
-   botão ATIVO (convenção .is-active do próprio Obsidian) */
-.axxa-starter-segment-active svg,
-.axxa-subtab-active svg {
+/* .clickable-icon dilui svg pra 85% (--icon-opacity) — ícone do selecionado
+   em 100% pra leitura clara do estado ativo. */
+.axxa-dash .axxa-starter-segment-active svg,
+.axxa-dash .axxa-provider-seg .axxa-subtab-active svg {
   opacity: 1;
 }
 
@@ -6346,4 +6458,70 @@ body.is-mobile .axxa-wave-glow {
 body.is-mobile .axxa-wave-bob,
 body.is-mobile .axxa-wave-area {
   animation: none;
+}
+
+/* =====================================================
+ * Bordas LIVE — só com um tema animado ativo (pulse / flow / aurora-live).
+ * As bordas dos cards do dashboard pulsam em accent + glow suave, no ritmo
+ * do fundo. Escalonado por card pra parecer uma onda percorrendo a tela.
+ * v0.1.105
+ * ===================================================== */
+.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+  :is(
+    .axxa-dash-stat,
+    .axxa-dash-activity,
+    .axxa-effort-slider,
+    .axxa-dash .axxa-starter-segment,
+    .axxa-dash .axxa-provider-seg
+  ) {
+  animation: axxa-dash-liveborder 5s ease-in-out infinite;
+}
+
+/* Escalonamento (cascata) entre os 4 stat cards */
+.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+  .axxa-dash-stat:nth-child(2) {
+  animation-delay: 0.5s;
+}
+.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+  .axxa-dash-stat:nth-child(3) {
+  animation-delay: 1s;
+}
+.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+  .axxa-dash-stat:nth-child(4) {
+  animation-delay: 1.5s;
+}
+.axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+  .axxa-dash-activity {
+  animation-delay: 0.8s;
+}
+
+@keyframes axxa-dash-liveborder {
+  0%,
+  100% {
+    border-color: color-mix(
+      in srgb,
+      var(--interactive-accent) 22%,
+      var(--background-modifier-border)
+    );
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 10px -2px
+      color-mix(in srgb, var(--interactive-accent) 60%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .axxa-root:is(.axxa-bg-pulse, .axxa-bg-flow, .axxa-bg-aurora-live)
+    :is(
+      .axxa-dash-stat,
+      .axxa-dash-activity,
+      .axxa-dash-status-card,
+      .axxa-effort-slider,
+      .axxa-dash .axxa-starter-segment,
+      .axxa-dash .axxa-provider-seg
+    ) {
+    animation: none;
+  }
 }

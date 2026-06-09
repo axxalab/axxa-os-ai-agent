@@ -123,10 +123,14 @@ export const EN_US: Translations = {
     statMessages: "Messages",
     statTokens: "Tokens",
     statCost: "Estimated spend",
-    activityLabel: "Activity · 14 days",
+    activityLabel: "Activity · 7 days",
+    activitySpend: "Spend · 3 days",
     activityEmpty: "No activity yet — your first conversation shows up here.",
+    activitySpendEmpty: "No spend in this period.",
     activityDay: (chats: number, tokens: string) =>
       `${chats} chat${chats === 1 ? "" : "s"} · ${tokens} tokens`,
+    activityBlock: (chats: number, cost: string) =>
+      `${chats} chat${chats === 1 ? "" : "s"} · ${cost}`,
     activityToday: "today",
     newChatLabel: "New conversation",
     viewAll: "View all",

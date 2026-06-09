@@ -7,7 +7,7 @@
 //   - Status: índice RAG + providers configurados (clique abre Settings)
 //   - Quando user manda primeira msg, AxxaApp chama lockSession()
 
-import { useState, useEffect, useMemo, useRef, useId } from "react";
+import { useState, useEffect, useMemo, useRef, useId, type CSSProperties } from "react";
 import { Notice } from "obsidian";
 import type AxxaPlugin from "../../main";
 import { Icon } from "../_shared/Icon";
@@ -491,47 +491,146 @@ const WAVE_H = 64;
 const WAVE_TOP = 8;
 const WAVE_BASE = WAVE_H - 6;
 
+// Modo "3 dias": custo agrupado em blocos de BLOCK_HORAS h, alinhados ao
+// relógio local, terminando no bloco atual. 3×24/4 = 18 pontos.
+const BLOCK_HORAS = 4;
+const SPAN_DIAS = 3;
+const N_BLOCOS = (SPAN_DIAS * 24) / BLOCK_HORAS;
+
+interface HourBlock {
+  start: number; // epoch ms do início do bloco (hora local)
+  cost: number;
+  chats: number;
+}
+
+/** Agrupa o custo das conversas (agg.chats) em blocos de hora dos últimos 3 dias. */
+function lastHourBlocks(rows: { date: string; cost: number | null }[]): HourBlock[] {
+  const blockMs = BLOCK_HORAS * 3_600_000;
+  const anchor = new Date();
+  anchor.setMinutes(0, 0, 0);
+  anchor.setHours(Math.floor(anchor.getHours() / BLOCK_HORAS) * BLOCK_HORAS);
+  const newestStart = anchor.getTime();
+  const windowStart = newestStart - (N_BLOCOS - 1) * blockMs;
+
+  const blocks: HourBlock[] = [];
+  for (let i = 0; i < N_BLOCOS; i++) {
+    blocks.push({ start: windowStart + i * blockMs, cost: 0, chats: 0 });
+  }
+  for (const r of rows) {
+    const ts = Date.parse(r.date);
+    if (isNaN(ts) || ts < windowStart || ts >= newestStart + blockMs) continue;
+    const idx = Math.floor((ts - windowStart) / blockMs);
+    if (idx < 0 || idx >= N_BLOCOS) continue;
+    blocks[idx].cost += r.cost ?? 0;
+    blocks[idx].chats += 1;
+  }
+  return blocks;
+}
+
+/** Rótulo de um bloco de hora pro tooltip: "09/06 08h–12h". */
+function fmtBlock(start: number): string {
+  const d = new Date(start);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const h = d.getHours();
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(h)}h–${pad(
+    (h + BLOCK_HORAS) % 24
+  )}h`;
+}
+
+type ActivityMode = "7d" | "3d";
+
 /**
- * Wave chart dos últimos 14 dias — curva suave "viva" (v0.1.104):
- * draw-in no mount, pulso de luz percorrendo a linha, dot pingando no hoje
- * e área respirando. Tooltip nativo por dia via colunas invisíveis.
- * agg=null (carregando) → linha flat na base, sem dot.
+ * Wave chart "vivo" (v0.1.105) — dois modos via toggle:
+ *   7d → atividade (tokens) por dia nos últimos 7 dias
+ *   3d → gasto ($) por bloco de 4h nos últimos 3 dias
+ * Curva suave que ondula (swell + skew), draw-in no mount, pulso de luz
+ * percorrendo a linha e dot pingando no agora. agg=null → linha flat (loading).
  */
 function ActivityChart({ agg }: { agg: UsageAggregate | null }) {
   const t = useT();
+  const [mode, setMode] = useState<ActivityMode>("7d");
   const gradId = useId().replace(/:/g, "") + "-wave";
-  const days: DaySlot[] = agg
-    ? lastNDays(agg.byDay, 14)
-    : new Array(14).fill(null);
-  const values = days.map((d) =>
-    d ? d.bucket.tokensIn + d.bucket.tokensOut : 0
-  );
+
+  // Série conforme o modo selecionado.
+  let values: number[];
+  let tooltips: (string | undefined)[];
+  let label: string;
+  let emptyMsg: string;
+  if (mode === "3d") {
+    const blocks: (HourBlock | null)[] = agg
+      ? lastHourBlocks(agg.chats)
+      : new Array(N_BLOCOS).fill(null);
+    values = blocks.map((b) => (b ? b.cost : 0));
+    tooltips = blocks.map((b) =>
+      b
+        ? `${fmtBlock(b.start)} — ${t.dashboard.activityBlock(
+            b.chats,
+            formatUsd(b.cost)
+          )}`
+        : undefined
+    );
+    label = t.dashboard.activitySpend;
+    emptyMsg = t.dashboard.activitySpendEmpty;
+  } else {
+    const days: DaySlot[] = agg ? lastNDays(agg.byDay, 7) : new Array(7).fill(null);
+    values = days.map((d) => (d ? d.bucket.tokensIn + d.bucket.tokensOut : 0));
+    tooltips = days.map((d) =>
+      d
+        ? `${d.day.slice(8, 10)}/${d.day.slice(5, 7)} — ${t.dashboard.activityDay(
+            d.bucket.chats,
+            formatTokens(d.bucket.tokensIn + d.bucket.tokensOut)
+          )}`
+        : undefined
+    );
+    label = t.dashboard.activityLabel;
+    emptyMsg = t.dashboard.activityEmpty;
+  }
+
   const max = values.reduce((m, v) => Math.max(m, v), 0);
   const hasData = max > 0;
-
   const pts = values.map((v, i) => ({
-    x: (i * WAVE_W) / (values.length - 1),
-    y: hasData
-      ? WAVE_BASE - (v / max) * (WAVE_BASE - WAVE_TOP)
-      : WAVE_BASE - 2,
+    x: (i * WAVE_W) / Math.max(1, values.length - 1),
+    y: hasData ? WAVE_BASE - (v / max) * (WAVE_BASE - WAVE_TOP) : WAVE_BASE - 2,
   }));
   const line = smoothPath(pts, 2, WAVE_BASE);
   const area = `${line} L ${WAVE_W} ${WAVE_H} L 0 ${WAVE_H} Z`;
   const last = pts[pts.length - 1];
 
+  const toggleBtn = (m: ActivityMode, lbl: string) => (
+    <button
+      type="button"
+      className={
+        "clickable-icon axxa-dash-actoggle" +
+        (mode === m ? " axxa-dash-actoggle-active" : "")
+      }
+      aria-pressed={mode === m}
+      onClick={() => {
+        hapticTick();
+        setMode(m);
+      }}
+    >
+      {lbl}
+    </button>
+  );
+
   return (
     <div className="axxa-dash-activity">
-      {agg && !hasData ? (
-        <div className="axxa-dash-activity-empty">
-          {t.dashboard.activityEmpty}
+      <div className="axxa-dash-activity-head">
+        <span className="axxa-dash-activity-title">{label}</span>
+        <div className="axxa-dash-actoggle-group" role="group">
+          {toggleBtn("7d", "7d")}
+          {toggleBtn("3d", "3d")}
         </div>
+      </div>
+      {agg && !hasData ? (
+        <div className="axxa-dash-activity-empty">{emptyMsg}</div>
       ) : (
         <div className="axxa-dash-wave-wrap">
           <svg
             className="axxa-dash-wave"
             viewBox={`0 0 ${WAVE_W} ${WAVE_H}`}
             preserveAspectRatio="none"
-            aria-label={t.dashboard.activityLabel}
+            aria-label={label}
           >
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -553,11 +652,13 @@ function ActivityChart({ agg }: { agg: UsageAggregate | null }) {
                 d={area}
                 fill={`url(#${gradId})`}
               />
-              {/* SEM vector-effect: non-scaling-stroke quebra a normalização
-                  do pathLength no Blink (dash vira px de tela) — a linha
-                  ficaria truncada e o draw-in não rodaria. */}
-              <path className="axxa-wave-line" d={line} pathLength={1} />
-              <path className="axxa-wave-glow" d={line} pathLength={1} />
+              {/* Grupo interno ondula (swell + skew) sem mexer no preenchimento.
+                  SEM vector-effect: non-scaling-stroke quebra a normalização
+                  do pathLength no Blink. */}
+              <g className="axxa-wave-undulate">
+                <path className="axxa-wave-line" d={line} pathLength={1} />
+                <path className="axxa-wave-glow" d={line} pathLength={1} />
+              </g>
             </g>
           </svg>
           {hasData && (
@@ -569,29 +670,18 @@ function ActivityChart({ agg }: { agg: UsageAggregate | null }) {
               }}
             />
           )}
-          {/* Colunas invisíveis — tooltip nativo por dia em cima da curva */}
+          {/* Colunas invisíveis — tooltip nativo por ponto em cima da curva */}
           <div className="axxa-dash-wave-cols">
-            {days.map((d, i) => (
+            {values.map((_, i) => (
               <span
-                key={d?.day ?? i}
+                key={i}
                 className="axxa-dash-wave-col"
-                title={
-                  d
-                    ? `${d.day.slice(8, 10)}/${d.day.slice(5, 7)} — ${t.dashboard.activityDay(
-                        d.bucket.chats,
-                        formatTokens(values[i])
-                      )}`
-                    : undefined
-                }
+                title={tooltips[i]}
               />
             ))}
           </div>
         </div>
       )}
-      <div className="axxa-dash-bars-caption">
-        <span>{t.dashboard.activityLabel}</span>
-        <span>{t.dashboard.activityToday}</span>
-      </div>
     </div>
   );
 }
@@ -975,6 +1065,13 @@ export function StarterScreen({
             max={EFFORT_LEVELS.length - 1}
             step={1}
             value={effDragIdx ?? effIdx}
+            style={
+              {
+                "--eff-fill": `${
+                  ((effDragIdx ?? effIdx) / (EFFORT_LEVELS.length - 1)) * 100
+                }%`,
+              } as CSSProperties
+            }
             aria-label={t.starter.effortLabel}
             onChange={(e) => {
               hapticTick();
