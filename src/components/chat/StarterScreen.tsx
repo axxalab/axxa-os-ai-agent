@@ -190,8 +190,6 @@ const MODES_META: { id: string; icon: string; soon?: boolean }[] = [
   { id: "chat", icon: "message-square" },
   { id: "vault-qa", icon: "library" },
   { id: "agent", icon: "bot" },
-  { id: "coder", icon: "code-2", soon: true },
-  { id: "study", icon: "graduation-cap", soon: true },
 ];
 
 function formatRelativeDate(iso: string): string {

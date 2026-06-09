@@ -349,6 +349,22 @@ export default class AxxaPlugin extends Plugin {
     if (leaf) workspace.revealLeaf(leaf);
   }
 
+  /** Campos de chave de API que NÃO ficam em plaintext no data.json — vão pro
+   *  SecretStorage do SO (keychain), conforme guideline do Obsidian (1.11.4+).
+   *  `ollamaEndpoint` NÃO entra aqui: é uma URL local, não um segredo. */
+  private static readonly SECRET_FIELDS = [
+    "openaiApiKey",
+    "anthropicApiKey",
+    "geminiApiKey",
+    "openrouterApiKey",
+    "nimApiKey",
+  ] as const;
+
+  /** ID do segredo no SecretStorage (lowercase + dashes). Ex: axxa-openai-key. */
+  private secretId(field: string): string {
+    return `axxa-${field.replace(/ApiKey$/, "")}-key`;
+  }
+
   async loadSettings() {
     // loadData() lê do arquivo do plugin no vault — substitui localStorage.
     const saved = (await this.loadData()) ?? {};
@@ -361,10 +377,54 @@ export default class AxxaPlugin extends Plugin {
     };
     // Same pra effortConfigs — preserva overrides salvos do usuário.
     this.settings.effortConfigs = saved.effortConfigs ?? {};
+
+    // Chaves de API: carrega do SecretStorage do SO (keychain), não do
+    // data.json. Migra chaves legadas que ainda estejam em plaintext.
+    this.loadSecrets(saved);
+  }
+
+  /** Popula as chaves em memória a partir do SecretStorage e migra o legado
+   *  (chaves que ainda estavam em plaintext no data.json de versões antigas). */
+  private loadSecrets(saved: Record<string, unknown>) {
+    const ss = this.app.secretStorage;
+    if (!ss) return; // runtime < 1.11.4 (sideload): mantém fallback no data.json
+    let migrated = false;
+    for (const f of AxxaPlugin.SECRET_FIELDS) {
+      const id = this.secretId(f);
+      const stored = ss.getSecret(id);
+      if (stored) {
+        this.settings[f] = stored;
+      } else if (typeof saved[f] === "string" && saved[f]) {
+        // Legado: chave em plaintext no data.json → move pro keychain do SO.
+        ss.setSecret(id, saved[f] as string);
+        this.settings[f] = saved[f] as string;
+        migrated = true;
+      }
+    }
+    // Reescreve o data.json já sem as chaves em plaintext.
+    if (migrated) void this.saveData(this.persistableSettings());
+  }
+
+  /** Cópia das settings com as chaves zeradas — é isso que vai pro data.json
+   *  (os valores reais vivem só em memória + no SecretStorage do SO). */
+  private persistableSettings(): AxxaSettings {
+    const copy = { ...this.settings };
+    for (const f of AxxaPlugin.SECRET_FIELDS) copy[f] = "";
+    return copy;
   }
 
   async saveSettings() {
-    await this.saveData(this.settings);
+    const ss = this.app.secretStorage;
+    if (ss) {
+      // Chaves vão pro SecretStorage; data.json é salvo sem elas.
+      for (const f of AxxaPlugin.SECRET_FIELDS) {
+        ss.setSecret(this.secretId(f), this.settings[f] ?? "");
+      }
+      await this.saveData(this.persistableSettings());
+    } else {
+      // Fallback (runtime sem SecretStorage): salva tudo no data.json.
+      await this.saveData(this.settings);
+    }
     // Avisa quem tá escutando (ex.: AxxaApp pra re-renderizar com novo idioma)
     this.settingsListeners.forEach((cb) => {
       try {

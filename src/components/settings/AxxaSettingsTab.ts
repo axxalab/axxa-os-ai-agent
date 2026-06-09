@@ -11,7 +11,14 @@
 // Background do user é aplicado também aqui (.axxa-settings-root.axxa-bg-X)
 // pra ficar consistente com a view principal.
 
-import { App, PluginSettingTab, Setting, Notice, TFolder } from "obsidian";
+import {
+  App,
+  PluginSettingTab,
+  Setting,
+  Notice,
+  TFolder,
+  normalizePath,
+} from "obsidian";
 import type AxxaPlugin from "../../main";
 import { openaiProvider } from "../../providers/openai";
 import { anthropicProvider } from "../../providers/anthropic";
@@ -1100,7 +1107,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
           .setPlaceholder("axxa-ai/chats")
           .setValue(this.plugin.settings.chatsPath)
           .onChange(async (value) => {
-            this.plugin.settings.chatsPath = value || "axxa-ai/chats";
+            this.plugin.settings.chatsPath = normalizePath(value || "axxa-ai/chats");
             await this.plugin.saveSettings();
           });
         this.attachFolderAutocomplete(text.inputEl);
@@ -1114,7 +1121,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
           .setPlaceholder("axxa-ai/skills")
           .setValue(this.plugin.settings.skillsPath)
           .onChange(async (value) => {
-            this.plugin.settings.skillsPath = value || "axxa-ai/skills";
+            this.plugin.settings.skillsPath = normalizePath(value || "axxa-ai/skills");
             await this.plugin.saveSettings();
           });
         this.attachFolderAutocomplete(text.inputEl);
@@ -1128,8 +1135,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
           .setPlaceholder("axxa-ai/recordings")
           .setValue(this.plugin.settings.recordingsPath)
           .onChange(async (value) => {
-            this.plugin.settings.recordingsPath =
-              value || "axxa-ai/recordings";
+            this.plugin.settings.recordingsPath = normalizePath(
+              value || "axxa-ai/recordings"
+            );
             await this.plugin.saveSettings();
           });
         this.attachFolderAutocomplete(text.inputEl);
@@ -1143,8 +1151,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
           .setPlaceholder("axxa-ai/generation")
           .setValue(this.plugin.settings.generationPath)
           .onChange(async (value) => {
-            this.plugin.settings.generationPath =
-              value || "axxa-ai/generation";
+            this.plugin.settings.generationPath = normalizePath(
+              value || "axxa-ai/generation"
+            );
             await this.plugin.saveSettings();
           });
         this.attachFolderAutocomplete(text.inputEl);
@@ -1432,7 +1441,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
           .setPlaceholder("axxa-ai/index")
           .setValue(this.plugin.settings.ragIndexPath)
           .onChange(async (value) => {
-            this.plugin.settings.ragIndexPath = value || "axxa-ai/index";
+            this.plugin.settings.ragIndexPath = normalizePath(value || "axxa-ai/index");
             await this.plugin.saveSettings();
           });
         this.attachFolderAutocomplete(text.inputEl);

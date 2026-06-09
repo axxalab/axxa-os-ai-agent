@@ -1,11 +1,10 @@
 {
   "id": "axxa-os-ai-agent",
-  "name": "AXXA OS — AI Agent",
-  "version": "0.1.89",
-  "minAppVersion": "1.4.0",
-  "description": "AI Agent nativo para seu Vault. Chat, Q&A, Agent e Coder com múltiplos providers.",
+  "name": "AXXA OS - AI Agent",
+  "version": "0.1.90",
+  "minAppVersion": "1.11.4",
+  "description": "Chat with AI, query your vault with local RAG, and let an agent read and edit your notes across six LLM providers. Bring your own API key.",
   "author": "Axxa Lab",
-  "authorUrl": "https://axxa.lab",
-  "fundingUrl": "https://axxa.lab/support",
+  "authorUrl": "https://github.com/axxalab",
   "isDesktopOnly": false
 }

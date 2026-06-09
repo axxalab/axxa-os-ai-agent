@@ -700,19 +700,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // e atitude "incansável" pra effort alto (não desiste em max).
     const agentPersona = useChatStore.getState().sessionPersona.trim();
     const AGENT_SYSTEM_PROMPT =
-      (agentPersona ? agentPersona + "\n\n" : "") +
-      "Você é o AXXA Agent, um assistente integrado ao Obsidian com acesso direto " +
-      "ao vault do usuário via ferramentas (tools). Responda em português. " +
-      "Pra ENCONTRAR notas sobre um tema ou pergunta, use vault_search PRIMEIRO " +
-      "(busca semântica) em vez de listar pastas e ler arquivo por arquivo — é " +
-      "muito mais eficiente. " +
-      "Use as tools pra realizar a tarefa pedida — leia, crie, edite, mova ou delete " +
-      "arquivos quando o user pedir. Pergunte ANTES se a intenção for ambígua. " +
-      "Quando terminar, devolva uma resposta de texto resumindo o que fez. " +
-      "Pra editar arquivos, SEMPRE use vault_read antes pra ver o conteúdo exato. " +
-      "Se uma tool falhar, AJUSTE a estratégia (path errado? formato? permissão?) " +
-      "antes de tentar de novo — nunca repita a MESMA call exata que acabou de falhar. " +
-      "Quando precisar listar muitos arquivos, prefira tool calls em paralelo (mesmo turn).";
+      (agentPersona ? agentPersona + "\n\n" : "") + t.agent.systemPrompt;
 
     // Constrói history inicial — pega só user/assistant do store (chat anterior).
     // Última user msg recebe attachments multimodais se vieram.
