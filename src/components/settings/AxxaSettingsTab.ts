@@ -1438,6 +1438,19 @@ export class AxxaSettingsTab extends PluginSettingTab {
         this.attachFolderAutocomplete(text.inputEl);
       });
 
+    // ---- Auto-reindex (opt-in) ----
+    new Setting(section)
+      .setName(t.settings.ragAutoReindexLabel)
+      .setDesc(t.settings.ragAutoReindexDesc)
+      .addToggle((tg) =>
+        tg
+          .setValue(this.plugin.settings.ragAutoReindex)
+          .onChange(async (value) => {
+            this.plugin.settings.ragAutoReindex = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
     // ---- Stats line ----
     const statsEl = section.createDiv({ cls: "axxa-rag-stats" });
     this.renderRagStats(statsEl, t);

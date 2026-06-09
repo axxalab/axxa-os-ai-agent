@@ -382,6 +382,9 @@ export const EN_US: Translations = {
       `Your vault: ${count} notes → recommended: ${name}`,
     ragProfileNoDim:
       "This model doesn't support reduced dim — using full dim with int8.",
+    ragAutoReindexLabel: "Auto-reindex",
+    ragAutoReindexDesc:
+      "Re-embeds modified notes in the background (4s after editing). Only runs with an existing index. Each re-embed consumes tokens.",
     ragIndexingPhaseScanning: (done: number, total: number) =>
       `Scanning vault: ${done}/${total}`,
     ragIndexingPhaseEmbedding: (

@@ -383,6 +383,9 @@ export const PT_BR = {
       `Seu vault: ${count} notas → recomendado: ${name}`,
     ragProfileNoDim:
       "Este modelo não suporta dim reduzida — usando dim cheia com int8.",
+    ragAutoReindexLabel: "Reindexar automaticamente",
+    ragAutoReindexDesc:
+      "Re-embeda notas modificadas em background (4s após editar). Só roda com índice já criado. Cada re-embed consome tokens.",
     ragIndexingPhaseScanning: (done: number, total: number) =>
       `Escaneando vault: ${done}/${total}`,
     ragIndexingPhaseEmbedding: (

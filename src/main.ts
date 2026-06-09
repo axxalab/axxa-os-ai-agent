@@ -2,10 +2,11 @@
 // Entry point do plugin. O Obsidian instancia AxxaPlugin ao carregar o plugin.
 // É como o "componente raiz" no Figma — todo o resto é montado a partir daqui.
 
-import { Plugin, WorkspaceLeaf, Platform } from "obsidian";
+import { Plugin, WorkspaceLeaf, Platform, type TAbstractFile } from "obsidian";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 import { VectorIndex, loadIndex } from "./rag/vectorIndex";
+import { indexVault } from "./rag/indexer";
 import { registerBrandIcons } from "./components/_shared/brandIcons";
 import type {
   EffortConfig,
@@ -60,6 +61,9 @@ interface AxxaSettings {
   /** Perfil de quantização do índice RAG (precision/balanced/light/minimal) —
    *  precisão (float32/int8) + dim alvo. Estilo Effort. v0.1.80. */
   ragQuantProfile: string;
+  /** Reindexa o RAG automaticamente quando notas mudam (debounced). Opt-in
+   *  porque cada re-embed custa tokens/$. Só roda se já houver índice. v0.1.82. */
+  ragAutoReindex: boolean;
   /** Code wrap em blocos de código markdown. Default false (scroll horizontal).
    *  Quando true, aplica `.axxa-code-wrap` na .axxa-root → pre quebra linha. */
   codeWrap: boolean;
@@ -154,6 +158,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",
   ragQuantProfile: "balanced",
+  ragAutoReindex: false,
   codeWrap: false,
   agentPermissionLevel: "ask",
   // Defaults slim — user pode adicionar mais via Settings → Outros → Chips
@@ -172,6 +177,9 @@ export default class AxxaPlugin extends Plugin {
   /** Listeners avisados a cada saveSettings — usados pra re-renderizar o
    *  React tree quando o user troca idioma ou outro setting reativo. */
   private settingsListeners = new Set<() => void>();
+  /** Debounce + cancelamento do auto-reindex do RAG (opt-in). */
+  private autoReindexTimer: number | null = null;
+  private autoReindexController: AbortController | null = null;
 
   /** Inscreve um callback chamado a cada saveSettings. Retorna unsubscribe. */
   onSettingsChange(cb: () => void): () => void {
@@ -222,6 +230,9 @@ export default class AxxaPlugin extends Plugin {
     // Mede a navbar mobile pra compensar layout (--axxa-status-bar-clearance)
     this.setupStatusBarClearance();
 
+    // Auto-reindex do RAG (opt-in) — re-embeda notas modificadas em background
+    this.setupAutoReindex();
+
     // Abre na sidebar direita quando o Obsidian termina de montar o layout.
     this.app.workspace.onLayoutReady(() => {
       this.activateView();
@@ -258,6 +269,67 @@ export default class AxxaPlugin extends Plugin {
     // Atualiza quando o layout muda (mostrar/esconder navbar, popout, etc)
     this.registerEvent(this.app.workspace.on("layout-change", update));
     this.registerEvent(this.app.workspace.on("resize", update));
+  }
+
+  /**
+   * Auto-reindex do RAG (opt-in via settings.ragAutoReindex). Quando uma nota
+   * .md muda / é criada / deletada / renomeada, agenda um reindex incremental
+   * debounced (4s — só re-embeda o que mudou via hash). Só roda se JÁ existe
+   * índice (não cria do nada). Desligado por padrão porque re-embed custa $.
+   */
+  private setupAutoReindex() {
+    // Listeners ficam sempre registrados (leves — só checam um if); o `schedule`
+    // consulta o setting em runtime → o toggle nas Settings vale na hora, sem
+    // precisar reativar o plugin.
+    const schedule = (file: TAbstractFile) => {
+      if (!this.settings.ragAutoReindex) return;
+      if (!this.vectorIndex || this.vectorIndex.size === 0) return;
+      if (!file?.path || !file.path.endsWith(".md")) return;
+      if (this.autoReindexTimer !== null) {
+        window.clearTimeout(this.autoReindexTimer);
+      }
+      this.autoReindexTimer = window.setTimeout(
+        () => this.runAutoReindex(),
+        4000
+      );
+    };
+
+    this.registerEvent(this.app.vault.on("modify", schedule));
+    this.registerEvent(this.app.vault.on("create", schedule));
+    this.registerEvent(this.app.vault.on("delete", schedule));
+    this.registerEvent(this.app.vault.on("rename", schedule));
+  }
+
+  /** Reindex incremental em background (re-embeda só o que mudou via hash). */
+  private async runAutoReindex() {
+    this.autoReindexTimer = null;
+    if (!this.settings.ragAutoReindex) return;
+    if (!this.vectorIndex || this.vectorIndex.size === 0) return;
+
+    // Cancela um reindex anterior ainda em andamento
+    this.autoReindexController?.abort();
+    this.autoReindexController = new AbortController();
+
+    try {
+      this.vectorIndex = await indexVault(this.vectorIndex, {
+        app: this.app,
+        openaiApiKey: this.settings.openaiApiKey,
+        openrouterApiKey: this.settings.openrouterApiKey,
+        model: this.settings.ragEmbeddingModel,
+        profile: this.settings.ragQuantProfile,
+        indexPath: this.settings.ragIndexPath,
+        excludePaths: [
+          this.settings.ragIndexPath,
+          this.settings.chatsPath,
+          this.settings.recordingsPath,
+        ],
+        signal: this.autoReindexController.signal,
+      });
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        console.error("[axxa] auto-reindex falhou:", err);
+      }
+    }
   }
 
   async activateView() {
