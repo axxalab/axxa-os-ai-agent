@@ -6,6 +6,7 @@ import { Plugin, WorkspaceLeaf, Platform } from "obsidian";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 import { VectorIndex, loadIndex } from "./rag/vectorIndex";
+import { registerBrandIcons } from "./components/_shared/brandIcons";
 import type {
   EffortConfig,
   EffortLevel,
@@ -170,6 +171,10 @@ export default class AxxaPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+
+    // Registra os SVG marks dos providers (brand-openai/anthropic/etc).
+    // Depois disso, setIcon(el, "brand-openai") funciona em qualquer lugar.
+    registerBrandIcons();
 
     // Carrega índice RAG do disco se já existe. Falhas são silenciosas —
     // só significa que o user ainda não rodou "Indexar vault".
