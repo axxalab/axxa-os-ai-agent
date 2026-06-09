@@ -5729,49 +5729,62 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 
 /* =====================================================
- * Effort — rating de raios (v0.1.97): preenche até o nível, resto apagado.
- * Limpo, sem pílula/círculo. Clica num raio pra setar.
+ * Effort — segmented full-width com THUMB deslizante (v0.1.101)
+ * Esticado, animado, selecionável (mesmo comportamento dos Settings).
+ * O thumb desliza via --eff-idx (índice do nível ativo). Raios = intensidade.
  * ===================================================== */
-.axxa-effort-rating {
+.axxa-effort-seg {
+  position: relative;
+  display: flex;
+  width: 100%;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--background-modifier-form-field);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+}
+.axxa-effort-seg-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 5);
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  transform: translateX(calc(var(--eff-idx, 0) * 100%));
+  transition: transform 0.3s cubic-bezier(0.34, 1.25, 0.4, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+.axxa-effort-seg-btn {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-.axxa-effort-pips {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.axxa-effort-pip {
-  appearance: none;
-  -webkit-appearance: none;
+  justify-content: center;
+  padding: 7px 2px;
   border: none;
   background: none;
-  padding: 3px;
-  margin: 0;
   cursor: pointer;
-  font-size: 17px;
-  line-height: 1;
-  opacity: 0.25;
-  filter: grayscale(0.7);
-  transition: opacity 0.15s ease, transform 0.12s ease, filter 0.15s ease;
+  border-radius: 999px;
 }
-.axxa-effort-pip-on {
+.axxa-effort-seg-bolts {
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -1px;
+  white-space: nowrap;
+  opacity: 0.4;
+  filter: grayscale(0.55);
+  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+}
+.axxa-effort-seg-btn:hover .axxa-effort-seg-bolts {
+  opacity: 0.7;
+}
+.axxa-effort-seg-active .axxa-effort-seg-bolts {
   opacity: 1;
   filter: none;
-}
-.axxa-effort-pip:hover {
-  transform: scale(1.18);
-  opacity: 0.85;
-}
-.axxa-effort-pip-on:hover {
-  opacity: 1;
-}
-.axxa-effort-level-name {
-  font-size: var(--font-ui-small);
-  font-weight: 700;
-  color: var(--text-accent);
-  min-width: 42px;
+  transform: scale(1.05);
 }
 
 /* =====================================================

@@ -4,7 +4,7 @@
 //   - Recent chats list (últimos 5 chats salvos) — clique carrega
 //   - Quando user manda primeira msg, AxxaApp chama lockSession()
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
@@ -504,37 +504,41 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.effortLabel}</label>
-        {/* v0.1.97: rating de raios — preenche até o nível (⚡ aceso), resto
-            apagado. Clica num raio pra setar. + nome do nível ao lado. */}
-        <div className="axxa-effort-rating">
-          <div
-            className="axxa-effort-pips"
-            role="radiogroup"
-            aria-label={t.starter.effortLabel}
-          >
-            {EFFORT_LEVELS.map((level, idx) => {
-              const on = idx <= EFFORT_LEVELS.indexOf(effort as EffortLevel);
-              return (
-                <button
-                  key={level}
-                  type="button"
-                  role="radio"
-                  aria-checked={level === effort}
-                  className={
-                    "axxa-effort-pip" + (on ? " axxa-effort-pip-on" : "")
-                  }
-                  onClick={() => onEffortChange(level)}
-                  title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
-                  aria-label={EFFORT_LABELS[level]}
-                >
-                  ⚡
-                </button>
-              );
-            })}
-          </div>
-          <span className="axxa-effort-level-name">
-            {EFFORT_LABELS[effort as EffortLevel]}
-          </span>
+        {/* v0.1.101: segmented full-width (igual aos Settings) com THUMB que
+            desliza animado pro nível selecionado. Raios = intensidade (1→5). */}
+        <div
+          className="axxa-effort-seg"
+          role="radiogroup"
+          aria-label={t.starter.effortLabel}
+          style={
+            {
+              "--eff-idx": EFFORT_LEVELS.indexOf(effort as EffortLevel),
+            } as CSSProperties
+          }
+        >
+          <span className="axxa-effort-seg-thumb" aria-hidden="true" />
+          {EFFORT_LEVELS.map((level, idx) => {
+            const active = level === effort;
+            return (
+              <button
+                key={level}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                className={
+                  "axxa-effort-seg-btn" +
+                  (active ? " axxa-effort-seg-active" : "")
+                }
+                onClick={() => onEffortChange(level)}
+                title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
+                aria-label={EFFORT_LABELS[level]}
+              >
+                <span className="axxa-effort-seg-bolts">
+                  {"⚡".repeat(idx + 1)}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
