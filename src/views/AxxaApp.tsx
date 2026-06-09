@@ -314,14 +314,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   const starterModel = modelFor(providerSel);
 
-  // [DIAG v0.1.98 — TEMP] loga o que o render enxerga dos seletores. Remover
-  // depois de diagnosticar o bug de "seleção não reflete ao vivo".
-  console.log("[axxa/sel] RENDER", {
-    providerSel,
-    starterModel,
-    effort,
-    mode,
-  });
+  // [DIAG v0.1.99 — TEMP · mobile-first] Notice quando o ESTADO dos seletores
+  // muda. Se aparecer "STATE" novo depois do clique → re-render OK (bug é
+  // display). Se NÃO aparecer → setState não está re-renderizando. Remover depois.
+  useEffect(() => {
+    new Notice(
+      `STATE · prov=${providerSel} · model=${starterModel} · eff=${effort} · mode=${mode}`,
+      4000
+    );
+  }, [providerSel, starterModel, effort, mode]);
 
   // ============================================================
   // Carrega lista de chats recentes (todos os modos) quando chat tá vazio
@@ -1716,14 +1717,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const handlePlusClick = () => setPlusOpen(true);
   const handlePlusClose = () => setPlusOpen(false);
   const handleSelectEffort = async (level: EffortLevel) => {
-    console.log("[axxa/sel] handleSelectEffort →", level); // [DIAG TEMP]
+    new Notice(`CLICK effort → ${level}`, 4000); // [DIAG TEMP]
     setEffort(level);
     plugin.settings.defaultEffort = level;
     await plugin.saveSettings();
   };
 
   const handleStarterProvider = async (p: string) => {
-    console.log("[axxa/sel] handleStarterProvider →", p); // [DIAG TEMP]
+    new Notice(`CLICK provider → ${p}`, 4000); // [DIAG TEMP]
     setProviderSel(p);
     plugin.settings.defaultProvider = p;
     await plugin.saveSettings();
@@ -1736,7 +1737,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   };
 
   const handleStarterModel = async (m: string) => {
-    console.log("[axxa/sel] handleStarterModel →", m, "provider:", providerSel); // [DIAG TEMP]
+    new Notice(`CLICK model → ${m} (prov ${providerSel})`, 4000); // [DIAG TEMP]
     switch (providerSel) {
       case "anthropic":
         setAnthropicModelSel(m);
