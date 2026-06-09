@@ -535,16 +535,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
       const apiKey = apiKeyFor(activeProviderId);
 
+      const maxTokens = effortToMaxTokensSmart(
+        effort,
+        getContextWindow(activeModel),
+        plugin.settings.effortConfigs
+      );
+      let lastOutputTokens = 0;
+
       startStreamTimer();
       await activeProvider.streamChat(
         {
           model: activeModel,
           messages: history,
-          maxTokens: effortToMaxTokensSmart(
-            effort,
-            getContextWindow(activeModel),
-            plugin.settings.effortConfigs
-          ),
+          maxTokens,
           temperature: effortCfg.temperature,
         },
         apiKey,
@@ -561,11 +564,22 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           tickStreamTokens(token);
         },
         (usage) => {
+          lastOutputTokens = usage.output;
           addUsage(usage.input, usage.output);
         },
         controller.signal
       );
       endStreamTimer();
+
+      // Heurística de truncamento: se o output bateu ~o teto de tokens, a
+      // resposta provavelmente foi cortada → habilita o botão "Continuar".
+      if (
+        responseId !== null &&
+        lastOutputTokens > 0 &&
+        lastOutputTokens >= maxTokens * 0.95
+      ) {
+        useChatStore.getState().setTruncated(responseId, true);
+      }
 
       if (responseId === null) {
         updateActivity(commentId, { phase: "done" });
@@ -1315,6 +1329,107 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await streamReply(userMsg.content);
   };
 
+  // Continuar: emenda uma resposta cortada no limite de tokens NA MESMA bolha.
+  // Manda o history até a resposta + um nudge "continue de onde parou" e
+  // appenda os novos tokens à mesma ai-response (não cria bolha nova).
+  const continueReply = async (aiMessageId: string) => {
+    const snapshot = useChatStore.getState();
+    if (snapshot.isLoading) return;
+    const msgs = snapshot.messages;
+    const idx = msgs.findIndex(
+      (m) => m.id === aiMessageId && m.type === "ai-response"
+    );
+    if (idx < 0) return;
+
+    const {
+      appendToMessage,
+      setTruncated,
+      setLoading,
+      setStreamingMessageId,
+      addUsage,
+      startStreamTimer,
+      tickStreamTokens,
+      endStreamTimer,
+    } = useChatStore.getState();
+
+    setTruncated(aiMessageId, false);
+    setLoading(true);
+    setStreamingMessageId(aiMessageId);
+
+    const hist = msgs
+      .slice(0, idx + 1)
+      .filter(
+        (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
+      ) as Array<UserMessage | AIResponseMessage>;
+    const history: ProviderMessage[] = [
+      { role: "system", content: t.systemPrompt.base },
+      ...hist.map((m) => ({
+        role: (m.type === "user" ? "user" : "assistant") as
+          | "user"
+          | "assistant",
+        content: m.content,
+      })),
+      {
+        role: "user",
+        content:
+          "Continue EXATAMENTE de onde você parou, sem repetir nem reintroduzir o que já escreveu.",
+      },
+    ];
+
+    const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
+    const maxTokens = effortToMaxTokensSmart(
+      effort,
+      getContextWindow(activeModel),
+      plugin.settings.effortConfigs
+    );
+    let lastOutputTokens = 0;
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      // Emenda um espaço antes pra não colar a continuação na última palavra
+      appendToMessage(aiMessageId, " ");
+      startStreamTimer();
+      await activeProvider.streamChat(
+        {
+          model: activeModel,
+          messages: history,
+          maxTokens,
+          temperature: effortCfg.temperature,
+        },
+        apiKeyFor(activeProviderId),
+        (token) => {
+          appendToMessage(aiMessageId, token);
+          tickStreamTokens(token);
+        },
+        (usage) => {
+          lastOutputTokens = usage.output;
+          addUsage(usage.input, usage.output);
+        },
+        controller.signal
+      );
+      endStreamTimer();
+      // Cortou de novo? Mantém o botão pra continuar mais uma vez.
+      if (lastOutputTokens > 0 && lastOutputTokens >= maxTokens * 0.95) {
+        setTruncated(aiMessageId, true);
+      }
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        console.error("[axxa] continue falhou:", err);
+        new Notice(
+          `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`
+        );
+        // Deixa o botão disponível pra tentar de novo
+        setTruncated(aiMessageId, true);
+      }
+    } finally {
+      setLoading(false);
+      setStreamingMessageId(null);
+      endStreamTimer();
+      abortRef.current = null;
+    }
+  };
+
   // Deletar: remove msg. Se for user-msg, remove também o ai-response
   // imediatamente a seguir (manter o par alinhado).
   const handleDeleteMessage = (messageId: string) => {
@@ -1337,6 +1452,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const chatActions: ChatActions = {
     regenerate: handleRegenerate,
     deleteMessage: handleDeleteMessage,
+    continueResponse: continueReply,
   };
 
   const handleStop = () => abortRef.current?.abort();

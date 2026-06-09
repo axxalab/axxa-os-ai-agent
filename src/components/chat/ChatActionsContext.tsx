@@ -15,6 +15,8 @@ export interface ChatActions {
   regenerate: (aiMessageId: string) => void;
   /** Remove a mensagem. Se for user-msg, remove também o ai-response logo a seguir. */
   deleteMessage: (messageId: string) => void;
+  /** Continua uma resposta cortada no limite — emenda tokens na MESMA bolha. */
+  continueResponse: (aiMessageId: string) => void;
 }
 
 export const ChatActionsContext = createContext<ChatActions | null>(null);

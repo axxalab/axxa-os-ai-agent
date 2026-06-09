@@ -952,6 +952,31 @@ body.is-mobile.axxa-fullscreen
   margin-top: 8px;
 }
 
+/* Botão "Continuar" — aparece quando a resposta foi cortada no limite */
+.axxa-continue-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.axxa-continue-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+.axxa-continue-btn .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .axxa-footer-btn,
 .axxa-footer-btn:hover,
 .axxa-footer-btn:focus,

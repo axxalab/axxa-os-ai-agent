@@ -97,6 +97,10 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
     setReaction(msg.id, msg.reaction === "dislike" ? null : "dislike");
   };
 
+  const handleContinue = () => {
+    actions.continueResponse(msg.id);
+  };
+
   const menuHandlers = useMessageContextMenu(() => {
     const items: MessageMenuItem[] = [
       { title: t.menu.copy, icon: "copy", onClick: handleCopy },
@@ -114,6 +118,17 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   return (
     <div className="axxa-msg axxa-msg-ai-response" {...menuHandlers}>
       <Markdown content={msg.content} />
+      {msg.truncated && !isStreaming && (
+        <button
+          type="button"
+          className="axxa-continue-btn"
+          onClick={handleContinue}
+          title={t.chat.continueTitle}
+        >
+          <Icon name="chevrons-down" />
+          {t.chat.continueLabel}
+        </button>
+      )}
       {!isStreaming && (
         <div className="axxa-response-footer">
           <button

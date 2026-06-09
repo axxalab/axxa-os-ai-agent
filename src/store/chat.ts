@@ -30,6 +30,9 @@ export interface AIResponseMessage extends BaseMessage {
    *   - NÃO são persistidas no .md (somem ao recarregar o chat)
    *  Renderizam normalmente na UI pro user ver o que aconteceu. */
   isError?: boolean;
+  /** True quando a resposta foi cortada no limite de tokens (output ≈ maxTokens).
+   *  Mostra um botão "Continuar" no footer pra emendar de onde parou. */
+  truncated?: boolean;
 }
 
 /**
@@ -123,6 +126,8 @@ interface ChatState {
   ) => void;
   /** Toggle/seta reaction num ai-response. null = neutro, "like"/"dislike". */
   setReaction: (id: string, reaction: "like" | "dislike" | null) => void;
+  /** Marca/desmarca uma ai-response como truncada (cortada no limite de tokens). */
+  setTruncated: (id: string, truncated: boolean) => void;
   selectOption: (messageId: string, optionIndex: number) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
@@ -217,6 +222,12 @@ export const useChatStore = create<ChatState>((set) => ({
         if (m.type !== "ai-response") return m;
         return { ...m, reaction };
       }),
+    })),
+  setTruncated: (id, truncated) =>
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === id && m.type === "ai-response" ? { ...m, truncated } : m
+      ),
     })),
   selectOption: (messageId, optionIndex) =>
     set((state) => ({
