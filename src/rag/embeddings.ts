@@ -384,6 +384,72 @@ export function chunkText(
   return chunks;
 }
 
+/** Um chunk + o "breadcrumb" de headings da seção onde ele vive. */
+export interface MarkdownChunk {
+  text: string;
+  /** Ex: "Arquitetura > RAG > Quantização". "" quando fora de qualquer heading. */
+  breadcrumb: string;
+}
+
+/**
+ * Chunking ESTRUTURAL: quebra o markdown por seções de heading (#..######),
+ * preservando o breadcrumb hierárquico, e sub-quebra seções grandes via
+ * chunkText. Melhora a relevância — cada chunk carrega o contexto da seção
+ * (o breadcrumb entra no texto embedado). Sem headings, cai no chunkText puro.
+ */
+export function chunkMarkdown(
+  content: string,
+  maxSize = 1500,
+  overlap = 200
+): MarkdownChunk[] {
+  const lines = content.split("\n");
+  const sections: { breadcrumb: string; body: string }[] = [];
+  const stack: { level: number; title: string }[] = [];
+  let body: string[] = [];
+
+  const flush = () => {
+    const text = body.join("\n");
+    if (text.trim()) {
+      sections.push({
+        breadcrumb: stack.map((h) => h.title).join(" > "),
+        body: text,
+      });
+    }
+    body = [];
+  };
+
+  for (const line of lines) {
+    // Heading ATX: "## Título" (ignora trailing #). Evita falso-positivo em
+    // linhas tipo "#tag" (exige espaço após os #).
+    const m = /^(#{1,6})\s+(.+?)\s*#*$/.exec(line);
+    if (m) {
+      flush();
+      const level = m[1].length;
+      while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
+      stack.push({ level, title: m[2].trim() });
+      body.push(line);
+    } else {
+      body.push(line);
+    }
+  }
+  flush();
+
+  const out: MarkdownChunk[] = [];
+  for (const sec of sections) {
+    for (const piece of chunkText(sec.body, maxSize, overlap)) {
+      out.push({ text: piece, breadcrumb: sec.breadcrumb });
+    }
+  }
+  // Nota sem headings → chunkText puro
+  if (out.length === 0) {
+    return chunkText(content, maxSize, overlap).map((t) => ({
+      text: t,
+      breadcrumb: "",
+    }));
+  }
+  return out;
+}
+
 /** Hash SHA-1 hex de uma string. Usado pra detectar arquivo modificado. */
 export async function sha1Hex(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);

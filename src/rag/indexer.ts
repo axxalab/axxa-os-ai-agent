@@ -15,7 +15,7 @@
 import type { App, CachedMetadata, TFile } from "obsidian";
 import {
   arrayBufferToDataUrl,
-  chunkText,
+  chunkMarkdown,
   embedItems,
   estimateTokens,
   sha1Hex,
@@ -309,13 +309,16 @@ export async function indexVault(
         // guardado na entry segue sendo o chunk puro (excerpt limpo na busca).
         const cache = app.metadataCache.getFileCache(item.file);
         const ctxHeader = buildObsidianContext(item.file, cache);
-        const chunks = chunkText(item.content, CHUNK_MAX_CHARS, CHUNK_OVERLAP);
+        const chunks = chunkMarkdown(item.content, CHUNK_MAX_CHARS, CHUNK_OVERLAP);
         for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
           if (signal?.aborted) throw new DOMException("cancelled", "AbortError");
           const slice = chunks.slice(i, i + BATCH_SIZE);
-          const embedTexts = slice.map((c) =>
-            ctxHeader ? `${ctxHeader}\n\n${c}` : c
-          );
+          // Texto embedado = contexto Obsidian (título/tags/links) + breadcrumb
+          // de heading + o chunk. O `text` guardado fica puro (excerpt limpo).
+          const embedTexts = slice.map((c) => {
+            const prefix = [ctxHeader, c.breadcrumb].filter(Boolean).join(" · ");
+            return prefix ? `${prefix}\n\n${c.text}` : c.text;
+          });
           const inputs: EmbedInput[] = embedTexts.map((t) => ({
             kind: "text",
             text: t,
@@ -327,7 +330,7 @@ export async function indexVault(
               hash: item.hash,
               chunkIndex: i + j,
               chunkCount: chunks.length,
-              text: slice[j],
+              text: slice[j].text,
               embedding: quantizeEmbedding(embeddings[j], prof.precision),
               kind: "text",
             });

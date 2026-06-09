@@ -47,9 +47,8 @@ import {
   type ChatSummary,
 } from "../components/_shared/chatPersistence";
 import { Notice } from "obsidian";
-import { searchVault, buildVaultContext } from "../components/_shared/vaultSearch";
 import { ensureFolder } from "../components/_shared/chatPersistence";
-import { embedQuery } from "../rag/embeddings";
+import { hybridSearch } from "../rag/hybrid";
 import type { AxxaCommand } from "../components/composer/completions";
 import { TOOL_DEFINITIONS, getToolDefinition } from "../agent/toolSchemas";
 import { TOOL_REGISTRY } from "../agent/tools";
@@ -409,12 +408,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // Senão → fallback pra busca keyword (busca por título + ocorrências).
     let vaultContextBlock = "";
     if (activeMode === "vault-qa") {
-      const { topK, excerptChars } = effortToVaultLookup(
-        effort,
-        plugin.settings.effortConfigs
-      );
-      const useRag =
-        plugin.vectorIndex !== null && plugin.vectorIndex.size > 0;
+      const { topK } = effortToVaultLookup(effort, plugin.settings.effortConfigs);
 
       // Activity de busca — pulsa enquanto procura, vira check com resumo
       const searchActivityId = addMessage({
@@ -422,69 +416,40 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         content: "",
         activity: {
           phase: "pending",
-          iconPending: useRag ? "radar" : "search",
+          iconPending: "radar",
           iconDone: "check",
-          pendingText: useRag
-            ? `Buscando até ${topK} trechos via RAG`
-            : t.vault.searching(topK, effort),
-          doneText: useRag
-            ? `Busca RAG concluída`
-            : `Busca por palavras-chave concluída`,
+          pendingText: `Buscando até ${topK} trechos (híbrido)`,
+          doneText: `Busca concluída`,
         },
       });
 
       try {
-        if (useRag) {
-          // RAG path: embed query (router escolhe provider OpenAI/OpenRouter)
-          const queryVec = await embedQuery(
-            userText,
-            {
-              openaiApiKey: plugin.settings.openaiApiKey,
-              openrouterApiKey: plugin.settings.openrouterApiKey,
-            },
-            plugin.vectorIndex!.model,
-            plugin.vectorIndex!.dim
-          );
-          const results = plugin.vectorIndex!.search(queryVec, topK, 0.3);
-          if (results.length > 0) {
-            vaultContextBlock = results
-              .map((r) => {
-                const excerpt = r.entry.text.slice(0, excerptChars);
-                return `### ${r.entry.path} (sim=${r.score.toFixed(2)})\n\n${excerpt}`;
-              })
-              .join("\n\n---\n\n");
-            // Done: doneText conta os trechos + range de similarity
-            updateActivity(searchActivityId, {
-              phase: "done",
-              doneText: `${results.length} trecho${results.length > 1 ? "s" : ""} encontrado${results.length > 1 ? "s" : ""} (sim ${results[0].score.toFixed(2)}–${results[results.length - 1].score.toFixed(2)})`,
-            });
-          } else {
-            updateActivity(searchActivityId, {
-              phase: "done",
-              iconDone: "circle-slash",
-              doneText: t.vault.notFound,
-            });
-          }
+        // Busca híbrida: semantic (RAG) + keyword fundidos via RRF, re-rankeados
+        // pelo grafo de links. Funciona com ou sem índice (cai pra keyword).
+        const hits = await hybridSearch({
+          app: plugin.app,
+          index: plugin.vectorIndex,
+          creds: {
+            openaiApiKey: plugin.settings.openaiApiKey,
+            openrouterApiKey: plugin.settings.openrouterApiKey,
+          },
+          query: userText,
+          topK,
+        });
+        if (hits.length > 0) {
+          vaultContextBlock = hits
+            .map((h) => `### ${h.path}\n\n${h.text}`)
+            .join("\n\n---\n\n");
+          updateActivity(searchActivityId, {
+            phase: "done",
+            doneText: `${hits.length} trecho${hits.length > 1 ? "s" : ""} encontrado${hits.length > 1 ? "s" : ""}`,
+          });
         } else {
-          const matches = await searchVault(
-            plugin.app,
-            userText,
-            topK,
-            excerptChars
-          );
-          if (matches.length > 0) {
-            vaultContextBlock = buildVaultContext(matches);
-            updateActivity(searchActivityId, {
-              phase: "done",
-              doneText: t.vault.foundContext(matches.length),
-            });
-          } else {
-            updateActivity(searchActivityId, {
-              phase: "done",
-              iconDone: "circle-slash",
-              doneText: t.vault.notFound,
-            });
-          }
+          updateActivity(searchActivityId, {
+            phase: "done",
+            iconDone: "circle-slash",
+            doneText: t.vault.notFound,
+          });
         }
       } catch (err) {
         console.error("[axxa] vault search falhou:", err);

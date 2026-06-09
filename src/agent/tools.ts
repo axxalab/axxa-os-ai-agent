@@ -10,8 +10,7 @@
 import type { App } from "obsidian";
 import { ensureFolder } from "../components/_shared/chatPersistence";
 import type { ToolContext } from "./types";
-import { embedQuery } from "../rag/embeddings";
-import { searchVault } from "../components/_shared/vaultSearch";
+import { hybridSearch } from "../rag/hybrid";
 
 const VAULT_ROOT_MAX_DEPTH = 32; // sanity check: ninguém precisa de 100 níveis
 
@@ -254,10 +253,10 @@ interface SearchArgs {
 }
 
 /**
- * Busca por relevância nas notas. Se o índice vetorial tem entries, faz busca
- * SEMÂNTICA (embed a query → cosine). Senão (ou se o embed falha), cai pra
- * busca keyword. Dá ao agent "memória semântica" do vault — encontrar notas
- * relevantes em 1 call, sem listar pastas e ler arquivo por arquivo.
+ * Busca HÍBRIDA por relevância nas notas: funde semântico (embeddings/cosine)
+ * com keyword via RRF e re-rankeia pelo grafo de links. Funciona com ou sem
+ * índice (sem índice = só keyword). Dá ao agent "memória" do vault — encontrar
+ * notas relevantes em 1 call, sem listar pastas e ler arquivo por arquivo.
  */
 export async function toolVaultSearch(
   ctx: ToolContext,
@@ -267,47 +266,22 @@ export async function toolVaultSearch(
   if (!query) throw new Error("Parâmetro 'query' vazio.");
   const topK = Math.min(Math.max(Number(args.topK) || 5, 1), 20);
 
-  const idx = ctx.vectorIndex;
-
-  // 1. Busca semântica quando há índice populado
-  if (idx && idx.size > 0) {
-    try {
-      const vec = await embedQuery(
-        query,
-        {
-          openaiApiKey: ctx.embed.openaiApiKey,
-          openrouterApiKey: ctx.embed.openrouterApiKey,
-        },
-        idx.model,
-        idx.dim
-      );
-      const results = idx.search(vec, topK, 0.3);
-      if (results.length > 0) {
-        const lines = results.map(
-          (r) =>
-            `### ${r.entry.path} (sim ${r.score.toFixed(2)})\n${r.entry.text.slice(0, 500)}`
-        );
-        return (
-          `Busca semântica (RAG) — ${results.length} trecho(s) relevante(s) pra "${query}":\n\n` +
-          lines.join("\n\n---\n\n")
-        );
-      }
-      // índice existe mas nada acima do threshold → tenta keyword abaixo
-    } catch {
-      // embed falhou (sem API key, rate limit, etc) → fallback keyword
-    }
-  }
-
-  // 2. Fallback keyword
-  const matches = await searchVault(ctx.app, query, topK, 500);
-  if (matches.length === 0) {
+  const hits = await hybridSearch({
+    app: ctx.app,
+    index: ctx.vectorIndex,
+    creds: {
+      openaiApiKey: ctx.embed.openaiApiKey,
+      openrouterApiKey: ctx.embed.openrouterApiKey,
+    },
+    query,
+    topK,
+  });
+  if (hits.length === 0) {
     return `Nenhuma nota relevante pra "${query}". Tente outros termos ou use vault_list pra navegar.`;
   }
-  const lines = matches.map(
-    (m) => `### ${m.path} (score ${m.score})\n${m.excerpt}`
-  );
+  const lines = hits.map((h) => `### ${h.path} (${h.via})\n${h.text}`);
   return (
-    `Busca por palavras-chave — ${matches.length} nota(s) pra "${query}":\n\n` +
+    `Busca híbrida — ${hits.length} resultado(s) pra "${query}":\n\n` +
     lines.join("\n\n---\n\n")
   );
 }
