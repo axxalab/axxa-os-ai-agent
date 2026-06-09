@@ -504,32 +504,37 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.effortLabel}</label>
-        {/* v0.1.95: raios em emoji, segmented igual aos providers; largura
-            proporcional — 1 raio estreito → 5 raios largo, tudo cabe na tela */}
-        <div className="axxa-settings-subtabs axxa-effort-seg" role="tablist">
-          {EFFORT_LEVELS.map((level, idx) => {
-            const active = level === effort;
-            return (
-              <button
-                key={level}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                data-bolts={idx + 1}
-                className={
-                  "axxa-subtab-btn axxa-effort-bolt-btn" +
-                  (active ? " axxa-subtab-active" : "")
-                }
-                onClick={() => onEffortChange(level)}
-                title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
-                aria-label={EFFORT_LABELS[level]}
-              >
-                <span className="axxa-effort-bolts-emoji">
-                  {"⚡".repeat(idx + 1)}
-                </span>
-              </button>
-            );
-          })}
+        {/* v0.1.97: rating de raios — preenche até o nível (⚡ aceso), resto
+            apagado. Clica num raio pra setar. + nome do nível ao lado. */}
+        <div className="axxa-effort-rating">
+          <div
+            className="axxa-effort-pips"
+            role="radiogroup"
+            aria-label={t.starter.effortLabel}
+          >
+            {EFFORT_LEVELS.map((level, idx) => {
+              const on = idx <= EFFORT_LEVELS.indexOf(effort as EffortLevel);
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  role="radio"
+                  aria-checked={level === effort}
+                  className={
+                    "axxa-effort-pip" + (on ? " axxa-effort-pip-on" : "")
+                  }
+                  onClick={() => onEffortChange(level)}
+                  title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
+                  aria-label={EFFORT_LABELS[level]}
+                >
+                  ⚡
+                </button>
+              );
+            })}
+          </div>
+          <span className="axxa-effort-level-name">
+            {EFFORT_LABELS[effort as EffortLevel]}
+          </span>
         </div>
       </div>
 
@@ -545,41 +550,49 @@ export function StarterScreen({
                 data-mode={c.mode}
                 onClick={() => onLoadChat(c.id, c.mode)}
               >
-                <div className="axxa-recent-row">
-                  <span className="axxa-recent-logo">
-                    <Icon name={modelLogo(c.provider, c.model)} />
+                <span className="axxa-recent-logo">
+                  <Icon name={modelLogo(c.provider, c.model)} />
+                </span>
+                <span className="axxa-recent-main">
+                  <span className="axxa-recent-top">
+                    <span className="axxa-recent-title">{c.title}</span>
+                    <span className="axxa-recent-date">
+                      {formatRelativeDate(c.date)}
+                    </span>
                   </span>
-                  <span className="axxa-recent-title">{c.title}</span>
-                  <span className="axxa-recent-date">
-                    {formatRelativeDate(c.date)}
+                  {/* Status line — só texto, sem fundo */}
+                  <span className="axxa-composer-info axxa-recent-status">
+                    {visibleChips.includes("mode") && (
+                      <InfoChip
+                        icon={modeChipIcon(c.mode)}
+                        color={modeColor(c.mode)}
+                      >
+                        {c.mode}
+                      </InfoChip>
+                    )}
+                    {visibleChips.includes("model") && (
+                      <InfoChip icon="cpu" color={CHIP_COLORS.model}>
+                        {c.model}
+                      </InfoChip>
+                    )}
+                    {visibleChips.includes("messages") && (
+                      <InfoChip
+                        icon="message-square"
+                        color={CHIP_COLORS.messages}
+                      >
+                        {c.messageCount}
+                      </InfoChip>
+                    )}
+                    {visibleChips.includes("tokens") && (
+                      <InfoChip icon="sigma" color={CHIP_COLORS.tokens}>
+                        {formatTokens(c.tokensIn + c.tokensOut)}
+                      </InfoChip>
+                    )}
                   </span>
-                  <span className="axxa-recent-chevron">
-                    <Icon name="chevron-right" />
-                  </span>
-                </div>
-                {/* Status line — chips curados via Settings → Chips list (date vai no topo) */}
-                <div className="axxa-composer-info axxa-recent-status">
-                  {visibleChips.includes("mode") && (
-                    <InfoChip icon={modeChipIcon(c.mode)} color={modeColor(c.mode)}>
-                      {c.mode}
-                    </InfoChip>
-                  )}
-                  {visibleChips.includes("model") && (
-                    <InfoChip icon="cpu" color={CHIP_COLORS.model}>
-                      {c.model}
-                    </InfoChip>
-                  )}
-                  {visibleChips.includes("messages") && (
-                    <InfoChip icon="message-square" color={CHIP_COLORS.messages}>
-                      {c.messageCount}
-                    </InfoChip>
-                  )}
-                  {visibleChips.includes("tokens") && (
-                    <InfoChip icon="sigma" color={CHIP_COLORS.tokens}>
-                      {formatTokens(c.tokensIn + c.tokensOut)}
-                    </InfoChip>
-                  )}
-                </div>
+                </span>
+                <span className="axxa-recent-chevron">
+                  <Icon name="chevron-right" />
+                </span>
               </button>
             ))}
           </div>

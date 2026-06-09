@@ -66,24 +66,40 @@ export function Header({
 
   const hasChat = chatTitle.trim().length > 0;
 
-  // Menu "..." — popover custom ancorado no botão (sem o Menu nativo do Obsidian).
+  // Menu "..." — popover custom (sem Menu nativo do Obsidian). Posição FIXED
+  // calculada do botão, pra não ser cortado pelo overflow do header/painel.
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null
+  );
   const moreRef = useRef<HTMLDivElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+
+  const openMenu = () => {
+    const r = moreBtnRef.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+    setMenuOpen((o) => !o);
+  };
+
   useEffect(() => {
     if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
     const onDoc = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) close();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") close();
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
+    // Popover é fixed → fecha ao rolar/redimensionar (senão flutua solto).
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
     };
   }, [menuOpen]);
 
@@ -172,11 +188,12 @@ export function Header({
         </button>
         <div className="axxa-header-more" ref={moreRef}>
           <button
+            ref={moreBtnRef}
             type="button"
             className={
               "axxa-header-gear" + (menuOpen ? " axxa-header-gear-active" : "")
             }
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={openMenu}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label={t.header.moreOptions}
@@ -185,7 +202,13 @@ export function Header({
             <Icon name="more-vertical" />
           </button>
           {menuOpen && (
-            <div className="axxa-popover-menu" role="menu">
+            <div
+              className="axxa-popover-menu"
+              role="menu"
+              style={
+                menuPos ? { top: menuPos.top, right: menuPos.right } : undefined
+              }
+            >
               <button
                 type="button"
                 role="menuitem"
@@ -199,9 +222,10 @@ export function Header({
                 }}
               >
                 <Icon name="drama" />
-                <span>
+                <span className="axxa-popover-label">
                   {personaActive ? t.header.personaActive : t.header.persona}
                 </span>
+                <Icon name="chevron-right" className="axxa-popover-chevron" />
               </button>
               {canCopy && (
                 <button

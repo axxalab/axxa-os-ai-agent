@@ -5648,32 +5648,41 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
  * [logo] título · data · chevron  +  status line. Escala sutil por modo.
  * ===================================================== */
 .axxa-recent-item {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
   border-left: 3px solid transparent;
   padding: 8px 10px;
-  gap: 4px;
 }
-.axxa-recent-row {
+.axxa-recent-logo {
+  display: flex;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--background-primary);
+}
+.axxa-recent-logo .axxa-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+.axxa-recent-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.axxa-recent-top {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
-.axxa-recent-logo {
-  display: flex;
-  flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 7px;
-  background: var(--background-primary);
-}
-.axxa-recent-logo .axxa-icon svg {
-  width: 17px;
-  height: 17px;
-  display: block;
-}
-.axxa-recent-row .axxa-recent-title {
+.axxa-recent-top .axxa-recent-title {
   flex: 1 1 auto;
   min-width: 0;
   font-weight: 600;
@@ -5691,18 +5700,24 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-recent-chevron {
   flex: 0 0 auto;
   display: flex;
+  align-self: center;
   color: var(--text-faint);
 }
 .axxa-recent-chevron .axxa-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
+/* Status line = só texto, sem fundo */
 .axxa-recent-status {
-  padding-left: 32px;
-  gap: 1px 8px;
+  gap: 1px 10px;
   font-size: 9px;
   flex-wrap: nowrap;
   overflow: hidden;
+}
+.axxa-recent-status .axxa-info-chip {
+  background: none;
+  border: none;
+  padding: 0;
 }
 /* Escala por modo: chat sóbrio → vault → agent mais forte (sem exagero) */
 .axxa-recent-item[data-mode="vault-qa"] {
@@ -5714,32 +5729,49 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 
 /* =====================================================
- * Effort — raios emoji, segmented igual aos providers (v0.1.95)
- * Largura proporcional ao nº de raios (1 estreito → 5 largo), tudo cabe.
+ * Effort — rating de raios (v0.1.97): preenche até o nível, resto apagado.
+ * Limpo, sem pílula/círculo. Clica num raio pra setar.
  * ===================================================== */
-.axxa-effort-seg {
-  overflow-x: visible;
-}
-.axxa-effort-bolt-btn {
-  flex: 1 1 0;
-  min-width: 0;
+.axxa-effort-rating {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 8px 4px;
-  overflow: hidden;
+  gap: 12px;
 }
-.axxa-effort-bolt-btn[data-bolts="1"] { flex-grow: 1; }
-.axxa-effort-bolt-btn[data-bolts="2"] { flex-grow: 2; }
-.axxa-effort-bolt-btn[data-bolts="3"] { flex-grow: 3; }
-.axxa-effort-bolt-btn[data-bolts="4"] { flex-grow: 4; }
-.axxa-effort-bolt-btn[data-bolts="5"] { flex-grow: 5; }
-.axxa-effort-bolts-emoji {
-  font-size: 12px;
+.axxa-effort-pips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.axxa-effort-pip {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: none;
+  padding: 3px;
+  margin: 0;
+  cursor: pointer;
+  font-size: 17px;
   line-height: 1;
-  letter-spacing: -2px;
-  white-space: nowrap;
-  overflow: hidden;
+  opacity: 0.25;
+  filter: grayscale(0.7);
+  transition: opacity 0.15s ease, transform 0.12s ease, filter 0.15s ease;
+}
+.axxa-effort-pip-on {
+  opacity: 1;
+  filter: none;
+}
+.axxa-effort-pip:hover {
+  transform: scale(1.18);
+  opacity: 0.85;
+}
+.axxa-effort-pip-on:hover {
+  opacity: 1;
+}
+.axxa-effort-level-name {
+  font-size: var(--font-ui-small);
+  font-weight: 700;
+  color: var(--text-accent);
+  min-width: 42px;
 }
 
 /* =====================================================
@@ -5750,19 +5782,34 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   display: inline-flex;
 }
 .axxa-popover-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 60;
-  min-width: 184px;
-  padding: 5px;
-  background: var(--background-secondary);
+  position: fixed;
+  z-index: 2000;
+  min-width: 188px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--background-secondary) 82%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.26);
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+/* Fallback sem backdrop-filter (Safari antigo) — bg sólido */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .axxa-popover-menu {
+    background: var(--background-secondary);
+  }
+}
+.axxa-popover-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.axxa-popover-chevron svg {
+  width: 15px;
+  height: 15px;
+  color: var(--text-faint);
 }
 .axxa-popover-item {
   display: flex;
