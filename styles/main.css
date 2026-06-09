@@ -155,6 +155,33 @@ body.is-mobile.axxa-fullscreen .workspace-tab-container:has(.workspace-leaf-cont
   background-color: var(--background-primary) !important;
 }
 
+/* === DRAWER-TAB-OPTIONS hide (v0.1.67) ===
+   Identificado via debug overlay como o culpado pelo strip horizontal
+   embaixo em non-fullscreen mode. Eh o seletor de tab que mostra
+   "AXXA OS" com chevron.
+   Aplica 5px transparent SO neste elemento, SO quando AXXA eh a
+   active leaf do drawer direito. Demais elementos Obsidian permanecem
+   default (Obsidian preserva navegacao). */
+body.is-mobile .workspace-drawer.mod-right:has(.workspace-leaf-content.is-active[data-type="axxa-os-ai-agent"]) .workspace-drawer-tab-options,
+body.is-mobile .workspace-drawer.mod-right:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) .workspace-drawer-tab-options {
+  height: 5px !important;
+  min-height: 0 !important;
+  max-height: 5px !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: none !important;
+}
+
+body.is-mobile .workspace-drawer.mod-right:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) .workspace-drawer-tab-options > * {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* === Obsidian native chrome "5px transparent" trick (v0.1.62) ===
    APLICA APENAS NO FULLSCREEN (revertido em v0.1.62 a pedido do user
    — non-fullscreen deve manter elementos Obsidian funcionais/visiveis).
