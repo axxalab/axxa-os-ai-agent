@@ -14,6 +14,10 @@ export class AxxaView extends ItemView {
   root: Root | null = null;
   plugin: AxxaPlugin;
   private keyboardObserver: MutationObserver | null = null;
+  /** Referência ao drawer container que recebeu o nosso bg (mobile). */
+  private drawerHostEl: HTMLElement | null = null;
+  /** Unsubscribe das settings — usado pra atualizar bg quando o user troca. */
+  private drawerHostUnsub: (() => void) | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: AxxaPlugin) {
     super(leaf);
@@ -38,12 +42,65 @@ export class AxxaView extends ItemView {
     this.root = createRoot(container);
     this.root.render(<AxxaApp plugin={this.plugin} />);
 
+    this.setupDrawerHost();
     this.setupMobileKeyboardObserver();
   }
 
   async onClose() {
+    this.teardownDrawerHost();
     this.teardownMobileKeyboardObserver();
     this.root?.unmount();
+  }
+
+  /**
+   * Drawer host (mobile): pinta o bg do AXXA direto no
+   * .workspace-drawer-active-tab-container — em vez de só na .axxa-root.
+   *
+   * Por quê? O drawer tem `margin-top` + `flex-direction:column-reverse` e
+   * fica MAIOR que a área que .axxa-root consegue ocupar. Resultado: gap
+   * visual no topo ou no fundo (40px típico) exibindo
+   * `--background-modifier-hover` em vez do nosso bg/preset.
+   *
+   * Solução: plantamos classes `axxa-host` + `axxa-bg-{preset}` no drawer
+   * container. CSS então pinta o bg/preset NELE (edge-to-edge) e força
+   * .axxa-root como transparente — o bg da drawer mostra através.
+   *
+   * Mantém em sync via `onSettingsChange` quando o user muda preset.
+   */
+  private setupDrawerHost() {
+    if (!Platform.isMobile) return;
+
+    const apply = () => {
+      const host = this.containerEl.closest(
+        ".workspace-drawer-active-tab-container"
+      ) as HTMLElement | null;
+      if (!host) return;
+      this.drawerHostEl = host;
+      host.classList.add("axxa-host");
+      // Limpa bg classes antigas e seta a atual
+      Array.from(host.classList).forEach((c) => {
+        if (c.startsWith("axxa-bg-")) host.classList.remove(c);
+      });
+      host.classList.add(
+        "axxa-bg-" + (this.plugin.settings.background || "none")
+      );
+    };
+
+    apply();
+    // Re-aplica quando o user troca o preset nas Settings
+    this.drawerHostUnsub = this.plugin.onSettingsChange(apply);
+  }
+
+  private teardownDrawerHost() {
+    this.drawerHostUnsub?.();
+    this.drawerHostUnsub = null;
+    if (this.drawerHostEl) {
+      this.drawerHostEl.classList.remove("axxa-host");
+      Array.from(this.drawerHostEl.classList).forEach((c) => {
+        if (c.startsWith("axxa-bg-")) this.drawerHostEl!.classList.remove(c);
+      });
+      this.drawerHostEl = null;
+    }
   }
 
   /**
