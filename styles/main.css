@@ -2161,10 +2161,12 @@ body.theme-dark .axxa-recording-indicator {
   display: none;
 }
 
+/* v0.1.104: botões usam .clickable-icon (classe nativa do Obsidian). O reset
+   !important abaixo bloqueia o hover nativo — reabilitado explícito no bloco
+   de hover da dashboard (fim do arquivo). */
 .axxa-starter-segment-btn,
 .axxa-starter-segment-btn:focus,
-.axxa-starter-segment-btn:active,
-.axxa-starter-segment-btn:hover {
+.axxa-starter-segment-btn:active {
   appearance: none;
   -webkit-appearance: none;
   background: transparent !important;
@@ -2266,86 +2268,6 @@ body.theme-dark .axxa-recording-indicator {
   min-height: 44px;
   border-radius: 999px;
   padding: 8px 16px;
-}
-
-/* Effort row */
-/* Effort = mesmo padrão segmented pill, mas só texto (sem ícone) */
-.axxa-starter-effort {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 4px;
-  padding: 4px;
-  background: var(--background-modifier-hover);
-  border-radius: 14px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.axxa-starter-effort::-webkit-scrollbar {
-  display: none;
-}
-
-.axxa-starter-effort-btn,
-.axxa-starter-effort-btn:focus,
-.axxa-starter-effort-btn:active,
-.axxa-starter-effort-btn:hover {
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent !important;
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.axxa-starter-effort-btn {
-  flex: 1 1 0;
-  min-width: 48px;
-  padding: 6px 10px;
-  font-size: 11px;
-  border-radius: 10px;
-  color: var(--text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-  min-height: 38px;
-  font-size: var(--font-ui-small);
-  transition: background 0.15s, transform 0.12s;
-  transition: all 0.15s;
-}
-
-.axxa-starter-effort-btn:hover {
-  color: var(--text-normal);
-}
-
-.axxa-starter-effort-active {
-  background: var(--background-primary) !important;
-  color: var(--text-accent) !important;
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
-}
-
-/* v0.1.66: variante emoji-based pra effort. Pill maior + emoji centered
-   + scale animation no active. */
-.axxa-starter-effort-emoji .axxa-starter-effort-btn {
-  min-height: 44px;
-  padding: 4px 8px;
-  border-radius: 12px;
-}
-
-.axxa-starter-effort-emoji-icon {
-  font-size: 22px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.axxa-starter-effort-emoji .axxa-starter-effort-active .axxa-starter-effort-emoji-icon {
-  transform: scale(1.18);
-}
-
-.axxa-starter-effort-emoji .axxa-starter-effort-btn:active {
-  transform: scale(0.93);
 }
 
 .axxa-starter-hint {
@@ -5718,62 +5640,80 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 
 /* =====================================================
- * Effort — segmented full-width com THUMB deslizante (v0.1.101)
- * Esticado, animado, selecionável (mesmo comportamento dos Settings).
- * O thumb desliza via --eff-idx (índice do nível ativo). Raios = intensidade.
+ * Effort — SLIDER nativo do Obsidian (v0.1.104)
+ * input[type=range].slider (mesmo das Settings nativas) + escala de
+ * emojis clicável embaixo + descrição do nível. Card de vidro.
  * ===================================================== */
-.axxa-effort-seg {
-  position: relative;
+.axxa-effort-slider {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px 8px;
+  border-radius: 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.axxa-effort-range {
   width: 100%;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--background-modifier-form-field);
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+  margin: 0;
 }
-.axxa-effort-seg-thumb {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc((100% - 8px) / 5);
-  border-radius: 999px;
-  background: var(--interactive-accent);
-  transform: translateX(calc(var(--eff-idx, 0) * 100%));
-  transition: transform 0.3s cubic-bezier(0.34, 1.25, 0.4, 1);
-  z-index: 0;
-  pointer-events: none;
+
+.axxa-effort-scale {
+  display: flex;
+  gap: 2px;
 }
-.axxa-effort-seg-btn {
-  position: relative;
-  z-index: 1;
+
+/* Tick = botão clickable-icon (nativo) empilhado: emoji + label micro */
+.axxa-effort-tick {
   flex: 1 1 0;
   min-width: 0;
-  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 2px;
+  min-height: 44px;
+  border-radius: 10px;
   align-items: center;
   justify-content: center;
-  padding: 7px 2px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: 999px;
 }
-.axxa-effort-seg-bolts {
-  font-size: 12px;
+
+.axxa-effort-tick-emoji {
+  font-size: 15px;
   line-height: 1;
-  letter-spacing: -1px;
-  white-space: nowrap;
-  opacity: 0.4;
-  filter: grayscale(0.55);
-  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+  filter: grayscale(0.5);
+  opacity: 0.5;
+  transition: transform 0.2s cubic-bezier(0.34, 1.25, 0.4, 1), opacity 0.2s,
+    filter 0.2s;
 }
-.axxa-effort-seg-btn:hover .axxa-effort-seg-bolts {
-  opacity: 0.7;
+
+.axxa-effort-tick-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  line-height: 1.2;
 }
-.axxa-effort-seg-active .axxa-effort-seg-bolts {
-  opacity: 1;
+
+.axxa-effort-tick-active .axxa-effort-tick-emoji {
   filter: none;
-  transform: scale(1.05);
+  opacity: 1;
+  transform: scale(1.25);
+}
+
+.axxa-effort-tick-active .axxa-effort-tick-label {
+  color: var(--text-accent);
+}
+
+.axxa-effort-tick:active .axxa-effort-tick-emoji {
+  transform: scale(0.9);
+}
+
+.axxa-effort-desc {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.4;
 }
 
 /* =====================================================
@@ -5990,7 +5930,9 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   line-height: 1.2;
 }
 
-/* Atividade — mini bar chart 14 dias (card base do DS) */
+/* Atividade — wave chart "vivo" 14 dias (v0.1.104): curva Catmull-Rom
+   suave com draw-in no mount, pulso de luz percorrendo a linha, dot
+   pingando no hoje e área respirando. Tooltips via colunas invisíveis. */
 .axxa-dash-activity {
   padding: 12px 14px 10px;
   background: var(--background-secondary);
@@ -6001,36 +5943,153 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   gap: 6px;
 }
 
-.axxa-dash-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 52px;
+.axxa-dash-wave-wrap {
+  position: relative;
+  height: 56px;
 }
 
-.axxa-dash-bar {
+.axxa-dash-wave {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* Respiração da área preenchida — opacidade oscilando devagar */
+.axxa-wave-area {
+  opacity: 0.72;
+  animation: axxa-wave-breathe 4.5s ease-in-out infinite alternate;
+}
+
+/* Linha principal: desenha da esquerda pra direita no mount (pathLength=1) */
+.axxa-wave-line {
+  fill: none;
+  stroke: var(--color-cyan, #4cc9f0);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: axxa-wave-draw 1.2s cubic-bezier(0.4, 0, 0.2, 1) 0.15s forwards;
+}
+
+/* Pulso de luz viajando pela curva em loop (dash curto correndo o path) */
+.axxa-wave-glow {
+  fill: none;
+  /* mix com --text-normal (não #fff): claro no dark, escuro no light */
+  stroke: color-mix(in srgb, var(--color-cyan, #4cc9f0) 55%, var(--text-normal));
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  opacity: 0;
+  stroke-dasharray: 0.16 1;
+  animation: axxa-wave-flow 3.4s linear 1.6s infinite;
+}
+
+/* Ondulação vertical sutil do conjunto — o "respirar" da onda */
+.axxa-wave-bob {
+  animation: axxa-wave-bob 5.5s ease-in-out infinite alternate;
+}
+
+/* Dot "ao vivo" no ponto de hoje — ping expandindo tipo radar */
+.axxa-wave-live {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 999px;
+  background: var(--color-cyan, #4cc9f0);
+  pointer-events: none;
+}
+
+.axxa-wave-live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: inherit;
+  animation: axxa-wave-ping 2.4s ease-out 1.5s infinite;
+}
+
+/* Colunas invisíveis em cima do svg — tooltip nativo por dia */
+.axxa-dash-wave-cols {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.axxa-dash-wave-col {
   flex: 1 1 0;
   min-width: 0;
-  border-radius: 3px;
-  background: var(--background-modifier-hover);
-  transition: background 0.15s;
 }
 
-.axxa-dash-bar-on {
-  background: color-mix(in srgb, var(--color-cyan, #4cc9f0) 45%, transparent);
-}
-
-/* Hover decorativo (barra não é clicável) — só onde hover existe de verdade,
-   senão o tap deixa a barra presa em cyan 100% no mobile (sticky hover). */
-@media (hover: hover) {
-  .axxa-dash-bar-on:hover {
-    background: var(--color-cyan, #4cc9f0);
+@keyframes axxa-wave-draw {
+  to {
+    stroke-dashoffset: 0;
   }
 }
 
-.axxa-dash-bar-today {
-  outline: 1.5px solid var(--interactive-accent);
-  outline-offset: 1px;
+@keyframes axxa-wave-flow {
+  0% {
+    stroke-dashoffset: 1.16;
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  88% {
+    opacity: 0.9;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes axxa-wave-breathe {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes axxa-wave-bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes axxa-wave-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  75%,
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+/* Acessibilidade: sem movimento pra quem pediu reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .axxa-wave-line {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .axxa-wave-glow {
+    animation: none;
+    opacity: 0;
+  }
+  .axxa-wave-area,
+  .axxa-wave-bob {
+    animation: none;
+  }
+  .axxa-wave-live::after {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 .axxa-dash-bars-caption {
@@ -6193,4 +6252,98 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* =====================================================
+ * Vidro (glass) na starter/dashboard — v0.1.104
+ * Tracks dos segments + cards translúcidos com backdrop blur.
+ * Mesmo padrão do .axxa-popover-menu: color-mix + @supports fallback
+ * (sem suporte → fundo sólido original, nada quebra).
+ * ===================================================== */
+.axxa-dash .axxa-starter-segment,
+.axxa-dash .axxa-provider-seg {
+  background: color-mix(
+    in srgb,
+    var(--background-modifier-hover) 65%,
+    transparent
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
+}
+
+.axxa-dash .axxa-effort-slider,
+.axxa-dash .axxa-dash-stat,
+.axxa-dash .axxa-dash-activity {
+  background: color-mix(in srgb, var(--background-secondary) 72%, transparent);
+}
+
+/* Status card é button — precisa de !important pra ganhar do reset */
+.axxa-dash .axxa-dash-status-card {
+  background: color-mix(
+    in srgb,
+    var(--background-secondary) 72%,
+    transparent
+  ) !important;
+}
+
+.axxa-dash .axxa-dash-status-card:hover {
+  background: color-mix(
+    in srgb,
+    var(--background-modifier-hover) 80%,
+    transparent
+  ) !important;
+}
+
+@supports (backdrop-filter: blur(12px)) or
+  (-webkit-backdrop-filter: blur(12px)) {
+  .axxa-dash .axxa-starter-segment,
+  .axxa-dash .axxa-provider-seg,
+  .axxa-dash .axxa-effort-slider,
+  .axxa-dash .axxa-dash-stat,
+  .axxa-dash .axxa-dash-activity,
+  .axxa-dash .axxa-dash-status-card {
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    backdrop-filter: blur(12px) saturate(140%);
+  }
+}
+
+/* Hover dos segments — os resets !important bloqueiam o hover nativo do
+   .clickable-icon (que não é !important), então reabilita explícito aqui.
+   Escopado em .axxa-dash (não vaza pras Settings) e atrás de (hover: hover)
+   (sem sticky hover no mobile). */
+@media (hover: hover) {
+  .axxa-dash .axxa-starter-segment-btn:not(.axxa-starter-segment-active):hover,
+  .axxa-dash .axxa-provider-seg .axxa-subtab-btn:not(.axxa-subtab-active):hover {
+    background: var(--background-modifier-hover) !important;
+    background-color: var(--background-modifier-hover) !important;
+  }
+}
+
+/* .clickable-icon dilui svg pra 85% (--icon-opacity) — restaura 100% no
+   botão ATIVO (convenção .is-active do próprio Obsidian) */
+.axxa-starter-segment-active svg,
+.axxa-subtab-active svg {
+  opacity: 1;
+}
+
+/* Mobile: backdrop-blur ×10 + animações ambient infinitas = GPU/bateria.
+   O fallback color-mix translúcido segura o visual; mantém só draw-in+ping. */
+body.is-mobile .axxa-dash .axxa-starter-segment,
+body.is-mobile .axxa-dash .axxa-provider-seg,
+body.is-mobile .axxa-dash .axxa-effort-slider,
+body.is-mobile .axxa-dash .axxa-dash-stat,
+body.is-mobile .axxa-dash .axxa-dash-activity,
+body.is-mobile .axxa-dash .axxa-dash-status-card {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.is-mobile .axxa-wave-glow {
+  animation: none;
+  opacity: 0;
+}
+
+body.is-mobile .axxa-wave-bob,
+body.is-mobile .axxa-wave-area {
+  animation: none;
 }

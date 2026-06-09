@@ -7,14 +7,16 @@
 //   - Status: índice RAG + providers configurados (clique abre Settings)
 //   - Quando user manda primeira msg, AxxaApp chama lockSession()
 
-import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useRef, useId } from "react";
 import { Notice } from "obsidian";
 import type AxxaPlugin from "../../main";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
+import { hapticTick } from "../_shared/haptics";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
+  EFFORT_EMOJIS,
   EFFORT_DESCRIPTIONS,
   type EffortLevel,
 } from "../_shared/effort";
@@ -456,20 +458,66 @@ function StatCard({
 type DaySlot = ReturnType<typeof lastNDays>[number] | null;
 
 /**
- * Mini bar chart dos últimos 14 dias — altura proporcional a tokens/dia.
- * Sem lib: barras flex com height inline. Tooltip nativo por dia.
- * agg=null (carregando) → barras fantasma na altura mínima.
+ * Converte pontos numa curva suave (Catmull-Rom → cubic Bézier).
+ * Controles com y clampado pro overshoot não estourar o card.
+ */
+function smoothPath(
+  pts: { x: number; y: number }[],
+  yMin: number,
+  yMax: number
+): string {
+  if (pts.length === 0) return "";
+  const clamp = (y: number) => Math.min(yMax, Math.max(yMin, y));
+  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = clamp(p1.y + (p2.y - p0.y) / 6);
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = clamp(p2.y - (p3.y - p1.y) / 6);
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(
+      1
+    )}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
+// Geometria do wave chart (viewBox; estica pro card via preserveAspectRatio).
+const WAVE_W = 280;
+const WAVE_H = 64;
+const WAVE_TOP = 8;
+const WAVE_BASE = WAVE_H - 6;
+
+/**
+ * Wave chart dos últimos 14 dias — curva suave "viva" (v0.1.104):
+ * draw-in no mount, pulso de luz percorrendo a linha, dot pingando no hoje
+ * e área respirando. Tooltip nativo por dia via colunas invisíveis.
+ * agg=null (carregando) → linha flat na base, sem dot.
  */
 function ActivityChart({ agg }: { agg: UsageAggregate | null }) {
   const t = useT();
+  const gradId = useId().replace(/:/g, "") + "-wave";
   const days: DaySlot[] = agg
     ? lastNDays(agg.byDay, 14)
     : new Array(14).fill(null);
-  const max = days.reduce(
-    (m, d) => Math.max(m, d ? d.bucket.tokensIn + d.bucket.tokensOut : 0),
-    0
+  const values = days.map((d) =>
+    d ? d.bucket.tokensIn + d.bucket.tokensOut : 0
   );
+  const max = values.reduce((m, v) => Math.max(m, v), 0);
   const hasData = max > 0;
+
+  const pts = values.map((v, i) => ({
+    x: (i * WAVE_W) / (values.length - 1),
+    y: hasData
+      ? WAVE_BASE - (v / max) * (WAVE_BASE - WAVE_TOP)
+      : WAVE_BASE - 2,
+  }));
+  const line = smoothPath(pts, 2, WAVE_BASE);
+  const area = `${line} L ${WAVE_W} ${WAVE_H} L 0 ${WAVE_H} Z`;
+  const last = pts[pts.length - 1];
 
   return (
     <div className="axxa-dash-activity">
@@ -478,33 +526,66 @@ function ActivityChart({ agg }: { agg: UsageAggregate | null }) {
           {t.dashboard.activityEmpty}
         </div>
       ) : (
-        <div className="axxa-dash-bars" aria-label={t.dashboard.activityLabel}>
-          {days.map((d, i) => {
-            const tokens = d ? d.bucket.tokensIn + d.bucket.tokensOut : 0;
-            const pct = hasData
-              ? Math.max(6, Math.round((tokens / max) * 100))
-              : 6;
-            const isToday = d != null && i === days.length - 1;
-            return (
+        <div className="axxa-dash-wave-wrap">
+          <svg
+            className="axxa-dash-wave"
+            viewBox={`0 0 ${WAVE_W} ${WAVE_H}`}
+            preserveAspectRatio="none"
+            aria-label={t.dashboard.activityLabel}
+          >
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="0%"
+                  stopColor="var(--color-cyan, #4cc9f0)"
+                  stopOpacity="0.38"
+                />
+                <stop
+                  offset="100%"
+                  stopColor="var(--color-cyan, #4cc9f0)"
+                  stopOpacity="0"
+                />
+              </linearGradient>
+            </defs>
+            <g className="axxa-wave-bob">
+              <path
+                className="axxa-wave-area"
+                d={area}
+                fill={`url(#${gradId})`}
+              />
+              {/* SEM vector-effect: non-scaling-stroke quebra a normalização
+                  do pathLength no Blink (dash vira px de tela) — a linha
+                  ficaria truncada e o draw-in não rodaria. */}
+              <path className="axxa-wave-line" d={line} pathLength={1} />
+              <path className="axxa-wave-glow" d={line} pathLength={1} />
+            </g>
+          </svg>
+          {hasData && (
+            <span
+              className="axxa-wave-live"
+              style={{
+                left: `${(last.x / WAVE_W) * 100}%`,
+                top: `${(last.y / WAVE_H) * 100}%`,
+              }}
+            />
+          )}
+          {/* Colunas invisíveis — tooltip nativo por dia em cima da curva */}
+          <div className="axxa-dash-wave-cols">
+            {days.map((d, i) => (
               <span
                 key={d?.day ?? i}
-                className={
-                  "axxa-dash-bar" +
-                  (tokens > 0 ? " axxa-dash-bar-on" : "") +
-                  (isToday ? " axxa-dash-bar-today" : "")
-                }
-                style={{ height: `${pct}%` }}
+                className="axxa-dash-wave-col"
                 title={
                   d
                     ? `${d.day.slice(8, 10)}/${d.day.slice(5, 7)} — ${t.dashboard.activityDay(
                         d.bucket.chats,
-                        formatTokens(tokens)
+                        formatTokens(values[i])
                       )}`
                     : undefined
                 }
               />
-            );
-          })}
+            ))}
+          </div>
         </div>
       )}
       <div className="axxa-dash-bars-caption">
@@ -651,6 +732,18 @@ export function StarterScreen({
   const [pickerOpen, setPickerOpen] = useState(false);
   const modelFieldRef = useRef<HTMLDivElement>(null);
 
+  // Slider de effort: índice em arraste (UI imediata) + commit no soltar.
+  const effIdx = Math.max(0, EFFORT_LEVELS.indexOf(effort as EffortLevel));
+  const [effDragIdx, setEffDragIdx] = useState<number | null>(null);
+  const effDragRef = useRef<number | null>(null);
+  const commitEffortDrag = () => {
+    if (effDragRef.current != null) {
+      onEffortChange(EFFORT_LEVELS[effDragRef.current]);
+      effDragRef.current = null;
+      setEffDragIdx(null);
+    }
+  };
+
   // Agregação de uso (todo o histórico) — derivada dos summaries que o
   // AxxaApp já carregou pra lista de recentes. Zero IO aqui: só CPU
   // (pricing por chat + buckets), memoizado por referência do array.
@@ -775,7 +868,7 @@ export function StarterScreen({
               role="tab"
               aria-selected={m.id === mode}
               className={
-                "axxa-starter-segment-btn" +
+                "clickable-icon axxa-starter-segment-btn" +
                 (m.id === mode ? " axxa-starter-segment-active" : "") +
                 (m.soon ? " axxa-starter-segment-soon" : "")
               }
@@ -784,6 +877,7 @@ export function StarterScreen({
                   new Notice(t.modes.comingSoon(modeLabel(m.id)));
                   return;
                 }
+                hapticTick();
                 onModeChange(m.id);
               }}
               title={m.soon ? t.modes.comingSoon(modeLabel(m.id)) : modeDesc(m.id)}
@@ -811,10 +905,13 @@ export function StarterScreen({
               aria-selected={p.id === provider}
               aria-label={p.name}
               className={
-                "axxa-subtab-btn axxa-subtab-icon" +
+                "clickable-icon axxa-subtab-btn axxa-subtab-icon" +
                 (p.id === provider ? " axxa-subtab-active" : "")
               }
-              onClick={() => onProviderChange(p.id)}
+              onClick={() => {
+                hapticTick();
+                onProviderChange(p.id);
+              }}
               title={p.name}
             >
               <Icon name={p.icon} />
@@ -853,6 +950,7 @@ export function StarterScreen({
                   : [model, ...modelOptions]
               }
               onSelect={(m) => {
+                hapticTick();
                 onModelChange(m);
                 setPickerOpen(false);
               }}
@@ -865,41 +963,65 @@ export function StarterScreen({
 
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.effortLabel}</label>
-        {/* v0.1.101: segmented full-width (igual aos Settings) com THUMB que
-            desliza animado pro nível selecionado. Raios = intensidade (1→5). */}
-        <div
-          className="axxa-effort-seg"
-          role="radiogroup"
-          aria-label={t.starter.effortLabel}
-          style={
-            {
-              "--eff-idx": EFFORT_LEVELS.indexOf(effort as EffortLevel),
-            } as CSSProperties
-          }
-        >
-          <span className="axxa-effort-seg-thumb" aria-hidden="true" />
-          {EFFORT_LEVELS.map((level, idx) => {
-            const active = level === effort;
-            return (
-              <button
-                key={level}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                className={
-                  "axxa-effort-seg-btn" +
-                  (active ? " axxa-effort-seg-active" : "")
-                }
-                onClick={() => onEffortChange(level)}
-                title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
-                aria-label={EFFORT_LABELS[level]}
-              >
-                <span className="axxa-effort-seg-bolts">
-                  {"⚡".repeat(idx + 1)}
-                </span>
-              </button>
-            );
-          })}
+        {/* v0.1.104: slider nativo do Obsidian (input range .slider) + escala
+            de emojis clicável embaixo. Arrastar OU tocar no nível seleciona. */}
+        <div className="axxa-effort-slider">
+          {/* Arraste: UI + haptic a cada detent, mas persiste SÓ no soltar
+              (saveSettings escreve disco + secrets + re-render global). */}
+          <input
+            type="range"
+            className="slider axxa-effort-range"
+            min={0}
+            max={EFFORT_LEVELS.length - 1}
+            step={1}
+            value={effDragIdx ?? effIdx}
+            aria-label={t.starter.effortLabel}
+            onChange={(e) => {
+              hapticTick();
+              const v = Number(e.currentTarget.value);
+              effDragRef.current = v;
+              setEffDragIdx(v);
+            }}
+            onPointerUp={commitEffortDrag}
+            onTouchEnd={commitEffortDrag}
+            onKeyUp={commitEffortDrag}
+            onBlur={commitEffortDrag}
+          />
+          {/* aria-hidden: o slider já cobre teclado/leitor — ticks são só
+              alvo visual de toque (evita o controle duplicado na AT). */}
+          <div className="axxa-effort-scale" aria-hidden="true">
+            {EFFORT_LEVELS.map((level) => {
+              const active = level === effort;
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  tabIndex={-1}
+                  className={
+                    "clickable-icon axxa-effort-tick" +
+                    (active ? " axxa-effort-tick-active" : "")
+                  }
+                  onClick={() => {
+                    hapticTick();
+                    onEffortChange(level);
+                  }}
+                  title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
+                >
+                  <span className="axxa-effort-tick-emoji">
+                    {EFFORT_EMOJIS[level]}
+                  </span>
+                  <span className="axxa-effort-tick-label">
+                    {EFFORT_LABELS[level]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="axxa-effort-desc">
+            {EFFORT_DESCRIPTIONS[
+              (effDragIdx != null ? EFFORT_LEVELS[effDragIdx] : effort) as EffortLevel
+            ] ?? ""}
+          </div>
         </div>
       </div>
       </div>
@@ -920,7 +1042,10 @@ export function StarterScreen({
                 type="button"
                 className="axxa-recent-item"
                 data-mode={c.mode}
-                onClick={() => onLoadChat(c.id, c.mode)}
+                onClick={() => {
+                  hapticTick();
+                  onLoadChat(c.id, c.mode);
+                }}
               >
                 <span className="axxa-recent-logo">
                   <Icon name={modelLogo(c.provider, c.model)} />
