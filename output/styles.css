@@ -5110,6 +5110,35 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   height: 18px;
 }
 
+/* Mode + Model ACOPLADOS (v0.1.120) — dois .axxa-model-field empilhados como
+   uma lista única: triggers idênticos, bordas compartilhadas (sem linha dupla),
+   cantos arredondados só nas pontas. */
+.axxa-mm {
+  display: flex;
+  flex-direction: column;
+}
+.axxa-mm .axxa-model-field {
+  position: relative;
+  z-index: 1;
+}
+/* O dropdown aberto precisa vazar por cima do outro trigger irmão */
+.axxa-mm .axxa-model-field:has(.axxa-model-trigger-open) {
+  z-index: 60;
+}
+.axxa-mm .axxa-model-trigger {
+  border-radius: 0;
+}
+.axxa-mm .axxa-model-field:first-child .axxa-model-trigger {
+  border-radius: 12px 12px 0 0;
+}
+.axxa-mm .axxa-model-field:last-child .axxa-model-trigger {
+  border-radius: 0 0 12px 12px;
+  border-top: none;
+}
+.axxa-model-dropdown {
+  z-index: 50;
+}
+
 /* Sheet — corpo scrollável, um pouco mais alto que o PlusModal */
 .axxa-model-sheet {
   max-height: 80vh;
