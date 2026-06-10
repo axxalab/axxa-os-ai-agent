@@ -179,6 +179,35 @@ body.is-mobile.axxa-fullscreen
   padding-bottom: calc(var(--safe-area-inset-bottom, 0px) + var(--size-4-1)) !important;
 }
 
+/* Fullscreen: o drawer vai sob o status bar → o header precisa do clearance
+   (safe-area, com mínimo de 32px pra Android sem env()). v0.1.113 */
+body.is-mobile.axxa-fullscreen .axxa-header {
+  padding-top: max(var(--safe-area-inset-top, 0px), 32px) !important;
+}
+
+/* Remove o shadow/borda cinza do chrome do drawer (no mobile o drawer é
+   column-reverse → esse chrome cai no RODAPÉ). Escopado ao drawer que hospeda
+   o AXXA pra não afetar outros painéis. v0.1.113 */
+body.is-mobile
+  .workspace-drawer.mod-right:has(
+    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  ),
+body.is-mobile
+  .workspace-drawer.mod-right:has(
+    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  )
+  :is(
+    .workspace-drawer-active-tab-container,
+    .workspace-drawer-active-tab-header,
+    .workspace-tab-header-container,
+    .workspace-tab-header,
+    .workspace-drawer-header,
+    .workspace-drawer-inner
+  ) {
+  box-shadow: none !important;
+  border-top: none !important;
+}
+
 /* Dark mode bg fix removido a pedido do dev — voltou ao default do Obsidian */
 
 /* =====================================================
@@ -222,9 +251,11 @@ body.is-mobile.axxa-fullscreen
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  /* v0.1.74: padding-top 40px pra escapar OS status bar (bateria/relógio)
-     no mobile. Demais paddings (lateral/inferior) preservados. */
-  padding: 40px 16px 10px 16px;
+  /* v0.1.113: top enxuto no modo normal — o Obsidian já posiciona o drawer
+     abaixo do status bar, então 40px fixo virava um gap agressivo. O clearance
+     do status bar só é necessário no FULLSCREEN (drawer vai sob o status bar),
+     aplicado na regra escopada mais abaixo. */
+  padding: 12px 16px 10px 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 30%, transparent);
   position: relative;
   z-index: 1000;
