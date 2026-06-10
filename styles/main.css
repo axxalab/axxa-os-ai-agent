@@ -192,6 +192,31 @@ body.is-mobile
   color: var(--text-faint);
 }
 
+/* Brand lockup da home (v0.1.136) — dot accent + nome; a versão saiu do
+   espaço nobre e foi pro rodapé do menu "...". */
+.axxa-header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.axxa-header-brand-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--interactive-accent);
+  box-shadow: 0 0 8px -1px
+    color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+}
+/* "Nova conversa" é a ação primária — ícone em accent */
+.axxa-header-gear-primary {
+  color: var(--text-accent);
+}
+.axxa-header-gear-primary svg {
+  opacity: 1;
+}
+
 /* Input do título do chat — fica no lugar do "AXXA OS" quando há chat
    ativo. Estilo "ghost" (sem border até hover/focus). Crucial: font-size
    herdada do .axxa-header-name pra texto SEMPRE aparecer com bom tamanho. */
@@ -6404,6 +6429,19 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 .axxa-popover-item-active {
   color: var(--text-accent);
+}
+/* divisor + rodapé de versão no menu "..." (v0.1.136) */
+.axxa-popover-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+.axxa-popover-footer {
+  padding: 6px 10px 2px;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  color: var(--text-faint);
+  text-align: center;
 }
 
 /* =====================================================

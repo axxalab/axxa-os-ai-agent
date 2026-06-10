@@ -84,6 +84,8 @@ export const PT_BR = {
     sortMsgsDesc: "Mais mensagens",
     sortTokensDesc: "Mais tokens",
     filterAll: "Todos",
+    today: "Hoje",
+    yesterday: "Ontem",
     renameTitle: "Renomear conversa",
     renameAria: "Renomear conversa",
     renameModalTitle: "Renomear conversa",

@@ -22,6 +22,7 @@ import type AxxaPlugin from "../../main";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
 import { hapticTick } from "../_shared/haptics";
+import { SegmentedRow } from "../_shared/SegmentedRow";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
@@ -1208,57 +1209,6 @@ function StatusCards({
           <Icon name="chevron-right" />
         </span>
       </button>
-    </div>
-  );
-}
-
-/**
- * SegmentedRow — controle segmentado SÓ ÍCONE com pílula DESLIZANTE, igual o
- * nav do Threads (v0.1.127). Slots iguais (flex 1 1 0); o indicador (.axxa-seg-ind)
- * tem a largura de UM slot e desliza via translateX(--seg-i × 100%) com
- * transição — "muda de um pra outro". Sem label (largura menor / icon-only).
- */
-function SegmentedRow({
-  items,
-  activeId,
-  onSelect,
-}: {
-  items: { id: string; icon: string; label: string; title?: string; soon?: boolean }[];
-  activeId: string;
-  onSelect: (id: string) => void;
-}) {
-  const activeIndex = Math.max(
-    0,
-    items.findIndex((it) => it.id === activeId)
-  );
-  return (
-    <div
-      className="axxa-seg"
-      role="tablist"
-      style={
-        {
-          ["--seg-n" as string]: items.length,
-          ["--seg-i" as string]: activeIndex,
-        } as CSSProperties
-      }
-    >
-      <span className="axxa-seg-ind" aria-hidden="true" />
-      {items.map((it) => (
-        <button
-          key={it.id}
-          type="button"
-          role="tab"
-          aria-selected={it.id === activeId}
-          aria-label={it.label}
-          title={it.title ?? it.label}
-          className={
-            "axxa-seg-btn" + (it.id === activeId ? " axxa-seg-btn-active" : "")
-          }
-          onClick={() => onSelect(it.id)}
-        >
-          <Icon name={it.icon} />
-        </button>
-      ))}
     </div>
   );
 }

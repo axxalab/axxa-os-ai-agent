@@ -119,60 +119,52 @@ export function Header({
     <header className="axxa-header">
       <div className="axxa-header-title">
         {hasChat ? (
-          <>
-            <input
-              ref={inputRef}
-              type="text"
-              className="axxa-header-chat-title"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  (e.target as HTMLInputElement).blur();
-                } else if (e.key === "Escape") {
-                  setDraft(chatTitle);
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              aria-label={t.conversations.renameAria}
-              title={t.conversations.renameTitle}
-              placeholder={t.conversations.renameInputLabel}
-            />
-            <span className="axxa-header-version">v{version}</span>
-          </>
+          <input
+            ref={inputRef}
+            type="text"
+            className="axxa-header-chat-title"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                (e.target as HTMLInputElement).blur();
+              } else if (e.key === "Escape") {
+                setDraft(chatTitle);
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            aria-label={t.conversations.renameAria}
+            title={t.conversations.renameTitle}
+            placeholder={t.conversations.renameInputLabel}
+          />
         ) : (
-          <>
+          <span className="axxa-header-brand">
+            <span className="axxa-header-brand-dot" />
             <span className="axxa-header-name">AXXA OS</span>
-            <span className="axxa-header-version">v{version}</span>
-          </>
+          </span>
         )}
       </div>
       <div className="axxa-header-actions">
+        {/* Search só faz sentido DENTRO de uma conversa */}
+        {hasChat && (
+          <button
+            type="button"
+            className={
+              "axxa-header-gear" +
+              (searchActive ? " axxa-header-gear-active" : "")
+            }
+            onClick={onToggleSearch}
+            aria-label={t.header.search}
+            title={t.header.search}
+          >
+            <Icon name="search" />
+          </button>
+        )}
         <button
           type="button"
-          className={
-            "axxa-header-gear" + (searchActive ? " axxa-header-gear-active" : "")
-          }
-          onClick={onToggleSearch}
-          aria-label={t.header.search}
-          title={t.header.search}
-        >
-          <Icon name="search" />
-        </button>
-        <button
-          type="button"
-          className="axxa-header-gear"
-          onClick={onOpenConversations}
-          aria-label={t.header.conversations}
-          title={t.header.conversations}
-        >
-          <Icon name="messages-square" />
-        </button>
-        <button
-          type="button"
-          className="axxa-header-gear"
+          className="axxa-header-gear axxa-header-gear-primary"
           onClick={onNewChat}
           aria-label={t.header.newChat}
           title={t.header.newChat}
@@ -182,11 +174,11 @@ export function Header({
         <button
           type="button"
           className="axxa-header-gear"
-          onClick={onOpenSettings}
-          aria-label={t.header.openSettings}
-          title={t.header.openSettings}
+          onClick={onOpenConversations}
+          aria-label={t.header.conversations}
+          title={t.header.conversations}
         >
-          <Icon name="settings" />
+          <Icon name="messages-square" />
         </button>
         <div className="axxa-header-more" ref={moreRef}>
           <button
@@ -244,9 +236,28 @@ export function Header({
                     }}
                   >
                     <Icon name="copy" />
-                    <span>{t.header.copyConversation}</span>
+                    <span className="axxa-popover-label">
+                      {t.header.copyConversation}
+                    </span>
                   </button>
                 )}
+                <div className="axxa-popover-divider" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="axxa-popover-item"
+                  onClick={() => {
+                    onOpenSettings();
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Icon name="settings" />
+                  <span className="axxa-popover-label">
+                    {t.header.openSettings}
+                  </span>
+                  <Icon name="chevron-right" className="axxa-popover-chevron" />
+                </button>
+                <div className="axxa-popover-footer">AXXA OS · v{version}</div>
               </div>,
               (moreRef.current?.ownerDocument ?? document).body
             )}

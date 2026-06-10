@@ -84,6 +84,8 @@ export const EN_US: Translations = {
     sortMsgsDesc: "Most messages",
     sortTokensDesc: "Most tokens",
     filterAll: "All",
+    today: "Today",
+    yesterday: "Yesterday",
     renameTitle: "Rename conversation",
     renameAria: "Rename conversation",
     renameModalTitle: "Rename conversation",
