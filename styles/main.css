@@ -155,11 +155,21 @@ body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .nav-buttons-containe
   display: none !important;
 }
 
-/* A FAIXA CINZA embaixo do composer no fullscreen era a .mobile-navbar nativa
-   do Obsidian (barra inferior). No fullscreen o app é standalone → esconde de
-   vez (no modo normal ela continua tintada pelo preset). v0.1.114 */
+/* Navbar nativa do Obsidian TRANSPARENTE no fullscreen — mostra o bg do app
+   por trás (o body é pintado abaixo), sem a faixa nem a sombra cinza. (Antes
+   ficava display:none, mas o espaço vago revelava o #1e1e1e do body.) No modo
+   normal a navbar segue tintada pelo preset. v0.1.116 */
 body.is-mobile.axxa-fullscreen .mobile-navbar {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-top: none !important;
+}
+/* Mata a sombra/scrim que sobe de baixo (alguns temas põem pseudo na navbar) */
+body.is-mobile.axxa-fullscreen .mobile-navbar::before,
+body.is-mobile.axxa-fullscreen .mobile-navbar::after {
   display: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 /* Remove padding-top fantasma do drawer-inner */
@@ -202,6 +212,18 @@ body.is-mobile.axxa-host-active
   .workspace-drawer.mod-right:has(
     .workspace-leaf-content[data-type="axxa-os-ai-agent"]
   ) {
+  background-color: var(--background-primary) !important;
+  background-image: var(--axxa-bg-img) !important;
+  background-size: var(--axxa-bg-size, cover) !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* BACKSTOP FINAL (fullscreen): pinta o BODY inteiro — é o frame mais profundo
+   de todos. Qualquer coisa que escape (navbar transparente, gap de safe-area,
+   gesture area) mostra o bg do preset, nunca o #1e1e1e do Obsidian. O body já
+   tem axxa-bg-<preset> (setupNavbarTint) → --axxa-bg-img resolve aqui. v0.1.116 */
+body.is-mobile.axxa-fullscreen {
   background-color: var(--background-primary) !important;
   background-image: var(--axxa-bg-img) !important;
   background-size: var(--axxa-bg-size, cover) !important;
