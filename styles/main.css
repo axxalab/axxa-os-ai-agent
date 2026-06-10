@@ -7386,6 +7386,8 @@ body.is-mobile .axxa-wave-area {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  /* Modo default (axxa-bg-none): fundo sólido = o tema do Obsidian.
+     Com preset ativo, vira glass (regra abaixo) pra "entrar no tema". */
   background: var(--background-primary);
   border-right: 1px solid
     color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
@@ -7400,6 +7402,23 @@ body.is-mobile .axxa-wave-area {
 .axxa-sidebar-open {
   transform: translateX(0);
   visibility: visible;
+}
+
+/* Tema (preset) ativo → vidro fosco: o fundo pintado da .axxa-root flui por
+   trás em vez de um retângulo opaco. v0.1.146. Só fora do modo default. */
+.axxa-root:not(.axxa-bg-none) .axxa-sidebar {
+  background: color-mix(in srgb, var(--background-primary) 66%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+}
+/* Sem backdrop-filter (Safari antigo): mais opaco pra não ficar transparente
+   cru sem o blur. */
+@supports not (
+  (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))
+) {
+  .axxa-root:not(.axxa-bg-none) .axxa-sidebar {
+    background: color-mix(in srgb, var(--background-primary) 92%, transparent);
+  }
 }
 
 /* Cabeçalho: brand (avatar + nome) + fechar */
@@ -7592,13 +7611,14 @@ body.is-mobile .axxa-wave-area {
   color: var(--text-faint);
 }
 
+/* Item SEMPRE 2 linhas: dot (alinhado ao topo) + coluna (título / status). */
 .axxa-sidebar-item,
 .axxa-sidebar-item:focus,
 .axxa-sidebar-item:active {
   appearance: none;
   -webkit-appearance: none;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   width: 100%;
   padding: 9px 10px;
@@ -7619,11 +7639,28 @@ body.is-mobile .axxa-wave-area {
   width: 7px;
   height: 7px;
   border-radius: 999px;
+  /* desce pra alinhar com a baseline da 1ª linha (título) */
+  margin-top: 6px;
+}
+.axxa-sidebar-item-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+/* Linha 1 — título (cresce) + data relativa (direita) */
+.axxa-sidebar-item-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
 }
 .axxa-sidebar-item-title {
   flex: 1 1 auto;
   min-width: 0;
   font-size: var(--font-ui-small);
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7632,6 +7669,34 @@ body.is-mobile .axxa-wave-area {
   flex: 0 0 auto;
   font-size: var(--font-ui-smaller);
   color: var(--text-faint);
+}
+/* Linha 2 — status (model · tokens), herda o .axxa-composer-info mas sem o
+   glass/blur/border dele: aqui é só a linha de chips colorida e compacta. */
+.axxa-sidebar-item-status.axxa-composer-info {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-radius: 0 !important;
+  font-size: var(--font-ui-smaller);
+  overflow: hidden;
+}
+/* O 1º chip (model) pode truncar; o de tokens fica fixo à direita. */
+.axxa-sidebar-item-status .axxa-info-chip:first-child {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.axxa-sidebar-item-status .axxa-info-chip:last-child {
+  flex: 0 0 auto;
 }
 
 /* Vazio */

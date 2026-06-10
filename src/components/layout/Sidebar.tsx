@@ -8,7 +8,9 @@
 
 import { useMemo, useState } from "react";
 import { Icon } from "../_shared/Icon";
+import { InfoChip } from "../_shared/InfoChip";
 import { useT, type Translations } from "../../i18n";
+import { formatTokens } from "../_shared/contextWindows";
 import type { ChatSummary } from "../_shared/chatPersistence";
 
 interface SidebarProps {
@@ -30,6 +32,11 @@ const MODE_COLOR: Record<string, string> = {
 function modeColor(mode: string): string {
   return MODE_COLOR[mode] ?? "var(--text-muted)";
 }
+
+// Cores semânticas dos chips de status (mesma paleta do status line do
+// Composer / ConversationsList) — model = roxo, tokens = verde.
+const CHIP_MODEL = "var(--color-purple, #a370f7)";
+const CHIP_TOKENS = "var(--color-green, #06d6a0)";
 
 function isSameDay(a: Date, b: Date): boolean {
   return (
@@ -200,9 +207,23 @@ export function Sidebar({
                     className="axxa-sidebar-item-dot"
                     style={{ background: modeColor(c.mode) }}
                   />
-                  <span className="axxa-sidebar-item-title">{c.title}</span>
-                  <span className="axxa-sidebar-item-date">
-                    {relDate(c.date, t)}
+                  {/* Sempre 2 linhas: título em cima, status (model · tokens)
+                      embaixo — mesmo padrão de status do Composer. */}
+                  <span className="axxa-sidebar-item-main">
+                    <span className="axxa-sidebar-item-top">
+                      <span className="axxa-sidebar-item-title">{c.title}</span>
+                      <span className="axxa-sidebar-item-date">
+                        {relDate(c.date, t)}
+                      </span>
+                    </span>
+                    <span className="axxa-composer-info axxa-sidebar-item-status">
+                      <InfoChip icon="cpu" color={CHIP_MODEL} title={c.model}>
+                        {c.model}
+                      </InfoChip>
+                      <InfoChip icon="sigma" color={CHIP_TOKENS}>
+                        {formatTokens(c.tokensIn + c.tokensOut)}
+                      </InfoChip>
+                    </span>
                   </span>
                 </button>
               ))}
