@@ -5110,31 +5110,23 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   height: 18px;
 }
 
-/* Mode + Model ACOPLADOS (v0.1.120) — dois .axxa-model-field empilhados como
-   uma lista única: triggers idênticos, bordas compartilhadas (sem linha dupla),
-   cantos arredondados só nas pontas. */
-.axxa-mm {
+/* Mode + Provider JUNTOS (v0.1.121) — dois segmented (icon, igual provider)
+   empilhados num único container, lendo como um bloco só. */
+.axxa-mp {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--background-secondary) 55%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
 }
-.axxa-mm .axxa-model-field {
-  position: relative;
-  z-index: 1;
+/* zera a margem que o .axxa-settings-subtabs tem por padrão (16px) */
+.axxa-mp .axxa-settings-subtabs {
+  margin: 0;
 }
-/* O dropdown aberto precisa vazar por cima do outro trigger irmão */
-.axxa-mm .axxa-model-field:has(.axxa-model-trigger-open) {
-  z-index: 60;
-}
-.axxa-mm .axxa-model-trigger {
-  border-radius: 0;
-}
-.axxa-mm .axxa-model-field:first-child .axxa-model-trigger {
-  border-radius: 12px 12px 0 0;
-}
-.axxa-mm .axxa-model-field:last-child .axxa-model-trigger {
-  border-radius: 0 0 12px 12px;
-  border-top: none;
-}
+/* o dropdown do model (agora por último) sobe pra vazar sobre o card de info */
 .axxa-model-dropdown {
   z-index: 50;
 }

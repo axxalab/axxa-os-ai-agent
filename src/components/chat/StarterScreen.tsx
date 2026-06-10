@@ -821,9 +821,6 @@ export function StarterScreen({
   const modelOptions = activeModels[provider] ?? [];
   const [pickerOpen, setPickerOpen] = useState(false);
   const modelFieldRef = useRef<HTMLDivElement>(null);
-  // Mode picker — dropdown idêntico ao do model (v0.1.120), acoplado a ele.
-  const [modePickerOpen, setModePickerOpen] = useState(false);
-  const modeFieldRef = useRef<HTMLDivElement>(null);
 
   // Slider de effort: índice em arraste (UI imediata) + commit no soltar.
   const effIdx = Math.max(0, EFFORT_LEVELS.indexOf(effort as EffortLevel));
@@ -862,28 +859,6 @@ export function StarterScreen({
     };
   }, [pickerOpen]);
 
-  // Fecha o dropdown de modo ao clicar fora ou Escape (mesma lógica do model).
-  useEffect(() => {
-    if (!modePickerOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      if (
-        modeFieldRef.current &&
-        !modeFieldRef.current.contains(e.target as Node)
-      ) {
-        setModePickerOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setModePickerOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [modePickerOpen]);
-
   // Resolve name/desc dos modos via i18n (chat / vault-qa / agent).
   const modeLabel = (id: string) => {
     if (id === "vault-qa") return t.modes.vaultQa;
@@ -914,147 +889,66 @@ export function StarterScreen({
         title={t.dashboard.newChatLabel}
       />
 
-      {/* Provider — gateia os modelos disponíveis, então vem primeiro */}
-      <div className="axxa-starter-section">
-        <label className="axxa-starter-label">{t.starter.providerLabel}</label>
-        <div className="axxa-settings-subtabs axxa-provider-seg" role="tablist">
-          {PROVIDERS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              role="tab"
-              aria-selected={p.id === provider}
-              aria-label={p.name}
-              className={
-                "clickable-icon axxa-subtab-btn axxa-subtab-icon" +
-                (p.id === provider ? " axxa-subtab-active" : "")
-              }
-              onClick={() => {
-                hapticTick();
-                onProviderChange(p.id);
-              }}
-              title={p.name}
-            >
-              <Icon name={p.icon} />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Modo + Modelo — ACOPLADOS no mesmo container; seletores idênticos
-          (mesmo trigger + dropdown). v0.1.120 */}
+      {/* Modo + Provider — JUNTOS no mesmo container, ambos SEGMENTED (mode
+          igual provider: só ícone). Model fica por último, lá embaixo. v0.1.121 */}
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">
-          {t.starter.modeLabel} · {t.starter.modelLabel}
+          {t.starter.modeLabel} · {t.starter.providerLabel}
         </label>
-        <div className="axxa-mm">
-          {/* Mode — trigger + dropdown idênticos ao do model */}
-          <div className="axxa-model-field" ref={modeFieldRef}>
-            <button
-              type="button"
-              className={
-                "axxa-model-trigger" +
-                (modePickerOpen ? " axxa-model-trigger-open" : "")
-              }
-              onClick={() => setModePickerOpen((o) => !o)}
-              aria-haspopup="listbox"
-              aria-expanded={modePickerOpen}
-            >
-              <span className="axxa-model-trigger-logo">
-                <Icon name={modeChipIcon(mode)} />
-              </span>
-              <span className="axxa-model-trigger-name">{modeLabel(mode)}</span>
-              <span className="axxa-model-trigger-chevron">
-                <Icon name="chevron-down" />
-              </span>
-            </button>
-            {modePickerOpen && (
-              <div className="axxa-model-dropdown" role="listbox">
-                {MODES_META.map((m) => {
-                  const active = m.id === mode;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      role="option"
-                      aria-selected={active}
-                      className={
-                        "axxa-model-opt" +
-                        (active ? " axxa-model-opt-active" : "")
-                      }
-                      onClick={() => {
-                        if (m.soon) {
-                          new Notice(t.modes.comingSoon(modeLabel(m.id)));
-                          return;
-                        }
-                        hapticTick();
-                        onModeChange(m.id);
-                        setModePickerOpen(false);
-                      }}
-                    >
-                      <span className="axxa-model-opt-logo">
-                        <Icon name={m.icon} />
-                      </span>
-                      <span className="axxa-model-opt-main">
-                        <span className="axxa-model-opt-name">
-                          {modeLabel(m.id)}
-                        </span>
-                        <span className="axxa-model-opt-desc">
-                          {modeDesc(m.id)}
-                        </span>
-                      </span>
-                      {active && (
-                        <span className="axxa-model-opt-check">
-                          <Icon name="check" />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Model — trigger + dropdown */}
-          <div className="axxa-model-field" ref={modelFieldRef}>
-            <button
-              type="button"
-              className={
-                "axxa-model-trigger" +
-                (pickerOpen ? " axxa-model-trigger-open" : "")
-              }
-              onClick={() => setPickerOpen((o) => !o)}
-              aria-haspopup="listbox"
-              aria-expanded={pickerOpen}
-            >
-              <span className="axxa-model-trigger-logo">
-                <Icon name={modelLogo(provider, model)} />
-              </span>
-              <span className="axxa-model-trigger-name">{model}</span>
-              <span className="axxa-model-trigger-chevron">
-                <Icon name="chevron-down" />
-              </span>
-            </button>
-            {pickerOpen && (
-              <ModelDropdown
-                provider={provider}
-                model={model}
-                modelOptions={
-                  modelOptions.includes(model)
-                    ? modelOptions
-                    : [model, ...modelOptions]
+        <div className="axxa-mp">
+          {/* Mode — segmented icon, idêntico ao provider */}
+          <div className="axxa-settings-subtabs axxa-provider-seg" role="tablist">
+            {MODES_META.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                role="tab"
+                aria-selected={m.id === mode}
+                aria-label={modeLabel(m.id)}
+                className={
+                  "clickable-icon axxa-subtab-btn axxa-subtab-icon" +
+                  (m.id === mode ? " axxa-subtab-active" : "")
                 }
-                onSelect={(m) => {
+                onClick={() => {
+                  if (m.soon) {
+                    new Notice(t.modes.comingSoon(modeLabel(m.id)));
+                    return;
+                  }
                   hapticTick();
-                  onModelChange(m);
-                  setPickerOpen(false);
+                  onModeChange(m.id);
                 }}
-              />
-            )}
+                title={
+                  m.soon ? t.modes.comingSoon(modeLabel(m.id)) : modeDesc(m.id)
+                }
+              >
+                <Icon name={m.icon} />
+              </button>
+            ))}
+          </div>
+          {/* Provider — segmented icon */}
+          <div className="axxa-settings-subtabs axxa-provider-seg" role="tablist">
+            {PROVIDERS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                role="tab"
+                aria-selected={p.id === provider}
+                aria-label={p.name}
+                className={
+                  "clickable-icon axxa-subtab-btn axxa-subtab-icon" +
+                  (p.id === provider ? " axxa-subtab-active" : "")
+                }
+                onClick={() => {
+                  hapticTick();
+                  onProviderChange(p.id);
+                }}
+                title={p.name}
+              >
+                <Icon name={p.icon} />
+              </button>
+            ))}
           </div>
         </div>
-        {/* Model card: descrição + cost + caps */}
-        <ModelInfoCard provider={provider} model={model} />
       </div>
 
       <div className="axxa-starter-section">
@@ -1126,6 +1020,48 @@ export function StarterScreen({
             ] ?? ""}
           </div>
         </div>
+      </div>
+
+      {/* Modelo — POR ÚLTIMO, abaixo do card de modo/provider. Trigger +
+          dropdown + card de info (inalterado). v0.1.121 */}
+      <div className="axxa-starter-section">
+        <label className="axxa-starter-label">{t.starter.modelLabel}</label>
+        <div className="axxa-model-field" ref={modelFieldRef}>
+          <button
+            type="button"
+            className={
+              "axxa-model-trigger" + (pickerOpen ? " axxa-model-trigger-open" : "")
+            }
+            onClick={() => setPickerOpen((o) => !o)}
+            aria-haspopup="listbox"
+            aria-expanded={pickerOpen}
+          >
+            <span className="axxa-model-trigger-logo">
+              <Icon name={modelLogo(provider, model)} />
+            </span>
+            <span className="axxa-model-trigger-name">{model}</span>
+            <span className="axxa-model-trigger-chevron">
+              <Icon name="chevron-down" />
+            </span>
+          </button>
+          {pickerOpen && (
+            <ModelDropdown
+              provider={provider}
+              model={model}
+              modelOptions={
+                modelOptions.includes(model)
+                  ? modelOptions
+                  : [model, ...modelOptions]
+              }
+              onSelect={(m) => {
+                hapticTick();
+                onModelChange(m);
+                setPickerOpen(false);
+              }}
+            />
+          )}
+        </div>
+        <ModelInfoCard provider={provider} model={model} />
       </div>
       </div>
       {/* ===== /Nova conversa ===== */}
