@@ -16,6 +16,7 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { Notice } from "obsidian";
 import type AxxaPlugin from "../../main";
 import { Icon } from "../_shared/Icon";
@@ -114,11 +115,39 @@ function modelLogo(provider: string, model: string): string {
   return PROVIDER_LOGO[provider] ?? "logo-openai";
 }
 
+/** Linha de custo (números reais): tokens in/out, por imagem, ou por chars (TTS). */
+function buildCostLine(pricing: ReturnType<typeof getModelFullInfo>["pricing"]): string | null {
+  if (pricing.imagePerCall != null) return `${formatUsd(pricing.imagePerCall)} / imagem`;
+  if (pricing.charPerMillion != null) return `${formatUsd(pricing.charPerMillion)} / 1M chars`;
+  if (pricing.inputPerMillion != null || pricing.outputPerMillion != null) {
+    return `${formatUsd(pricing.inputPerMillion)} in · ${formatUsd(
+      pricing.outputPerMillion
+    )} out / 1M`;
+  }
+  return null;
+}
+
+/** Ícone Lucide por categoria do modelo. */
+function categoryIcon(cat: string): string {
+  switch (cat) {
+    case "flagship": return "crown";
+    case "balanced": return "scale";
+    case "fast": return "zap";
+    case "reasoning": return "brain";
+    case "image": return "image";
+    case "audio": return "audio-lines";
+    case "video": return "clapperboard";
+    case "embedding": return "boxes";
+    default: return "sparkles";
+  }
+}
+
 /**
- * Card de info do modelo — descrição + categoria + cost + context window +
- * badges. Aparece abaixo do <select> da starter.
- *
- * Quando o modelo é desconhecido (sem card), mostra mensagem mais genérica.
+ * Card de info do modelo — FLIP card (v0.1.122): frente compacta, verso com
+ * descrição detalhada. Tamanho FIXO, nunca muda. Toque vira o card; o botão
+ * "Ver mais" (sempre presente) abre o modal com o card completo. Dados vêm do
+ * registro local (modelDescriptions) — curado/pesquisado, já que os providers
+ * não expõem metadata rica por API.
  */
 function ModelInfoCard({
   provider,
@@ -128,87 +157,251 @@ function ModelInfoCard({
   model: string;
 }) {
   const t = useT();
+  const [flipped, setFlipped] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const info = getModelFullInfo(provider, model);
   const { card, caps, pricing } = info;
 
-  // Tier (pago/free) — vira pílula no header.
+  // Reseta o flip quando o modelo muda (senão fica de costas no novo modelo).
+  useEffect(() => {
+    setFlipped(false);
+  }, [provider, model]);
+
   const tier = pricing.tier ?? "unknown";
-
-  // Linha de custo (números reais): tokens in/out, por imagem, ou por chars (TTS).
-  let costLine: string | null = null;
-  if (pricing.imagePerCall != null) {
-    costLine = `${formatUsd(pricing.imagePerCall)} / imagem`;
-  } else if (pricing.charPerMillion != null) {
-    costLine = `${formatUsd(pricing.charPerMillion)} / 1M chars`;
-  } else if (
-    pricing.inputPerMillion != null ||
-    pricing.outputPerMillion != null
-  ) {
-    costLine = `${formatUsd(pricing.inputPerMillion)} in · ${formatUsd(
-      pricing.outputPerMillion
-    )} out / 1M`;
-  }
-
-  // Badges de capacidade — "free" sai (a pílula de tier já cobre).
+  const costLine = buildCostLine(pricing);
   const badges = capabilityBadges(caps).filter((b) => b.id !== "free");
+  const logo = modelLogo(provider, model);
+  const tierText = tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?";
 
   return (
-    <div className="axxa-model-card">
-      <div className="axxa-model-card-top">
-        <span className="axxa-model-card-avatar">
-          <Icon name={modelLogo(provider, model)} />
-        </span>
-        <span className="axxa-model-card-id">
-          <span className="axxa-model-card-name">{model}</span>
-          <span className="axxa-model-card-cat">
-            {CATEGORY_LABELS[card.category]}
-          </span>
-        </span>
-        <span className={"axxa-model-tier axxa-model-tier-" + tier}>
-          {tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?"}
-        </span>
+    <>
+      <div className={"axxa-mc" + (flipped ? " axxa-mc-flipped" : "")}>
+        <div className="axxa-mc-inner">
+          {/* FRENTE — resumo compacto */}
+          <button
+            type="button"
+            className="axxa-mc-face axxa-mc-front"
+            onClick={() => {
+              hapticTick();
+              setFlipped(true);
+            }}
+            aria-label={t.dashboard.modelFlipHint}
+          >
+            <div className="axxa-model-card-top">
+              <span className="axxa-model-card-avatar">
+                <Icon name={logo} />
+              </span>
+              <span className="axxa-model-card-id">
+                <span className="axxa-model-card-name">{model}</span>
+                <span className="axxa-model-card-cat">
+                  <Icon name={categoryIcon(card.category)} />
+                  {CATEGORY_LABELS[card.category]}
+                </span>
+              </span>
+              <span className={"axxa-model-tier axxa-model-tier-" + tier}>
+                {tierText}
+              </span>
+            </div>
+
+            {badges.length > 0 && (
+              <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
+                {badges.map((b) => (
+                  <InfoChip
+                    key={b.id}
+                    icon={b.icon}
+                    color={CAP_COLORS[b.id]}
+                    title={modelCapTooltip(b.id, t)}
+                  >
+                    {b.label}
+                  </InfoChip>
+                ))}
+              </div>
+            )}
+
+            <div className="axxa-model-stats">
+              {card.contextWindow != null && (
+                <span className="axxa-model-stat" title="Context window">
+                  <Icon name="layers" />
+                  {formatContextWindow(card.contextWindow)} ctx
+                </span>
+              )}
+              {costLine && (
+                <span className="axxa-model-stat axxa-model-stat-cost" title="Preço">
+                  <Icon name="circle-dollar-sign" />
+                  {costLine}
+                </span>
+              )}
+            </div>
+
+            <span className="axxa-mc-fliphint">
+              <Icon name="rotate-cw" />
+              {t.dashboard.modelFlipHint}
+            </span>
+          </button>
+
+          {/* VERSO — detalhe (mesmo tamanho, scrolla se precisar) */}
+          <button
+            type="button"
+            className="axxa-mc-face axxa-mc-back"
+            onClick={() => {
+              hapticTick();
+              setFlipped(false);
+            }}
+          >
+            <div className="axxa-mc-back-head">
+              <span className="axxa-model-card-avatar">
+                <Icon name={logo} />
+              </span>
+              <span className="axxa-model-card-name">{model}</span>
+            </div>
+            <div className="axxa-mc-back-body">
+              {card.goodFor && (
+                <div className="axxa-model-card-goodfor">
+                  <Icon name="sparkles" />
+                  <span>{card.goodFor}</span>
+                </div>
+              )}
+              {card.description && (
+                <p className="axxa-mc-desc">{card.description}</p>
+              )}
+            </div>
+          </button>
+        </div>
+
+        {/* "Ver mais" — sempre presente; abre o modal (não vira o card) */}
+        <button
+          type="button"
+          className="axxa-mc-more"
+          onClick={() => {
+            hapticTick();
+            setModalOpen(true);
+          }}
+        >
+          {t.dashboard.modelSeeMore}
+          <Icon name="maximize-2" />
+        </button>
       </div>
 
-      {badges.length > 0 && (
-        <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
-          {badges.map((b) => (
-            <InfoChip
-              key={b.id}
-              icon={b.icon}
-              color={CAP_COLORS[b.id]}
-              title={modelCapTooltip(b.id, t)}
-            >
-              {b.label}
-            </InfoChip>
-          ))}
-        </div>
+      {modalOpen && (
+        <ModelCardModal
+          provider={provider}
+          model={model}
+          onClose={() => setModalOpen(false)}
+        />
       )}
+    </>
+  );
+}
 
-      <div className="axxa-model-stats">
-        {card.contextWindow != null && (
-          <span className="axxa-model-stat" title="Context window">
-            <Icon name="layers" />
-            {formatContextWindow(card.contextWindow)} ctx
+/**
+ * Modal com o card completo do modelo (v0.1.122) — todos os campos sem corte.
+ * Portalado pro <body> (escapa stacking/overflow), fecha no overlay ou Escape.
+ */
+function ModelCardModal({
+  provider,
+  model,
+  onClose,
+}: {
+  provider: string;
+  model: string;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const info = getModelFullInfo(provider, model);
+  const { card, caps, pricing } = info;
+  const tier = pricing.tier ?? "unknown";
+  const costLine = buildCostLine(pricing);
+  const badges = capabilityBadges(caps).filter((b) => b.id !== "free");
+  const logo = modelLogo(provider, model);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="axxa-mc-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div className="axxa-mc-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="axxa-model-card-top">
+          <span className="axxa-model-card-avatar">
+            <Icon name={logo} />
           </span>
+          <span className="axxa-model-card-id">
+            <span className="axxa-model-card-name">{model}</span>
+            <span className="axxa-model-card-cat">
+              <Icon name={categoryIcon(card.category)} />
+              {CATEGORY_LABELS[card.category]}
+            </span>
+          </span>
+          <span className={"axxa-model-tier axxa-model-tier-" + tier}>
+            {tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?"}
+          </span>
+          <button
+            type="button"
+            className="axxa-mc-modal-close"
+            onClick={onClose}
+            aria-label="×"
+          >
+            <Icon name="x" />
+          </button>
+        </div>
+
+        {badges.length > 0 && (
+          <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
+            {badges.map((b) => (
+              <InfoChip
+                key={b.id}
+                icon={b.icon}
+                color={CAP_COLORS[b.id]}
+                title={modelCapTooltip(b.id, t)}
+              >
+                {b.label}
+              </InfoChip>
+            ))}
+          </div>
         )}
-        {costLine && (
-          <span className="axxa-model-stat axxa-model-stat-cost" title="Preço">
-            <Icon name="circle-dollar-sign" />
-            {costLine}
-          </span>
+
+        <div className="axxa-model-stats">
+          {card.contextWindow != null && (
+            <span className="axxa-model-stat">
+              <Icon name="layers" />
+              {formatContextWindow(card.contextWindow)} ctx
+            </span>
+          )}
+          {costLine && (
+            <span className="axxa-model-stat axxa-model-stat-cost">
+              <Icon name="circle-dollar-sign" />
+              {costLine}
+            </span>
+          )}
+        </div>
+
+        {card.goodFor && (
+          <div className="axxa-model-card-goodfor">
+            <Icon name="sparkles" />
+            <span>{card.goodFor}</span>
+          </div>
+        )}
+        {card.description && (
+          <p className="axxa-mc-modal-desc">{card.description}</p>
+        )}
+        {pricing.asOf && (
+          <div className="axxa-mc-modal-asof">
+            <Icon name="calendar" />
+            {pricing.asOf}
+          </div>
         )}
       </div>
-
-      {card.description && (
-        <div className="axxa-model-card-desc">{card.description}</div>
-      )}
-      {card.goodFor && (
-        <div className="axxa-model-card-goodfor">
-          <Icon name="sparkles" />
-          <span>{card.goodFor}</span>
-        </div>
-      )}
-    </div>
+    </div>,
+    document.body
   );
 }
 
