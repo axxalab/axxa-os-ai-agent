@@ -376,8 +376,8 @@ function ModelInfoCard({
 
   return (
     <>
-      <div className={"axxa-mc" + (flipped ? " axxa-mc-flipped" : "")}>
-        {/* EXPAND — canto superior direito, abre o modal completo */}
+      <div className="axxa-mc">
+        {/* EXPAND — canto superior direito, abre o modal completo (specs + fetch) */}
         <button
           type="button"
           className="axxa-mc-expand"
@@ -390,76 +390,28 @@ function ModelInfoCard({
           <Icon name="maximize-2" />
         </button>
 
-        {/* Zona que vira (flip) — fica ACIMA do toggle (que não vira) */}
-        <div className="axxa-mc-flipzone">
-          <div className="axxa-mc-flip">
-            {/* FRENTE */}
-            <button
-              type="button"
-              className="axxa-mc-face axxa-mc-front"
-              aria-label={t.dashboard.modelSpecs}
-              onClick={() => {
-                hapticTick();
-                setFlipped(true);
-              }}
-            >
-              <div className="axxa-model-card-top">
-                <span className="axxa-model-card-avatar">
-                  <ModelVendorLogo provider={provider} model={model} />
-                </span>
-                <span className="axxa-model-card-id">
-                  <span className="axxa-model-card-name">{model}</span>
-                  <span className="axxa-model-card-cat">
-                    <Icon name={categoryIcon(card.category)} />
-                    {CATEGORY_LABELS[card.category]}
-                  </span>
-                </span>
-                <span className={"axxa-model-tier axxa-model-tier-" + tier}>
-                  {tierText}
-                </span>
-              </div>
-              <p className="axxa-mc-desc">{desc}</p>
-              <Pills ids={pills} />
-              <span className="axxa-mc-fliphint">
-                <Icon name="rotate-cw" />
-                {t.dashboard.modelSpecs}
-              </span>
-            </button>
-
-            {/* VERSO — specs + fetch */}
-            <div className="axxa-mc-face axxa-mc-back">
-              <button
-                type="button"
-                className="axxa-mc-back-tap"
-                aria-label={t.dashboard.modelFlipBack}
-                onClick={() => {
-                  hapticTick();
-                  setFlipped(false);
-                }}
-              >
-                <div className="axxa-mc-back-head">
-                  <span className="axxa-model-card-avatar axxa-model-card-avatar-sm">
-                    <ModelVendorLogo provider={provider} model={model} />
-                  </span>
-                  <span className="axxa-model-card-name">{model}</span>
-                  <Icon name="rotate-ccw" />
-                </div>
-                <ModelSpecs info={info} />
-              </button>
-              <button
-                type="button"
-                className="axxa-mc-fetch"
-                onClick={doFetch}
-                disabled={fetching}
-              >
-                <Icon name={fetching ? "loader-2" : "download-cloud"} />
-                {fetching ? t.dashboard.modelFetching : t.dashboard.modelFetch}
-              </button>
-            </div>
-          </div>
+        {/* Card SIMPLES (v0.1.144) — sem flip absoluto (era a fonte do vazio +
+            clipping). Auto-height; specs completos vivem no modal de expand. */}
+        <div className="axxa-model-card-top">
+          <span className="axxa-model-card-avatar">
+            <ModelVendorLogo provider={provider} model={model} />
+          </span>
+          <span className="axxa-model-card-id">
+            <span className="axxa-model-card-name">{model}</span>
+            <span className="axxa-model-card-cat">
+              <Icon name={categoryIcon(card.category)} />
+              {CATEGORY_LABELS[card.category]}
+            </span>
+          </span>
+          <span className={"axxa-model-tier axxa-model-tier-" + tier}>
+            {tierText}
+          </span>
         </div>
 
-        {/* TOGGLE — última linha, FULL WIDTH (não vira no flip) */}
+        {desc && <p className="axxa-mc-desc">{desc}</p>}
+        <Pills ids={pills} />
+
+        {/* TOGGLE — última linha, FULL WIDTH; o dropdown quebra pra fora */}
         <div className="axxa-model-field axxa-mc-toggle" ref={fieldRef}>
           <button
             type="button"

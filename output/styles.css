@@ -1832,8 +1832,10 @@ body.is-mobile
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 206px; /* altura FIXA — nunca quebra os outros elementos */
-  padding: 12px 14px;
+  /* v0.1.144: AUTO-HEIGHT — fim do flip absoluto que criava vazio + clipping.
+     min-height evita colapso; a desc clampada (2 linhas) mantém estável. */
+  min-height: 124px;
+  padding: 12px 14px 12px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 14px;
@@ -1921,10 +1923,10 @@ body.is-mobile
 .axxa-mc-desc {
   margin: 0;
   font-size: var(--font-ui-smaller);
-  color: var(--text-normal);
+  color: var(--text-muted);
   line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
