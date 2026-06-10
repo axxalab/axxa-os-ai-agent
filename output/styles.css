@@ -220,15 +220,30 @@ body.is-mobile.axxa-host-active
 }
 
 /* BACKSTOP FINAL (fullscreen): pinta o BODY inteiro — é o frame mais profundo
-   de todos. Qualquer coisa que escape (navbar transparente, gap de safe-area,
-   gesture area) mostra o bg do preset, nunca o #1e1e1e do Obsidian. O body já
-   tem axxa-bg-<preset> (setupNavbarTint) → --axxa-bg-img resolve aqui. v0.1.116 */
+   de todos. Qualquer coisa que escape (navbar, gap de safe-area, gesture area)
+   mostra o bg do preset, nunca o cinza do Obsidian. O body já tem
+   axxa-bg-<preset> (setupNavbarTint) → --axxa-bg-img resolve aqui. v0.1.116 */
 body.is-mobile.axxa-fullscreen {
   background-color: var(--background-primary) !important;
   background-image: var(--axxa-bg-img) !important;
   background-size: var(--axxa-bg-size, cover) !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
+}
+
+/* "COR DO PRESET ATÉ EMBAIXO" (v0.1.118): a BASE do bg (atrás do gradiente)
+   passa de --background-primary (que desbotava pro cinza #1e1e1e/#181621 na
+   borda inferior) pra --axxa-navbar-tint — a cor sólida do preset (herdada do
+   body via setupNavbarTint). Onde o gradiente desbota, fica a cor do preset, e
+   a navbar (tintada na MESMA var) casa sem emenda. Só no fullscreen mobile. */
+body.is-mobile.axxa-fullscreen,
+body.is-mobile.axxa-fullscreen
+  .workspace-drawer.mod-right:has(
+    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  ),
+body.is-mobile.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"] {
+  background-color: var(--axxa-navbar-tint, var(--background-primary)) !important;
 }
 
 /* No fullscreen, sem navbar visível — padding-bottom só pra safe-area */
