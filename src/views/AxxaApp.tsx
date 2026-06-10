@@ -1886,6 +1886,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       description: "Trocar pro modo Agent (antes da primeira msg)",
       execute: () => !isLocked && handleStarterMode("agent"),
     },
+    // Skills do usuário (.md na pasta de skills) → /comando que injeta o
+    // template no composer (+ troca pro modo do skill, se definido). v0.1.139
+    ...plugin.skills.map((s) => ({
+      id: s.id,
+      label: s.name,
+      description: "Skill · " + (s.description || s.name),
+      execute: () => {
+        if (s.mode && !isLocked) handleStarterMode(s.mode);
+        handlePromptStarter(s.body);
+      },
+    })),
   ];
 
   return (

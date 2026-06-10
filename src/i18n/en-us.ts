@@ -418,7 +418,19 @@ export const EN_US: Translations = {
     chatsPath: "Chats folder",
     chatsPathDesc: "Where chats are saved in the Vault",
     skillsPath: "Skills folder",
-    skillsPathDesc: "Where skills are saved in the Vault (coming in Module 7)",
+    skillsPathDesc:
+      "Vault folder with skills (.md). Each skill becomes a /command in the composer.",
+    skillsManage: "Skills",
+    skillsManageDesc: (n: number) =>
+      `${n} skill${n === 1 ? "" : "s"} loaded. Each .md note (frontmatter name/description/icon/mode) becomes a /command.`,
+    skillsCreateExamples: "Create examples",
+    skillsReload: "Reload skills",
+    skillsSeeded: (n: number) =>
+      n > 0
+        ? `${n} example skill${n === 1 ? "" : "s"} created`
+        : "Example skills already exist",
+    skillsReloaded: (n: number) =>
+      `${n} skill${n === 1 ? "" : "s"} loaded`,
     recordingsPath: "Recordings folder",
     recordingsPathDesc: "Where audio recordings from the mic button are saved",
     generationPath: "Generation folder",

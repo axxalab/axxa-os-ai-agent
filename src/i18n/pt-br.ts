@@ -419,7 +419,19 @@ export const PT_BR = {
     chatsPath: "Pasta dos chats",
     chatsPathDesc: "Onde os chats serão salvos no Vault",
     skillsPath: "Pasta das skills",
-    skillsPathDesc: "Onde as skills serão salvas no Vault (vem no Módulo 7)",
+    skillsPathDesc:
+      "Pasta no Vault com as skills (.md). Cada skill vira um /comando no composer.",
+    skillsManage: "Skills",
+    skillsManageDesc: (n: number) =>
+      `${n} skill${n === 1 ? "" : "s"} carregada${n === 1 ? "" : "s"}. Cada nota .md (com frontmatter name/description/icon/mode) vira /comando.`,
+    skillsCreateExamples: "Criar exemplos",
+    skillsReload: "Recarregar skills",
+    skillsSeeded: (n: number) =>
+      n > 0
+        ? `${n} skill${n === 1 ? "" : "s"} de exemplo criada${n === 1 ? "" : "s"}`
+        : "As skills de exemplo já existem",
+    skillsReloaded: (n: number) =>
+      `${n} skill${n === 1 ? "" : "s"} carregada${n === 1 ? "" : "s"}`,
     recordingsPath: "Pasta das gravações",
     recordingsPathDesc: "Onde os áudios gravados pelo botão de mic serão salvos",
     generationPath: "Pasta de gerações",

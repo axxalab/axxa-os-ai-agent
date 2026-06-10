@@ -15,6 +15,7 @@ import {
   fetchAndCacheModelInfo,
   type EnrichedModelInfo,
 } from "./providers/modelInfoStore";
+import { loadSkills, seedExampleSkills, type Skill } from "./skills/skills";
 import type {
   EffortConfig,
   EffortLevel,
@@ -190,10 +191,42 @@ export default class AxxaPlugin extends Plugin {
   private autoReindexTimer: number | null = null;
   private autoReindexController: AbortController | null = null;
 
+  /** Skills carregados da pasta (settings.skillsPath) — viram slash-commands. */
+  skills: Skill[] = [];
+
   /** Inscreve um callback chamado a cada saveSettings. Retorna unsubscribe. */
   onSettingsChange(cb: () => void): () => void {
     this.settingsListeners.add(cb);
     return () => this.settingsListeners.delete(cb);
+  }
+
+  /** Notifica os listeners (re-render do React tree). */
+  private notifyListeners(): void {
+    this.settingsListeners.forEach((cb) => {
+      try {
+        cb();
+      } catch (err) {
+        console.error("[axxa] settings listener falhou:", err);
+      }
+    });
+  }
+
+  /** (Re)carrega os skills da pasta e re-renderiza. v0.1.139 */
+  async reloadSkills(): Promise<void> {
+    try {
+      this.skills = await loadSkills(this.app, this.settings.skillsPath);
+    } catch (err) {
+      console.error("[axxa] reloadSkills falhou:", err);
+      this.skills = [];
+    }
+    this.notifyListeners();
+  }
+
+  /** Cria os skills de exemplo (se faltarem) + recarrega. Retorna nº criados. */
+  async seedExampleSkills(): Promise<number> {
+    const n = await seedExampleSkills(this.app, this.settings.skillsPath);
+    await this.reloadSkills();
+    return n;
   }
 
   /** Caminho do cache de specs dos modelos (JSON no diretório do plugin). */
@@ -251,6 +284,9 @@ export default class AxxaPlugin extends Plugin {
 
     // Cache de specs dos modelos (Fetch info / OpenRouter) — hidrata o store.
     await this.loadModelInfoCache();
+
+    // Skills (.md na pasta de skills) → slash-commands no composer.
+    await this.reloadSkills();
 
     // Carrega índice RAG do disco se já existe. Falhas são silenciosas —
     // só significa que o user ainda não rodou "Indexar vault".

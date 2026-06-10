@@ -1214,9 +1214,36 @@ export class AxxaSettingsTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.skillsPath = normalizePath(value || "axxa-ai/skills");
             await this.plugin.saveSettings();
+            await this.plugin.reloadSkills();
           });
         this.attachFolderAutocomplete(text.inputEl);
       });
+
+    // Skills — gestão (v0.1.139): criar exemplos + recarregar. Skills são notas
+    // .md na pasta acima; viram /comandos no composer.
+    new Setting(parent)
+      .setName(t.settings.skillsManage)
+      .setDesc(t.settings.skillsManageDesc(this.plugin.skills.length))
+      .addButton((b) =>
+        b
+          .setButtonText(t.settings.skillsCreateExamples)
+          .setCta()
+          .onClick(async () => {
+            const n = await this.plugin.seedExampleSkills();
+            new Notice(t.settings.skillsSeeded(n));
+            this.display();
+          })
+      )
+      .addExtraButton((b) =>
+        b
+          .setIcon("refresh-cw")
+          .setTooltip(t.settings.skillsReload)
+          .onClick(async () => {
+            await this.plugin.reloadSkills();
+            new Notice(t.settings.skillsReloaded(this.plugin.skills.length));
+            this.display();
+          })
+      );
 
     new Setting(parent)
       .setName(t.settings.recordingsPath)
