@@ -5001,36 +5001,88 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   z-index: 50;
 }
 
-/* Label só no segment ATIVO (v0.1.125) — o ativo cresce e mostra o texto
-   ABAIXO do ícone (empilhado); os demais ficam icon-only. */
-.axxa-provider-seg .axxa-subtab-label {
-  display: none;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  white-space: nowrap;
-  line-height: 1;
+/* ===== Segmented control estilo Threads (v0.1.127) — SÓ ÍCONE, pílula
+   DESLIZANTE. Slots iguais (flex 1 1 0). O indicador tem a largura de UM slot
+   e desliza via translateX(--seg-i × 100%): "muda de um pra outro". ===== */
+.axxa-seg {
+  position: relative;
+  display: flex;
+  gap: 0;
+  padding: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-modifier-border) 45%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
+  overflow: hidden;
 }
-.axxa-provider-seg .axxa-subtab-active {
-  /* selecionado bem mais largo (pílula Threads) — só flex-grow muda, anima */
-  flex-grow: 2.3;
-  flex-direction: column;
-  gap: 3px;
-  padding: 6px 14px;
-}
-.axxa-provider-seg .axxa-subtab-active .axxa-subtab-label {
-  display: block;
-  /* label entra com ease-in ao trocar de seleção */
-  animation: axxa-seg-label-in 0.3s ease both;
-}
-@keyframes axxa-seg-label-in {
-  from {
-    opacity: 0;
-    transform: translateY(3px);
+@supports (
+  (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))
+) {
+  .axxa-seg {
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    backdrop-filter: blur(12px) saturate(140%);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+}
+/* pílula clara que desliza entre os slots */
+.axxa-seg-ind {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  z-index: 0;
+  width: calc((100% - 8px) / var(--seg-n, 3));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-normal) 13%, transparent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transform: translateX(calc(var(--seg-i, 0) * 100%));
+  transition: transform 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+.axxa-seg-btn,
+.axxa-seg-btn:hover,
+.axxa-seg-btn:focus,
+.axxa-seg-btn:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.axxa-seg-btn {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.12s ease;
+}
+.axxa-seg-btn .axxa-icon {
+  display: flex;
+}
+.axxa-seg-btn .axxa-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+.axxa-seg-btn:active {
+  transform: scale(0.93);
+}
+.axxa-seg-btn-active {
+  color: var(--text-normal);
+}
+.axxa-seg-btn-active .axxa-icon svg {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .axxa-seg-ind {
+    transition: none;
   }
 }
 
@@ -6447,8 +6499,7 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 /* Mobile: backdrop-blur ×10 + animações ambient infinitas = GPU/bateria.
    O fallback color-mix translúcido segura o visual; mantém só draw-in+ping. */
 body.is-mobile .axxa-dash .axxa-starter-segment,
-body.is-mobile .axxa-dash .axxa-provider-seg,
-body.is-mobile .axxa-dash .axxa-effort-slider,
+body.is-mobile .axxa-dash .axxa-seg,
 body.is-mobile .axxa-dash .axxa-dash-stat,
 body.is-mobile .axxa-dash .axxa-dash-activity,
 body.is-mobile .axxa-dash .axxa-dash-status-card {
@@ -6476,9 +6527,7 @@ body.is-mobile .axxa-wave-area {
   :is(
     .axxa-dash-stat,
     .axxa-dash-activity,
-    .axxa-effort-slider,
-    .axxa-dash .axxa-starter-segment,
-    .axxa-dash .axxa-provider-seg
+    .axxa-dash .axxa-seg
   ) {
   animation: axxa-dash-liveborder 5s ease-in-out infinite;
 }
@@ -6524,9 +6573,7 @@ body.is-mobile .axxa-wave-area {
       .axxa-dash-stat,
       .axxa-dash-activity,
       .axxa-dash-status-card,
-      .axxa-effort-slider,
-      .axxa-dash .axxa-starter-segment,
-      .axxa-dash .axxa-provider-seg
+      .axxa-dash .axxa-seg
     ) {
     animation: none;
   }

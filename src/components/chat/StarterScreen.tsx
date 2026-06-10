@@ -1019,6 +1019,57 @@ function StatusCards({
 }
 
 /**
+ * SegmentedRow — controle segmentado SÓ ÍCONE com pílula DESLIZANTE, igual o
+ * nav do Threads (v0.1.127). Slots iguais (flex 1 1 0); o indicador (.axxa-seg-ind)
+ * tem a largura de UM slot e desliza via translateX(--seg-i × 100%) com
+ * transição — "muda de um pra outro". Sem label (largura menor / icon-only).
+ */
+function SegmentedRow({
+  items,
+  activeId,
+  onSelect,
+}: {
+  items: { id: string; icon: string; label: string; title?: string; soon?: boolean }[];
+  activeId: string;
+  onSelect: (id: string) => void;
+}) {
+  const activeIndex = Math.max(
+    0,
+    items.findIndex((it) => it.id === activeId)
+  );
+  return (
+    <div
+      className="axxa-seg"
+      role="tablist"
+      style={
+        {
+          ["--seg-n" as string]: items.length,
+          ["--seg-i" as string]: activeIndex,
+        } as CSSProperties
+      }
+    >
+      <span className="axxa-seg-ind" aria-hidden="true" />
+      {items.map((it) => (
+        <button
+          key={it.id}
+          type="button"
+          role="tab"
+          aria-selected={it.id === activeId}
+          aria-label={it.label}
+          title={it.title ?? it.label}
+          className={
+            "axxa-seg-btn" + (it.id === activeId ? " axxa-seg-btn-active" : "")
+          }
+          onClick={() => onSelect(it.id)}
+        >
+          <Icon name={it.icon} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
  * EffortSlider — slider tátil estilo "brilho" do One UI / Samsung (v0.1.127).
  * Clicável: toca ou arrasta em QUALQUER ponto pra setar o nível (sem hold).
  * Barra arredondada com fill accent; raios (zap) DOURADOS (gradiente + fake-3D)
@@ -1236,60 +1287,41 @@ export function StarterScreen({
           {t.starter.effortLabel}
         </label>
         <div className="axxa-mp">
-          {/* Mode — segmented icon, idêntico ao provider */}
-          <div className="axxa-settings-subtabs axxa-provider-seg" role="tablist">
-            {MODES_META.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                role="tab"
-                aria-selected={m.id === mode}
-                aria-label={modeLabel(m.id)}
-                className={
-                  "clickable-icon axxa-subtab-btn axxa-subtab-icon" +
-                  (m.id === mode ? " axxa-subtab-active" : "")
-                }
-                onClick={() => {
-                  if (m.soon) {
-                    new Notice(t.modes.comingSoon(modeLabel(m.id)));
-                    return;
-                  }
-                  hapticTick();
-                  onModeChange(m.id);
-                }}
-                title={
-                  m.soon ? t.modes.comingSoon(modeLabel(m.id)) : modeDesc(m.id)
-                }
-              >
-                <Icon name={m.icon} />
-                <span className="axxa-subtab-label">{modeLabel(m.id)}</span>
-              </button>
-            ))}
-          </div>
-          {/* Provider — segmented icon */}
-          <div className="axxa-settings-subtabs axxa-provider-seg" role="tablist">
-            {PROVIDERS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                role="tab"
-                aria-selected={p.id === provider}
-                aria-label={p.name}
-                className={
-                  "clickable-icon axxa-subtab-btn axxa-subtab-icon" +
-                  (p.id === provider ? " axxa-subtab-active" : "")
-                }
-                onClick={() => {
-                  hapticTick();
-                  onProviderChange(p.id);
-                }}
-                title={p.name}
-              >
-                <Icon name={p.icon} />
-                <span className="axxa-subtab-label">{p.name}</span>
-              </button>
-            ))}
-          </div>
+          {/* Mode + Provider — segmented icon-only com pílula DESLIZANTE
+              (estilo Threads). v0.1.127 */}
+          <SegmentedRow
+            items={MODES_META.map((m) => ({
+              id: m.id,
+              icon: m.icon,
+              label: modeLabel(m.id),
+              title: m.soon
+                ? t.modes.comingSoon(modeLabel(m.id))
+                : modeDesc(m.id),
+              soon: m.soon,
+            }))}
+            activeId={mode}
+            onSelect={(id) => {
+              const meta = MODES_META.find((x) => x.id === id);
+              if (meta?.soon) {
+                new Notice(t.modes.comingSoon(modeLabel(id)));
+                return;
+              }
+              hapticTick();
+              onModeChange(id);
+            }}
+          />
+          <SegmentedRow
+            items={PROVIDERS.map((p) => ({
+              id: p.id,
+              icon: p.icon,
+              label: p.name,
+            }))}
+            activeId={provider}
+            onSelect={(id) => {
+              hapticTick();
+              onProviderChange(id);
+            }}
+          />
           {/* Effort — slider tátil clicável (estilo brilho One UI) */}
           <EffortSlider
             effort={effort}
