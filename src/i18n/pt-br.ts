@@ -147,6 +147,12 @@ export const PT_BR = {
     // Datas relativas (formatRelativeDate) — locale-aware (v0.1.103)
     relNow: "agora",
     dateLocale: "pt-BR",
+    // Effort tátil (v0.1.122)
+    effortHold: "segure e arraste",
+    effortAdjusting: "ajustando…",
+    // Card de modelo (v0.1.122)
+    modelSeeMore: "Ver mais",
+    modelFlipHint: "toque pra detalhes",
   },
 
   modes: {

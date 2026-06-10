@@ -7,7 +7,15 @@
 //   - Status: índice RAG + providers configurados (clique abre Settings)
 //   - Quando user manda primeira msg, AxxaApp chama lockSession()
 
-import { useState, useEffect, useMemo, useRef, useId, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useId,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { Notice } from "obsidian";
 import type AxxaPlugin from "../../main";
 import { Icon } from "../_shared/Icon";
@@ -799,6 +807,114 @@ function StatusCards({
   );
 }
 
+/**
+ * EffortSlider — slider TÁTIL com press-hold (v0.1.122). Vive no bloco de
+ * seleção básica (Mode/Provider) como um segment. Tap NÃO muda nada; segurar
+ * ~200ms "arma" (haptic forte + thumb cresce), aí arrastar troca de nível com
+ * tick háptico por detente; soltar confirma. Evita mudança acidental.
+ */
+function EffortSlider({
+  effort,
+  onChange,
+  holdLabel,
+  liveLabel,
+}: {
+  effort: string;
+  onChange: (level: EffortLevel) => void;
+  holdLabel: string;
+  liveLabel: string;
+}) {
+  const n = EFFORT_LEVELS.length;
+  const idx = Math.max(0, EFFORT_LEVELS.indexOf(effort as EffortLevel));
+  const [armed, setArmed] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  const holdRef = useRef<number | null>(null);
+
+  const cur = dragIdx ?? idx;
+  const pct = n > 1 ? (cur / (n - 1)) * 100 : 0;
+
+  const idxFromX = (clientX: number): number => {
+    const el = railRef.current;
+    if (!el) return idx;
+    const r = el.getBoundingClientRect();
+    const p = r.width > 0 ? (clientX - r.left) / r.width : 0;
+    return Math.min(n - 1, Math.max(0, Math.round(p * (n - 1))));
+  };
+
+  const clearHold = () => {
+    if (holdRef.current != null) {
+      window.clearTimeout(holdRef.current);
+      holdRef.current = null;
+    }
+  };
+
+  const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    const start = idxFromX(e.clientX);
+    holdRef.current = window.setTimeout(() => {
+      setArmed(true);
+      setDragIdx(start);
+      hapticTick(22);
+    }, 200);
+  };
+  const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!armed) return;
+    const ni = idxFromX(e.clientX);
+    if (ni !== cur) {
+      hapticTick();
+      setDragIdx(ni);
+    }
+  };
+  const onUp = () => {
+    clearHold();
+    if (armed && dragIdx != null && dragIdx !== idx) {
+      onChange(EFFORT_LEVELS[dragIdx]);
+    }
+    setArmed(false);
+    setDragIdx(null);
+  };
+
+  return (
+    <div className={"axxa-eff" + (armed ? " axxa-eff-armed" : "")}>
+      <div
+        className="axxa-eff-track"
+        style={{ ["--eff-pct" as string]: `${pct}%` } as CSSProperties}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        role="slider"
+        aria-label={liveLabel}
+        aria-valuemin={0}
+        aria-valuemax={n - 1}
+        aria-valuenow={cur}
+        aria-valuetext={EFFORT_LABELS[EFFORT_LEVELS[cur]]}
+      >
+        <span className="axxa-eff-fill" />
+        <div className="axxa-eff-rail" ref={railRef}>
+          {EFFORT_LEVELS.map((lvl, i) => (
+            <span
+              key={lvl}
+              className={"axxa-eff-dot" + (i <= cur ? " axxa-eff-dot-on" : "")}
+              style={{ left: `${(i / (n - 1)) * 100}%` }}
+            />
+          ))}
+          <span className="axxa-eff-thumb" style={{ left: `${pct}%` }}>
+            <span className="axxa-eff-thumb-dot">
+              {EFFORT_EMOJIS[EFFORT_LEVELS[cur]]}
+            </span>
+          </span>
+        </div>
+      </div>
+      <div className="axxa-eff-meta">
+        <span className="axxa-eff-name">{EFFORT_LABELS[EFFORT_LEVELS[cur]]}</span>
+        <span className="axxa-eff-hint">{armed ? liveLabel : holdLabel}</span>
+      </div>
+    </div>
+  );
+}
+
 export function StarterScreen({
   plugin,
   provider,
@@ -822,19 +938,8 @@ export function StarterScreen({
   const [pickerOpen, setPickerOpen] = useState(false);
   const modelFieldRef = useRef<HTMLDivElement>(null);
 
-  // Slider de effort: índice em arraste (UI imediata) + commit no soltar.
-  const effIdx = Math.max(0, EFFORT_LEVELS.indexOf(effort as EffortLevel));
-  const [effDragIdx, setEffDragIdx] = useState<number | null>(null);
-  const effDragRef = useRef<number | null>(null);
-  const commitEffortDrag = () => {
-    if (effDragRef.current != null) {
-      onEffortChange(EFFORT_LEVELS[effDragRef.current]);
-      effDragRef.current = null;
-      setEffDragIdx(null);
-    }
-  };
-
   // (Overview/usage saiu daqui — vive em Settings → Usage. v0.1.120)
+  // (Effort agora é o componente EffortSlider, com estado próprio. v0.1.122)
   const greeting = greetingFor(new Date().getHours(), t);
 
   // Fecha o dropdown de modelo ao clicar fora ou apertar Escape.
@@ -893,7 +998,8 @@ export function StarterScreen({
           igual provider: só ícone). Model fica por último, lá embaixo. v0.1.121 */}
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">
-          {t.starter.modeLabel} · {t.starter.providerLabel}
+          {t.starter.modeLabel} · {t.starter.providerLabel} ·{" "}
+          {t.starter.effortLabel}
         </label>
         <div className="axxa-mp">
           {/* Mode — segmented icon, idêntico ao provider */}
@@ -922,6 +1028,7 @@ export function StarterScreen({
                 }
               >
                 <Icon name={m.icon} />
+                <span className="axxa-subtab-label">{modeLabel(m.id)}</span>
               </button>
             ))}
           </div>
@@ -945,80 +1052,17 @@ export function StarterScreen({
                 title={p.name}
               >
                 <Icon name={p.icon} />
+                <span className="axxa-subtab-label">{p.name}</span>
               </button>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="axxa-starter-section">
-        <label className="axxa-starter-label">{t.starter.effortLabel}</label>
-        {/* v0.1.104: slider nativo do Obsidian (input range .slider) + escala
-            de emojis clicável embaixo. Arrastar OU tocar no nível seleciona. */}
-        <div className="axxa-effort-slider">
-          {/* Arraste: UI + haptic a cada detent, mas persiste SÓ no soltar
-              (saveSettings escreve disco + secrets + re-render global). */}
-          <input
-            type="range"
-            className="slider axxa-effort-range"
-            min={0}
-            max={EFFORT_LEVELS.length - 1}
-            step={1}
-            value={effDragIdx ?? effIdx}
-            style={
-              {
-                "--eff-fill": `${
-                  ((effDragIdx ?? effIdx) / (EFFORT_LEVELS.length - 1)) * 100
-                }%`,
-              } as CSSProperties
-            }
-            aria-label={t.starter.effortLabel}
-            onChange={(e) => {
-              hapticTick();
-              const v = Number(e.currentTarget.value);
-              effDragRef.current = v;
-              setEffDragIdx(v);
-            }}
-            onPointerUp={commitEffortDrag}
-            onTouchEnd={commitEffortDrag}
-            onKeyUp={commitEffortDrag}
-            onBlur={commitEffortDrag}
+          {/* Effort — slider TÁTIL (press-hold), dentro do bloco básico */}
+          <EffortSlider
+            effort={effort}
+            onChange={onEffortChange}
+            holdLabel={t.dashboard.effortHold}
+            liveLabel={t.dashboard.effortAdjusting}
           />
-          {/* aria-hidden: o slider já cobre teclado/leitor — ticks são só
-              alvo visual de toque (evita o controle duplicado na AT). */}
-          <div className="axxa-effort-scale" aria-hidden="true">
-            {EFFORT_LEVELS.map((level) => {
-              const active = level === effort;
-              return (
-                <button
-                  key={level}
-                  type="button"
-                  tabIndex={-1}
-                  className={
-                    "clickable-icon axxa-effort-tick" +
-                    (active ? " axxa-effort-tick-active" : "")
-                  }
-                  onClick={() => {
-                    hapticTick();
-                    onEffortChange(level);
-                  }}
-                  title={`${EFFORT_LABELS[level]} — ${EFFORT_DESCRIPTIONS[level]}`}
-                >
-                  <span className="axxa-effort-tick-emoji">
-                    {EFFORT_EMOJIS[level]}
-                  </span>
-                  <span className="axxa-effort-tick-label">
-                    {EFFORT_LABELS[level]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="axxa-effort-desc">
-            {EFFORT_DESCRIPTIONS[
-              (effDragIdx != null ? EFFORT_LEVELS[effDragIdx] : effort) as EffortLevel
-            ] ?? ""}
-          </div>
         </div>
       </div>
 
@@ -1026,6 +1070,8 @@ export function StarterScreen({
           dropdown + card de info (inalterado). v0.1.121 */}
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.modelLabel}</label>
+        {/* v0.1.122: card EM CIMA, seletor de modelo EMBAIXO */}
+        <ModelInfoCard provider={provider} model={model} />
         <div className="axxa-model-field" ref={modelFieldRef}>
           <button
             type="button"
@@ -1061,7 +1107,6 @@ export function StarterScreen({
             />
           )}
         </div>
-        <ModelInfoCard provider={provider} model={model} />
       </div>
       </div>
       {/* ===== /Nova conversa ===== */}

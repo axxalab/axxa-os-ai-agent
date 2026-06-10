@@ -147,6 +147,12 @@ export const EN_US: Translations = {
     // Relative dates (formatRelativeDate) — locale-aware (v0.1.103)
     relNow: "now",
     dateLocale: "en-US",
+    // Tactile effort (v0.1.122)
+    effortHold: "hold & drag",
+    effortAdjusting: "adjusting…",
+    // Model card (v0.1.122)
+    modelSeeMore: "See more",
+    modelFlipHint: "tap for details",
   },
 
   modes: {

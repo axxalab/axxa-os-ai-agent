@@ -5110,17 +5110,13 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   height: 18px;
 }
 
-/* Mode + Provider JUNTOS (v0.1.121) — dois segmented (icon, igual provider)
-   empilhados num único container, lendo como um bloco só. */
+/* Mode + Provider + Effort JUNTOS (v0.1.122) — container TRANSPARENTE, só os
+   segments aparecem. Mode/Provider segmented + Effort tátil empilhados. */
 .axxa-mp {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 6px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--background-secondary) 55%, transparent);
-  border: 1px solid
-    color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+  gap: 8px;
+  background: transparent;
 }
 /* zera a margem que o .axxa-settings-subtabs tem por padrão (16px) */
 .axxa-mp .axxa-settings-subtabs {
@@ -5129,6 +5125,129 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 /* o dropdown do model (agora por último) sobe pra vazar sobre o card de info */
 .axxa-model-dropdown {
   z-index: 50;
+}
+
+/* Label só no segment ATIVO (v0.1.122) — o ativo cresce e mostra o texto;
+   os demais ficam icon-only. */
+.axxa-provider-seg .axxa-subtab-label {
+  display: none;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1;
+}
+.axxa-provider-seg .axxa-subtab-active {
+  flex: 2.2 1 auto;
+  gap: 7px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.axxa-provider-seg .axxa-subtab-active .axxa-subtab-label {
+  display: inline;
+}
+
+/* ===== Effort TÁTIL (press-hold) — v0.1.122 ===== */
+.axxa-eff {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.axxa-eff-track {
+  position: relative;
+  height: 42px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+  touch-action: none; /* não rola a página enquanto arrasta */
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: box-shadow 0.15s;
+}
+.axxa-eff-armed .axxa-eff-track {
+  cursor: grabbing;
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+}
+.axxa-eff-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--eff-pct, 0%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+  transition: width 0.18s cubic-bezier(0.34, 1.25, 0.4, 1);
+}
+.axxa-eff-armed .axxa-eff-fill {
+  transition: none; /* segue o dedo sem lag */
+}
+/* trilho interno (área de viagem do thumb), inset pelo raio do thumb */
+.axxa-eff-rail {
+  position: absolute;
+  inset: 0 21px;
+  top: 50%;
+}
+.axxa-eff-dot {
+  position: absolute;
+  top: 0;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 999px;
+  background: var(--text-faint);
+  opacity: 0.45;
+  transition: background 0.15s, opacity 0.15s;
+}
+.axxa-eff-dot-on {
+  background: var(--interactive-accent);
+  opacity: 0.9;
+}
+.axxa-eff-thumb {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: left 0.18s cubic-bezier(0.34, 1.25, 0.4, 1);
+}
+.axxa-eff-armed .axxa-eff-thumb {
+  transition: left 0s;
+}
+.axxa-eff-thumb-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--background-primary);
+  border: 2px solid var(--interactive-accent);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.28);
+  font-size: 16px;
+  line-height: 1;
+  transition: transform 0.14s cubic-bezier(0.34, 1.25, 0.4, 1);
+}
+.axxa-eff-armed .axxa-eff-thumb-dot {
+  transform: scale(1.28);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.32);
+}
+.axxa-eff-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+.axxa-eff-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+.axxa-eff-hint {
+  font-size: 10px;
+  color: var(--text-faint);
 }
 
 /* Sheet — corpo scrollável, um pouco mais alto que o PlusModal */
