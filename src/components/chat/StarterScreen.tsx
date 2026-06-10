@@ -1580,6 +1580,17 @@ export function StarterScreen({
   const configuredProv = PROVIDERS.filter((p) =>
     providerConfigured(plugin, p.id)
   );
+  // Onboarding (v0.1.142): o banner "comece grátis" some quando há QUALQUER
+  // credencial real. Não uso configuredProv aqui porque o ollamaEndpoint vem
+  // pré-preenchido (localhost) por default → contava ollama como configurado e
+  // o banner NUNCA aparecia pra um user novo. Checa só as API keys.
+  const hasKeyProvider = [
+    plugin.settings.openaiApiKey,
+    plugin.settings.anthropicApiKey,
+    plugin.settings.geminiApiKey,
+    plugin.settings.openrouterApiKey,
+    plugin.settings.nimApiKey,
+  ].some((k) => !!(k && k.trim()));
   const provBase = configuredProv.some((p) => p.id === provider)
     ? configuredProv
     : [...PROVIDERS.filter((p) => p.id === provider), ...configuredProv];
@@ -1639,9 +1650,9 @@ export function StarterScreen({
         )}
       </div>
 
-      {/* Onboarding: nenhum provider configurado → caminho GRÁTIS em destaque.
-          Fricção zero pra primeiro "uau". v0.1.138 */}
-      {configuredProv.length === 0 && (
+      {/* Onboarding: nenhuma API key configurada → caminho GRÁTIS em destaque.
+          Fricção zero pra primeiro "uau". v0.1.138/142 */}
+      {!hasKeyProvider && (
         <button
           type="button"
           className="axxa-freestart"
