@@ -196,15 +196,19 @@ body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf {
   width: 100% !important;
 }
 body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right .workspace-leaf-content,
-body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right .view-content {
+body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right .view-content,
+body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right .axxa-root {
   height: 100dvh !important;
   min-height: 100dvh !important;
   max-height: 100dvh !important;
   width: 100% !important;
 }
-/* .axxa-root NÃO leva 100dvh: fica height:100% do content-box do .view-content
-   (que já desconta o padding-bottom de safe-area), pro composer (bottom:8px)
-   ficar ACIMA do gesture bar, não embaixo dele. */
+/* v0.1.124: a .axxa-root agora PEGA TODO o view-content (100dvh), ignorando o
+   padding-bottom dele — fim do gap embaixo. O composer compensa o gesture bar
+   com safe-area no bottom (regra abaixo). */
+body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .axxa-composer {
+  bottom: calc(8px + var(--safe-area-inset-bottom, 0px)) !important;
+}
 
 /* BACKSTOP: pinta o próprio drawer com o nosso bg (--axxa-bg-img é herdado do
    body, que tem axxa-bg-<preset> via setupNavbarTint). Se a cadeia interna
@@ -213,7 +217,14 @@ body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-ri
 body.is-mobile.axxa-host-active
   .workspace-drawer.mod-right:has(
     .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  ) {
+  ),
+/* v0.1.124: pinta também o .workspace-drawer-inner — as áreas do status bar
+   (topo) e do swipe/nav bar (base) herdam o bg dele em vez do cinza. */
+body.is-mobile.axxa-host-active
+  .workspace-drawer.mod-right:has(
+    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  )
+  .workspace-drawer-inner {
   background-color: var(--background-primary) !important;
   background-image: var(--axxa-bg-img) !important;
   background-size: var(--axxa-bg-size, cover) !important;
@@ -303,11 +314,10 @@ body.is-mobile
   box-sizing: border-box;
   min-height: 0;
   min-width: 0;
-  /* v0.1.54: Cria stacking context novo pro AXXA OS ficar visualmente
-     ACIMA de qualquer elemento interno do .workspace-leaf do Obsidian.
-     Sem isso, em algumas situações (fullscreen / split panes) elementos
-     do leaf podem aparecer sobrepondo o composer ou chat. */
-  z-index: 1;
+  /* v0.1.124: z-index 9999 — a root fica ACIMA de qualquer chrome interno do
+     leaf/drawer do Obsidian (fim do cinza vazando por cima). Os filhos
+     (header/chat/composer) empilham dentro desse contexto. */
+  z-index: 9999;
   /* position: relative pro PlusModal (bottom sheet) usar inset:0 */
   position: relative;
   background: var(--background-primary);
