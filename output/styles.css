@@ -167,17 +167,46 @@ body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-inn
   padding-top: 0 !important;
 }
 
-/* Cadeia INTEIRA preenche 100% do drawer — sem gap em nenhuma borda. Cada elo
-   precisa ser 100% pra o 100dvh do drawer chegar até a .axxa-root/view-content. */
+/* Clearance v0.1.115 — tática nova, robusta.
+   Os elos intermediários a 100% (cobre as variações de DOM do drawer), e os
+   elos FINAIS (leaf-content / view-content / axxa-root) a 100dvh DIRETO — não
+   dependem da cadeia exata do Obsidian, que variava e deixava a root curta
+   (faixa #1e1e1e embaixo do composer). Gated em :not(.axxa-keyboard-open) pra
+   não travar o shrink quando o teclado abre. */
 body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-inner,
 body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-active-tab-container,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-active-tab-content,
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tabs,
 body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tab-container,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf-content,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .view-content {
+body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf {
   height: 100% !important;
   max-height: 100% !important;
   width: 100% !important;
+}
+body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right .workspace-leaf-content,
+body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right .view-content {
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
+  width: 100% !important;
+}
+/* .axxa-root NÃO leva 100dvh: fica height:100% do content-box do .view-content
+   (que já desconta o padding-bottom de safe-area), pro composer (bottom:8px)
+   ficar ACIMA do gesture bar, não embaixo dele. */
+
+/* BACKSTOP: pinta o próprio drawer com o nosso bg (--axxa-bg-img é herdado do
+   body, que tem axxa-bg-<preset> via setupNavbarTint). Se a cadeia interna
+   ainda deixar QUALQUER área descoberta, mostra o nosso fundo — nunca mais o
+   cinza --background-primary (#1e1e1e) do Obsidian. v0.1.115 */
+body.is-mobile.axxa-host-active
+  .workspace-drawer.mod-right:has(
+    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  ) {
+  background-color: var(--background-primary) !important;
+  background-image: var(--axxa-bg-img) !important;
+  background-size: var(--axxa-bg-size, cover) !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 
 /* No fullscreen, sem navbar visível — padding-bottom só pra safe-area */
