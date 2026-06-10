@@ -1807,7 +1807,7 @@ body.is-mobile
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 232px; /* altura FIXA — nunca quebra os outros elementos */
+  height: 206px; /* altura FIXA — nunca quebra os outros elementos */
   padding: 12px 14px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
@@ -1904,7 +1904,9 @@ body.is-mobile
   overflow: hidden;
 }
 .axxa-mc-fliphint {
-  margin-top: auto;
+  /* sem margin-top:auto — empurrava o hint pro fundo e abria um VAZIO no meio
+     do card (parecia quebrado). Agora o conteúdo empacota no topo. v0.1.135 */
+  margin-top: 2px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -2112,6 +2114,9 @@ body.is-mobile
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   animation: axxa-plus-fade 0.16s ease;
+  /* o overlay NUNCA rola — só o modal por dentro. Não encadeia scroll pro body. */
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 @property --axxa-glow {
   syntax: "<angle>";
@@ -2122,8 +2127,11 @@ body.is-mobile
   position: relative;
   width: 100%;
   max-width: 420px;
-  max-height: 80vh;
+  /* cabe DENTRO do overlay (24px de padding em cima/baixo); dvh pro mobile.
+     Só este elemento rola (interno); o overlay/body não. v0.1.135 */
+  max-height: calc(100dvh - 48px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 10px;
