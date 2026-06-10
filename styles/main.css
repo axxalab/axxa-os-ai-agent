@@ -36,7 +36,7 @@ body.is-mobile
 }
 
 @supports selector(body:has(*)) {
-    body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
+    body.is-mobile:not(.axxa-fullscreen):has(.mobile-navbar):not(.is-hidden-nav)
     .workspace-tab-container
     .workspace-leaf-content[data-type="axxa-os-ai-agent"]
     .view-content {
@@ -152,6 +152,13 @@ body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-tab
 body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tab-header-container,
 body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-footer,
 body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .nav-buttons-container {
+  display: none !important;
+}
+
+/* A FAIXA CINZA embaixo do composer no fullscreen era a .mobile-navbar nativa
+   do Obsidian (barra inferior). No fullscreen o app é standalone → esconde de
+   vez (no modo normal ela continua tintada pelo preset). v0.1.114 */
+body.is-mobile.axxa-fullscreen .mobile-navbar {
   display: none !important;
 }
 
