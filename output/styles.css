@@ -2064,6 +2064,28 @@ body.is-mobile
   border-radius: 5px;
   line-height: 1.3;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* FIX (v0.1.133): quando o avatar segura um PLACEHOLDER de texto (logo
+   ausente), ele deixa de ser a caixa fixa 38×38 (que estourava com o texto) e
+   vira uma pílula auto-width — o próprio chip roxo é o visual. */
+.axxa-model-card-avatar {
+  overflow: hidden;
+}
+.axxa-model-card-avatar:has(.axxa-logo-ph) {
+  width: auto;
+  min-width: 38px;
+  max-width: 108px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  overflow: visible;
+}
+.axxa-model-card-avatar-sm:has(.axxa-logo-ph) {
+  min-width: 24px;
 }
 
 /* categoria com ícone (frente + modal) */
@@ -2091,7 +2113,13 @@ body.is-mobile
   backdrop-filter: blur(3px);
   animation: axxa-plus-fade 0.16s ease;
 }
+@property --axxa-glow {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
 .axxa-mc-modal {
+  position: relative;
   width: 100%;
   max-width: 420px;
   max-height: 80vh;
@@ -2104,6 +2132,67 @@ body.is-mobile
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  /* entrada com o MESMO motion do effort (bounce) — v0.1.133 */
+  animation: axxa-mc-pop 0.34s cubic-bezier(0.34, 1.25, 0.4, 1) both;
+}
+/* GLOW luminoso circulando a borda (conic girando, mascarado num anel fino) */
+.axxa-mc-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--axxa-glow),
+    transparent 0deg,
+    color-mix(in srgb, var(--interactive-accent) 92%, #ffffff) 38deg,
+    transparent 96deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: axxa-border-glow 3.2s linear infinite;
+}
+/* brilho varrendo (igual o fill do effort) */
+.axxa-mc-modal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 38%,
+    color-mix(in srgb, #ffffff 12%, transparent) 50%,
+    transparent 62%
+  );
+  transform: translateX(-120%);
+  animation: axxa-eff-shimmer 3.4s ease-in-out infinite;
+}
+@keyframes axxa-mc-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes axxa-border-glow {
+  to {
+    --axxa-glow: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .axxa-mc-modal,
+  .axxa-mc-modal::before,
+  .axxa-mc-modal::after {
+    animation: none;
+  }
 }
 .axxa-mc-modal-close,
 .axxa-mc-modal-close:hover,
