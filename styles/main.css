@@ -179,6 +179,56 @@ body.is-mobile
   align-items: baseline;
   gap: 8px;
   min-width: 0;
+  /* v0.1.145: header agora tem 3 filhos (avatar / título / ações). O título
+     cresce e empurra as ações pra direita; min-width:0 deixa o input truncar. */
+  flex: 1 1 auto;
+}
+
+/* Avatar (mock) à ESQUERDA do header — abre a gaveta de conversas. v0.1.145.
+   Círculo accent suave com ícone de usuário; sobe de tom no hover/active. */
+.axxa-header-avatar,
+.axxa-header-avatar:focus,
+.axxa-header-avatar:active {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid
+    color-mix(in srgb, var(--interactive-accent) 30%, transparent) !important;
+  background: color-mix(
+    in srgb,
+    var(--interactive-accent) 14%,
+    transparent
+  ) !important;
+  color: var(--text-accent);
+  cursor: pointer;
+  box-shadow: none !important;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+.axxa-header-avatar svg {
+  width: 17px;
+  height: 17px;
+}
+.axxa-header-avatar:hover {
+  background: color-mix(
+    in srgb,
+    var(--interactive-accent) 24%,
+    transparent
+  ) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--interactive-accent) 50%,
+    transparent
+  ) !important;
+}
+.axxa-header-avatar:active {
+  transform: scale(0.94);
 }
 
 .axxa-header-name {
@@ -7300,5 +7350,352 @@ body.is-mobile .axxa-wave-area {
       .axxa-dash .axxa-seg
     ) {
     animation: none;
+  }
+}
+
+/* =====================================================
+ * Sidebar — gaveta lateral ESQUERDA estilo Claude (v0.1.145)
+ * Abre pelo avatar do header. Scrim + painel que desliza da esquerda.
+ * Escopada na .axxa-root (position:relative), pinta SÓ a área do plugin.
+ * Sempre montada; entra/sai por classe pra animar os dois sentidos.
+ * ===================================================== */
+
+.axxa-sidebar-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  z-index: 1400;
+  transition: opacity 0.28s ease, visibility 0.28s;
+}
+.axxa-sidebar-scrim-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.axxa-sidebar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(86%, 320px);
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: var(--background-primary);
+  border-right: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+  box-shadow: 4px 0 24px -6px rgba(0, 0, 0, 0.28);
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
+  /* Bloqueia interação enquanto fechada (o transform já a tira da tela, mas
+     visibility evita focar elementos internos por teclado). */
+  visibility: hidden;
+}
+.axxa-sidebar-open {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+/* Cabeçalho: brand (avatar + nome) + fechar */
+.axxa-sidebar-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 14px 10px 16px;
+}
+.axxa-sidebar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+  min-width: 0;
+}
+.axxa-sidebar-avatar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid
+    color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  color: var(--text-accent);
+}
+.axxa-sidebar-avatar svg {
+  width: 17px;
+  height: 17px;
+}
+.axxa-sidebar-close,
+.axxa-sidebar-close:focus,
+.axxa-sidebar-close:active {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 999px;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.axxa-sidebar-close:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover) !important;
+}
+
+/* "Nova conversa" — botão accent suave, largura cheia */
+.axxa-sidebar-new,
+.axxa-sidebar-new:focus,
+.axxa-sidebar-new:active {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 12px 8px 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid
+    color-mix(in srgb, var(--interactive-accent) 28%, transparent) !important;
+  background: color-mix(
+    in srgb,
+    var(--interactive-accent) 12%,
+    transparent
+  ) !important;
+  box-shadow: none !important;
+  color: var(--text-accent);
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.axxa-sidebar-new svg {
+  width: 18px;
+  height: 18px;
+}
+.axxa-sidebar-new:hover {
+  background: color-mix(
+    in srgb,
+    var(--interactive-accent) 20%,
+    transparent
+  ) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--interactive-accent) 46%,
+    transparent
+  ) !important;
+}
+
+/* Busca */
+.axxa-sidebar-search {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 10px 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--background-modifier-form-field);
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+}
+.axxa-sidebar-search svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: var(--text-faint);
+}
+.axxa-sidebar-search input,
+.axxa-sidebar-search input:focus,
+.axxa-sidebar-search input:hover {
+  flex: 1 1 auto;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: auto !important;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-family: var(--font-text);
+}
+.axxa-sidebar-search input::placeholder {
+  color: var(--text-faint);
+}
+.axxa-sidebar-search-clear,
+.axxa-sidebar-search-clear:focus,
+.axxa-sidebar-search-clear:active {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.axxa-sidebar-search-clear svg {
+  width: 14px;
+  height: 14px;
+}
+.axxa-sidebar-search-clear:hover {
+  color: var(--text-normal);
+}
+
+/* Lista rolável */
+.axxa-sidebar-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 8px 8px 8px;
+}
+
+.axxa-sidebar-group {
+  margin-bottom: 6px;
+}
+.axxa-sidebar-group-head {
+  padding: 10px 8px 4px 8px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.axxa-sidebar-item,
+.axxa-sidebar-item:focus,
+.axxa-sidebar-item:active {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-normal);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.13s;
+}
+.axxa-sidebar-item:hover {
+  background: var(--background-modifier-hover) !important;
+}
+.axxa-sidebar-item-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+.axxa-sidebar-item-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-sidebar-item-date {
+  flex: 0 0 auto;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+
+/* Vazio */
+.axxa-sidebar-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 16px;
+  color: var(--text-faint);
+  text-align: center;
+}
+.axxa-sidebar-empty svg {
+  width: 26px;
+  height: 26px;
+  opacity: 0.7;
+}
+.axxa-sidebar-empty p {
+  margin: 0;
+  font-size: var(--font-ui-small);
+}
+
+/* Rodapé: Ver todas + Settings */
+.axxa-sidebar-foot {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-top: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+}
+.axxa-sidebar-foot-btn,
+.axxa-sidebar-foot-btn:focus,
+.axxa-sidebar-foot-btn:active {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+}
+.axxa-sidebar-foot-btn svg {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+}
+.axxa-sidebar-foot-btn:hover {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .axxa-sidebar,
+  .axxa-sidebar-scrim {
+    transition: none;
   }
 }

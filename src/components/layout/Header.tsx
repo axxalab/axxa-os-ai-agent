@@ -18,7 +18,8 @@ interface HeaderProps {
   chatTitle: string;
   onOpenSettings: () => void;
   onNewChat: () => void;
-  onOpenConversations: () => void;
+  /** Abre a GAVETA lateral (avatar à esquerda) com as conversas. v0.1.145 */
+  onOpenSidebar: () => void;
   /** Recebe novo título quando user edita inline. Chama mesmo se vazio? — não. */
   onRenameChat: (newTitle: string) => void;
   /** Toggle do campo de busca dentro da conversa atual. */
@@ -40,7 +41,7 @@ export function Header({
   chatTitle,
   onOpenSettings,
   onNewChat,
-  onOpenConversations,
+  onOpenSidebar,
   onRenameChat,
   onToggleSearch,
   searchActive,
@@ -117,6 +118,16 @@ export function Header({
 
   return (
     <header className="axxa-header">
+      {/* Avatar (mock) à ESQUERDA → abre a gaveta de conversas. v0.1.145 */}
+      <button
+        type="button"
+        className="axxa-header-avatar"
+        onClick={onOpenSidebar}
+        aria-label={t.header.conversations}
+        title={t.header.conversations}
+      >
+        <Icon name="user-round" />
+      </button>
       <div className="axxa-header-title">
         {hasChat ? (
           <input
@@ -170,15 +181,6 @@ export function Header({
           title={t.header.newChat}
         >
           <Icon name="message-square-plus" />
-        </button>
-        <button
-          type="button"
-          className="axxa-header-gear"
-          onClick={onOpenConversations}
-          aria-label={t.header.conversations}
-          title={t.header.conversations}
-        >
-          <Icon name="messages-square" />
         </button>
         <div className="axxa-header-more" ref={moreRef}>
           <button

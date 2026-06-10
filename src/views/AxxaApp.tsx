@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import type AxxaPlugin from "../main";
 import { Header } from "../components/layout/Header";
+import { Sidebar } from "../components/layout/Sidebar";
 import { PersonaModal } from "../components/chat/PersonaModal";
 import { ChatSearchModal } from "../components/chat/ChatSearchModal";
 import { ChatArea } from "../components/chat/ChatArea";
@@ -320,6 +321,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [composerInject, setComposerInject] = useState<
     { text: string; nonce: number } | undefined
   >(undefined);
+
+  // Gaveta lateral (avatar do header) com as conversas. v0.1.145
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const handlePromptStarter = (text: string) => {
     setComposerInject((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
   };
@@ -1930,7 +1934,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             chatTitle={currentChatTitle}
             onOpenSettings={handleOpenSettings}
             onNewChat={handleNewChat}
-            onOpenConversations={handleOpenConversations}
+            onOpenSidebar={() => setSidebarOpen(true)}
             onRenameChat={handleHeaderRename}
             onToggleSearch={handleOpenSearch}
             searchActive={false}
@@ -2167,6 +2171,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               }}
             />
           )}
+          {/* Gaveta lateral de conversas (avatar do header). v0.1.145 */}
+          <Sidebar
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            chats={allChats}
+            onLoadChat={handleLoadChat}
+            onNewChat={handleNewChat}
+            onOpenAll={handleOpenConversations}
+            onOpenSettings={handleOpenSettings}
+          />
         </div>
         </ChatActionsContext.Provider>
       </TranslationsContext.Provider>
