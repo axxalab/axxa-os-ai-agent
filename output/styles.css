@@ -2469,22 +2469,187 @@ body.theme-dark .axxa-recording-indicator {
   box-sizing: border-box;
 }
 
+/* Saudação viva v2 (v0.1.131) — glifo por hora + greeting; alinhada à esquerda
+   (não mais centralizada) pra abrir espaço pro launcher logo abaixo. */
 .axxa-starter-head {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-
 .axxa-starter-title {
-  margin: 0 0 4px 0;
-  font-size: 18px;
-  font-weight: 600;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 19px;
+  font-weight: 700;
   color: var(--text-normal);
 }
-
+.axxa-starter-title .axxa-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-accent);
+}
 .axxa-starter-subtitle {
   margin: 0;
   font-size: var(--font-ui-small);
   color: var(--text-muted);
   line-height: 1.4;
+}
+/* "Retomar: <último chat>" — botão sutil de continuidade */
+.axxa-starter-resume,
+.axxa-starter-resume:focus,
+.axxa-starter-resume:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.axxa-starter-resume {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
+}
+.axxa-starter-resume .axxa-icon svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  color: var(--text-accent);
+}
+.axxa-starter-resume-label {
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--text-accent);
+}
+.axxa-starter-resume-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.axxa-starter-resume:hover .axxa-starter-resume-title {
+  color: var(--text-normal);
+}
+
+/* ===== Launcher v2 — prompt starters que preenchem o composer ===== */
+.axxa-launcher {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.axxa-launch-chip,
+.axxa-launch-chip:focus,
+.axxa-launch-chip:active {
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none !important;
+}
+.axxa-launch-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+.axxa-launch-chip:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+.axxa-launch-chip:active {
+  transform: scale(0.99);
+}
+.axxa-launch-chip-txt {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.axxa-launch-chip .axxa-icon:first-child svg {
+  width: 15px;
+  height: 15px;
+  color: var(--text-accent);
+  flex: 0 0 auto;
+}
+.axxa-launch-chip .axxa-icon:last-child svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.4;
+  flex: 0 0 auto;
+}
+@supports (
+  (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))
+) {
+  .axxa-dash .axxa-launch-chip {
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    backdrop-filter: blur(10px) saturate(140%);
+  }
+}
+body.is-mobile .axxa-dash .axxa-launch-chip {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ===== Status compacto v2 — chips de 1 linha ===== */
+.axxa-statuschips {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.axxa-statuschip,
+.axxa-statuschip:focus,
+.axxa-statuschip:active {
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none !important;
+}
+.axxa-statuschip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 65%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.axxa-statuschip:hover {
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+.axxa-statuschip .axxa-icon svg {
+  width: 13px;
+  height: 13px;
+}
+.axxa-statuschip-v {
+  color: var(--text-normal);
+}
+
+/* recente em destaque (primeiro = "retomar") — barra de accent à esquerda
+   via inset shadow (respeita o border-radius do item) */
+.axxa-recent-resume {
+  box-shadow: inset 3px 0 0 var(--interactive-accent) !important;
 }
 
 .axxa-starter-section {

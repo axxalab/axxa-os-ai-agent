@@ -162,6 +162,15 @@ export const PT_BR = {
     modelFetching: "buscando…",
     modelFetchNone: "Sem specs nessa fonte ainda",
     modelFetchErr: "Falha ao buscar specs",
+    // StarterScreen v2 (v0.1.131)
+    resume: "Retomar",
+    providerAdd: "Adicionar",
+    launcherHint: "Comece por aqui",
+    starters: {
+      chat: ["Resuma este texto…", "Explique de forma simples:", "Faça um roteiro pra…"],
+      vaultQa: ["O que minhas notas dizem sobre…", "Conecte ideias entre…", "Resuma minhas notas de…"],
+      agent: ["Crie uma nota sobre…", "Organize a pasta…", "Liste pendências em…"],
+    },
   },
 
   modes: {

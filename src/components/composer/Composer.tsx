@@ -113,6 +113,9 @@ interface ComposerProps {
   /** Callback quando um áudio gravado (hold-to-record) deve virar anexo (chip).
    *  Recebe o path salvo no vault, a duração em ms e o alias legível ("Áudio 0:05"). */
   onAddAudio?: (path: string, durationMs: number, alias: string) => void;
+  /** Texto pra injetar no editor (prompt starters da StarterScreen). Cada
+   *  mudança de `nonce` reescreve o doc + foca. v0.1.131 */
+  injectText?: { text: string; nonce: number };
 }
 
 export type { PendingImage };
@@ -228,6 +231,7 @@ export function Composer({
   onRemoveAttachment,
   onPickNote,
   onAddAudio,
+  injectText,
 }: ComposerProps) {
   const t = useT();
   const app = useApp();
@@ -535,6 +539,19 @@ export function Composer({
       effects: placeholderCompartment.reconfigure(cmPlaceholder(placeholderText)),
     });
   }, [placeholderText, placeholderCompartment]);
+
+  // Prompt starters da StarterScreen → reescreve o doc + foca + cursor no fim.
+  // Dispara a cada novo `nonce`. v0.1.131
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !injectText) return;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: injectText.text },
+      selection: { anchor: injectText.text.length },
+    });
+    view.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [injectText?.nonce]);
 
   const handleSendClick = () => {
     if (streaming) return;

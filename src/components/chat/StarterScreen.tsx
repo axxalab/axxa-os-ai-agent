@@ -299,6 +299,7 @@ function ModelInfoCard({
   const [fetching, setFetching] = useState(false);
   const [, setBump] = useState(0);
   const fieldRef = useRef<HTMLDivElement>(null);
+  const autoFetchedRef = useRef<Set<string>>(new Set());
 
   const info = getModelFullInfo(provider, model);
   const { card, pricing, enriched } = info;
@@ -307,6 +308,27 @@ function ModelInfoCard({
   useEffect(() => {
     setPickerOpen(false);
     setFlipped(false);
+  }, [provider, model]);
+
+  // Auto-fetch PREGUIÇOSO (v0.1.131): na 1ª vez que um modelo sem cache
+  // aparece, busca as specs em background (silencioso, 1× por modelo/sessão).
+  useEffect(() => {
+    const key = provider + "::" + model;
+    if (enriched || autoFetchedRef.current.has(key)) return;
+    autoFetchedRef.current.add(key);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await plugin.fetchModelInfo(provider, model);
+        if (!cancelled && res) setBump((b) => b + 1);
+      } catch {
+        /* auto-fetch é silencioso — o botão manual reporta erros */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider, model]);
 
   // Fecha o dropdown ao clicar fora ou Escape.
@@ -719,6 +741,8 @@ interface StarterScreenProps {
   onOpenConversations: () => void;
   /** Clique nos cards de status (RAG / providers) — abre as Settings. */
   onOpenSettings: () => void;
+  /** Prompt starter clicado → injeta o texto no Composer + foca. v0.1.131 */
+  onPromptStarter: (text: string) => void;
 }
 
 // MODES_META — só os ícones e ids ficam aqui. Nomes/descrições vêm do i18n.
@@ -1393,6 +1417,114 @@ function EffortSlider({
   );
 }
 
+/** Ícone da saudação por hora (amanhecer / dia / noite). */
+function greetingIcon(hour: number): string {
+  if (hour >= 5 && hour < 12) return "sunrise";
+  if (hour >= 12 && hour < 18) return "sun";
+  return "moon";
+}
+
+/**
+ * Launcher v2 (v0.1.131) — prompt starters por MODO. Clicar preenche + foca o
+ * composer (via onPromptStarter). É a ação principal da home.
+ */
+function PromptStarters({
+  mode,
+  onPromptStarter,
+}: {
+  mode: string;
+  onPromptStarter: (text: string) => void;
+}) {
+  const t = useT();
+  const key =
+    mode === "vault-qa" ? "vaultQa" : mode === "agent" ? "agent" : "chat";
+  const items =
+    t.dashboard.starters[key as "chat" | "vaultQa" | "agent"] ??
+    t.dashboard.starters.chat;
+  return (
+    <div className="axxa-launcher" role="list">
+      {items.map((text, i) => (
+        <button
+          key={i}
+          type="button"
+          role="listitem"
+          className="axxa-launch-chip"
+          onClick={() => {
+            hapticTick();
+            onPromptStarter(text);
+          }}
+        >
+          <Icon name="sparkles" />
+          <span className="axxa-launch-chip-txt">{text}</span>
+          <Icon name="arrow-up-right" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Status compacto v2 (v0.1.131) — chips de UMA linha (índice RAG + providers)
+ * no lugar dos dois cards altos. Toque abre Settings.
+ */
+function StatusChips({
+  plugin,
+  onOpenSettings,
+}: {
+  plugin: AxxaPlugin;
+  onOpenSettings: () => void;
+}) {
+  const t = useT();
+  const idx = plugin.vectorIndex;
+  const hasIndex = !!idx && idx.size > 0;
+  const mismatch = hasIndex && idx!.model !== plugin.settings.ragEmbeddingModel;
+  const configured = PROVIDERS.filter((p) => providerConfigured(plugin, p.id));
+  const ragDot = mismatch
+    ? "axxa-dash-dot-warn"
+    : hasIndex
+      ? "axxa-dash-dot-ok"
+      : "axxa-dash-dot-off";
+  return (
+    <div className="axxa-statuschips">
+      <button
+        type="button"
+        className="axxa-statuschip"
+        onClick={() => {
+          hapticTick();
+          onOpenSettings();
+        }}
+        title={t.dashboard.ragTitle}
+      >
+        <span className={"axxa-dash-dot " + ragDot} />
+        <Icon name="library" />
+        <span className="axxa-statuschip-v">
+          {hasIndex ? formatCompact(idx!.size) : "off"}
+        </span>
+      </button>
+      <button
+        type="button"
+        className="axxa-statuschip"
+        onClick={() => {
+          hapticTick();
+          onOpenSettings();
+        }}
+        title={t.dashboard.providersTitle}
+      >
+        <span
+          className={
+            "axxa-dash-dot " +
+            (configured.length > 0 ? "axxa-dash-dot-ok" : "axxa-dash-dot-off")
+          }
+        />
+        <Icon name="plug-zap" />
+        <span className="axxa-statuschip-v">
+          {configured.length}/{PROVIDERS.length}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function StarterScreen({
   plugin,
   provider,
@@ -1410,6 +1542,7 @@ export function StarterScreen({
   onLoadChat,
   onOpenConversations,
   onOpenSettings,
+  onPromptStarter,
 }: StarterScreenProps) {
   const t = useT();
   const modelOptions = activeModels[provider] ?? [];
@@ -1417,7 +1550,23 @@ export function StarterScreen({
   // (Overview/usage saiu daqui — vive em Settings → Usage. v0.1.120)
   // (Effort agora é o componente EffortSlider, com estado próprio. v0.1.122)
   // (Picker de modelo agora vive DENTRO do ModelInfoCard. v0.1.125)
-  const greeting = greetingFor(new Date().getHours(), t);
+  const hour = new Date().getHours();
+  const greeting = greetingFor(hour, t);
+  const lastChat = recentChats[0];
+
+  // Provider segmented v2: só os CONFIGURADOS (+ garante o atual selecionado)
+  // e um item "+" no fim que abre o Settings. v0.1.131
+  const PROVIDER_ADD = "__add__";
+  const configuredProv = PROVIDERS.filter((p) =>
+    providerConfigured(plugin, p.id)
+  );
+  const provBase = configuredProv.some((p) => p.id === provider)
+    ? configuredProv
+    : [...PROVIDERS.filter((p) => p.id === provider), ...configuredProv];
+  const provItems = [
+    ...provBase.map((p) => ({ id: p.id, icon: p.icon, label: p.name })),
+    { id: PROVIDER_ADD, icon: "plus", label: t.dashboard.providerAdd },
+  ];
 
   // Resolve name/desc dos modos via i18n (chat / vault-qa / agent).
   const modeLabel = (id: string) => {
@@ -1437,10 +1586,34 @@ export function StarterScreen({
 
   return (
     <div className="axxa-starter axxa-dash">
+      {/* Saudação viva (v0.1.131) — glifo por hora + greeting + retomar último */}
       <div className="axxa-starter-head">
-        <h2 className="axxa-starter-title">{greeting} 👋</h2>
-        <p className="axxa-starter-subtitle">{t.dashboard.tagline}</p>
+        <h2 className="axxa-starter-title">
+          <Icon name={greetingIcon(hour)} />
+          {greeting}
+        </h2>
+        {lastChat ? (
+          <button
+            type="button"
+            className="axxa-starter-resume"
+            onClick={() => {
+              hapticTick();
+              onLoadChat(lastChat.id, lastChat.mode);
+            }}
+          >
+            <Icon name="rotate-ccw" />
+            <span className="axxa-starter-resume-label">
+              {t.dashboard.resume}:
+            </span>
+            <span className="axxa-starter-resume-title">{lastChat.title}</span>
+          </button>
+        ) : (
+          <p className="axxa-starter-subtitle">{t.dashboard.tagline}</p>
+        )}
       </div>
+
+      {/* Launcher — prompt starters por modo → preenchem o composer */}
+      <PromptStarters mode={mode} onPromptStarter={onPromptStarter} />
 
       {/* ===== Nova conversa — setup (provider / modo+modelo / effort) ===== */}
       <div className="axxa-dash-setup">
@@ -1492,13 +1665,14 @@ export function StarterScreen({
               </b>
             </span>
             <SegmentedRow
-              items={PROVIDERS.map((p) => ({
-                id: p.id,
-                icon: p.icon,
-                label: p.name,
-              }))}
+              items={provItems}
               activeId={provider}
               onSelect={(id) => {
+                if (id === PROVIDER_ADD) {
+                  hapticTick();
+                  onOpenSettings();
+                  return;
+                }
                 hapticTick();
                 onProviderChange(id);
               }}
@@ -1545,11 +1719,13 @@ export function StarterScreen({
             onAction={onOpenConversations}
           />
           <div className="axxa-recent-list">
-            {recentChats.map((c) => (
+            {recentChats.map((c, i) => (
               <button
                 key={c.id}
                 type="button"
-                className="axxa-recent-item"
+                className={
+                  "axxa-recent-item" + (i === 0 ? " axxa-recent-resume" : "")
+                }
                 data-mode={c.mode}
                 onClick={() => {
                   hapticTick();
@@ -1605,13 +1781,8 @@ export function StarterScreen({
         </div>
       )}
 
-      {/* ===== Status — índice RAG + providers configurados ===== */}
-      <div className="axxa-starter-section">
-        <SectionHead icon="activity" title={t.dashboard.statusLabel} />
-        <StatusCards plugin={plugin} onOpenSettings={onOpenSettings} />
-      </div>
-
-      <p className="axxa-starter-hint">{t.starter.hint}</p>
+      {/* ===== Status — chips compactos de 1 linha (v0.1.131) ===== */}
+      <StatusChips plugin={plugin} onOpenSettings={onOpenSettings} />
     </div>
   );
 }

@@ -312,6 +312,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // (listAllChats lê todos os .md de qualquer jeito; o limit só corta depois)
   // ============================================================
   const isEmpty = messages.length === 0;
+
+  // Prompt starters da StarterScreen v2 → injeta texto no Composer + foca.
+  // Cada starter bumpa o nonce pra reescrever o doc do editor. v0.1.131
+  const [composerInject, setComposerInject] = useState<
+    { text: string; nonce: number } | undefined
+  >(undefined);
+  const handlePromptStarter = (text: string) => {
+    setComposerInject((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
+  };
+
   useEffect(() => {
     if (!isEmpty) return;
     listAllChats(plugin.app, plugin.settings.chatsPath, 100_000)
@@ -1925,6 +1935,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onLoadChat={handleLoadChat}
             onOpenConversations={handleOpenConversations}
             onOpenSettings={handleOpenSettings}
+            onPromptStarter={handlePromptStarter}
             visibleChips={plugin.settings.listChips}
           />
         ) : (
@@ -1952,6 +1963,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onSend={handleSend}
             onStop={handleStop}
             onPlusClick={handlePlusClick}
+            injectText={composerInject}
             streaming={isLoading}
             providerName={activeProvider.name}
             modelName={activeModel}

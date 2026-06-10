@@ -162,6 +162,15 @@ export const EN_US: Translations = {
     modelFetching: "fetching…",
     modelFetchNone: "No specs from this source yet",
     modelFetchErr: "Failed to fetch specs",
+    // StarterScreen v2 (v0.1.131)
+    resume: "Resume",
+    providerAdd: "Add",
+    launcherHint: "Start here",
+    starters: {
+      chat: ["Summarize this text…", "Explain it simply:", "Draft a plan for…"],
+      vaultQa: ["What do my notes say about…", "Connect ideas across…", "Summarize my notes on…"],
+      agent: ["Create a note about…", "Organize the folder…", "List to-dos in…"],
+    },
   },
 
   modes: {
