@@ -12,7 +12,7 @@
 // padrão de IA (ChatGPT/Claude) — usuário quase sempre quer o código puro.
 
 import { useEffect, useRef } from "react";
-import { Component, MarkdownRenderer, setIcon } from "obsidian";
+import { type App, Component, MarkdownRenderer, setIcon } from "obsidian";
 import { useApp } from "./AppContext";
 
 interface MarkdownProps {
@@ -42,6 +42,7 @@ export function Markdown({ content }: MarkdownProps) {
     ).then(() => {
       if (cancelled) return;
       enhanceCodeBlocks(el);
+      enhanceInternalLinks(el, app);
     });
 
     return () => {
@@ -51,6 +52,30 @@ export function Markdown({ content }: MarkdownProps) {
   }, [app, content]);
 
   return <div ref={ref} className="axxa-markdown" />;
+}
+
+// Faz os [[wikilinks]] (e citações da IA) ABRIREM a nota no clique. O
+// MarkdownRenderer gera <a.internal-link data-href="...">, mas num view custom
+// o clique não é interceptado por default — aqui ligamos via openLinkText.
+// Ctrl/Cmd-clique abre numa nova aba. v0.1.137
+function enhanceInternalLinks(root: HTMLElement, app: App) {
+  const links = root.querySelectorAll<HTMLAnchorElement>("a.internal-link");
+  links.forEach((a) => {
+    if (a.dataset.axxaWired) return;
+    a.dataset.axxaWired = "1";
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const href =
+        a.getAttribute("data-href") ||
+        a.getAttribute("href") ||
+        a.textContent ||
+        "";
+      if (!href) return;
+      const newLeaf = e.ctrlKey || e.metaKey;
+      app.workspace.openLinkText(href, "", newLeaf);
+    });
+  });
 }
 
 // Anexa botão "copy" em cada <pre> do bloco renderizado.

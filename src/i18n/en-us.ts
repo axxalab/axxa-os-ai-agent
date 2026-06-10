@@ -275,8 +275,11 @@ export const EN_US: Translations = {
       "Use Markdown when it makes sense.",
     vaultQaSuffix:
       "\n\nThe user is in Vault Q&A mode — below are relevant notes " +
-      "extracted from their vault. Use them as the main source to answer, " +
-      "and cite the note title when referencing.\n\nNotes:\n\n",
+      "extracted from their vault. Use them as the main source to answer. " +
+      "ALWAYS cite the notes you used inline, in the [[Title]] format, using " +
+      "EXACTLY the title shown in each block's ### header (the text inside " +
+      "[[ ]]). Do not invent notes that are not listed below. When an answer " +
+      "comes from a specific note, cite it right after the sentence.\n\nNotes:\n\n",
   },
 
   settings: {

@@ -277,8 +277,11 @@ export const PT_BR = {
       "Quando fizer sentido, use Markdown.",
     vaultQaSuffix:
       "\n\nO usuário está no modo Vault Q&A — abaixo seguem notas relevantes " +
-      "extraídas do vault dele. Use elas como fonte principal pra responder, " +
-      "e cite o título da nota quando referenciar.\n\nNotas:\n\n",
+      "extraídas do vault dele. Use elas como fonte principal pra responder. " +
+      "SEMPRE cite inline as notas que você usou, no formato [[Título]], usando " +
+      "EXATAMENTE o título que aparece no cabeçalho ### de cada bloco (o que está " +
+      "entre [[ ]]). Não invente notas que não estão abaixo. Se a resposta vier " +
+      "de uma nota específica, cite-a logo após a frase.\n\nNotas:\n\n",
   },
 
   settings: {

@@ -458,8 +458,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           topK,
         });
         if (hits.length > 0) {
+          // Cabeçalho com o título CITÁVEL ([[basename]]) + path de referência,
+          // pra IA citar a fonte exata e o link abrir a nota no clique. v0.1.137
           vaultContextBlock = hits
-            .map((h) => `### ${h.path}\n\n${h.text}`)
+            .map((h) => {
+              const base = h.path.replace(/\.md$/i, "").split("/").pop() ?? h.path;
+              return `### [[${base}]]\n_(${h.path})_\n\n${h.text}`;
+            })
             .join("\n\n---\n\n");
           updateActivity(searchActivityId, {
             phase: "done",
