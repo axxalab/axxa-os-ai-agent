@@ -9,6 +9,12 @@ import { VectorIndex, loadIndex } from "./rag/vectorIndex";
 import { indexVault } from "./rag/indexer";
 import { registerBrandIcons } from "./components/_shared/brandIcons";
 import { registerBrandLogos } from "./components/_shared/brandLogos";
+import {
+  hydrateModelInfoCache,
+  getModelInfoCache,
+  fetchAndCacheModelInfo,
+  type EnrichedModelInfo,
+} from "./providers/modelInfoStore";
 import type {
   EffortConfig,
   EffortLevel,
@@ -190,6 +196,50 @@ export default class AxxaPlugin extends Plugin {
     return () => this.settingsListeners.delete(cb);
   }
 
+  /** Caminho do cache de specs dos modelos (JSON no diretório do plugin). */
+  private modelInfoCachePath(): string {
+    const dir = this.manifest.dir ?? ".obsidian/plugins/axxa-os-ai-agent";
+    return `${dir}/modelInfoCache.json`;
+  }
+
+  /** Lê o cache de specs do disco e hidrata o store em memória. v0.1.130 */
+  private async loadModelInfoCache(): Promise<void> {
+    try {
+      const path = this.modelInfoCachePath();
+      if (await this.app.vault.adapter.exists(path)) {
+        const raw = await this.app.vault.adapter.read(path);
+        hydrateModelInfoCache(JSON.parse(raw));
+      }
+    } catch (err) {
+      console.error("[axxa] falha ao carregar modelInfoCache:", err);
+    }
+  }
+
+  /** Persiste o cache de specs no disco (chamado após Fetch info). */
+  async saveModelInfoCache(): Promise<void> {
+    try {
+      await this.app.vault.adapter.write(
+        this.modelInfoCachePath(),
+        JSON.stringify(getModelInfoCache(), null, 2)
+      );
+    } catch (err) {
+      console.error("[axxa] falha ao salvar modelInfoCache:", err);
+    }
+  }
+
+  /**
+   * Busca specs do modelo via OpenRouter (Fetch info) e persiste no cache.
+   * Retorna a info enriquecida ou null se não houve correspondência.
+   */
+  async fetchModelInfo(
+    provider: string,
+    model: string
+  ): Promise<EnrichedModelInfo | null> {
+    const info = await fetchAndCacheModelInfo(provider, model);
+    if (info) await this.saveModelInfoCache();
+    return info;
+  }
+
   async onload() {
     await this.loadSettings();
 
@@ -198,6 +248,9 @@ export default class AxxaPlugin extends Plugin {
     registerBrandIcons();
     // Logos de marca coloridos (providers + modelos) — <Icon name="logo-openai" />
     registerBrandLogos();
+
+    // Cache de specs dos modelos (Fetch info / OpenRouter) — hidrata o store.
+    await this.loadModelInfoCache();
 
     // Carrega índice RAG do disco se já existe. Falhas são silenciosas —
     // só significa que o user ainda não rodou "Indexar vault".

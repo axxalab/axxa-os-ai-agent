@@ -1798,64 +1798,272 @@ body.is-mobile
 }
 
 /* Model card (StarterScreen, abaixo do <select>) — descrição + caps + cost */
-/* ===== Model FLIP card (v0.1.122) — tamanho FIXO, frente/verso ===== */
-/* Card de info do modelo (v0.1.125) — card ÚNICO e estático. Info em cima +
-   ações DENTRO (Ver mais + toggle de modelo). O dropdown do toggle quebra PRA
-   FORA do card (overflow visível). */
+/* ===== Model card v2 (v0.1.130) — ALTURA FIXA + flip + expand + fetch =====
+   Frente (logo/desc/pills) ↔ verso (specs + Fetch info). O TOGGLE full-width
+   fica embaixo, FORA do flipzone (não vira), e seu dropdown quebra pra fora. */
 .axxa-mc {
   position: relative;
   margin-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 8px;
+  height: 232px; /* altura FIXA — nunca quebra os outros elementos */
   padding: 12px 14px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 14px;
-  /* visível: o dropdown do toggle precisa vazar pra fora do card */
-  overflow: visible;
+  overflow: visible; /* dropdown do toggle vaza pra fora */
 }
-/* Linha de ações dentro do card */
-.axxa-mc-actions {
-  display: flex;
+/* EXPAND — canto superior direito, sobre as faces */
+.axxa-mc-expand,
+.axxa-mc-expand:hover,
+.axxa-mc-expand:focus,
+.axxa-mc-expand:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.axxa-mc-expand {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 2px;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
 }
-.axxa-mc-actions .axxa-model-field {
+.axxa-mc-expand:hover {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal);
+}
+.axxa-mc-expand .axxa-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* zona que vira (flip) — preenche o espaço acima do toggle */
+.axxa-mc-flipzone {
+  position: relative;
   flex: 1 1 auto;
-  min-width: 0;
+  min-height: 0;
+  perspective: 1200px;
 }
-/* "Ver mais" — pílula accent, abre o modal */
-.axxa-mc-more,
-.axxa-mc-more:focus,
-.axxa-mc-more:active {
+.axxa-mc-flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.axxa-mc-flipped .axxa-mc-flip {
+  transform: rotateY(180deg);
+}
+
+/* faces (botões com reset) */
+.axxa-mc-face,
+.axxa-mc-face:focus,
+.axxa-mc-face:active {
   appearance: none;
   -webkit-appearance: none;
   box-shadow: none !important;
 }
-.axxa-mc-more {
-  flex: 0 0 auto;
+.axxa-mc-face {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.axxa-mc-front {
+  padding-right: 28px; /* não corre por baixo do ícone de expand */
+}
+.axxa-mc-back {
+  transform: rotateY(180deg);
+}
+.axxa-mc-desc {
+  margin: 0;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-normal);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.axxa-mc-fliphint {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.axxa-mc-fliphint .axxa-icon svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* verso: área de specs scrollável + botão fetch fixo embaixo */
+.axxa-mc-back-tap,
+.axxa-mc-back-tap:focus,
+.axxa-mc-back-tap:active {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.axxa-mc-back-tap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.axxa-mc-back-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-normal);
+  font-weight: 700;
+}
+.axxa-mc-back-head .axxa-icon svg {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  opacity: 0.5;
+}
+.axxa-model-card-avatar-sm {
+  width: 24px;
+  height: 24px;
+}
+.axxa-model-card-avatar-sm .axxa-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* specs (verso + modal) */
+.axxa-mc-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.axxa-mc-spec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+}
+.axxa-mc-spec-k {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 8px 11px;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-size: 9.5px;
+  font-weight: 600;
+}
+.axxa-mc-spec-k .axxa-icon svg {
+  width: 12px;
+  height: 12px;
+}
+.axxa-mc-spec-v {
+  color: var(--text-normal);
+  font-weight: 600;
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.axxa-mc-spec-stamp .axxa-mc-spec-v {
+  color: var(--text-faint);
+  font-weight: 500;
+}
+.axxa-mc-specs-empty {
+  margin: 0;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* botão Fetch info */
+.axxa-mc-fetch,
+.axxa-mc-fetch:focus,
+.axxa-mc-fetch:active {
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none !important;
+}
+.axxa-mc-fetch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 8px 12px;
   border-radius: 12px;
   font-size: 11px;
   font-weight: 600;
-  white-space: nowrap;
   color: var(--text-on-accent);
   background: var(--interactive-accent) !important;
   border: none;
   cursor: pointer;
 }
-.axxa-mc-more .axxa-icon svg {
+.axxa-mc-fetch:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.axxa-mc-fetch .axxa-icon svg {
   width: 13px;
   height: 13px;
 }
-/* toggle de modelo dentro do card — herda do .axxa-model-trigger; ajusta raio */
+
+/* toggle full-width na última linha (fora do flipzone) */
+.axxa-mc-toggle {
+  position: relative;
+  flex: 0 0 auto;
+}
 .axxa-mc-trigger {
   border-radius: 12px;
+}
+
+/* placeholder ROXO VIVO de logo ausente (pro dev ver qual logo falta) */
+.axxa-logo-ph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #ffffff;
+  background: #8b5cf6;
+  border-radius: 5px;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 /* categoria com ícone (frente + modal) */

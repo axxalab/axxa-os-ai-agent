@@ -42,10 +42,13 @@ import {
 } from "../../providers/modelCapabilities";
 import {
   getModelFullInfo,
+  localizedDescription,
   groupModelsByCategory,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
+  type ModelFullInfo,
 } from "../../providers/modelDescriptions";
+import { hasBrandLogo } from "../_shared/brandLogos";
 import { formatUsd } from "../../usage/pricing";
 
 // Cores DS pra badges de capacidade — cada flag tem uma cor semântica fixa.
@@ -142,36 +145,171 @@ function categoryIcon(cat: string): string {
 }
 
 /**
- * Card de info do modelo (v0.1.125) — card ÚNICO e estático. Mostra logo +
- * nome + categoria + tier + caps + stats e, DENTRO dele, as ações: "Ver mais"
- * (abre o modal com o card completo) + o TOGGLE de modelo. A lista suspensa do
- * toggle quebra PRA FORA do card (overflow visível); só o modelo selecionado
- * fica visível no trigger. Dados vêm do registro local (modelDescriptions).
+ * Logo do VENDOR do modelo — SEMPRE o original (ex: gpt no OpenRouter mostra
+ * OpenAI, não OpenRouter). Se a gente ainda NÃO tem o logo do vendor, cai num
+ * placeholder de TEXTO em roxo vivo (pro dev ver e saber qual logo criar). v0.1.130
+ */
+function ModelVendorLogo({
+  provider,
+  model,
+}: {
+  provider: string;
+  model: string;
+}) {
+  const id = (model || "").toLowerCase();
+  const tail = id.includes("/") ? id.slice(id.lastIndexOf("/") + 1) : id;
+  let logoId: string | null = null;
+  for (const [re, logo] of MODEL_LOGO_RULES) {
+    if (re.test(tail) || re.test(id)) {
+      logoId = hasBrandLogo(logo) ? logo : null;
+      break;
+    }
+  }
+  if (logoId) return <Icon name={logoId} />;
+  // placeholder roxo vivo com o vendor detectado
+  const raw = model && model.includes("/")
+    ? model.slice(0, model.indexOf("/"))
+    : (model || provider).split(/[-.\s:]/)[0];
+  const label = (raw || provider).toUpperCase().slice(0, 10);
+  return (
+    <span className="axxa-logo-ph" title={`logo ausente: ${label}`}>
+      {label}
+    </span>
+  );
+}
+
+// Metadados das pills informativas do modelo (ícone + cor por id).
+const PILL_META: Record<string, { label: string; icon: string; color: string }> = {
+  "img-gen": { label: "img-gen", icon: "image-plus", color: CAP_COLORS["img-gen"] },
+  "vid-gen": { label: "vid-gen", icon: "video", color: CAP_COLORS["video-gen"] },
+  "audio-gen": { label: "audio-gen", icon: "volume-2", color: CAP_COLORS["audio-gen"] },
+  multimodal: { label: "multimodal", icon: "layers", color: "var(--color-purple, #a370f7)" },
+  vision: { label: "vision", icon: "image", color: CAP_COLORS.vision },
+  tools: { label: "tool call", icon: "wrench", color: CAP_COLORS.tools },
+  stream: { label: "stream", icon: "zap", color: CAP_COLORS.stream },
+  paid: { label: "paid", icon: "circle-dollar-sign", color: "var(--color-orange, #ec7b3e)" },
+  free: { label: "free", icon: "gift", color: CAP_COLORS.free },
+};
+
+/** Lista de pills (ids) a partir das caps + pricing + specs enriquecidas. */
+function cardPills(info: ModelFullInfo): string[] {
+  const { caps, pricing, enriched } = info;
+  const ids: string[] = [];
+  if (caps.imageGen) ids.push("img-gen");
+  if (caps.videoGen) ids.push("vid-gen");
+  if (caps.audioGen) ids.push("audio-gen");
+  const multi =
+    (enriched?.modalities?.filter((m) => m && m !== "text").length ?? 0) > 0;
+  if (multi) ids.push("multimodal");
+  else if (caps.vision) ids.push("vision");
+  if (caps.tools) ids.push("tools");
+  if (caps.streaming) ids.push("stream");
+  const tier = enriched?.tier ?? pricing.tier;
+  if (tier === "free" || caps.free) ids.push("free");
+  else if (tier === "paid") ids.push("paid");
+  return ids;
+}
+
+function Pills({ ids }: { ids: string[] }) {
+  if (ids.length === 0) return null;
+  return (
+    <div className="axxa-model-caps">
+      {ids.map((id) => {
+        const m = PILL_META[id];
+        if (!m) return null;
+        return (
+          <InfoChip key={id} icon={m.icon} color={m.color}>
+            {m.label}
+          </InfoChip>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Specs técnicas (verso do flip + modal): contexto, preço, modalidades, etc. */
+function ModelSpecs({ info }: { info: ModelFullInfo }) {
+  const { card, pricing, enriched } = info;
+  const ctx = enriched?.contextWindow ?? card.contextWindow;
+  const inP = enriched?.inputPerMillion ?? pricing.inputPerMillion;
+  const outP = enriched?.outputPerMillion ?? pricing.outputPerMillion;
+  const modal = enriched?.modalities?.filter(Boolean) ?? [];
+  const rows: { icon: string; k: string; v: string }[] = [];
+  if (ctx != null) rows.push({ icon: "layers", k: "context", v: `${formatTokens(ctx)} tok` });
+  if (inP != null) rows.push({ icon: "arrow-down-to-line", k: "input", v: `${formatUsd(inP)} / 1M` });
+  if (outP != null) rows.push({ icon: "arrow-up-from-line", k: "output", v: `${formatUsd(outP)} / 1M` });
+  if (enriched?.imagePerCall != null) rows.push({ icon: "image", k: "image", v: `${formatUsd(enriched.imagePerCall)} / img` });
+  if (modal.length) rows.push({ icon: "shapes", k: "modalities", v: modal.join(", ") });
+  if (enriched?.supportsTools != null) rows.push({ icon: "wrench", k: "tools", v: enriched.supportsTools ? "yes" : "no" });
+  const stamp = enriched?.fetchedAt?.slice(0, 10) ?? pricing.asOf;
+  return (
+    <div className="axxa-mc-specs">
+      {rows.length === 0 ? (
+        <p className="axxa-mc-specs-empty">{card.description}</p>
+      ) : (
+        rows.map((r) => (
+          <div key={r.k} className="axxa-mc-spec">
+            <span className="axxa-mc-spec-k">
+              <Icon name={r.icon} />
+              {r.k}
+            </span>
+            <span className="axxa-mc-spec-v">{r.v}</span>
+          </div>
+        ))
+      )}
+      {stamp && (
+        <div className="axxa-mc-spec axxa-mc-spec-stamp">
+          <span className="axxa-mc-spec-k">
+            <Icon name="calendar" />
+            {enriched?.source ?? "local"}
+          </span>
+          <span className="axxa-mc-spec-v">{stamp}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Card de info do modelo (v0.1.130) — ALTURA FIXA (não quebra o layout).
+ *   • frente: logo do vendor (ou placeholder roxo) + nome + categoria + tier +
+ *     descrição (pt/en) + pills; última linha = TOGGLE de modelo full-width
+ *     (dropdown quebra pra fora);
+ *   • verso (flip ao tocar): specs técnicas + botão "Fetch info" (OpenRouter);
+ *   • ícone de EXPAND no canto superior direito → modal completo (com collapse).
  */
 function ModelInfoCard({
   provider,
   model,
   modelOptions,
   onModelChange,
+  plugin,
 }: {
   provider: string;
   model: string;
   modelOptions: string[];
   onModelChange: (model: string) => void;
+  plugin: AxxaPlugin;
 }) {
   const t = useT();
+  const lang = plugin.settings.language;
+  const [flipped, setFlipped] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [, setBump] = useState(0);
   const fieldRef = useRef<HTMLDivElement>(null);
-  const info = getModelFullInfo(provider, model);
-  const { card, caps, pricing } = info;
 
-  // Fecha o dropdown quando o modelo/provider muda.
+  const info = getModelFullInfo(provider, model);
+  const { card, pricing, enriched } = info;
+
+  // Reset ao trocar modelo/provider.
   useEffect(() => {
     setPickerOpen(false);
+    setFlipped(false);
   }, [provider, model]);
 
-  // Fecha o dropdown ao clicar fora ou apertar Escape.
+  // Fecha o dropdown ao clicar fora ou Escape.
   useEffect(() => {
     if (!pickerOpen) return;
     const onDoc = (e: MouseEvent) => {
@@ -190,113 +328,149 @@ function ModelInfoCard({
     };
   }, [pickerOpen]);
 
-  const tier = pricing.tier ?? "unknown";
-  const costLine = buildCostLine(pricing);
-  const badges = capabilityBadges(caps).filter((b) => b.id !== "free");
-  const logo = modelLogo(provider, model);
+  const tier = enriched?.tier ?? pricing.tier ?? "unknown";
   const tierText = tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?";
+  const pills = cardPills(info);
+  const desc = localizedDescription(info, model, lang);
   const opts = modelOptions.includes(model)
     ? modelOptions
     : [model, ...modelOptions];
 
+  const doFetch = async () => {
+    if (fetching) return;
+    setFetching(true);
+    hapticTick();
+    try {
+      const res = await plugin.fetchModelInfo(provider, model);
+      if (!res) new Notice(t.dashboard.modelFetchNone);
+      setBump((b) => b + 1);
+    } catch {
+      new Notice(t.dashboard.modelFetchErr);
+    } finally {
+      setFetching(false);
+    }
+  };
+
   return (
     <>
-      <div className="axxa-mc">
-        <div className="axxa-model-card-top">
-          <span className="axxa-model-card-avatar">
-            <Icon name={logo} />
-          </span>
-          <span className="axxa-model-card-id">
-            <span className="axxa-model-card-name">{model}</span>
-            <span className="axxa-model-card-cat">
-              <Icon name={categoryIcon(card.category)} />
-              {CATEGORY_LABELS[card.category]}
-            </span>
-          </span>
-          <span className={"axxa-model-tier axxa-model-tier-" + tier}>
-            {tierText}
-          </span>
-        </div>
+      <div className={"axxa-mc" + (flipped ? " axxa-mc-flipped" : "")}>
+        {/* EXPAND — canto superior direito, abre o modal completo */}
+        <button
+          type="button"
+          className="axxa-mc-expand"
+          aria-label={t.dashboard.modelExpand}
+          onClick={() => {
+            hapticTick();
+            setModalOpen(true);
+          }}
+        >
+          <Icon name="maximize-2" />
+        </button>
 
-        {badges.length > 0 && (
-          <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
-            {badges.map((b) => (
-              <InfoChip
-                key={b.id}
-                icon={b.icon}
-                color={CAP_COLORS[b.id]}
-                title={modelCapTooltip(b.id, t)}
-              >
-                {b.label}
-              </InfoChip>
-            ))}
-          </div>
-        )}
-
-        <div className="axxa-model-stats">
-          {card.contextWindow != null && (
-            <span className="axxa-model-stat" title="Context window">
-              <Icon name="layers" />
-              {formatContextWindow(card.contextWindow)} ctx
-            </span>
-          )}
-          {costLine && (
-            <span className="axxa-model-stat axxa-model-stat-cost" title="Preço">
-              <Icon name="circle-dollar-sign" />
-              {costLine}
-            </span>
-          )}
-        </div>
-
-        {/* Ações DENTRO do card: "Ver mais" (modal) + toggle de modelo.
-            O dropdown quebra pra fora (overflow visível). v0.1.125 */}
-        <div className="axxa-mc-actions">
-          <button
-            type="button"
-            className="axxa-mc-more"
-            onClick={() => {
-              hapticTick();
-              setModalOpen(true);
-            }}
-          >
-            <Icon name="maximize-2" />
-            {t.dashboard.modelSeeMore}
-          </button>
-          <div className="axxa-model-field" ref={fieldRef}>
+        {/* Zona que vira (flip) — fica ACIMA do toggle (que não vira) */}
+        <div className="axxa-mc-flipzone">
+          <div className="axxa-mc-flip">
+            {/* FRENTE */}
             <button
               type="button"
-              className={
-                "axxa-model-trigger axxa-mc-trigger" +
-                (pickerOpen ? " axxa-model-trigger-open" : "")
-              }
+              className="axxa-mc-face axxa-mc-front"
+              aria-label={t.dashboard.modelSpecs}
               onClick={() => {
                 hapticTick();
-                setPickerOpen((o) => !o);
+                setFlipped(true);
               }}
-              aria-haspopup="listbox"
-              aria-expanded={pickerOpen}
             >
-              <span className="axxa-model-trigger-logo">
-                <Icon name={logo} />
-              </span>
-              <span className="axxa-model-trigger-name">{model}</span>
-              <span className="axxa-model-trigger-chevron">
-                <Icon name="chevron-down" />
+              <div className="axxa-model-card-top">
+                <span className="axxa-model-card-avatar">
+                  <ModelVendorLogo provider={provider} model={model} />
+                </span>
+                <span className="axxa-model-card-id">
+                  <span className="axxa-model-card-name">{model}</span>
+                  <span className="axxa-model-card-cat">
+                    <Icon name={categoryIcon(card.category)} />
+                    {CATEGORY_LABELS[card.category]}
+                  </span>
+                </span>
+                <span className={"axxa-model-tier axxa-model-tier-" + tier}>
+                  {tierText}
+                </span>
+              </div>
+              <p className="axxa-mc-desc">{desc}</p>
+              <Pills ids={pills} />
+              <span className="axxa-mc-fliphint">
+                <Icon name="rotate-cw" />
+                {t.dashboard.modelSpecs}
               </span>
             </button>
-            {pickerOpen && (
-              <ModelDropdown
-                provider={provider}
-                model={model}
-                modelOptions={opts}
-                onSelect={(m) => {
+
+            {/* VERSO — specs + fetch */}
+            <div className="axxa-mc-face axxa-mc-back">
+              <button
+                type="button"
+                className="axxa-mc-back-tap"
+                aria-label={t.dashboard.modelFlipBack}
+                onClick={() => {
                   hapticTick();
-                  onModelChange(m);
-                  setPickerOpen(false);
+                  setFlipped(false);
                 }}
-              />
-            )}
+              >
+                <div className="axxa-mc-back-head">
+                  <span className="axxa-model-card-avatar axxa-model-card-avatar-sm">
+                    <ModelVendorLogo provider={provider} model={model} />
+                  </span>
+                  <span className="axxa-model-card-name">{model}</span>
+                  <Icon name="rotate-ccw" />
+                </div>
+                <ModelSpecs info={info} />
+              </button>
+              <button
+                type="button"
+                className="axxa-mc-fetch"
+                onClick={doFetch}
+                disabled={fetching}
+              >
+                <Icon name={fetching ? "loader-2" : "download-cloud"} />
+                {fetching ? t.dashboard.modelFetching : t.dashboard.modelFetch}
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* TOGGLE — última linha, FULL WIDTH (não vira no flip) */}
+        <div className="axxa-model-field axxa-mc-toggle" ref={fieldRef}>
+          <button
+            type="button"
+            className={
+              "axxa-model-trigger axxa-mc-trigger" +
+              (pickerOpen ? " axxa-model-trigger-open" : "")
+            }
+            onClick={() => {
+              hapticTick();
+              setPickerOpen((o) => !o);
+            }}
+            aria-haspopup="listbox"
+            aria-expanded={pickerOpen}
+          >
+            <span className="axxa-model-trigger-logo">
+              <ModelVendorLogo provider={provider} model={model} />
+            </span>
+            <span className="axxa-model-trigger-name">{model}</span>
+            <span className="axxa-model-trigger-chevron">
+              <Icon name="chevron-down" />
+            </span>
+          </button>
+          {pickerOpen && (
+            <ModelDropdown
+              provider={provider}
+              model={model}
+              modelOptions={opts}
+              onSelect={(m) => {
+                hapticTick();
+                onModelChange(m);
+                setPickerOpen(false);
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -304,6 +478,7 @@ function ModelInfoCard({
         <ModelCardModal
           provider={provider}
           model={model}
+          plugin={plugin}
           onClose={() => setModalOpen(false)}
         />
       )}
@@ -312,25 +487,29 @@ function ModelInfoCard({
 }
 
 /**
- * Modal com o card completo do modelo (v0.1.122) — todos os campos sem corte.
- * Portalado pro <body> (escapa stacking/overflow), fecha no overlay ou Escape.
+ * Modal com o card COMPLETO (v0.1.130) — expand. Portalado pro <body>, fecha
+ * no overlay/Escape ou no ícone de COLLAPSE. Tem o botão Fetch info também.
  */
 function ModelCardModal({
   provider,
   model,
+  plugin,
   onClose,
 }: {
   provider: string;
   model: string;
+  plugin: AxxaPlugin;
   onClose: () => void;
 }) {
   const t = useT();
+  const lang = plugin.settings.language;
+  const [fetching, setFetching] = useState(false);
+  const [, setBump] = useState(0);
   const info = getModelFullInfo(provider, model);
-  const { card, caps, pricing } = info;
-  const tier = pricing.tier ?? "unknown";
-  const costLine = buildCostLine(pricing);
-  const badges = capabilityBadges(caps).filter((b) => b.id !== "free");
-  const logo = modelLogo(provider, model);
+  const { card, pricing, enriched } = info;
+  const tier = enriched?.tier ?? pricing.tier ?? "unknown";
+  const pills = cardPills(info);
+  const desc = localizedDescription(info, model, lang);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -339,6 +518,21 @@ function ModelCardModal({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  const doFetch = async () => {
+    if (fetching) return;
+    setFetching(true);
+    hapticTick();
+    try {
+      const res = await plugin.fetchModelInfo(provider, model);
+      if (!res) new Notice(t.dashboard.modelFetchNone);
+      setBump((b) => b + 1);
+    } catch {
+      new Notice(t.dashboard.modelFetchErr);
+    } finally {
+      setFetching(false);
+    }
+  };
 
   return createPortal(
     <div
@@ -350,7 +544,7 @@ function ModelCardModal({
       <div className="axxa-mc-modal" onClick={(e) => e.stopPropagation()}>
         <div className="axxa-model-card-top">
           <span className="axxa-model-card-avatar">
-            <Icon name={logo} />
+            <ModelVendorLogo provider={provider} model={model} />
           </span>
           <span className="axxa-model-card-id">
             <span className="axxa-model-card-name">{model}</span>
@@ -366,41 +560,13 @@ function ModelCardModal({
             type="button"
             className="axxa-mc-modal-close"
             onClick={onClose}
-            aria-label="×"
+            aria-label={t.dashboard.modelCollapse}
           >
-            <Icon name="x" />
+            <Icon name="minimize-2" />
           </button>
         </div>
 
-        {badges.length > 0 && (
-          <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
-            {badges.map((b) => (
-              <InfoChip
-                key={b.id}
-                icon={b.icon}
-                color={CAP_COLORS[b.id]}
-                title={modelCapTooltip(b.id, t)}
-              >
-                {b.label}
-              </InfoChip>
-            ))}
-          </div>
-        )}
-
-        <div className="axxa-model-stats">
-          {card.contextWindow != null && (
-            <span className="axxa-model-stat">
-              <Icon name="layers" />
-              {formatContextWindow(card.contextWindow)} ctx
-            </span>
-          )}
-          {costLine && (
-            <span className="axxa-model-stat axxa-model-stat-cost">
-              <Icon name="circle-dollar-sign" />
-              {costLine}
-            </span>
-          )}
-        </div>
+        <Pills ids={pills} />
 
         {card.goodFor && (
           <div className="axxa-model-card-goodfor">
@@ -408,15 +574,19 @@ function ModelCardModal({
             <span>{card.goodFor}</span>
           </div>
         )}
-        {card.description && (
-          <p className="axxa-mc-modal-desc">{card.description}</p>
-        )}
-        {pricing.asOf && (
-          <div className="axxa-mc-modal-asof">
-            <Icon name="calendar" />
-            {pricing.asOf}
-          </div>
-        )}
+        {desc && <p className="axxa-mc-modal-desc">{desc}</p>}
+
+        <ModelSpecs info={info} />
+
+        <button
+          type="button"
+          className="axxa-mc-fetch"
+          onClick={doFetch}
+          disabled={fetching}
+        >
+          <Icon name={fetching ? "loader-2" : "download-cloud"} />
+          {fetching ? t.dashboard.modelFetching : t.dashboard.modelFetch}
+        </button>
       </div>
     </div>,
     document.body
@@ -1360,6 +1530,7 @@ export function StarterScreen({
           model={model}
           modelOptions={modelOptions}
           onModelChange={onModelChange}
+          plugin={plugin}
         />
       </div>
       </div>

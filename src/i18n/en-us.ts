@@ -153,6 +153,15 @@ export const EN_US: Translations = {
     // Model card (v0.1.122)
     modelSeeMore: "See more",
     modelFlipHint: "tap for details",
+    // Model card v2 (v0.1.130)
+    modelExpand: "Expand",
+    modelCollapse: "Collapse",
+    modelSpecs: "tap for specs",
+    modelFlipBack: "back",
+    modelFetch: "Fetch specs",
+    modelFetching: "fetching…",
+    modelFetchNone: "No specs from this source yet",
+    modelFetchErr: "Failed to fetch specs",
   },
 
   modes: {

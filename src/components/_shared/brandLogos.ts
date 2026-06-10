@@ -40,3 +40,9 @@ export function registerBrandLogos(): void {
     addIcon(id, svg);
   }
 }
+
+/** True se o logo de marca existe (registrado). Usado pra cair num placeholder
+ *  de texto roxo quando a gente ainda NÃO tem o logo daquele vendor. v0.1.130 */
+export function hasBrandLogo(id: string | null | undefined): boolean {
+  return !!id && Object.prototype.hasOwnProperty.call(BRAND_LOGOS, id);
+}

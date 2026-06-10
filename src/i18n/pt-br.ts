@@ -153,6 +153,15 @@ export const PT_BR = {
     // Card de modelo (v0.1.122)
     modelSeeMore: "Ver mais",
     modelFlipHint: "toque pra detalhes",
+    // Card de modelo v2 (v0.1.130)
+    modelExpand: "Expandir",
+    modelCollapse: "Recolher",
+    modelSpecs: "toque pra specs",
+    modelFlipBack: "voltar",
+    modelFetch: "Buscar specs",
+    modelFetching: "buscando…",
+    modelFetchNone: "Sem specs nessa fonte ainda",
+    modelFetchErr: "Falha ao buscar specs",
   },
 
   modes: {
