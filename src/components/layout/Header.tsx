@@ -21,10 +21,6 @@ interface HeaderProps {
   onOpenConversations: () => void;
   /** Recebe novo título quando user edita inline. Chama mesmo se vazio? — não. */
   onRenameChat: (newTitle: string) => void;
-  /** Estado atual do modo fullscreen mobile (drawer 100vw + chrome hidden). */
-  fullscreen: boolean;
-  /** Toggle do fullscreen — persiste em settings.mobileFullscreen. */
-  onToggleFullscreen: () => void;
   /** Toggle do campo de busca dentro da conversa atual. */
   onToggleSearch: () => void;
   /** Busca aberta — destaca o ícone. */
@@ -46,8 +42,6 @@ export function Header({
   onNewChat,
   onOpenConversations,
   onRenameChat,
-  fullscreen,
-  onToggleFullscreen,
   onToggleSearch,
   searchActive,
   onCopyConversation,
@@ -253,20 +247,6 @@ export function Header({
                     <span>{t.header.copyConversation}</span>
                   </button>
                 )}
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="axxa-popover-item"
-                  onClick={() => {
-                    onToggleFullscreen();
-                    setMenuOpen(false);
-                  }}
-                >
-                  <Icon name={fullscreen ? "minimize" : "maximize"} />
-                  <span>
-                    {fullscreen ? t.header.exitFullscreen : t.header.fullscreen}
-                  </span>
-                </button>
               </div>,
               (moreRef.current?.ownerDocument ?? document).body
             )}

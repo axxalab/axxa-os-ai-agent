@@ -112,190 +112,13 @@ body.is-mobile
 }
 
 /* =====================================================
- * Fullscreen Mode mobile (v0.1.74 — reintro da v0.1.51)
- *
- * Toggle via menu "..." no Header → "Tela cheia".
- * Aplica `axxa-fullscreen` no <body>. Drawer direito ocupa 100vw,
- * esconde drawer-header / tab-options / tab-header-container /
- * drawer-footer / nav-buttons-container pra impressão de app standalone.
- *
- * Combina com:
- *  - theme-color OS sync (status bar tinted por preset, ver themeColor.ts)
- *  - drawer host bg paint (preset edge-to-edge no drawer container)
- *  - navbar tint (mobile-navbar matching preset)
- * Resultado: app fullscreen real visualmente, com bg edge-to-edge.
+ * Fullscreen REMOVIDO (v0.1.127) — a pedido do dev.
+ * O plugin agora pinta APENAS a própria área (.axxa-root) e o Settings
+ * (.axxa-settings-root). Zero override de layout/variáveis/elementos nativos
+ * do Obsidian (sem drawer 100vw, sem esconder chrome, sem tintar navbar/body).
+ * O modo fullscreen v3 virá depois, via snippet do dev.
  * ===================================================== */
 
-/* Drawer = tela INTEIRA, edge to edge real (v0.1.112).
-   Largura 100vw + ancorado nas 4 bordas. Altura via 100dvh (viewport real do
-   mobile — 100vh não conta as barras do sistema e deixava gap). NÃO força a
-   altura com o teclado aberto: aí o Obsidian encolhe o drawer pro composer
-   subir, e travar 100dvh esconderia o input atrás do teclado. */
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right {
-  width: 100vw !important;
-  min-width: 100vw !important;
-  max-width: 100vw !important;
-  left: 0 !important;
-  right: 0 !important;
-}
-body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right {
-  top: 0 !important;
-  bottom: 0 !important;
-  height: 100vh !important;
-  height: 100dvh !important;
-  max-height: none !important;
-}
-
-/* Esconde os chrome nativos do Obsidian no drawer direito */
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-header,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-tab-options,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tab-header-container,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-footer,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .nav-buttons-container {
-  display: none !important;
-}
-
-/* Navbar nativa 100% TRANSPARENTE no fullscreen (pedido do user) — mostra o bg
-   pintado por trás, que agora tem BASE tintada na cor do preset
-   (--axxa-navbar-tint foi DESACOPLADA do host-active → resolve de verdade).
-   v0.1.119 */
-body.is-mobile.axxa-fullscreen .mobile-navbar {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border-top: none !important;
-  border: none !important;
-}
-/* Mata a sombra/scrim que sobe de baixo (alguns temas põem pseudo na navbar) */
-body.is-mobile.axxa-fullscreen .mobile-navbar::before,
-body.is-mobile.axxa-fullscreen .mobile-navbar::after {
-  display: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-/* Remove padding-top fantasma do drawer-inner */
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-inner {
-  padding-top: 0 !important;
-}
-
-/* Clearance v0.1.115 — tática nova, robusta.
-   Os elos intermediários a 100% (cobre as variações de DOM do drawer), e os
-   elos FINAIS (leaf-content / view-content / axxa-root) a 100dvh DIRETO — não
-   dependem da cadeia exata do Obsidian, que variava e deixava a root curta
-   (faixa #1e1e1e embaixo do composer). Gated em :not(.axxa-keyboard-open) pra
-   não travar o shrink quando o teclado abre. */
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-inner,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-active-tab-container,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-drawer-active-tab-content,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tabs,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-tab-container,
-body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .workspace-leaf {
-  height: 100% !important;
-  max-height: 100% !important;
-  width: 100% !important;
-}
-body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right .workspace-leaf-content,
-body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right .view-content,
-body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .workspace-drawer.mod-right .axxa-root {
-  height: 100dvh !important;
-  min-height: 100dvh !important;
-  max-height: 100dvh !important;
-  width: 100% !important;
-}
-/* v0.1.124: a .axxa-root agora PEGA TODO o view-content (100dvh), ignorando o
-   padding-bottom dele — fim do gap embaixo. O composer compensa o gesture bar
-   com safe-area no bottom (regra abaixo). */
-body.is-mobile.axxa-fullscreen:not(.axxa-keyboard-open) .axxa-composer {
-  bottom: calc(8px + var(--safe-area-inset-bottom, 0px)) !important;
-}
-
-/* BACKSTOP: pinta o próprio drawer com o nosso bg (--axxa-bg-img é herdado do
-   body, que tem axxa-bg-<preset> via setupNavbarTint). Se a cadeia interna
-   ainda deixar QUALQUER área descoberta, mostra o nosso fundo — nunca mais o
-   cinza --background-primary (#1e1e1e) do Obsidian. v0.1.115 */
-body.is-mobile.axxa-host-active
-  .workspace-drawer.mod-right:has(
-    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  ),
-/* v0.1.124: pinta também o .workspace-drawer-inner — as áreas do status bar
-   (topo) e do swipe/nav bar (base) herdam o bg dele em vez do cinza. */
-body.is-mobile.axxa-host-active
-  .workspace-drawer.mod-right:has(
-    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  )
-  .workspace-drawer-inner {
-  background-color: var(--background-primary) !important;
-  background-image: var(--axxa-bg-img) !important;
-  background-size: var(--axxa-bg-size, cover) !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-}
-
-/* BACKSTOP FINAL (fullscreen): pinta o BODY inteiro — é o frame mais profundo
-   de todos. Qualquer coisa que escape (navbar, gap de safe-area, gesture area)
-   mostra o bg do preset, nunca o cinza do Obsidian. O body já tem
-   axxa-bg-<preset> (setupNavbarTint) → --axxa-bg-img resolve aqui. v0.1.116 */
-body.is-mobile.axxa-fullscreen {
-  background-color: var(--background-primary) !important;
-  background-image: var(--axxa-bg-img) !important;
-  background-size: var(--axxa-bg-size, cover) !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-}
-
-/* "COR DO PRESET ATÉ EMBAIXO" (v0.1.118): a BASE do bg (atrás do gradiente)
-   passa de --background-primary (que desbotava pro cinza #1e1e1e/#181621 na
-   borda inferior) pra --axxa-navbar-tint — a cor sólida do preset (herdada do
-   body via setupNavbarTint). Onde o gradiente desbota, fica a cor do preset, e
-   a navbar (tintada na MESMA var) casa sem emenda. Só no fullscreen mobile. */
-body.is-mobile.axxa-fullscreen,
-body.is-mobile.axxa-fullscreen
-  .workspace-drawer.mod-right:has(
-    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  ),
-body.is-mobile.axxa-fullscreen
-  .workspace-leaf-content[data-type="axxa-os-ai-agent"] {
-  background-color: var(--axxa-navbar-tint, var(--background-primary)) !important;
-}
-
-/* No fullscreen, sem navbar visível — padding-bottom só pra safe-area */
-body.is-mobile.axxa-fullscreen
-.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  padding-bottom: calc(var(--safe-area-inset-bottom, 0px) + var(--size-4-1)) !important;
-}
-
-/* Fullscreen: o drawer vai sob o status bar → o header precisa do clearance
-   (safe-area, com mínimo de 46px pra escapar dos ícones do Android quando
-   env() não resolve). v0.1.125 */
-body.is-mobile.axxa-fullscreen .axxa-header {
-  padding-top: max(var(--safe-area-inset-top, 0px), 46px) !important;
-}
-
-/* Remove o shadow/borda cinza do chrome do drawer (no mobile o drawer é
-   column-reverse → esse chrome cai no RODAPÉ). Escopado ao drawer que hospeda
-   o AXXA pra não afetar outros painéis. v0.1.113 */
-body.is-mobile
-  .workspace-drawer.mod-right:has(
-    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  ),
-body.is-mobile
-  .workspace-drawer.mod-right:has(
-    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  )
-  :is(
-    .workspace-drawer-active-tab-container,
-    .workspace-drawer-active-tab-header,
-    .workspace-tab-header-container,
-    .workspace-tab-header,
-    .workspace-drawer-header,
-    .workspace-drawer-inner
-  ) {
-  box-shadow: none !important;
-  border-top: none !important;
-}
-
-/* Dark mode bg fix removido a pedido do dev — voltou ao default do Obsidian */
 
 /* =====================================================
  * Layout raiz da view
@@ -3897,16 +3720,15 @@ body.is-mobile .axxa-code-copy {
  * 2D) · sweep (position 1D) · breathe (size). .axxa-bg-active acelera 3.5×.
  * ===================================================== */
 
-/* Paint compartilhado no FRAME MAIS PROFUNDO de cada contexto:
-   - view: .workspace-leaf-content[data-type] (sem o padding da navbar);
-   - Settings: .axxa-settings-root; swatch: .axxa-bg-swatch;
-   - drawer mobile: o host (cobre o gap do container).
+/* Paint APENAS na área do plugin (v0.1.127): a própria .axxa-root pinta o
+   preset (ela já carrega a classe axxa-bg-<preset> via AxxaApp). Mesmo
+   mecanismo no Settings (.axxa-settings-root) e nos swatches do picker.
+   Nada de pintar leaf-content/drawer/body — zero toque em elemento nativo.
    !important pra vencer Obsidian/temas. */
 :is(
-    .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+    .axxa-root,
     .axxa-settings-root,
-    .axxa-bg-swatch,
-    .workspace-drawer-active-tab-container.axxa-host
+    .axxa-bg-swatch
   ):is(
     .axxa-bg-dawn, .axxa-bg-ocean, .axxa-bg-forest, .axxa-bg-violet,
     .axxa-bg-rose, .axxa-bg-amber, .axxa-bg-slate, .axxa-bg-mono,
@@ -3924,17 +3746,8 @@ body.is-mobile .axxa-code-copy {
   animation-iteration-count: infinite;
 }
 
-/* Frames intermediários transparentes → o bg do leaf-content/host é o único
-   canvas. Fim da faixa cinza nativa atrás do composer (era o padding-bottom
-   do .view-content mostrando o --background-primary do Obsidian). */
-.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content,
-.workspace-leaf-content[data-type="axxa-os-ai-agent"] .axxa-root,
-.workspace-drawer-active-tab-container.axxa-host .axxa-root {
-  background: transparent !important;
-}
-
-/* IA processando (.axxa-bg-active na root) → acelera 3.5× o frame que pinta */
-.workspace-leaf-content[data-type="axxa-os-ai-agent"]:has(.axxa-bg-active) {
+/* IA processando (.axxa-bg-active na root) → acelera 3.5× o fundo */
+.axxa-root.axxa-bg-active {
   animation-duration: calc(var(--axxa-bg-dur, 20s) / 3.5) !important;
 }
 
@@ -3975,10 +3788,9 @@ body.is-mobile .axxa-code-copy {
 /* Acessibilidade: reduced-motion congela o fundo */
 @media (prefers-reduced-motion: reduce) {
   :is(
-      .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+      .axxa-root,
       .axxa-settings-root,
-      .axxa-bg-swatch,
-      .workspace-drawer-active-tab-container.axxa-host
+      .axxa-bg-swatch
     ) {
     animation: none !important;
   }
@@ -4275,88 +4087,8 @@ body.theme-dark .axxa-bg-lagoon {
     radial-gradient(46% 56% at 82% 68%, rgba(34, 197, 94, 0.34), transparent 70%);
 }
 
-/* =====================================================
- * Mobile navbar tint (v0.1.74)
- *
- * Quando AxxaView está aberto no mobile, planta body.axxa-host-active +
- * body.axxa-bg-{preset}. Aqui define --axxa-navbar-tint per preset
- * (mesmas cores do themeColor.ts pro OS status bar) e aplica na
- * .mobile-navbar. Resultado: navbar de baixo tinta matching o preset,
- * fechando o loop edge-to-edge (status bar OS + drawer host + navbar).
- *
- * Cores flat (sem gradient) pra navbar manter visual de barra sólida —
- * gradients aplicados na navbar ficariam estranhos com os ícones.
- * ===================================================== */
-
-/* === Tint vars per preset (light + dark) — espelha PRESET_THEME_COLORS
-       em themeColor.ts (status bar do OS). v0.1.106 === */
-
-/* Static */
-.axxa-bg-dawn { --axxa-navbar-tint: #ffe9e0; }
-body.theme-dark .axxa-bg-dawn { --axxa-navbar-tint: #2a1f1c; }
-
-.axxa-bg-ocean { --axxa-navbar-tint: #dff0f5; }
-body.theme-dark .axxa-bg-ocean { --axxa-navbar-tint: #172a32; }
-
-.axxa-bg-forest { --axxa-navbar-tint: #dff2e8; }
-body.theme-dark .axxa-bg-forest { --axxa-navbar-tint: #152e26; }
-
-.axxa-bg-violet { --axxa-navbar-tint: #e9e0f7; }
-body.theme-dark .axxa-bg-violet { --axxa-navbar-tint: #221a38; }
-
-.axxa-bg-rose { --axxa-navbar-tint: #fbe2ef; }
-body.theme-dark .axxa-bg-rose { --axxa-navbar-tint: #2e1a28; }
-
-.axxa-bg-amber { --axxa-navbar-tint: #f7eed3; }
-body.theme-dark .axxa-bg-amber { --axxa-navbar-tint: #322a18; }
-
-.axxa-bg-slate { --axxa-navbar-tint: #e6eaf0; }
-body.theme-dark .axxa-bg-slate { --axxa-navbar-tint: #1c2230; }
-
-.axxa-bg-mono { --axxa-navbar-tint: #eaeaea; }
-body.theme-dark .axxa-bg-mono { --axxa-navbar-tint: #1c1c1c; }
-
-/* Live */
-.axxa-bg-aurora { --axxa-navbar-tint: #dff2e6; }
-body.theme-dark .axxa-bg-aurora { --axxa-navbar-tint: #16261d; }
-
-.axxa-bg-nebula { --axxa-navbar-tint: #ece0f2; }
-body.theme-dark .axxa-bg-nebula { --axxa-navbar-tint: #221a30; }
-
-.axxa-bg-pulse { --axxa-navbar-tint: #e0e2f5; }
-body.theme-dark .axxa-bg-pulse { --axxa-navbar-tint: #1b1d33; }
-
-.axxa-bg-flow { --axxa-navbar-tint: #e6e2f5; }
-body.theme-dark .axxa-bg-flow { --axxa-navbar-tint: #221d33; }
-
-.axxa-bg-tide { --axxa-navbar-tint: #dceff2; }
-body.theme-dark .axxa-bg-tide { --axxa-navbar-tint: #15282c; }
-
-.axxa-bg-ember { --axxa-navbar-tint: #f7e6db; }
-body.theme-dark .axxa-bg-ember { --axxa-navbar-tint: #2e1f18; }
-
-.axxa-bg-spectrum { --axxa-navbar-tint: #e9e6f2; }
-body.theme-dark .axxa-bg-spectrum { --axxa-navbar-tint: #221f30; }
-
-.axxa-bg-lagoon { --axxa-navbar-tint: #dcf0ec; }
-body.theme-dark .axxa-bg-lagoon { --axxa-navbar-tint: #142724; }
-
-/* === Apply tint — só quando a var foi definida (preset != none) === */
-body.axxa-host-active .mobile-navbar {
-  background: var(--axxa-navbar-tint, var(--background-secondary)) !important;
-  transition: background 0.3s ease;
-}
-
-/* edge-to-edge: com um preset ativo, funde a navbar nativa ao bg tintado
-   removendo a borda/sombra de separação. "none" mantém o visual default. (v0.1.91) */
-body.axxa-host-active:not(.axxa-bg-none) .mobile-navbar {
-  border-top: none !important;
-  box-shadow: none !important;
-}
-
-/* "none" preserva o default do tema (não seta --axxa-navbar-tint, fallback
-   pra var(--background-secondary) acima funciona quando classe ausente
-   também). */
+/* Navbar tint REMOVIDO (v0.1.127) — não tintamos mais a .mobile-navbar nem
+   nenhum elemento nativo do Obsidian. O preset vive só dentro da .axxa-root. */
 
 /* =====================================================
  * Background picker (Settings → Outros → Aparência)
@@ -5280,13 +5012,26 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   line-height: 1;
 }
 .axxa-provider-seg .axxa-subtab-active {
-  flex: 1.5 1 auto;
+  /* selecionado bem mais largo (pílula Threads) — só flex-grow muda, anima */
+  flex-grow: 2.3;
   flex-direction: column;
   gap: 3px;
-  padding: 5px 10px;
+  padding: 6px 14px;
 }
 .axxa-provider-seg .axxa-subtab-active .axxa-subtab-label {
   display: block;
+  /* label entra com ease-in ao trocar de seleção */
+  animation: axxa-seg-label-in 0.3s ease both;
+}
+@keyframes axxa-seg-label-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ===== Effort — slider EXATO da One UI / Samsung (v0.1.126) =====
@@ -5316,6 +5061,16 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   user-select: none;
   -webkit-user-select: none;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.14);
+  /* cresce no drag/hold (Samsung-style) */
+  transform-origin: center;
+  transition: transform 0.2s cubic-bezier(0.34, 1.3, 0.5, 1),
+    box-shadow 0.2s ease;
+}
+/* drag ativo: a barra cresce e ganha sombra (flutua acima do scrim) */
+.axxa-eff-bar-drag {
+  transform: scale(1.06);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.42),
+    inset 0 1px 2px rgba(0, 0, 0, 0.14);
 }
 /* Fill — barra clara/accent arredondada (cap redondo à direita, igual One UI) */
 .axxa-eff-fill {
@@ -5418,6 +5173,17 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-eff-pip-on {
   opacity: 1;
 }
+/* RAIOS DOURADOS (v0.1.127): o ícone fixo + os pips ACESOS preenchem com
+   gradiente dourado (url(#axxa-eff-gold)) + borda escura + drop-shadow =
+   relevo fake-3D. lucide zap é stroke-only; o fill via CSS vence o
+   fill="none" do atributo de apresentação. */
+.axxa-eff-ico svg,
+.axxa-eff-pip-on svg {
+  fill: url(#axxa-eff-gold);
+  stroke: #7a4e07;
+  stroke-width: 1.4;
+  filter: drop-shadow(0 1px 0.5px rgba(0, 0, 0, 0.5));
+}
 /* raio atual pulsa (animação contínua) */
 .axxa-eff-pip-cur {
   animation: axxa-eff-pulse 1.5s ease-in-out infinite;
@@ -5439,6 +5205,35 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   line-height: 1.35;
   color: var(--text-faint);
 }
+
+/* ===== Drag = SCRIM + lift (Samsung-style) — v0.1.127 =====
+   Enquanto arrasta, a .axxa-root ganha .axxa-eff-dragging: um scrim escurece
+   TODO o plugin e o slider sobe acima dele (z maior) + cresce. */
+.axxa-eff-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
+  pointer-events: none;
+  animation: axxa-eff-scrim-in 0.18s ease both;
+}
+@keyframes axxa-eff-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* eleva o slider acima do scrim (a .axxa-root é o contexto de empilhamento;
+   os ancestrais .axxa-starter/.axxa-mp não criam contexto próprio). */
+.axxa-root.axxa-eff-dragging .axxa-eff {
+  position: relative;
+  z-index: 60;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .axxa-eff-fill::after,
   .axxa-eff-pip-cur {
@@ -5596,6 +5391,11 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   align-items: center;
   justify-content: center;
   padding: 9px 8px;
+  /* v0.1.127: ease-in da seleção estilo Threads — o segment ATIVO cresce
+     (flex-grow anima) e ganha respiro horizontal. Só flex-grow muda (basis
+     fica 0), então a transição é suave. */
+  transition: flex-grow 0.32s cubic-bezier(0.34, 1.06, 0.4, 1),
+    padding 0.28s ease, background 0.2s ease, color 0.2s ease;
 }
 .axxa-subtab-icon .axxa-icon {
   display: flex;
@@ -6042,17 +5842,14 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 
 /* =====================================================
- * Scrollbar do drawer/view — OPACA e integrada ao tema (v0.1.125)
- * Antes era tintada pelo preset (--axxa-navbar-tint), o que destoava do
- * contexto. Agora usa a borda do tema (sólida, neutra) pra "sumir" no fundo.
+ * Scrollbar — OPACA e integrada ao tema (v0.1.125). Só dentro da .axxa-root
+ * (nada de tocar o drawer/native). Usa a borda do tema pra "sumir" no fundo.
  * ===================================================== */
-.axxa-root ::-webkit-scrollbar-thumb,
-.workspace-drawer-active-tab-container.axxa-host ::-webkit-scrollbar-thumb {
+.axxa-root ::-webkit-scrollbar-thumb {
   background: var(--background-modifier-border);
   border-radius: 999px;
 }
-.axxa-root ::-webkit-scrollbar-thumb:hover,
-.workspace-drawer-active-tab-container.axxa-host ::-webkit-scrollbar-thumb:hover {
+.axxa-root ::-webkit-scrollbar-thumb:hover {
   background: var(--background-modifier-border-hover, var(--background-modifier-border));
 }
 
@@ -6634,9 +6431,10 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
    de accent tint claro, não o "bloco preto" do --background-primary. */
 .axxa-dash .axxa-starter-segment-active,
 .axxa-dash .axxa-provider-seg .axxa-subtab-active {
-  background: color-mix(in srgb, var(--interactive-accent) 20%, transparent) !important;
+  background: color-mix(in srgb, var(--interactive-accent) 24%, transparent) !important;
   color: var(--text-accent) !important;
-  box-shadow: none !important;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--interactive-accent) 30%, transparent) !important;
 }
 
 /* .clickable-icon dilui svg pra 85% (--icon-opacity) — ícone do selecionado

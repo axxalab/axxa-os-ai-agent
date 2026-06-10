@@ -7,10 +7,6 @@ import { ItemView, WorkspaceLeaf, Platform } from "obsidian";
 import { Root, createRoot } from "react-dom/client";
 import { AxxaApp } from "./AxxaApp";
 import type AxxaPlugin from "../main";
-import {
-  applyThemeColor,
-  restoreThemeColor,
-} from "../components/_shared/themeColor";
 
 export const VIEW_TYPE_AXXA = "axxa-os-ai-agent";
 
@@ -18,18 +14,6 @@ export class AxxaView extends ItemView {
   root: Root | null = null;
   plugin: AxxaPlugin;
   private keyboardObserver: MutationObserver | null = null;
-  /** Referência ao drawer container que recebeu o nosso bg (mobile). */
-  private drawerHostEl: HTMLElement | null = null;
-  /** Unsubscribe das settings — usado pra atualizar bg quando o user troca. */
-  private drawerHostUnsub: (() => void) | null = null;
-  /** Unsubscribe do theme-color sync (OS status bar). */
-  private themeColorUnsub: (() => void) | null = null;
-  /** Observer pra detectar troca de tema claro/escuro do Obsidian. */
-  private themeObserver: MutationObserver | null = null;
-  /** Unsubscribe do navbar tint (mobile-navbar bottom). */
-  private navbarTintUnsub: (() => void) | null = null;
-  /** Unsubscribe do bg pintado no leaf-content (frame nativo mais profundo). */
-  private leafBgUnsub: (() => void) | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: AxxaPlugin) {
     super(leaf);
@@ -54,191 +38,16 @@ export class AxxaView extends ItemView {
     this.root = createRoot(container);
     this.root.render(<AxxaApp plugin={this.plugin} />);
 
-    this.setupLeafBg();
-    this.setupDrawerHost();
-    this.setupThemeColor();
-    this.setupNavbarTint();
+    // v0.1.127: o preset/tema vive SÓ dentro da .axxa-root (pintada pela
+    // própria classe axxa-bg-<preset> no AxxaApp). Não tintamos mais
+    // body / drawer / leaf-content / navbar, nem o theme-color do OS —
+    // zero toque em elemento ou variável nativa do Obsidian.
     this.setupMobileKeyboardObserver();
   }
 
   async onClose() {
-    this.teardownLeafBg();
-    this.teardownDrawerHost();
-    this.teardownThemeColor();
-    this.teardownNavbarTint();
     this.teardownMobileKeyboardObserver();
     this.root?.unmount();
-  }
-
-  /**
-   * Pinta o background no FRAME MAIS PROFUNDO da view: o
-   * `.workspace-leaf-content[data-type=...]` (this.containerEl). Ele não tem o
-   * padding-bottom da navbar (que mora no .view-content), então cobre tudo —
-   * incluindo a faixa atrás do composer onde antes vazava o cinza nativo do
-   * .view-content. O CSS deixa .view-content e .axxa-root transparentes, então
-   * esse é o único canvas. Vale desktop e mobile (no drawer soma com o host).
-   */
-  private setupLeafBg() {
-    const el = this.containerEl;
-    // Também tinta o <body>: garante que --axxa-bg-img/--axxa-navbar-tint
-    // resolvam atrás da navbar transparente e em qualquer frame body-level
-    // (setupLeafBg roda sempre; não depender só do setupNavbarTint). v0.1.119
-    const body = el.doc.body;
-    const apply = () => {
-      for (const target of [el, body]) {
-        Array.from(target.classList).forEach((c) => {
-          if (c.startsWith("axxa-bg-")) target.classList.remove(c);
-        });
-        target.classList.add(
-          "axxa-bg-" + (this.plugin.settings.background || "none")
-        );
-      }
-    };
-    apply();
-    this.leafBgUnsub = this.plugin.onSettingsChange(apply);
-  }
-
-  private teardownLeafBg() {
-    this.leafBgUnsub?.();
-    this.leafBgUnsub = null;
-    for (const target of [this.containerEl, this.containerEl.doc.body]) {
-      Array.from(target.classList).forEach((c) => {
-        if (c.startsWith("axxa-bg-")) target.classList.remove(c);
-      });
-    }
-  }
-
-  /**
-   * Navbar tint (mobile): planta `axxa-host-active` + `axxa-bg-{preset}`
-   * no <body> enquanto AXXA está aberto. CSS então tinta a `.mobile-navbar`
-   * matching a cor dominante do preset (mesmas cores do theme-color).
-   *
-   * Cleanup remove as classes no onClose pra navbar voltar ao default
-   * quando o user fecha a view (ou troca pra outra leaf type).
-   */
-  private setupNavbarTint() {
-    if (!Platform.isMobile) return;
-    const body = this.containerEl.doc.body;
-
-    const apply = () => {
-      body.classList.add("axxa-host-active");
-      // Remove qualquer axxa-bg-* anterior do body antes de plantar o novo
-      Array.from(body.classList).forEach((c) => {
-        if (c.startsWith("axxa-bg-")) body.classList.remove(c);
-      });
-      body.classList.add(
-        "axxa-bg-" + (this.plugin.settings.background || "none")
-      );
-    };
-
-    apply();
-    this.navbarTintUnsub = this.plugin.onSettingsChange(apply);
-  }
-
-  private teardownNavbarTint() {
-    this.navbarTintUnsub?.();
-    this.navbarTintUnsub = null;
-    const body = this.containerEl.doc.body;
-    body.classList.remove("axxa-host-active");
-    Array.from(body.classList).forEach((c) => {
-      if (c.startsWith("axxa-bg-")) body.classList.remove(c);
-    });
-  }
-
-  /**
-   * Theme color OS status bar (mobile): seta <meta name="theme-color">
-   * pra Android Chrome / Obsidian mobile colorir o status bar do sistema
-   * (onde fica bateria/relógio) matching o preset atual do user.
-   *
-   * Sync em 3 momentos:
-   *  - onOpen (initial apply)
-   *  - settings change (user troca preset)
-   *  - body.theme-dark toggle (user troca tema claro/escuro)
-   *
-   * Cleanup no onClose restaura o theme-color original do tema/Obsidian.
-   */
-  private setupThemeColor() {
-    if (!Platform.isMobile) return;
-    const doc = this.containerEl.doc;
-    const body = doc.body;
-
-    const update = () => {
-      const isDark = body.classList.contains("theme-dark");
-      applyThemeColor(
-        doc,
-        this.plugin.settings.background || "none",
-        isDark
-      );
-    };
-
-    update();
-    this.themeColorUnsub = this.plugin.onSettingsChange(update);
-
-    // Observa toggle de tema (Obsidian alterna body.theme-light/theme-dark)
-    this.themeObserver = new MutationObserver(update);
-    this.themeObserver.observe(body, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-  }
-
-  private teardownThemeColor() {
-    this.themeColorUnsub?.();
-    this.themeColorUnsub = null;
-    this.themeObserver?.disconnect();
-    this.themeObserver = null;
-    restoreThemeColor();
-  }
-
-  /**
-   * Drawer host (mobile): pinta o bg do AXXA direto no
-   * .workspace-drawer-active-tab-container — em vez de só na .axxa-root.
-   *
-   * Por quê? O drawer tem `margin-top` + `flex-direction:column-reverse` e
-   * fica MAIOR que a área que .axxa-root consegue ocupar. Resultado: gap
-   * visual no topo ou no fundo (40px típico) exibindo
-   * `--background-modifier-hover` em vez do nosso bg/preset.
-   *
-   * Solução: plantamos classes `axxa-host` + `axxa-bg-{preset}` no drawer
-   * container. CSS então pinta o bg/preset NELE (edge-to-edge) e força
-   * .axxa-root como transparente — o bg da drawer mostra através.
-   *
-   * Mantém em sync via `onSettingsChange` quando o user muda preset.
-   */
-  private setupDrawerHost() {
-    if (!Platform.isMobile) return;
-
-    const apply = () => {
-      const host = this.containerEl.closest(
-        ".workspace-drawer-active-tab-container"
-      ) as HTMLElement | null;
-      if (!host) return;
-      this.drawerHostEl = host;
-      host.classList.add("axxa-host");
-      // Limpa bg classes antigas e seta a atual
-      Array.from(host.classList).forEach((c) => {
-        if (c.startsWith("axxa-bg-")) host.classList.remove(c);
-      });
-      host.classList.add(
-        "axxa-bg-" + (this.plugin.settings.background || "none")
-      );
-    };
-
-    apply();
-    // Re-aplica quando o user troca o preset nas Settings
-    this.drawerHostUnsub = this.plugin.onSettingsChange(apply);
-  }
-
-  private teardownDrawerHost() {
-    this.drawerHostUnsub?.();
-    this.drawerHostUnsub = null;
-    if (this.drawerHostEl) {
-      this.drawerHostEl.classList.remove("axxa-host");
-      Array.from(this.drawerHostEl.classList).forEach((c) => {
-        if (c.startsWith("axxa-bg-")) this.drawerHostEl!.classList.remove(c);
-      });
-      this.drawerHostEl = null;
-    }
   }
 
   /**

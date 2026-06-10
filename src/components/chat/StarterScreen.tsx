@@ -1019,10 +1019,11 @@ function StatusCards({
 }
 
 /**
- * EffortSlider — slider tátil estilo "brilho" do One UI / Samsung (v0.1.125).
+ * EffortSlider — slider tátil estilo "brilho" do One UI / Samsung (v0.1.127).
  * Clicável: toca ou arrasta em QUALQUER ponto pra setar o nível (sem hold).
- * Barra arredondada com fill accent + raios (zap) como marcadores — quanto
- * mais raios acesos, mais intenso. Tick háptico por detente.
+ * Barra arredondada com fill accent; raios (zap) DOURADOS (gradiente + fake-3D)
+ * como marcadores de intensidade. No drag: a barra CRESCE e o fundo do plugin
+ * fica em SCRIM (escurece), exatamente igual o slider de brilho da Samsung.
  */
 function EffortSlider({
   effort,
@@ -1036,7 +1037,9 @@ function EffortSlider({
   const n = EFFORT_LEVELS.length;
   const idx = Math.max(0, EFFORT_LEVELS.indexOf(effort as EffortLevel));
   const [cur, setCur] = useState(idx);
-  const trackRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLElement | null>(null);
   const draggingRef = useRef(false);
   const curRef = useRef(idx);
 
@@ -1048,11 +1051,14 @@ function EffortSlider({
     }
   }, [idx]);
 
+  // Se desmontar no meio do drag, garante que o scrim/lift do root saia.
+  useEffect(() => () => rootRef.current?.classList.remove("axxa-eff-dragging"), []);
+
   // Fill em degraus (estilo brilho): low=1/n … max=n/n da barra.
   const pct = ((cur + 1) / n) * 100;
 
   const idxFromX = (clientX: number): number => {
-    const el = trackRef.current;
+    const el = barRef.current;
     if (!el) return curRef.current;
     const r = el.getBoundingClientRect();
     const p = r.width > 0 ? (clientX - r.left) / r.width : 0;
@@ -1069,14 +1075,21 @@ function EffortSlider({
   const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture?.(e.pointerId);
     draggingRef.current = true;
+    // Acha a área do plugin pra escurecer (scrim) e elevar o slider.
+    const root = barRef.current?.closest(".axxa-root") as HTMLElement | null;
+    rootRef.current = root;
+    root?.classList.add("axxa-eff-dragging");
+    setDragging(true);
     setLevel(idxFromX(e.clientX));
   };
   const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (draggingRef.current) setLevel(idxFromX(e.clientX));
   };
-  const onUp = () => {
+  const endDrag = () => {
     if (!draggingRef.current) return;
     draggingRef.current = false;
+    rootRef.current?.classList.remove("axxa-eff-dragging");
+    setDragging(false);
     if (curRef.current !== idx) onChange(EFFORT_LEVELS[curRef.current]);
   };
 
@@ -1112,14 +1125,29 @@ function EffortSlider({
 
   return (
     <div className="axxa-eff">
+      {/* defs do gradiente DOURADO usado nos raios (fill via url(#...)) */}
+      <svg
+        width="0"
+        height="0"
+        aria-hidden="true"
+        style={{ position: "absolute", width: 0, height: 0 }}
+      >
+        <defs>
+          <linearGradient id="axxa-eff-gold" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffe79a" />
+            <stop offset="45%" stopColor="#f6c63f" />
+            <stop offset="100%" stopColor="#c5830b" />
+          </linearGradient>
+        </defs>
+      </svg>
       <div
-        ref={trackRef}
-        className="axxa-eff-bar"
+        ref={barRef}
+        className={"axxa-eff-bar" + (dragging ? " axxa-eff-bar-drag" : "")}
         style={{ ["--eff-pct" as string]: `${pct}%` } as CSSProperties}
         onPointerDown={onDown}
         onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         role="slider"
         aria-label={liveLabel}
         aria-valuemin={0}
@@ -1136,6 +1164,10 @@ function EffortSlider({
         </div>
       </div>
       <span className="axxa-eff-desc">{EFFORT_DESCRIPTIONS[lvl]}</span>
+      {/* SCRIM — escurece a área do plugin durante o drag (Samsung-style) */}
+      {dragging &&
+        rootRef.current &&
+        createPortal(<div className="axxa-eff-scrim" />, rootRef.current)}
     </div>
   );
 }
