@@ -4282,9 +4282,25 @@ body.is-mobile .axxa-code-copy {
 
 /* IMPORTANT em todos os bg presets pra vencer overrides do Obsidian /
    temas / nossas próprias regras v0.1.52 + .workspace-leaf-content */
+/* Fundo "none" REFINADO (v0.1.143) — o cinza chapado do --background-primary
+   fazia o app parecer "tema padrão". Agora um brilho de accent sutil no topo +
+   leve profundidade, TUDO derivado de var() do tema → um tema custom do user
+   flui (cores dele mandam); o default ganha alma. */
 .axxa-root.axxa-bg-none,
 .axxa-settings-root.axxa-bg-none {
-  background: var(--background-primary) !important;
+  background-color: var(--background-primary) !important;
+  background-image:
+    radial-gradient(
+      120% 78% at 50% -8%,
+      color-mix(in srgb, var(--interactive-accent) 9%, transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      90% 55% at 50% 108%,
+      color-mix(in srgb, var(--background-secondary) 55%, transparent),
+      transparent 62%
+    ) !important;
+  background-repeat: no-repeat !important;
 }
 
 /* Settings tab: garante que o scroll funciona sempre.
