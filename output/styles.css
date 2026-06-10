@@ -2156,6 +2156,10 @@ body.is-mobile
      Só este elemento rola (interno); o overlay/body não. v0.1.135 */
   max-height: calc(100dvh - 48px);
   overflow-y: auto;
+  /* X travado em hidden (v0.1.141): o shimmer/glow da borda (::after com
+     translateX) estourava no eixo X e, como overflow-y é auto, o X virava auto
+     → scrollbar horizontal. hidden mata isso sem afetar o scroll vertical. */
+  overflow-x: hidden;
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
