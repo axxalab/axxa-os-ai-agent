@@ -25,7 +25,6 @@ import { hapticTick } from "../_shared/haptics";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
-  EFFORT_EMOJIS,
   EFFORT_DESCRIPTIONS,
   type EffortLevel,
 } from "../_shared/effort";
@@ -143,143 +142,162 @@ function categoryIcon(cat: string): string {
 }
 
 /**
- * Card de info do modelo — FLIP card (v0.1.122): frente compacta, verso com
- * descrição detalhada. Tamanho FIXO, nunca muda. Toque vira o card; o botão
- * "Ver mais" (sempre presente) abre o modal com o card completo. Dados vêm do
- * registro local (modelDescriptions) — curado/pesquisado, já que os providers
- * não expõem metadata rica por API.
+ * Card de info do modelo (v0.1.125) — card ÚNICO e estático. Mostra logo +
+ * nome + categoria + tier + caps + stats e, DENTRO dele, as ações: "Ver mais"
+ * (abre o modal com o card completo) + o TOGGLE de modelo. A lista suspensa do
+ * toggle quebra PRA FORA do card (overflow visível); só o modelo selecionado
+ * fica visível no trigger. Dados vêm do registro local (modelDescriptions).
  */
 function ModelInfoCard({
   provider,
   model,
+  modelOptions,
+  onModelChange,
 }: {
   provider: string;
   model: string;
+  modelOptions: string[];
+  onModelChange: (model: string) => void;
 }) {
   const t = useT();
-  const [flipped, setFlipped] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const fieldRef = useRef<HTMLDivElement>(null);
   const info = getModelFullInfo(provider, model);
   const { card, caps, pricing } = info;
 
-  // Reseta o flip quando o modelo muda (senão fica de costas no novo modelo).
+  // Fecha o dropdown quando o modelo/provider muda.
   useEffect(() => {
-    setFlipped(false);
+    setPickerOpen(false);
   }, [provider, model]);
+
+  // Fecha o dropdown ao clicar fora ou apertar Escape.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (fieldRef.current && !fieldRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPickerOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [pickerOpen]);
 
   const tier = pricing.tier ?? "unknown";
   const costLine = buildCostLine(pricing);
   const badges = capabilityBadges(caps).filter((b) => b.id !== "free");
   const logo = modelLogo(provider, model);
   const tierText = tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?";
+  const opts = modelOptions.includes(model)
+    ? modelOptions
+    : [model, ...modelOptions];
 
   return (
     <>
-      <div className={"axxa-mc" + (flipped ? " axxa-mc-flipped" : "")}>
-        <div className="axxa-mc-inner">
-          {/* FRENTE — resumo compacto */}
-          <button
-            type="button"
-            className="axxa-mc-face axxa-mc-front"
-            onClick={() => {
-              hapticTick();
-              setFlipped(true);
-            }}
-            aria-label={t.dashboard.modelFlipHint}
-          >
-            <div className="axxa-model-card-top">
-              <span className="axxa-model-card-avatar">
-                <Icon name={logo} />
-              </span>
-              <span className="axxa-model-card-id">
-                <span className="axxa-model-card-name">{model}</span>
-                <span className="axxa-model-card-cat">
-                  <Icon name={categoryIcon(card.category)} />
-                  {CATEGORY_LABELS[card.category]}
-                </span>
-              </span>
-              <span className={"axxa-model-tier axxa-model-tier-" + tier}>
-                {tierText}
-              </span>
-            </div>
-
-            {badges.length > 0 && (
-              <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
-                {badges.map((b) => (
-                  <InfoChip
-                    key={b.id}
-                    icon={b.icon}
-                    color={CAP_COLORS[b.id]}
-                    title={modelCapTooltip(b.id, t)}
-                  >
-                    {b.label}
-                  </InfoChip>
-                ))}
-              </div>
-            )}
-
-            <div className="axxa-model-stats">
-              {card.contextWindow != null && (
-                <span className="axxa-model-stat" title="Context window">
-                  <Icon name="layers" />
-                  {formatContextWindow(card.contextWindow)} ctx
-                </span>
-              )}
-              {costLine && (
-                <span className="axxa-model-stat axxa-model-stat-cost" title="Preço">
-                  <Icon name="circle-dollar-sign" />
-                  {costLine}
-                </span>
-              )}
-            </div>
-
-            <span className="axxa-mc-fliphint">
-              <Icon name="rotate-cw" />
-              {t.dashboard.modelFlipHint}
+      <div className="axxa-mc">
+        <div className="axxa-model-card-top">
+          <span className="axxa-model-card-avatar">
+            <Icon name={logo} />
+          </span>
+          <span className="axxa-model-card-id">
+            <span className="axxa-model-card-name">{model}</span>
+            <span className="axxa-model-card-cat">
+              <Icon name={categoryIcon(card.category)} />
+              {CATEGORY_LABELS[card.category]}
             </span>
-          </button>
-
-          {/* VERSO — detalhe (mesmo tamanho, scrolla se precisar) */}
-          <button
-            type="button"
-            className="axxa-mc-face axxa-mc-back"
-            onClick={() => {
-              hapticTick();
-              setFlipped(false);
-            }}
-          >
-            <div className="axxa-mc-back-head">
-              <span className="axxa-model-card-avatar">
-                <Icon name={logo} />
-              </span>
-              <span className="axxa-model-card-name">{model}</span>
-            </div>
-            <div className="axxa-mc-back-body">
-              {card.goodFor && (
-                <div className="axxa-model-card-goodfor">
-                  <Icon name="sparkles" />
-                  <span>{card.goodFor}</span>
-                </div>
-              )}
-              {card.description && (
-                <p className="axxa-mc-desc">{card.description}</p>
-              )}
-            </div>
-          </button>
+          </span>
+          <span className={"axxa-model-tier axxa-model-tier-" + tier}>
+            {tierText}
+          </span>
         </div>
 
-        {/* "Ver mais" — sempre presente; abre o modal (não vira o card) */}
-        <button
-          type="button"
-          className="axxa-mc-more"
-          onClick={() => {
-            hapticTick();
-            setModalOpen(true);
-          }}
-        >
-          {t.dashboard.modelSeeMore}
-          <Icon name="maximize-2" />
-        </button>
+        {badges.length > 0 && (
+          <div className="axxa-model-caps" aria-label={t.starter.modelCapsAria}>
+            {badges.map((b) => (
+              <InfoChip
+                key={b.id}
+                icon={b.icon}
+                color={CAP_COLORS[b.id]}
+                title={modelCapTooltip(b.id, t)}
+              >
+                {b.label}
+              </InfoChip>
+            ))}
+          </div>
+        )}
+
+        <div className="axxa-model-stats">
+          {card.contextWindow != null && (
+            <span className="axxa-model-stat" title="Context window">
+              <Icon name="layers" />
+              {formatContextWindow(card.contextWindow)} ctx
+            </span>
+          )}
+          {costLine && (
+            <span className="axxa-model-stat axxa-model-stat-cost" title="Preço">
+              <Icon name="circle-dollar-sign" />
+              {costLine}
+            </span>
+          )}
+        </div>
+
+        {/* Ações DENTRO do card: "Ver mais" (modal) + toggle de modelo.
+            O dropdown quebra pra fora (overflow visível). v0.1.125 */}
+        <div className="axxa-mc-actions">
+          <button
+            type="button"
+            className="axxa-mc-more"
+            onClick={() => {
+              hapticTick();
+              setModalOpen(true);
+            }}
+          >
+            <Icon name="maximize-2" />
+            {t.dashboard.modelSeeMore}
+          </button>
+          <div className="axxa-model-field" ref={fieldRef}>
+            <button
+              type="button"
+              className={
+                "axxa-model-trigger axxa-mc-trigger" +
+                (pickerOpen ? " axxa-model-trigger-open" : "")
+              }
+              onClick={() => {
+                hapticTick();
+                setPickerOpen((o) => !o);
+              }}
+              aria-haspopup="listbox"
+              aria-expanded={pickerOpen}
+            >
+              <span className="axxa-model-trigger-logo">
+                <Icon name={logo} />
+              </span>
+              <span className="axxa-model-trigger-name">{model}</span>
+              <span className="axxa-model-trigger-chevron">
+                <Icon name="chevron-down" />
+              </span>
+            </button>
+            {pickerOpen && (
+              <ModelDropdown
+                provider={provider}
+                model={model}
+                modelOptions={opts}
+                onSelect={(m) => {
+                  hapticTick();
+                  onModelChange(m);
+                  setPickerOpen(false);
+                }}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       {modalOpen && (
@@ -1001,77 +1019,72 @@ function StatusCards({
 }
 
 /**
- * EffortSlider — slider TÁTIL com press-hold (v0.1.122). Vive no bloco de
- * seleção básica (Mode/Provider) como um segment. Tap NÃO muda nada; segurar
- * ~200ms "arma" (haptic forte + thumb cresce), aí arrastar troca de nível com
- * tick háptico por detente; soltar confirma. Evita mudança acidental.
+ * EffortSlider — slider tátil estilo "brilho" do One UI / Samsung (v0.1.125).
+ * Clicável: toca ou arrasta em QUALQUER ponto pra setar o nível (sem hold).
+ * Barra arredondada com fill accent + raios (zap) como marcadores — quanto
+ * mais raios acesos, mais intenso. Tick háptico por detente.
  */
 function EffortSlider({
   effort,
   onChange,
-  holdLabel,
   liveLabel,
 }: {
   effort: string;
   onChange: (level: EffortLevel) => void;
-  holdLabel: string;
   liveLabel: string;
 }) {
   const n = EFFORT_LEVELS.length;
   const idx = Math.max(0, EFFORT_LEVELS.indexOf(effort as EffortLevel));
-  const [armed, setArmed] = useState(false);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const railRef = useRef<HTMLDivElement>(null);
-  const holdRef = useRef<number | null>(null);
+  const [cur, setCur] = useState(idx);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+  const curRef = useRef(idx);
 
-  const cur = dragIdx ?? idx;
-  const pct = n > 1 ? (cur / (n - 1)) * 100 : 0;
+  // Sincroniza com mudança externa de effort (só quando NÃO está arrastando).
+  useEffect(() => {
+    if (!draggingRef.current) {
+      setCur(idx);
+      curRef.current = idx;
+    }
+  }, [idx]);
+
+  // Fill em degraus (estilo brilho): low=1/n … max=n/n da barra.
+  const pct = ((cur + 1) / n) * 100;
 
   const idxFromX = (clientX: number): number => {
-    const el = railRef.current;
-    if (!el) return idx;
+    const el = trackRef.current;
+    if (!el) return curRef.current;
     const r = el.getBoundingClientRect();
     const p = r.width > 0 ? (clientX - r.left) / r.width : 0;
     return Math.min(n - 1, Math.max(0, Math.round(p * (n - 1))));
   };
 
-  const clearHold = () => {
-    if (holdRef.current != null) {
-      window.clearTimeout(holdRef.current);
-      holdRef.current = null;
-    }
+  const setLevel = (ni: number) => {
+    if (ni === curRef.current) return;
+    curRef.current = ni;
+    setCur(ni);
+    hapticTick();
   };
 
   const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    const start = idxFromX(e.clientX);
-    holdRef.current = window.setTimeout(() => {
-      setArmed(true);
-      setDragIdx(start);
-      hapticTick(22);
-    }, 200);
+    draggingRef.current = true;
+    setLevel(idxFromX(e.clientX));
   };
   const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!armed) return;
-    const ni = idxFromX(e.clientX);
-    if (ni !== cur) {
-      hapticTick();
-      setDragIdx(ni);
-    }
+    if (draggingRef.current) setLevel(idxFromX(e.clientX));
   };
   const onUp = () => {
-    clearHold();
-    if (armed && dragIdx != null && dragIdx !== idx) {
-      onChange(EFFORT_LEVELS[dragIdx]);
-    }
-    setArmed(false);
-    setDragIdx(null);
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    if (curRef.current !== idx) onChange(EFFORT_LEVELS[curRef.current]);
   };
 
   return (
-    <div className={"axxa-eff" + (armed ? " axxa-eff-armed" : "")}>
+    <div className="axxa-eff">
       <div
-        className="axxa-eff-track"
+        ref={trackRef}
+        className="axxa-eff-bar"
         style={{ ["--eff-pct" as string]: `${pct}%` } as CSSProperties}
         onPointerDown={onDown}
         onPointerMove={onMove}
@@ -1085,24 +1098,26 @@ function EffortSlider({
         aria-valuetext={EFFORT_LABELS[EFFORT_LEVELS[cur]]}
       >
         <span className="axxa-eff-fill" />
-        <div className="axxa-eff-rail" ref={railRef}>
+        <div className="axxa-eff-bolts">
           {EFFORT_LEVELS.map((lvl, i) => (
             <span
               key={lvl}
-              className={"axxa-eff-dot" + (i <= cur ? " axxa-eff-dot-on" : "")}
-              style={{ left: `${(i / (n - 1)) * 100}%` }}
-            />
-          ))}
-          <span className="axxa-eff-thumb" style={{ left: `${pct}%` }}>
-            <span className="axxa-eff-thumb-dot">
-              {EFFORT_EMOJIS[EFFORT_LEVELS[cur]]}
+              className={
+                "axxa-eff-bolt" +
+                (i <= cur ? " axxa-eff-bolt-on" : "") +
+                (i === cur ? " axxa-eff-bolt-cur" : "")
+              }
+            >
+              <Icon name="zap" />
             </span>
-          </span>
+          ))}
         </div>
       </div>
       <div className="axxa-eff-meta">
         <span className="axxa-eff-name">{EFFORT_LABELS[EFFORT_LEVELS[cur]]}</span>
-        <span className="axxa-eff-hint">{armed ? liveLabel : holdLabel}</span>
+        <span className="axxa-eff-hint">
+          {EFFORT_DESCRIPTIONS[EFFORT_LEVELS[cur]]}
+        </span>
       </div>
     </div>
   );
@@ -1128,34 +1143,11 @@ export function StarterScreen({
 }: StarterScreenProps) {
   const t = useT();
   const modelOptions = activeModels[provider] ?? [];
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const modelFieldRef = useRef<HTMLDivElement>(null);
 
   // (Overview/usage saiu daqui — vive em Settings → Usage. v0.1.120)
   // (Effort agora é o componente EffortSlider, com estado próprio. v0.1.122)
+  // (Picker de modelo agora vive DENTRO do ModelInfoCard. v0.1.125)
   const greeting = greetingFor(new Date().getHours(), t);
-
-  // Fecha o dropdown de modelo ao clicar fora ou apertar Escape.
-  useEffect(() => {
-    if (!pickerOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      if (
-        modelFieldRef.current &&
-        !modelFieldRef.current.contains(e.target as Node)
-      ) {
-        setPickerOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPickerOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [pickerOpen]);
 
   // Resolve name/desc dos modos via i18n (chat / vault-qa / agent).
   const modeLabel = (id: string) => {
@@ -1249,57 +1241,25 @@ export function StarterScreen({
               </button>
             ))}
           </div>
-          {/* Effort — slider TÁTIL (press-hold), dentro do bloco básico */}
+          {/* Effort — slider tátil clicável (estilo brilho One UI) */}
           <EffortSlider
             effort={effort}
             onChange={onEffortChange}
-            holdLabel={t.dashboard.effortHold}
             liveLabel={t.dashboard.effortAdjusting}
           />
         </div>
       </div>
 
-      {/* Modelo — POR ÚLTIMO, abaixo do card de modo/provider. Trigger +
-          dropdown + card de info (inalterado). v0.1.121 */}
+      {/* Modelo — POR ÚLTIMO, abaixo do card de modo/provider. Card único com
+          info + "Ver mais" + toggle DENTRO; o dropdown quebra pra fora. v0.1.125 */}
       <div className="axxa-starter-section">
         <label className="axxa-starter-label">{t.starter.modelLabel}</label>
-        {/* v0.1.122: card EM CIMA, seletor de modelo EMBAIXO */}
-        <ModelInfoCard provider={provider} model={model} />
-        <div className="axxa-model-field" ref={modelFieldRef}>
-          <button
-            type="button"
-            className={
-              "axxa-model-trigger" + (pickerOpen ? " axxa-model-trigger-open" : "")
-            }
-            onClick={() => setPickerOpen((o) => !o)}
-            aria-haspopup="listbox"
-            aria-expanded={pickerOpen}
-          >
-            <span className="axxa-model-trigger-logo">
-              <Icon name={modelLogo(provider, model)} />
-            </span>
-            <span className="axxa-model-trigger-name">{model}</span>
-            <span className="axxa-model-trigger-chevron">
-              <Icon name="chevron-down" />
-            </span>
-          </button>
-          {pickerOpen && (
-            <ModelDropdown
-              provider={provider}
-              model={model}
-              modelOptions={
-                modelOptions.includes(model)
-                  ? modelOptions
-                  : [model, ...modelOptions]
-              }
-              onSelect={(m) => {
-                hapticTick();
-                onModelChange(m);
-                setPickerOpen(false);
-              }}
-            />
-          )}
-        </div>
+        <ModelInfoCard
+          provider={provider}
+          model={model}
+          modelOptions={modelOptions}
+          onModelChange={onModelChange}
+        />
       </div>
       </div>
       {/* ===== /Nova conversa ===== */}

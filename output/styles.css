@@ -266,9 +266,10 @@ body.is-mobile.axxa-fullscreen
 }
 
 /* Fullscreen: o drawer vai sob o status bar → o header precisa do clearance
-   (safe-area, com mínimo de 32px pra Android sem env()). v0.1.113 */
+   (safe-area, com mínimo de 46px pra escapar dos ícones do Android quando
+   env() não resolve). v0.1.125 */
 body.is-mobile.axxa-fullscreen .axxa-header {
-  padding-top: max(var(--safe-area-inset-top, 0px), 32px) !important;
+  padding-top: max(var(--safe-area-inset-top, 0px), 46px) !important;
 }
 
 /* Remove o shadow/borda cinza do chrome do drawer (no mobile o drawer é
@@ -1975,91 +1976,34 @@ body.is-mobile
 
 /* Model card (StarterScreen, abaixo do <select>) — descrição + caps + cost */
 /* ===== Model FLIP card (v0.1.122) — tamanho FIXO, frente/verso ===== */
+/* Card de info do modelo (v0.1.125) — card ÚNICO e estático. Info em cima +
+   ações DENTRO (Ver mais + toggle de modelo). O dropdown do toggle quebra PRA
+   FORA do card (overflow visível). */
 .axxa-mc {
   position: relative;
   margin-top: 10px;
-  height: 172px;
-  perspective: 1200px;
-}
-.axxa-mc-inner {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.axxa-mc-flipped .axxa-mc-inner {
-  transform: rotateY(180deg);
-}
-/* Face = card (era .axxa-model-card) + reset de button */
-.axxa-mc-face,
-.axxa-mc-face:focus,
-.axxa-mc-face:active {
-  appearance: none;
-  -webkit-appearance: none;
-  box-shadow: none !important;
-}
-.axxa-mc-face {
-  position: absolute;
-  inset: 0;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
   padding: 12px 14px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 14px;
-  text-align: left;
-  cursor: pointer;
-  overflow: hidden;
+  /* visível: o dropdown do toggle precisa vazar pra fora do card */
+  overflow: visible;
 }
-.axxa-mc-back {
-  transform: rotateY(180deg);
-}
-.axxa-mc-fliphint {
-  margin-top: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--text-faint);
-}
-.axxa-mc-fliphint .axxa-icon svg {
-  width: 11px;
-  height: 11px;
-}
-.axxa-mc-back-head {
+/* Linha de ações dentro do card */
+.axxa-mc-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto;
+  margin-top: 2px;
 }
-.axxa-mc-back-head .axxa-model-card-avatar {
-  width: 26px;
-  height: 26px;
-}
-.axxa-mc-back-head .axxa-model-card-avatar .axxa-icon svg {
-  width: 18px;
-  height: 18px;
-}
-.axxa-mc-back-body {
+.axxa-mc-actions .axxa-model-field {
   flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-bottom: 6px;
-  -webkit-overflow-scrolling: touch;
+  min-width: 0;
 }
-.axxa-mc-desc {
-  margin: 0;
-  font-size: var(--font-ui-smaller);
-  color: var(--text-normal);
-  line-height: 1.45;
-}
-/* "Ver mais" — pílula sempre presente, canto inferior direito */
+/* "Ver mais" — pílula accent, abre o modal */
 .axxa-mc-more,
 .axxa-mc-more:focus,
 .axxa-mc-more:active {
@@ -2068,25 +2012,27 @@ body.is-mobile
   box-shadow: none !important;
 }
 .axxa-mc-more {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  z-index: 2;
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 9px;
-  border-radius: 999px;
-  font-size: 10px;
+  gap: 5px;
+  padding: 8px 11px;
+  border-radius: 12px;
+  font-size: 11px;
   font-weight: 600;
+  white-space: nowrap;
   color: var(--text-on-accent);
   background: var(--interactive-accent) !important;
   border: none;
   cursor: pointer;
 }
 .axxa-mc-more .axxa-icon svg {
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
+}
+/* toggle de modelo dentro do card — herda do .axxa-model-trigger; ajusta raio */
+.axxa-mc-trigger {
+  border-radius: 12px;
 }
 
 /* categoria com ícone (frente + modal) */
@@ -5323,118 +5269,104 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   z-index: 50;
 }
 
-/* Label só no segment ATIVO (v0.1.122) — o ativo cresce e mostra o texto;
-   os demais ficam icon-only. */
+/* Label só no segment ATIVO (v0.1.125) — o ativo cresce e mostra o texto
+   ABAIXO do ícone (empilhado); os demais ficam icon-only. */
 .axxa-provider-seg .axxa-subtab-label {
   display: none;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 600;
+  letter-spacing: 0.2px;
   white-space: nowrap;
   line-height: 1;
 }
 .axxa-provider-seg .axxa-subtab-active {
-  flex: 2.2 1 auto;
-  gap: 7px;
-  padding-left: 12px;
-  padding-right: 12px;
+  flex: 1.5 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 10px;
 }
 .axxa-provider-seg .axxa-subtab-active .axxa-subtab-label {
-  display: inline;
+  display: block;
 }
 
-/* ===== Effort TÁTIL (press-hold) — v0.1.122 ===== */
+/* ===== Effort — slider tátil estilo "brilho" do One UI (v0.1.125) =====
+   Clicável: toca/arrasta em qualquer ponto pra setar o nível (sem hold).
+   Barra arredondada com fill accent em degraus + raios (zap) como marcadores. */
 .axxa-eff {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
-.axxa-eff-track {
+.axxa-eff-bar {
   position: relative;
-  height: 42px;
-  border-radius: 999px;
+  height: 46px;
+  border-radius: 14px;
   background: var(--background-modifier-hover);
   border: 1px solid
     color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+  overflow: hidden;
   touch-action: none; /* não rola a página enquanto arrasta */
-  cursor: grab;
+  cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  transition: box-shadow 0.15s;
-}
-.axxa-eff-armed .axxa-eff-track {
-  cursor: grabbing;
-  box-shadow: 0 0 0 2px
-    color-mix(in srgb, var(--interactive-accent) 55%, transparent);
 }
 .axxa-eff-fill {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: var(--eff-pct, 0%);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--interactive-accent) 20%, transparent);
-  transition: width 0.18s cubic-bezier(0.34, 1.25, 0.4, 1);
+  width: var(--eff-pct, 20%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--interactive-accent) 75%, transparent),
+    var(--interactive-accent)
+  );
+  transition: width 0.24s cubic-bezier(0.34, 1.25, 0.4, 1);
 }
-.axxa-eff-armed .axxa-eff-fill {
-  transition: none; /* segue o dedo sem lag */
-}
-/* trilho interno (área de viagem do thumb), inset pelo raio do thumb */
-.axxa-eff-rail {
+.axxa-eff-bolts {
   position: absolute;
-  inset: 0 21px;
-  top: 50%;
-}
-.axxa-eff-dot {
-  position: absolute;
-  top: 0;
-  width: 4px;
-  height: 4px;
-  margin: -2px 0 0 -2px;
-  border-radius: 999px;
-  background: var(--text-faint);
-  opacity: 0.45;
-  transition: background 0.15s, opacity 0.15s;
-}
-.axxa-eff-dot-on {
-  background: var(--interactive-accent);
-  opacity: 0.9;
-}
-.axxa-eff-thumb {
-  position: absolute;
-  top: 0;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  transition: left 0.18s cubic-bezier(0.34, 1.25, 0.4, 1);
-}
-.axxa-eff-armed .axxa-eff-thumb {
-  transition: left 0s;
-}
-.axxa-eff-thumb-dot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: var(--background-primary);
-  border: 2px solid var(--interactive-accent);
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.28);
-  font-size: 16px;
-  line-height: 1;
-  transition: transform 0.14s cubic-bezier(0.34, 1.25, 0.4, 1);
-}
-.axxa-eff-armed .axxa-eff-thumb-dot {
-  transform: scale(1.28);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.32);
-}
-.axxa-eff-meta {
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px;
+  padding: 0 13px;
+  pointer-events: none;
+}
+.axxa-eff-bolt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: var(--text-faint);
+  transition: color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.axxa-eff-bolt svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+/* raios cobertos pelo fill = brancos pra contraste */
+.axxa-eff-bolt-on {
+  color: var(--text-on-accent);
+}
+/* raio atual = "handle" circular branco (igual o knob do brilho da Samsung) */
+.axxa-eff-bolt-cur {
+  background: var(--background-primary);
+  color: var(--interactive-accent);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+  transform: scale(1.22);
+}
+.axxa-eff-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 6px;
 }
 .axxa-eff-name {
+  flex: 0 0 auto;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -5442,7 +5374,11 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   color: var(--text-accent);
 }
 .axxa-eff-hint {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
   font-size: 10px;
+  line-height: 1.35;
   color: var(--text-faint);
 }
 
@@ -6042,17 +5978,18 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 
 /* =====================================================
- * Scrollbar do drawer/view tintada pelo preset (v0.1.96)
- * --axxa-navbar-tint vem do body.axxa-host-active.axxa-bg-X (cascata).
- * "none" não seta a var → cai no default do Obsidian.
+ * Scrollbar do drawer/view — OPACA e integrada ao tema (v0.1.125)
+ * Antes era tintada pelo preset (--axxa-navbar-tint), o que destoava do
+ * contexto. Agora usa a borda do tema (sólida, neutra) pra "sumir" no fundo.
  * ===================================================== */
 .axxa-root ::-webkit-scrollbar-thumb,
 .workspace-drawer-active-tab-container.axxa-host ::-webkit-scrollbar-thumb {
-  background: var(--axxa-navbar-tint, var(--scrollbar-thumb-bg));
+  background: var(--background-modifier-border);
+  border-radius: 999px;
 }
 .axxa-root ::-webkit-scrollbar-thumb:hover,
 .workspace-drawer-active-tab-container.axxa-host ::-webkit-scrollbar-thumb:hover {
-  background: var(--axxa-navbar-tint, var(--scrollbar-active-thumb-bg));
+  background: var(--background-modifier-border-hover, var(--background-modifier-border));
 }
 
 /* =====================================================
