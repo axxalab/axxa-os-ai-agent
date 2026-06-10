@@ -166,6 +166,8 @@ export const EN_US: Translations = {
     resume: "Resume",
     providerAdd: "Add",
     launcherHint: "Start here",
+    todayLine: (chats: number, cost: string) =>
+      `${chats} chat${chats === 1 ? "" : "s"} today · ${cost}`,
     starters: {
       chat: ["Summarize this text…", "Explain it simply:", "Draft a plan for…"],
       vaultQa: ["What do my notes say about…", "Connect ideas across…", "Summarize my notes on…"],

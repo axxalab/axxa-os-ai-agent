@@ -2585,6 +2585,18 @@ body.theme-dark .axxa-recording-indicator {
   color: var(--text-muted);
   line-height: 1.4;
 }
+/* stat de hoje — conversas + gasto, com chama accent */
+.axxa-starter-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.axxa-starter-today .axxa-icon svg {
+  width: 13px;
+  height: 13px;
+  color: var(--color-orange, #ec7b3e);
+}
 /* "Retomar: <último chat>" — botão sutil de continuidade */
 .axxa-starter-resume,
 .axxa-starter-resume:focus,

@@ -1613,6 +1613,17 @@ export function StarterScreen({
   const greeting = greetingFor(hour, t);
   const lastChat = recentChats[0];
 
+  // Saudação VIVA (v0.1.133): estatística de hoje (nº de conversas + gasto)
+  // calculada dos summaries já carregados. null = sem atividade hoje.
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayAgg = useMemo(() => {
+    const todays = (summaries ?? []).filter(
+      (s) => (s.date ?? "").slice(0, 10) === todayKey
+    );
+    if (todays.length === 0) return null;
+    return aggregateFromSummaries(todays).total;
+  }, [summaries, todayKey]);
+
   // Provider segmented v2: só os CONFIGURADOS (+ garante o atual selecionado)
   // e um item "+" no fim que abre o Settings. v0.1.131
   const PROVIDER_ADD = "__add__";
@@ -1645,13 +1656,22 @@ export function StarterScreen({
 
   return (
     <div className="axxa-starter axxa-dash">
-      {/* Saudação viva (v0.1.131) — glifo por hora + greeting + retomar último */}
+      {/* Saudação VIVA (v0.1.133) — glifo por hora + greeting + stat de hoje
+          (conversas/gasto) + retomar último; tagline só quando não há nada. */}
       <div className="axxa-starter-head">
         <h2 className="axxa-starter-title">
           <Icon name={greetingIcon(hour)} />
           {greeting}
         </h2>
-        {lastChat ? (
+        {todayAgg ? (
+          <p className="axxa-starter-subtitle axxa-starter-today">
+            <Icon name="flame" />
+            {t.dashboard.todayLine(todayAgg.chats, formatUsd(todayAgg.cost))}
+          </p>
+        ) : !lastChat ? (
+          <p className="axxa-starter-subtitle">{t.dashboard.tagline}</p>
+        ) : null}
+        {lastChat && (
           <button
             type="button"
             className="axxa-starter-resume"
@@ -1666,8 +1686,6 @@ export function StarterScreen({
             </span>
             <span className="axxa-starter-resume-title">{lastChat.title}</span>
           </button>
-        ) : (
-          <p className="axxa-starter-subtitle">{t.dashboard.tagline}</p>
         )}
       </div>
 

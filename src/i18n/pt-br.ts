@@ -166,6 +166,8 @@ export const PT_BR = {
     resume: "Retomar",
     providerAdd: "Adicionar",
     launcherHint: "Comece por aqui",
+    todayLine: (chats: number, cost: string) =>
+      `${chats} ${chats === 1 ? "conversa" : "conversas"} hoje · ${cost}`,
     starters: {
       chat: ["Resuma este texto…", "Explique de forma simples:", "Faça um roteiro pra…"],
       vaultQa: ["O que minhas notas dizem sobre…", "Conecte ideias entre…", "Resuma minhas notas de…"],
