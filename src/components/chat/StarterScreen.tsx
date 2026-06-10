@@ -1080,6 +1080,36 @@ function EffortSlider({
     if (curRef.current !== idx) onChange(EFFORT_LEVELS[curRef.current]);
   };
 
+  const lvl = EFFORT_LEVELS[cur];
+
+  // Conteúdo DENTRO da barra (raio à esquerda + nome + medidor de raios à
+  // direita). Renderizado em DUAS camadas idênticas: a base (muted, sobre o
+  // trilho) e a do fill (clara, recortada pelo fill) — o texto "acende" da
+  // esquerda pra direita conforme o fill cobre, igual o slider da One UI.
+  const content = (
+    <>
+      <span className="axxa-eff-ico">
+        <Icon name="zap" />
+      </span>
+      <span className="axxa-eff-name">{EFFORT_LABELS[lvl]}</span>
+      <span className="axxa-eff-spacer" />
+      <span className="axxa-eff-meter">
+        {EFFORT_LEVELS.map((l, i) => (
+          <span
+            key={l}
+            className={
+              "axxa-eff-pip" +
+              (i <= cur ? " axxa-eff-pip-on" : "") +
+              (i === cur ? " axxa-eff-pip-cur" : "")
+            }
+          >
+            <Icon name="zap" />
+          </span>
+        ))}
+      </span>
+    </>
+  );
+
   return (
     <div className="axxa-eff">
       <div
@@ -1095,30 +1125,17 @@ function EffortSlider({
         aria-valuemin={0}
         aria-valuemax={n - 1}
         aria-valuenow={cur}
-        aria-valuetext={EFFORT_LABELS[EFFORT_LEVELS[cur]]}
+        aria-valuetext={EFFORT_LABELS[lvl]}
       >
+        <div className="axxa-eff-face axxa-eff-face-base" aria-hidden="true">
+          {content}
+        </div>
         <span className="axxa-eff-fill" />
-        <div className="axxa-eff-bolts">
-          {EFFORT_LEVELS.map((lvl, i) => (
-            <span
-              key={lvl}
-              className={
-                "axxa-eff-bolt" +
-                (i <= cur ? " axxa-eff-bolt-on" : "") +
-                (i === cur ? " axxa-eff-bolt-cur" : "")
-              }
-            >
-              <Icon name="zap" />
-            </span>
-          ))}
+        <div className="axxa-eff-face axxa-eff-face-fill" aria-hidden="true">
+          {content}
         </div>
       </div>
-      <div className="axxa-eff-meta">
-        <span className="axxa-eff-name">{EFFORT_LABELS[EFFORT_LEVELS[cur]]}</span>
-        <span className="axxa-eff-hint">
-          {EFFORT_DESCRIPTIONS[EFFORT_LEVELS[cur]]}
-        </span>
-      </div>
+      <span className="axxa-eff-desc">{EFFORT_DESCRIPTIONS[lvl]}</span>
     </div>
   );
 }

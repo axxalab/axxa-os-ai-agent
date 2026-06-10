@@ -5289,97 +5289,161 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   display: block;
 }
 
-/* ===== Effort — slider tátil estilo "brilho" do One UI (v0.1.125) =====
-   Clicável: toca/arrasta em qualquer ponto pra setar o nível (sem hold).
-   Barra arredondada com fill accent em degraus + raios (zap) como marcadores. */
+/* ===== Effort — slider EXATO da One UI / Samsung (v0.1.126) =====
+   Pílula totalmente arredondada, fill claro/accent crescendo da esquerda sobre
+   o trilho escuro, ícone + texto DENTRO da barra. O conteúdo é renderizado em
+   duas camadas idênticas (base muted + camada do fill clara recortada pelo
+   fill) → o texto "acende" da esquerda pra direita conforme o fill cobre.
+   Clicável: toca/arrasta em qualquer ponto (sem hold). Animado: brilho varrendo
+   o fill + pulso no raio atual. */
 .axxa-eff {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 .axxa-eff-bar {
   position: relative;
-  height: 46px;
-  border-radius: 14px;
-  background: var(--background-modifier-hover);
-  border: 1px solid
-    color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+  height: 52px;
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--background-modifier-border) 55%,
+    var(--background-modifier-hover)
+  );
   overflow: hidden;
   touch-action: none; /* não rola a página enquanto arrasta */
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.14);
 }
+/* Fill — barra clara/accent arredondada (cap redondo à direita, igual One UI) */
 .axxa-eff-fill {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
+  z-index: 2;
   width: var(--eff-pct, 20%);
+  border-radius: 999px;
+  overflow: hidden;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--interactive-accent) 75%, transparent),
+    color-mix(in srgb, var(--interactive-accent) 72%, #ffffff),
     var(--interactive-accent)
   );
-  transition: width 0.24s cubic-bezier(0.34, 1.25, 0.4, 1);
+  transition: width 0.3s cubic-bezier(0.34, 1.25, 0.4, 1);
 }
-.axxa-eff-bolts {
+/* Brilho que varre o fill (animação contínua) */
+.axxa-eff-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 32%,
+    color-mix(in srgb, #ffffff 40%, transparent) 50%,
+    transparent 68%
+  );
+  transform: translateX(-90%);
+  animation: axxa-eff-shimmer 2.8s ease-in-out infinite;
+}
+@keyframes axxa-eff-shimmer {
+  0% {
+    transform: translateX(-90%);
+  }
+  55%,
+  100% {
+    transform: translateX(220%);
+  }
+}
+/* Camadas de conteúdo (idênticas, sobrepostas) */
+.axxa-eff-face {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 13px;
+  gap: 9px;
+  padding: 0 18px;
   pointer-events: none;
+  white-space: nowrap;
 }
-.axxa-eff-bolt {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  color: var(--text-faint);
-  transition: color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
+/* base: sobre o trilho escuro (muted) */
+.axxa-eff-face-base {
+  z-index: 1;
+  color: var(--text-muted);
 }
-.axxa-eff-bolt svg {
-  width: 15px;
-  height: 15px;
-  display: block;
-}
-/* raios cobertos pelo fill = brancos pra contraste */
-.axxa-eff-bolt-on {
+/* fill: clara, recortada exatamente até a borda do fill */
+.axxa-eff-face-fill {
+  z-index: 3;
   color: var(--text-on-accent);
+  clip-path: inset(0 calc(100% - var(--eff-pct, 20%)) 0 0);
+  transition: clip-path 0.3s cubic-bezier(0.34, 1.25, 0.4, 1);
 }
-/* raio atual = "handle" circular branco (igual o knob do brilho da Samsung) */
-.axxa-eff-bolt-cur {
-  background: var(--background-primary);
-  color: var(--interactive-accent);
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
-  transform: scale(1.22);
-}
-.axxa-eff-meta {
+.axxa-eff-ico {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 0 6px;
+  flex: 0 0 auto;
+}
+.axxa-eff-ico svg {
+  width: 21px;
+  height: 21px;
+  display: block;
 }
 .axxa-eff-name {
   flex: 0 0 auto;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: var(--text-accent);
 }
-.axxa-eff-hint {
+.axxa-eff-spacer {
   flex: 1 1 auto;
-  min-width: 0;
-  text-align: right;
+}
+.axxa-eff-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.axxa-eff-pip {
+  display: flex;
+  opacity: 0.3;
+  transition: opacity 0.18s ease;
+}
+.axxa-eff-pip svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+.axxa-eff-pip-on {
+  opacity: 1;
+}
+/* raio atual pulsa (animação contínua) */
+.axxa-eff-pip-cur {
+  animation: axxa-eff-pulse 1.5s ease-in-out infinite;
+}
+@keyframes axxa-eff-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.28);
+  }
+}
+/* legenda fina abaixo da barra (info de tokens/turns) */
+.axxa-eff-desc {
+  padding: 0 10px;
+  text-align: center;
   font-size: 10px;
   line-height: 1.35;
   color: var(--text-faint);
+}
+@media (prefers-reduced-motion: reduce) {
+  .axxa-eff-fill::after,
+  .axxa-eff-pip-cur {
+    animation: none;
+  }
 }
 
 /* Sheet — corpo scrollável, um pouco mais alto que o PlusModal */
