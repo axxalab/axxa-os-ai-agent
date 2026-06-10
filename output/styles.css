@@ -2672,6 +2672,91 @@ body.theme-dark .axxa-recording-indicator {
   color: var(--text-normal);
 }
 
+/* ===== Free-start banner (v0.1.138) — onboarding sem fricção quando nenhum
+   provider está configurado. Accent forte pra puxar o olho. ===== */
+.axxa-freestart,
+.axxa-freestart:focus,
+.axxa-freestart:active {
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none !important;
+}
+.axxa-freestart {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 14px;
+  border: 1px solid
+    color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+  color: var(--text-normal);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.axxa-freestart:hover {
+  background: color-mix(in srgb, var(--interactive-accent) 24%, transparent);
+}
+.axxa-freestart:active {
+  transform: scale(0.99);
+}
+.axxa-freestart-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.axxa-freestart-icon .axxa-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.axxa-freestart-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.axxa-freestart-title {
+  font-size: var(--font-ui-small);
+  font-weight: 700;
+  color: var(--text-normal);
+}
+.axxa-freestart-sub {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+.axxa-freestart > .axxa-icon:last-child svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-accent);
+  flex: 0 0 auto;
+}
+
+/* Linha de confiança (local-first) no rodapé da home */
+.axxa-starter-trust {
+  margin: 4px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+.axxa-starter-trust .axxa-icon svg {
+  width: 12px;
+  height: 12px;
+  color: var(--color-green, #06d6a0);
+}
+
 /* ===== Launcher v2 — prompt starters que preenchem o composer ===== */
 .axxa-launcher {
   display: flex;

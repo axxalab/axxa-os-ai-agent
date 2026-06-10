@@ -175,6 +175,11 @@ export const PT_BR = {
       vaultQa: ["O que minhas notas dizem sobre…", "Conecte ideias entre…", "Resuma minhas notas de…"],
       agent: ["Crie uma nota sobre…", "Organize a pasta…", "Liste pendências em…"],
     },
+    // Onboarding grátis + confiança (v0.1.138)
+    freeStartTitle: "Comece grátis, sem cartão",
+    freeStartSub:
+      "Gemini free tier · modelos free do OpenRouter · Ollama local. Toque pra configurar.",
+    trustLine: "Tudo fica no seu vault · sem telemetria · offline com Ollama",
   },
 
   modes: {

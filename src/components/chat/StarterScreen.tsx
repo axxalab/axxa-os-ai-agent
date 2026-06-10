@@ -1639,6 +1639,30 @@ export function StarterScreen({
         )}
       </div>
 
+      {/* Onboarding: nenhum provider configurado → caminho GRÁTIS em destaque.
+          Fricção zero pra primeiro "uau". v0.1.138 */}
+      {configuredProv.length === 0 && (
+        <button
+          type="button"
+          className="axxa-freestart"
+          onClick={() => {
+            hapticTick();
+            onOpenSettings();
+          }}
+        >
+          <span className="axxa-freestart-icon">
+            <Icon name="gift" />
+          </span>
+          <span className="axxa-freestart-main">
+            <span className="axxa-freestart-title">
+              {t.dashboard.freeStartTitle}
+            </span>
+            <span className="axxa-freestart-sub">{t.dashboard.freeStartSub}</span>
+          </span>
+          <Icon name="arrow-right" />
+        </button>
+      )}
+
       {/* Launcher — prompt starters por modo → preenchem o composer */}
       <PromptStarters mode={mode} onPromptStarter={onPromptStarter} />
 
@@ -1810,6 +1834,12 @@ export function StarterScreen({
 
       {/* ===== Status — chips compactos de 1 linha (v0.1.131) ===== */}
       <StatusChips plugin={plugin} onOpenSettings={onOpenSettings} />
+
+      {/* Confiança — local-first, sem telemetria (ethos Obsidian). v0.1.138 */}
+      <p className="axxa-starter-trust">
+        <Icon name="shield-check" />
+        {t.dashboard.trustLine}
+      </p>
     </div>
   );
 }

@@ -175,6 +175,11 @@ export const EN_US: Translations = {
       vaultQa: ["What do my notes say about…", "Connect ideas across…", "Summarize my notes on…"],
       agent: ["Create a note about…", "Organize the folder…", "List to-dos in…"],
     },
+    // Free onboarding + trust (v0.1.138)
+    freeStartTitle: "Start free, no card",
+    freeStartSub:
+      "Gemini free tier · OpenRouter free models · local Ollama. Tap to set up.",
+    trustLine: "Everything stays in your vault · no telemetry · offline with Ollama",
   },
 
   modes: {

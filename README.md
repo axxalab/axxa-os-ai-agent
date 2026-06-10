@@ -2,7 +2,7 @@
 
 > **Your AI workspace, native to Obsidian.** Chat, ask your vault, and let an agent act on your notes — across 6 LLM providers, with your own API keys. Mobile-first.
 
-[![Version](https://img.shields.io/badge/version-0.1.89-6c5ce7)](manifest.json)
+[![Version](https://img.shields.io/badge/version-0.1.138-6c5ce7)](manifest.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Obsidian](https://img.shields.io/badge/Obsidian-1.4.0%2B-7c3aed)](https://obsidian.md)
 [![Mobile](https://img.shields.io/badge/mobile-supported-success)](#)
@@ -26,6 +26,20 @@ AXXA OS — AI Agent turns Obsidian into a full AI workspace. It feels like a na
 - **Bilingual UI** — Portuguese (BR) and English, auto-detected from your locale.
 
 > 📸 *Screenshots coming soon — desktop sidebar + mobile drawer.*
+
+---
+
+## 🔒 Privacy & local-first
+
+AXXA OS is built for the Obsidian ethos — **your notes are yours**.
+
+- **Everything stays in your vault.** Chats, generated media, and skills are plain `.md` files on disk. Nothing is uploaded to us.
+- **No telemetry, no tracking, no accounts.** The plugin phones home to *nobody*. The only network calls are the ones you trigger to the LLM provider you chose (with your own key).
+- **Bring your own key — keys never leave your device.** They live in your vault's plugin data, used only to call the provider you picked.
+- **Works fully offline with Ollama.** Run local models with zero data leaving your machine — chat, RAG, and the agent all work air-gapped.
+- **Cite & open your notes.** Vault answers cite the source notes as clickable `[[wikilinks]]` that open the real note.
+
+> Start free, no credit card: Gemini's free tier, OpenRouter's free models, or local Ollama.
 
 ---
 
