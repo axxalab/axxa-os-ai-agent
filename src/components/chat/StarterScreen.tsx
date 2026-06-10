@@ -1285,19 +1285,34 @@ function EffortSlider({
   const [dragging, setDragging] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLElement | null>(null);
-  const draggingRef = useRef(false);
+  const armedRef = useRef(false);
+  const holdOkRef = useRef(false);
+  const holdTimerRef = useRef<number | null>(null);
+  const startRef = useRef<{ x: number; y: number; id: number } | null>(null);
   const curRef = useRef(idx);
 
-  // Sincroniza com mudança externa de effort (só quando NÃO está arrastando).
+  // Gesto (v0.1.131): hold MÍNIMO pra armar + SÓ horizontal + precisa ARRASTAR.
+  // Tap não muda; swipe vertical não ativa (deixa a página rolar). detentes:
+  const HOLD_MS = 130; // hold mínimo antes de poder armar
+  const H_THRESH = 6; // px de deslocamento horizontal pra armar/arrastar
+  const V_CANCEL = 8; // px vertical → é scroll, cancela
+
+  // Sincroniza com mudança externa de effort (só quando NÃO está armado).
   useEffect(() => {
-    if (!draggingRef.current) {
+    if (!armedRef.current) {
       setCur(idx);
       curRef.current = idx;
     }
   }, [idx]);
 
-  // Se desmontar no meio do drag, garante que o scrim/lift do root saia.
-  useEffect(() => () => rootRef.current?.classList.remove("axxa-eff-dragging"), []);
+  // Limpa scrim/timer se desmontar no meio do gesto.
+  useEffect(
+    () => () => {
+      rootRef.current?.classList.remove("axxa-eff-dragging");
+      if (holdTimerRef.current != null) window.clearTimeout(holdTimerRef.current);
+    },
+    []
+  );
 
   // Fill em degraus (estilo brilho): low=1/n … max=n/n da barra.
   const pct = ((cur + 1) / n) * 100;
@@ -1317,25 +1332,69 @@ function EffortSlider({
     hapticTick();
   };
 
-  const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    draggingRef.current = true;
-    // Acha a área do plugin pra escurecer (scrim) e elevar o slider.
-    const root = barRef.current?.closest(".axxa-root") as HTMLElement | null;
-    rootRef.current = root;
-    root?.classList.add("axxa-eff-dragging");
+  const clearHold = () => {
+    if (holdTimerRef.current != null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
+
+  const arm = (el: HTMLElement, pointerId: number) => {
+    if (armedRef.current) return;
+    armedRef.current = true;
+    el.setPointerCapture?.(pointerId);
+    rootRef.current = el.closest(".axxa-root") as HTMLElement | null;
+    rootRef.current?.classList.add("axxa-eff-dragging");
     setDragging(true);
-    setLevel(idxFromX(e.clientX));
+    hapticTick(18); // tick do "armou"
   };
+
+  const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    // NÃO captura nem muda aqui — só registra e começa o hold mínimo.
+    startRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    holdOkRef.current = false;
+    armedRef.current = false;
+    clearHold();
+    holdTimerRef.current = window.setTimeout(() => {
+      holdOkRef.current = true; // hold satisfeito — arma no 1º arraste horizontal
+    }, HOLD_MS);
+  };
+
   const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (draggingRef.current) setLevel(idxFromX(e.clientX));
+    if (armedRef.current) {
+      setLevel(idxFromX(e.clientX));
+      return;
+    }
+    const s = startRef.current;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    // vertical → é scroll: cancela e deixa a página rolar (touch-action: pan-y)
+    if (ady > adx && ady > V_CANCEL) {
+      clearHold();
+      startRef.current = null;
+      return;
+    }
+    // horizontal + hold satisfeito → arma e já move
+    if (holdOkRef.current && adx >= H_THRESH && adx >= ady) {
+      arm(e.currentTarget, s.id);
+      setLevel(idxFromX(e.clientX));
+    }
   };
+
   const endDrag = () => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    rootRef.current?.classList.remove("axxa-eff-dragging");
-    setDragging(false);
-    if (curRef.current !== idx) onChange(EFFORT_LEVELS[curRef.current]);
+    clearHold();
+    const wasArmed = armedRef.current;
+    armedRef.current = false;
+    holdOkRef.current = false;
+    startRef.current = null;
+    if (wasArmed) {
+      rootRef.current?.classList.remove("axxa-eff-dragging");
+      setDragging(false);
+      if (curRef.current !== idx) onChange(EFFORT_LEVELS[curRef.current]);
+    }
   };
 
   const lvl = EFFORT_LEVELS[cur];

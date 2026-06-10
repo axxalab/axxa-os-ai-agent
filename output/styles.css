@@ -5510,7 +5510,9 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
     var(--background-modifier-hover)
   );
   overflow: hidden;
-  touch-action: none; /* não rola a página enquanto arrasta */
+  /* pan-y: deixa o scroll VERTICAL passar pra página; só o arraste horizontal
+     é nosso. Combina com o gesto (hold mínimo + horizontal) no JS. v0.1.131 */
+  touch-action: pan-y;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
