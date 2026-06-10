@@ -1282,52 +1282,72 @@ export function StarterScreen({
       {/* Modo + Provider — JUNTOS no mesmo container, ambos SEGMENTED (mode
           igual provider: só ícone). Model fica por último, lá embaixo. v0.1.121 */}
       <div className="axxa-starter-section">
-        <label className="axxa-starter-label">
-          {t.starter.modeLabel} · {t.starter.providerLabel} ·{" "}
-          {t.starter.effortLabel}
-        </label>
+        {/* Mode + Provider + Effort — mesmo container, mas cada um com seu
+            PRÓPRIO indicativo de texto (label + valor selecionado). v0.1.129 */}
         <div className="axxa-mp">
-          {/* Mode + Provider — segmented icon-only com pílula DESLIZANTE
-              (estilo Threads). v0.1.127 */}
-          <SegmentedRow
-            items={MODES_META.map((m) => ({
-              id: m.id,
-              icon: m.icon,
-              label: modeLabel(m.id),
-              title: m.soon
-                ? t.modes.comingSoon(modeLabel(m.id))
-                : modeDesc(m.id),
-              soon: m.soon,
-            }))}
-            activeId={mode}
-            onSelect={(id) => {
-              const meta = MODES_META.find((x) => x.id === id);
-              if (meta?.soon) {
-                new Notice(t.modes.comingSoon(modeLabel(id)));
-                return;
-              }
-              hapticTick();
-              onModeChange(id);
-            }}
-          />
-          <SegmentedRow
-            items={PROVIDERS.map((p) => ({
-              id: p.id,
-              icon: p.icon,
-              label: p.name,
-            }))}
-            activeId={provider}
-            onSelect={(id) => {
-              hapticTick();
-              onProviderChange(id);
-            }}
-          />
+          {/* Modo */}
+          <div className="axxa-seg-block">
+            <span className="axxa-seg-head">
+              {t.starter.modeLabel}
+              <b className="axxa-seg-head-v">{modeLabel(mode)}</b>
+            </span>
+            <SegmentedRow
+              items={MODES_META.map((m) => ({
+                id: m.id,
+                icon: m.icon,
+                label: modeLabel(m.id),
+                title: m.soon
+                  ? t.modes.comingSoon(modeLabel(m.id))
+                  : modeDesc(m.id),
+                soon: m.soon,
+              }))}
+              activeId={mode}
+              onSelect={(id) => {
+                const meta = MODES_META.find((x) => x.id === id);
+                if (meta?.soon) {
+                  new Notice(t.modes.comingSoon(modeLabel(id)));
+                  return;
+                }
+                hapticTick();
+                onModeChange(id);
+              }}
+            />
+          </div>
+          {/* Provider */}
+          <div className="axxa-seg-block">
+            <span className="axxa-seg-head">
+              {t.starter.providerLabel}
+              <b className="axxa-seg-head-v">
+                {PROVIDERS.find((p) => p.id === provider)?.name ?? provider}
+              </b>
+            </span>
+            <SegmentedRow
+              items={PROVIDERS.map((p) => ({
+                id: p.id,
+                icon: p.icon,
+                label: p.name,
+              }))}
+              activeId={provider}
+              onSelect={(id) => {
+                hapticTick();
+                onProviderChange(id);
+              }}
+            />
+          </div>
           {/* Effort — slider tátil clicável (estilo brilho One UI) */}
-          <EffortSlider
-            effort={effort}
-            onChange={onEffortChange}
-            liveLabel={t.dashboard.effortAdjusting}
-          />
+          <div className="axxa-seg-block">
+            <span className="axxa-seg-head">
+              {t.starter.effortLabel}
+              <b className="axxa-seg-head-v">
+                {EFFORT_LABELS[effort as EffortLevel] ?? effort}
+              </b>
+            </span>
+            <EffortSlider
+              effort={effort}
+              onChange={onEffortChange}
+              liveLabel={t.dashboard.effortAdjusting}
+            />
+          </div>
         </div>
       </div>
 

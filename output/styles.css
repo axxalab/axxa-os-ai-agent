@@ -4989,12 +4989,41 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-mp {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   background: transparent;
 }
 /* zera a margem que o .axxa-settings-subtabs tem por padrão (16px) */
 .axxa-mp .axxa-settings-subtabs {
   margin: 0;
+}
+/* cada controle (modo/provider/effort) com seu PRÓPRIO indicativo de texto,
+   distribuído acima dele — não mais um label único combinado. v0.1.129 */
+.axxa-seg-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.axxa-seg-head {
+  display: flex;
+  align-items: baseline;
+  padding: 0 8px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.axxa-seg-head-v {
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-accent);
+}
+.axxa-seg-head-v::before {
+  content: "·";
+  margin: 0 6px;
+  color: var(--text-faint);
+  font-weight: 600;
 }
 /* o dropdown do model (agora por último) sobe pra vazar sobre o card de info */
 .axxa-model-dropdown {
