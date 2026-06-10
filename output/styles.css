@@ -155,12 +155,12 @@ body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .nav-buttons-containe
   display: none !important;
 }
 
-/* Navbar nativa do Obsidian TRANSPARENTE no fullscreen — mostra o bg do app
-   por trás (o body é pintado abaixo), sem a faixa nem a sombra cinza. (Antes
-   ficava display:none, mas o espaço vago revelava o #1e1e1e do body.) No modo
-   normal a navbar segue tintada pelo preset. v0.1.116 */
+/* Navbar nativa no fullscreen: TINTADA com a cor sólida do preset (não o cinza
+   --background-secondary) + sem sombra/borda. NÃO usar transparent: o container
+   pai do Obsidian é OPACO, então "transparente" revela o cinza dele em vez do
+   nosso bg. v0.1.117 */
 body.is-mobile.axxa-fullscreen .mobile-navbar {
-  background: transparent !important;
+  background: var(--axxa-navbar-tint, var(--background-secondary)) !important;
   box-shadow: none !important;
   border-top: none !important;
 }
