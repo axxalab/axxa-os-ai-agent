@@ -80,11 +80,19 @@ export class AxxaView extends ItemView {
    */
   private setupLeafBg() {
     const el = this.containerEl;
+    // Também tinta o <body>: garante que --axxa-bg-img/--axxa-navbar-tint
+    // resolvam atrás da navbar transparente e em qualquer frame body-level
+    // (setupLeafBg roda sempre; não depender só do setupNavbarTint). v0.1.119
+    const body = el.doc.body;
     const apply = () => {
-      Array.from(el.classList).forEach((c) => {
-        if (c.startsWith("axxa-bg-")) el.classList.remove(c);
-      });
-      el.classList.add("axxa-bg-" + (this.plugin.settings.background || "none"));
+      for (const target of [el, body]) {
+        Array.from(target.classList).forEach((c) => {
+          if (c.startsWith("axxa-bg-")) target.classList.remove(c);
+        });
+        target.classList.add(
+          "axxa-bg-" + (this.plugin.settings.background || "none")
+        );
+      }
     };
     apply();
     this.leafBgUnsub = this.plugin.onSettingsChange(apply);
@@ -93,9 +101,11 @@ export class AxxaView extends ItemView {
   private teardownLeafBg() {
     this.leafBgUnsub?.();
     this.leafBgUnsub = null;
-    Array.from(this.containerEl.classList).forEach((c) => {
-      if (c.startsWith("axxa-bg-")) this.containerEl.classList.remove(c);
-    });
+    for (const target of [this.containerEl, this.containerEl.doc.body]) {
+      Array.from(target.classList).forEach((c) => {
+        if (c.startsWith("axxa-bg-")) target.classList.remove(c);
+      });
+    }
   }
 
   /**

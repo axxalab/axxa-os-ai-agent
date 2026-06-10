@@ -155,14 +155,16 @@ body.is-mobile.axxa-fullscreen .workspace-drawer.mod-right .nav-buttons-containe
   display: none !important;
 }
 
-/* Navbar nativa no fullscreen: TINTADA com a cor sólida do preset (não o cinza
-   --background-secondary) + sem sombra/borda. NÃO usar transparent: o container
-   pai do Obsidian é OPACO, então "transparente" revela o cinza dele em vez do
-   nosso bg. v0.1.117 */
+/* Navbar nativa 100% TRANSPARENTE no fullscreen (pedido do user) — mostra o bg
+   pintado por trás, que agora tem BASE tintada na cor do preset
+   (--axxa-navbar-tint foi DESACOPLADA do host-active → resolve de verdade).
+   v0.1.119 */
 body.is-mobile.axxa-fullscreen .mobile-navbar {
-  background: var(--axxa-navbar-tint, var(--background-secondary)) !important;
+  background: transparent !important;
+  background-color: transparent !important;
   box-shadow: none !important;
   border-top: none !important;
+  border: none !important;
 }
 /* Mata a sombra/scrim que sobe de baixo (alguns temas põem pseudo na navbar) */
 body.is-mobile.axxa-fullscreen .mobile-navbar::before,
@@ -4148,54 +4150,54 @@ body.theme-dark .axxa-bg-lagoon {
        em themeColor.ts (status bar do OS). v0.1.106 === */
 
 /* Static */
-body.axxa-host-active.axxa-bg-dawn { --axxa-navbar-tint: #ffe9e0; }
-body.theme-dark.axxa-host-active.axxa-bg-dawn { --axxa-navbar-tint: #2a1f1c; }
+.axxa-bg-dawn { --axxa-navbar-tint: #ffe9e0; }
+body.theme-dark .axxa-bg-dawn { --axxa-navbar-tint: #2a1f1c; }
 
-body.axxa-host-active.axxa-bg-ocean { --axxa-navbar-tint: #dff0f5; }
-body.theme-dark.axxa-host-active.axxa-bg-ocean { --axxa-navbar-tint: #172a32; }
+.axxa-bg-ocean { --axxa-navbar-tint: #dff0f5; }
+body.theme-dark .axxa-bg-ocean { --axxa-navbar-tint: #172a32; }
 
-body.axxa-host-active.axxa-bg-forest { --axxa-navbar-tint: #dff2e8; }
-body.theme-dark.axxa-host-active.axxa-bg-forest { --axxa-navbar-tint: #152e26; }
+.axxa-bg-forest { --axxa-navbar-tint: #dff2e8; }
+body.theme-dark .axxa-bg-forest { --axxa-navbar-tint: #152e26; }
 
-body.axxa-host-active.axxa-bg-violet { --axxa-navbar-tint: #e9e0f7; }
-body.theme-dark.axxa-host-active.axxa-bg-violet { --axxa-navbar-tint: #221a38; }
+.axxa-bg-violet { --axxa-navbar-tint: #e9e0f7; }
+body.theme-dark .axxa-bg-violet { --axxa-navbar-tint: #221a38; }
 
-body.axxa-host-active.axxa-bg-rose { --axxa-navbar-tint: #fbe2ef; }
-body.theme-dark.axxa-host-active.axxa-bg-rose { --axxa-navbar-tint: #2e1a28; }
+.axxa-bg-rose { --axxa-navbar-tint: #fbe2ef; }
+body.theme-dark .axxa-bg-rose { --axxa-navbar-tint: #2e1a28; }
 
-body.axxa-host-active.axxa-bg-amber { --axxa-navbar-tint: #f7eed3; }
-body.theme-dark.axxa-host-active.axxa-bg-amber { --axxa-navbar-tint: #322a18; }
+.axxa-bg-amber { --axxa-navbar-tint: #f7eed3; }
+body.theme-dark .axxa-bg-amber { --axxa-navbar-tint: #322a18; }
 
-body.axxa-host-active.axxa-bg-slate { --axxa-navbar-tint: #e6eaf0; }
-body.theme-dark.axxa-host-active.axxa-bg-slate { --axxa-navbar-tint: #1c2230; }
+.axxa-bg-slate { --axxa-navbar-tint: #e6eaf0; }
+body.theme-dark .axxa-bg-slate { --axxa-navbar-tint: #1c2230; }
 
-body.axxa-host-active.axxa-bg-mono { --axxa-navbar-tint: #eaeaea; }
-body.theme-dark.axxa-host-active.axxa-bg-mono { --axxa-navbar-tint: #1c1c1c; }
+.axxa-bg-mono { --axxa-navbar-tint: #eaeaea; }
+body.theme-dark .axxa-bg-mono { --axxa-navbar-tint: #1c1c1c; }
 
 /* Live */
-body.axxa-host-active.axxa-bg-aurora { --axxa-navbar-tint: #dff2e6; }
-body.theme-dark.axxa-host-active.axxa-bg-aurora { --axxa-navbar-tint: #16261d; }
+.axxa-bg-aurora { --axxa-navbar-tint: #dff2e6; }
+body.theme-dark .axxa-bg-aurora { --axxa-navbar-tint: #16261d; }
 
-body.axxa-host-active.axxa-bg-nebula { --axxa-navbar-tint: #ece0f2; }
-body.theme-dark.axxa-host-active.axxa-bg-nebula { --axxa-navbar-tint: #221a30; }
+.axxa-bg-nebula { --axxa-navbar-tint: #ece0f2; }
+body.theme-dark .axxa-bg-nebula { --axxa-navbar-tint: #221a30; }
 
-body.axxa-host-active.axxa-bg-pulse { --axxa-navbar-tint: #e0e2f5; }
-body.theme-dark.axxa-host-active.axxa-bg-pulse { --axxa-navbar-tint: #1b1d33; }
+.axxa-bg-pulse { --axxa-navbar-tint: #e0e2f5; }
+body.theme-dark .axxa-bg-pulse { --axxa-navbar-tint: #1b1d33; }
 
-body.axxa-host-active.axxa-bg-flow { --axxa-navbar-tint: #e6e2f5; }
-body.theme-dark.axxa-host-active.axxa-bg-flow { --axxa-navbar-tint: #221d33; }
+.axxa-bg-flow { --axxa-navbar-tint: #e6e2f5; }
+body.theme-dark .axxa-bg-flow { --axxa-navbar-tint: #221d33; }
 
-body.axxa-host-active.axxa-bg-tide { --axxa-navbar-tint: #dceff2; }
-body.theme-dark.axxa-host-active.axxa-bg-tide { --axxa-navbar-tint: #15282c; }
+.axxa-bg-tide { --axxa-navbar-tint: #dceff2; }
+body.theme-dark .axxa-bg-tide { --axxa-navbar-tint: #15282c; }
 
-body.axxa-host-active.axxa-bg-ember { --axxa-navbar-tint: #f7e6db; }
-body.theme-dark.axxa-host-active.axxa-bg-ember { --axxa-navbar-tint: #2e1f18; }
+.axxa-bg-ember { --axxa-navbar-tint: #f7e6db; }
+body.theme-dark .axxa-bg-ember { --axxa-navbar-tint: #2e1f18; }
 
-body.axxa-host-active.axxa-bg-spectrum { --axxa-navbar-tint: #e9e6f2; }
-body.theme-dark.axxa-host-active.axxa-bg-spectrum { --axxa-navbar-tint: #221f30; }
+.axxa-bg-spectrum { --axxa-navbar-tint: #e9e6f2; }
+body.theme-dark .axxa-bg-spectrum { --axxa-navbar-tint: #221f30; }
 
-body.axxa-host-active.axxa-bg-lagoon { --axxa-navbar-tint: #dcf0ec; }
-body.theme-dark.axxa-host-active.axxa-bg-lagoon { --axxa-navbar-tint: #142724; }
+.axxa-bg-lagoon { --axxa-navbar-tint: #dcf0ec; }
+body.theme-dark .axxa-bg-lagoon { --axxa-navbar-tint: #142724; }
 
 /* === Apply tint — só quando a var foi definida (preset != none) === */
 body.axxa-host-active .mobile-navbar {
