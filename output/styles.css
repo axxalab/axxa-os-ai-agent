@@ -5000,6 +5000,72 @@ body.theme-dark .axxa-bg-lagoon {
   background: #dc2626 !important;
 }
 
+/* ===== Diff preview no modal de aprovação do Agent (v0.1.140) ===== */
+.axxa-confirm-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+.axxa-confirm-path {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--font-ui-smaller);
+}
+.axxa-confirm-path-label {
+  flex: 0 0 auto;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+.axxa-confirm-path-val {
+  min-width: 0;
+  font-family: var(--font-monospace);
+  color: var(--text-normal);
+  word-break: break-all;
+}
+.axxa-confirm-path-add .axxa-confirm-path-val {
+  color: var(--color-green, #06d6a0);
+}
+.axxa-confirm-path-del .axxa-confirm-path-val {
+  color: var(--color-red, #ef4444);
+}
+.axxa-diff-block {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+  border-left: 3px solid transparent;
+}
+.axxa-diff-del {
+  background: color-mix(in srgb, #ef4444 13%, transparent);
+  border-left-color: #ef4444;
+  color: var(--text-normal);
+}
+.axxa-diff-add {
+  background: color-mix(in srgb, #22c55e 14%, transparent);
+  border-left-color: #22c55e;
+  color: var(--text-normal);
+}
+.axxa-diff-ctx {
+  background: var(--background-secondary);
+  border-left-color: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+/* "Aprovar todas" — secundário, entre Negar e Aprovar */
+.axxa-confirm-approveall {
+  color: var(--text-accent) !important;
+}
+
 /* =====================================================
  * Settings — Usage tab (K.4.2)
  * Cards de resumo + tabelas + heatmap + export buttons

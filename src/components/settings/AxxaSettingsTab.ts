@@ -1306,6 +1306,18 @@ export class AxxaSettingsTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    new Setting(parent)
+      .setName(t.agent.diffApproval)
+      .setDesc(t.agent.diffApprovalDesc)
+      .addToggle((tg) =>
+        tg
+          .setValue(this.plugin.settings.agentDiffApproval !== false)
+          .onChange(async (value) => {
+            this.plugin.settings.agentDiffApproval = value;
+            await this.plugin.saveSettings();
+          })
+      );
   }
 
   /** Sub-tab RAG — embeddings + indexação */

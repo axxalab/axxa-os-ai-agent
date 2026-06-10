@@ -82,6 +82,10 @@ interface AxxaSettings {
    *  Ask = confirma cada destrutiva. Vault = só delete pergunta. Yolo = só
    *  irreversível pergunta. Default "ask" (mais conservador). */
   agentPermissionLevel: string;
+  /** Diff-approval (v0.1.140): toda ação que ESCREVE no vault (editar/criar/
+   *  mover/deletar) mostra um preview/diff pra aprovar antes de gravar.
+   *  Default true. */
+  agentDiffApproval: boolean;
   // ============ Chip visibility (v0.1.38) ============
   /** Quais chips aparecem na status line do Composer.
    *  IDs válidos: mode, model, effort, context, in, out, total */
@@ -171,6 +175,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragAutoReindex: false,
   codeWrap: false,
   agentPermissionLevel: "ask",
+  agentDiffApproval: true,
   // Defaults slim — user pode adicionar mais via Settings → Outros → Chips
   composerChips: ["model", "effort", "speed", "in", "out"],
   listChips: ["mode", "model", "date"],

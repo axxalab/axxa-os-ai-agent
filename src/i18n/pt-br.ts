@@ -223,6 +223,9 @@ export const PT_BR = {
     permissionAsk: "Ask — confirma cada ação que modifica arquivo",
     permissionVault: "Vault — read/write livre, só delete pergunta",
     permissionYolo: "YOLO — zero modais, exceto delete (irreversível)",
+    diffApproval: "Aprovar mudanças (diff)",
+    diffApprovalDesc:
+      "Toda ação que ESCREVE no vault (editar/criar/mover/deletar) mostra um diff/preview pra você aprovar antes de gravar. Com 'Aprovar todas' você libera o resto da rodada. Recomendado deixar ligado.",
   },
 
   plus: {

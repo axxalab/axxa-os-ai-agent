@@ -223,6 +223,9 @@ export const EN_US: Translations = {
     permissionAsk: "Ask — confirm every action that modifies a file",
     permissionVault: "Vault — free read/write, only delete asks",
     permissionYolo: "YOLO — no modals, except delete (irreversible)",
+    diffApproval: "Approve changes (diff)",
+    diffApprovalDesc:
+      "Every action that WRITES to the vault (edit/create/move/delete) shows a diff/preview to approve before saving. 'Approve all' clears the rest of the run. Recommended on.",
   },
 
   plus: {

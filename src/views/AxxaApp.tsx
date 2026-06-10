@@ -241,6 +241,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const currentChatId = useChatStore((s) => s.currentChatId);
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
   const abortRef = useRef<AbortController | null>(null);
+  /** "Aprovar todas" do diff-approval do agente — vale só pra rodada atual. */
+  const agentApproveAllRef = useRef(false);
 
   // Mantém a tela ligada enquanto a IA gera (chat / agent / geração de mídia).
   // Evita que a tela apague por inatividade e congele o stream no mobile.
@@ -705,6 +707,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     const permissionLevel: PermissionLevel = (plugin.settings.agentPermissionLevel ||
       "ask") as PermissionLevel;
+    // Diff-approval (aposta #2): toda ação que ESCREVE passa por preview/diff
+    // antes de gravar (default ON). "Aprovar todas" reseta a cada rodada.
+    const diffApproval = plugin.settings.agentDiffApproval !== false;
+    agentApproveAllRef.current = false;
 
     // Config do effort atual — agentMaxTurns, retry, loop detection, etc.
     const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
@@ -907,12 +913,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
           const decision = evaluatePermission(def, permissionLevel);
           let approved = decision.autoApprove;
-          if (!approved) {
+          // Diff-approval ON → toda ação que escreve (def.destructive) passa
+          // pelo preview, a menos que "aprovar todas" já tenha sido marcado
+          // (exceto irreversível: delete é sempre por ação).
+          const needsDiff = diffApproval && def.destructive;
+          if (needsDiff && agentApproveAllRef.current && !def.irreversible) {
+            approved = true;
+          } else if (needsDiff || !approved) {
             const modal = new ConfirmationModal(plugin.app, {
               toolCall: call,
               definition: def,
             });
-            approved = await modal.openAndWait();
+            const res = await modal.openAndWait();
+            approved = res.approved;
+            if (res.approveAll) agentApproveAllRef.current = true;
           }
 
           if (!approved) {
