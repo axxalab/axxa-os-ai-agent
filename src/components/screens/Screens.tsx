@@ -7,6 +7,7 @@
 import { useMemo, type ReactNode } from "react";
 import type { App } from "obsidian";
 import { Icon } from "../_shared/Icon";
+import { ThinkingGlyph } from "../_shared/ThinkingGlyph";
 import { useT } from "../../i18n";
 import {
   aggregateFromSummaries,
@@ -224,6 +225,53 @@ export function ProfileScreen({
         </div>
       </div>
     </ScreenShell>
+  );
+}
+
+// ── Onboarding de 1º uso (zero keys) + discoverability (#4/#7) ──
+export function OnboardingScreen({
+  onOpenSettings,
+  onDismiss,
+}: {
+  onOpenSettings: () => void;
+  onDismiss: () => void;
+}) {
+  const t = useT();
+  const features = [
+    { icon: "messages-square", text: t.onboarding.f1 },
+    { icon: "library-big", text: t.onboarding.f2 },
+    { icon: "bot", text: t.onboarding.f3 },
+    { icon: "image-plus", text: t.onboarding.f4 },
+    { icon: "drama", text: t.onboarding.f5 },
+  ];
+  return (
+    <div className="axxa-onboarding">
+      <div className="axxa-onboarding-hero">
+        <ThinkingGlyph className="axxa-onboarding-glyph" />
+        <h2 className="axxa-onboarding-title">{t.onboarding.title}</h2>
+        <p className="axxa-onboarding-sub">{t.onboarding.sub}</p>
+      </div>
+      <div className="axxa-onboarding-features">
+        {features.map((f, i) => (
+          <div key={i} className="axxa-onboarding-feature">
+            <span className="axxa-onboarding-feature-ico">
+              <Icon name={f.icon} />
+            </span>
+            <span>{f.text}</span>
+          </div>
+        ))}
+      </div>
+      <p className="axxa-onboarding-note">{t.onboarding.byoNote}</p>
+      <div className="axxa-onboarding-actions">
+        <button type="button" className="axxa-screen-cta" onClick={onOpenSettings}>
+          <Icon name="key-round" />
+          {t.onboarding.cta}
+        </button>
+        <button type="button" className="axxa-onboarding-skip" onClick={onDismiss}>
+          {t.onboarding.skip}
+        </button>
+      </div>
+    </div>
   );
 }
 

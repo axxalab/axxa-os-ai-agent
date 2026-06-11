@@ -145,6 +145,8 @@ interface AxxaSettings {
   accountTier: string;
   /** Override de ADMIN pra testar planos: "auto" | "free" | "pro". */
   devTierOverride: string;
+  /** Onboarding de 1º uso já foi visto/dispensado? (não mostra de novo). #4 */
+  onboardingDone: boolean;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -234,6 +236,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   balanceAnchors: {},
   accountTier: "pro",
   devTierOverride: "auto",
+  onboardingDone: false,
 };
 
 export default class AxxaPlugin extends Plugin {

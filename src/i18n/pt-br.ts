@@ -326,6 +326,21 @@ export const PT_BR = {
     menuDesc: "Gera uma imagem na conversa atual — sem trocar de modelo.",
   },
 
+  // Onboarding de 1º uso (#4) + discoverability (#7) — v0.1.178
+  onboarding: {
+    title: "Bem-vindo ao AXXA OS",
+    sub: "Seu workspace de IA, nativo no Obsidian.",
+    f1: "Chat com 6 providers (OpenAI, Claude, Gemini, OpenRouter, NIM, Ollama) — sua própria chave.",
+    f2: "Vault Q&A: pergunte às suas notas com RAG local + citações clicáveis.",
+    f3: "Agente que lê e edita suas notas, com aprovação por diff.",
+    f4: "Gera imagem dentro da conversa, sem trocar de modelo.",
+    f5: "Personas, skills (.md) e modos — tudo local-first.",
+    byoNote:
+      "Você usa sua própria API key (BYO), guardada no cofre do sistema. Tem Ollama? roda local, sem chave.",
+    cta: "Adicionar minha primeira key",
+    skip: "Pular por agora",
+  },
+
   // Navegação lateral (v0.1.174)
   nav: {
     conversations: "Conversas",

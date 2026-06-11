@@ -25,6 +25,7 @@ import {
   ProjectsScreen,
   ProfileScreen,
   LockedScreen,
+  OnboardingScreen,
 } from "../components/screens/Screens";
 import {
   getEffectiveTier,
@@ -326,6 +327,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // Plano efetivo (override de admin > entitlement real). Gateia telas pagas.
   const tier = getEffectiveTier(plugin.settings);
   const handleNavigate = (v: AppView) => setView(v);
+
+  // Onboarding de 1º uso (#4): zero chaves de provider + ainda não dispensado.
+  const hasAnyKey =
+    [
+      plugin.settings.openaiApiKey,
+      plugin.settings.anthropicApiKey,
+      plugin.settings.geminiApiKey,
+      plugin.settings.openrouterApiKey,
+      plugin.settings.nimApiKey,
+    ].some((k) => (k ?? "").trim().length > 0);
+  const finishOnboarding = async (openSettings: boolean) => {
+    plugin.settings.onboardingDone = true;
+    await plugin.saveSettings();
+    if (openSettings) handleOpenSettings();
+  };
   // Busca dentro da conversa atual (toggle no Header → campo acima da ChatArea)
   // Alvo de destaque da busca (msg escolhida no modal). n = nonce p/ re-disparar.
   const [searchTarget, setSearchTarget] = useState<{
@@ -2385,6 +2401,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           ) : (
             <LockedScreen view="profile" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
           )
+        ) : view === "chat" &&
+          isEmpty &&
+          !plugin.settings.onboardingDone &&
+          !hasAnyKey ? (
+          <OnboardingScreen
+            onOpenSettings={() => finishOnboarding(true)}
+            onDismiss={() => finishOnboarding(false)}
+          />
         ) : isEmpty ? (
           <StarterScreen
             plugin={plugin}

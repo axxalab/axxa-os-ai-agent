@@ -316,6 +316,20 @@ export const EN_US: Translations = {
     menuDesc: "Generates an image in the current chat — no model switch.",
   },
 
+  onboarding: {
+    title: "Welcome to AXXA OS",
+    sub: "Your AI workspace, native to Obsidian.",
+    f1: "Chat with 6 providers (OpenAI, Claude, Gemini, OpenRouter, NIM, Ollama) — your own key.",
+    f2: "Vault Q&A: ask your notes with local RAG + clickable citations.",
+    f3: "An agent that reads and edits your notes, with diff approval.",
+    f4: "Generate images inside the conversation, no model switch.",
+    f5: "Personas, skills (.md) and modes — all local-first.",
+    byoNote:
+      "You use your own API key (BYO), stored in the OS keychain. Got Ollama? runs local, no key.",
+    cta: "Add my first key",
+    skip: "Skip for now",
+  },
+
   nav: {
     conversations: "Conversations",
     media: "Media",
