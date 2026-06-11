@@ -355,13 +355,15 @@ export const PT_BR = {
   onboarding: {
     title: "Bem-vindo ao AXXA OS",
     sub: "Seu workspace de IA, nativo no Obsidian.",
-    f1: "Chat com 6 providers (OpenAI, Claude, Gemini, OpenRouter, NIM, Ollama) — sua própria chave.",
-    f2: "Vault Q&A: pergunte às suas notas com RAG local + citações clicáveis.",
-    f3: "Agente que lê e edita suas notas, com aprovação por diff.",
-    f4: "Gera imagem dentro da conversa, sem trocar de modelo.",
-    f5: "Personas, skills (.md) e modos — tudo local-first.",
+    features: [
+      { title: "6 providers, sua chave", desc: "OpenAI, Claude, Gemini, OpenRouter, NIM e Ollama — você traz a chave (BYO)." },
+      { title: "Converse com seu vault", desc: "Vault Q&A com RAG local e citações clicáveis pras notas." },
+      { title: "Um agente que age", desc: "Lê e edita suas notas, sempre com aprovação por diff." },
+      { title: "Gera imagem no chat", desc: "Direto na conversa, sem trocar o modelo." },
+      { title: "Tudo local-first", desc: "Conversas, personas e skills (.md) ficam no seu vault." },
+    ],
     byoNote:
-      "Você usa sua própria API key (BYO), guardada no cofre do sistema. Tem Ollama? roda local, sem chave.",
+      "Sua API key é guardada no cofre do sistema. Tem Ollama? roda local, sem chave.",
     cta: "Adicionar minha primeira key",
     skip: "Pular por agora",
   },

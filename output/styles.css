@@ -615,9 +615,11 @@ body.is-mobile
   min-width: 0;
 }
 
+/* Balão do user: NEUTRO/sutil (estilo ChatGPT/Claude), não accent saturado.
+   color-mix garante contraste leve em tema claro E escuro. (print #16) */
 .axxa-bubble-user {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
+  background: color-mix(in srgb, var(--text-normal) 8%, transparent);
+  color: var(--text-normal);
   font-size: var(--font-ui-medium);
 }
 
@@ -1512,18 +1514,13 @@ body.is-mobile
 .axxa-onboarding-features {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 18px;
 }
+/* Linha estilo ChatGPT iOS: ícone + título forte + descrição muted, sem card. */
 .axxa-onboarding-feature {
   display: flex;
   align-items: flex-start;
-  gap: 11px;
-  padding: 11px 13px;
-  border-radius: 11px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  font-size: var(--font-ui-small);
-  line-height: 1.4;
+  gap: 13px;
 }
 .axxa-onboarding-feature-ico {
   flex: 0 0 auto;
@@ -1531,9 +1528,24 @@ body.is-mobile
   margin-top: 1px;
 }
 .axxa-onboarding-feature-ico .svg-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--text-accent);
+  width: 20px;
+  height: 20px;
+  color: var(--text-normal);
+}
+.axxa-onboarding-feature-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.axxa-onboarding-feature-title {
+  font-weight: 600;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+.axxa-onboarding-feature-desc {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.42;
 }
 .axxa-onboarding-note {
   margin: 0;

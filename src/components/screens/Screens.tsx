@@ -350,13 +350,7 @@ export function OnboardingScreen({
   onDismiss: () => void;
 }) {
   const t = useT();
-  const features = [
-    { icon: "messages-square", text: t.onboarding.f1 },
-    { icon: "library-big", text: t.onboarding.f2 },
-    { icon: "bot", text: t.onboarding.f3 },
-    { icon: "image-plus", text: t.onboarding.f4 },
-    { icon: "drama", text: t.onboarding.f5 },
-  ];
+  const icons = ["key-round", "library-big", "bot", "image-plus", "lock"];
   return (
     <div className="axxa-onboarding">
       <div className="axxa-onboarding-hero">
@@ -365,12 +359,15 @@ export function OnboardingScreen({
         <p className="axxa-onboarding-sub">{t.onboarding.sub}</p>
       </div>
       <div className="axxa-onboarding-features">
-        {features.map((f, i) => (
+        {t.onboarding.features.map((f, i) => (
           <div key={i} className="axxa-onboarding-feature">
             <span className="axxa-onboarding-feature-ico">
-              <Icon name={f.icon} />
+              <Icon name={icons[i] ?? "sparkles"} />
             </span>
-            <span>{f.text}</span>
+            <span className="axxa-onboarding-feature-text">
+              <span className="axxa-onboarding-feature-title">{f.title}</span>
+              <span className="axxa-onboarding-feature-desc">{f.desc}</span>
+            </span>
           </div>
         ))}
       </div>
