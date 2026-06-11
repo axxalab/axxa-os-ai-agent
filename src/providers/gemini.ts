@@ -216,6 +216,12 @@ export class GeminiProvider implements Provider {
         "no-key"
       );
     }
+    // Imagen usa um contrato DIFERENTE do Nano Banana: `:predict` com
+    // instances/parameters (não `:generateContent` + responseModalities).
+    // Mandar Imagen pro generateContent dava HTTP 400 na hora. v0.1.163
+    if (request.model.startsWith("imagen-")) {
+      return this.generateWithImagen(request, apiKey);
+    }
     const url = `${GEMINI_NATIVE_BASE}/${request.model}:generateContent?key=${encodeURIComponent(apiKey.trim())}`;
     // CRÍTICO: API v1beta exige snake_case nos campos.
     // Erro observado: "Unknown name 'responseModalities' at 'generation_config'"
@@ -300,6 +306,81 @@ export class GeminiProvider implements Provider {
   }
 
   /**
+   * Gera imagem com modelos **Imagen** (imagen-3.0/4.0) — contrato `:predict`.
+   *
+   * Confirmado via ai.google.dev/gemini-api/docs/imagen:
+   *  - POST /v1beta/models/{model}:predict
+   *  - body: { instances: [{ prompt }], parameters: { sampleCount, aspectRatio,
+   *    personGeneration } }
+   *  - response: { predictions: [{ bytesBase64Encoded, mimeType }] }
+   *
+   * Imagen NÃO entra no free tier → conta sem billing ativo é barrada (erro
+   * billing/FAILED_PRECONDITION, capturado por isGeminiBillingError). v0.1.163
+   */
+  private async generateWithImagen(
+    request: MediaGenerationRequest,
+    apiKey: string
+  ): Promise<MediaGenerationItem[]> {
+    const url = `${GEMINI_NATIVE_BASE}/${request.model}:predict?key=${encodeURIComponent(apiKey.trim())}`;
+    const body = {
+      instances: [{ prompt: request.prompt }],
+      parameters: {
+        sampleCount: request.n ?? 1,
+        aspectRatio: sizeToImagenAspect(request.size),
+        personGeneration: "allow_adult",
+      },
+    };
+    let res;
+    try {
+      res = await requestUrl({
+        url,
+        method: "POST",
+        contentType: "application/json",
+        body: JSON.stringify(body),
+        throw: false,
+      });
+    } catch (err) {
+      console.error("[axxa] Imagen network error:", err);
+      throw new ProviderError("Falha de conexão.", "network");
+    }
+    if (res.status < 200 || res.status >= 300) {
+      const detail =
+        res.json?.error?.message ??
+        (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
+        `HTTP ${res.status}`;
+      console.error("[axxa] Imagen gen failed:", res.status, res.json ?? res.text);
+      if (res.status === 401 || res.status === 403) {
+        throw new ProviderError("API key Gemini inválida.", "invalid-key");
+      }
+      if (isGeminiBillingError(res.status, detail, "image")) {
+        throw new ProviderError(`Gemini billing: ${detail}`, "billing");
+      }
+      if (res.status === 429) {
+        throw new ProviderError("Rate limit Gemini.", "rate-limit");
+      }
+      throw new ProviderError(`Imagen (${res.status}): ${detail}`, "unknown");
+    }
+    const preds: Array<{ bytesBase64Encoded?: string; mimeType?: string }> =
+      res.json?.predictions ?? [];
+    const items: MediaGenerationItem[] = [];
+    for (const p of preds) {
+      if (p.bytesBase64Encoded) {
+        items.push({
+          data: base64ToBytes(p.bytesBase64Encoded),
+          mime: p.mimeType || "image/png",
+        });
+      }
+    }
+    if (items.length === 0) {
+      throw new ProviderError(
+        `Imagen "${request.model}" não retornou imagens (resposta sem predictions).`,
+        "unknown"
+      );
+    }
+    return items;
+  }
+
+  /**
    * Lista modelos Gemini relevantes (chat + image gen + TTS).
    * Alguns endpoints retornam IDs prefixados com "models/" — normalizamos.
    */
@@ -367,6 +448,23 @@ function isRelevantGeminiModel(id: string): boolean {
   // Video generation
   if (id.startsWith("veo")) return true;
   return false;
+}
+
+/** size canonical → aspectRatio aceito pelo Imagen (1:1, 9:16, 16:9, 3:4, 4:3). */
+function sizeToImagenAspect(size?: string): string {
+  switch (size) {
+    case "1024x1792":
+      return "9:16";
+    case "1792x1024":
+      return "16:9";
+    case "512x512":
+    case "1024x1024":
+    case "auto":
+    case undefined:
+      return "1:1";
+    default:
+      return "1:1";
+  }
 }
 
 /** Decode base64 → Uint8Array. */
