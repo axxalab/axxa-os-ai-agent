@@ -333,3 +333,45 @@ describe("nim streamChat — pseudo-stream via requestUrl", () => {
     ).rejects.toMatchObject({ code: "invalid-key" });
   });
 });
+
+describe("param policy aplicada no BODY real (regressão temperature)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function captureBody(chunks: string[]) {
+    const cap: { body?: Record<string, unknown> } = {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: { body: string }) => {
+        cap.body = JSON.parse(init.body);
+        return fakeStreamResponse(chunks);
+      })
+    );
+    return cap;
+  }
+  const reqT = (model: string, temperature: number) => ({
+    model,
+    messages: [{ role: "user" as const, content: "hi" }],
+    temperature,
+  });
+
+  it("gpt-4o → temperature VAI no body", async () => {
+    const cap = captureBody(["data: [DONE]\n\n"]);
+    await openaiProvider.streamChat(reqT("gpt-4o", 0.3), "key", () => {});
+    expect(cap.body?.temperature).toBe(0.3);
+  });
+
+  it("o3-mini (reasoning) → temperature OMITIDA do body (evita 400)", async () => {
+    const cap = captureBody(["data: [DONE]\n\n"]);
+    await openaiProvider.streamChat(reqT("o3-mini", 0.3), "key", () => {});
+    expect(cap.body?.temperature).toBeUndefined();
+  });
+
+  it("Claude > 1 é clampado pra 1 no body", async () => {
+    const cap = captureBody([
+      sse({ type: "message_start", message: { usage: { input_tokens: 1 } } }),
+      sse({ type: "message_stop" }),
+    ]);
+    await anthropicProvider.streamChat(reqT("claude-opus-4-8", 1.7), "key", () => {});
+    expect(cap.body?.temperature).toBe(1);
+  });
+});

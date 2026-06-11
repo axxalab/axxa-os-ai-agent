@@ -18,6 +18,7 @@ import {
   MediaGenerationItem,
 } from "./base";
 import { isEmbeddingModelId } from "../rag/types";
+import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODELS_ENDPOINT = "https://api.openai.com/v1/models";
@@ -99,11 +100,10 @@ export class OpenAIProvider implements Provider {
       model: req.model,
       messages: toOpenAIMessages(req.messages),
       // gpt-4o e modelos mais novos exigem max_completion_tokens (max_tokens deprecado)
-      max_completion_tokens: req.maxTokens ?? 2000,
+      max_completion_tokens: resolveMaxTokens("openai", req.model, req.maxTokens ?? 2000),
     };
-    if (typeof req.temperature === "number" && req.temperature >= 0) {
-      body.temperature = req.temperature;
-    }
+    const temp = resolveTemperature("openai", req.model, req.temperature);
+    if (temp !== undefined) body.temperature = temp;
     if (req.tools && req.tools.length > 0) {
       body.tools = req.tools.map((t) => ({
         type: "function",
@@ -228,11 +228,10 @@ export class OpenAIProvider implements Provider {
       stream: true,
       // include_usage faz a OpenAI mandar um chunk final com `usage`
       stream_options: { include_usage: true },
-      max_completion_tokens: req.maxTokens ?? 2000,
+      max_completion_tokens: resolveMaxTokens("openai", req.model, req.maxTokens ?? 2000),
     };
-    if (typeof req.temperature === "number" && req.temperature >= 0) {
-      body.temperature = req.temperature;
-    }
+    const temp = resolveTemperature("openai", req.model, req.temperature);
+    if (temp !== undefined) body.temperature = temp;
     if (req.tools && req.tools.length > 0) {
       body.tools = req.tools.map((t) => ({
         type: "function",

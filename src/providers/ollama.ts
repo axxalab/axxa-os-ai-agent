@@ -29,6 +29,7 @@ import {
   TokenHandler,
   UsageHandler,
 } from "./base";
+import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
 import { toOpenAIMessages } from "./openai";
 
 export class OllamaProvider implements Provider {
@@ -56,10 +57,11 @@ export class OllamaProvider implements Provider {
       messages: toOpenAIMessages(req.messages),
       stream: false,
       options: {
-        num_predict: req.maxTokens ?? 2000,
-        ...(typeof req.temperature === "number" && req.temperature >= 0
-          ? { temperature: req.temperature }
-          : {}),
+        num_predict: resolveMaxTokens("ollama", req.model, req.maxTokens ?? 2000),
+        ...(() => {
+          const t = resolveTemperature("ollama", req.model, req.temperature);
+          return t !== undefined ? { temperature: t } : {};
+        })(),
       },
     };
     if (req.tools && req.tools.length > 0) {
@@ -162,10 +164,11 @@ export class OllamaProvider implements Provider {
       messages: toOpenAIMessages(req.messages),
       stream: true,
       options: {
-        num_predict: req.maxTokens ?? 2000,
-        ...(typeof req.temperature === "number" && req.temperature >= 0
-          ? { temperature: req.temperature }
-          : {}),
+        num_predict: resolveMaxTokens("ollama", req.model, req.maxTokens ?? 2000),
+        ...(() => {
+          const t = resolveTemperature("ollama", req.model, req.temperature);
+          return t !== undefined ? { temperature: t } : {};
+        })(),
       },
     };
     if (req.tools && req.tools.length > 0) {

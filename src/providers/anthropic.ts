@@ -28,6 +28,7 @@ import {
   TokenHandler,
   UsageHandler,
 } from "./base";
+import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
 
 const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -205,14 +206,14 @@ function buildBody(req: ProviderRequest, stream: boolean): AnthropicBody {
 
   const body: AnthropicBody = {
     model: req.model,
-    max_tokens: req.maxTokens ?? 2000,
+    max_tokens: resolveMaxTokens("anthropic", req.model, req.maxTokens ?? 2000),
     messages,
     stream,
   };
   if (system) body.system = system;
-  if (typeof req.temperature === "number" && req.temperature >= 0) {
-    body.temperature = req.temperature;
-  }
+  // Claude usa range 0..1 (paramPolicy clampa) — não 0..2 como a OpenAI.
+  const temp = resolveTemperature("anthropic", req.model, req.temperature);
+  if (temp !== undefined) body.temperature = temp;
   if (req.tools && req.tools.length > 0) {
     body.tools = req.tools.map((t) => ({
       name: t.name,
