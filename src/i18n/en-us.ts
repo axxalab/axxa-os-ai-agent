@@ -615,6 +615,15 @@ export const EN_US: Translations = {
     usageDsMini: "Mini/nano — today",
     usageDsNote:
       "Estimate. The free allowance is daily (resets at midnight) and per pool. ⚠️ It's shared across ALL your OpenAI API usage — the plugin only sees vault chats, so 'free remaining' is optimistic if you use the API elsewhere. Images never count toward the allowance.",
+    usageBillingTitle: "Real billing (cross-check)",
+    usageBillingCross: "Cross-check with API",
+    usageBillingCrossing: "Checking…",
+    usageBillingEstimate: "Estimated",
+    usageBillingReal: "Real",
+    usageBillingStatusCol: "Status",
+    usageBillingLeft: "left",
+    usageBillingNoLive:
+      "Only OpenRouter exposes real billing via the normal key. Set the OpenRouter key to cross-check.",
     usageTokensInLabel: "Tokens in",
     usageTokensOutLabel: "Tokens out",
     usageChatsLabel: "Conversations",

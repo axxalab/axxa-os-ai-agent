@@ -19,6 +19,7 @@ import {
   TFolder,
   normalizePath,
   setIcon,
+  requestUrl,
 } from "obsidian";
 import type AxxaPlugin from "../../main";
 import { openaiProvider } from "../../providers/openai";
@@ -63,6 +64,10 @@ import {
   todayFreeStatus,
   type BilledUsage,
 } from "../../usage/freeBilling";
+import {
+  billingCapabilityFor,
+  fetchOpenRouterBilling,
+} from "../../usage/providerBilling";
 import {
   getModelCapabilities,
   capabilityBadges,
@@ -2128,6 +2133,85 @@ export class AxxaSettingsTab extends PluginSettingTab {
     }
   }
 
+  /**
+   * Cross-check do billing real: estimativa do plugin vs o que o provider
+   * reporta. OpenRouter dá real com a chave normal (botão "Cruzar"); os demais
+   * mostram a capacidade (admin key / console / local). v0.1.169
+   */
+  private renderBillingCrossCheck(
+    parent: HTMLElement,
+    agg: UsageAggregate,
+    t: Translations
+  ) {
+    const sec = parent.createDiv({ cls: "axxa-usage-xcheck" });
+    const head = sec.createDiv({ cls: "axxa-usage-xcheck-head" });
+    head.createEl("h4", { text: t.settings.usageBillingTitle });
+    const btn = head.createEl("button", {
+      text: t.settings.usageBillingCross,
+      cls: "axxa-usage-xcheck-btn",
+    });
+
+    const table = sec.createDiv({ cls: "axxa-usage-xcheck-list" });
+    const header = table.createDiv({ cls: "axxa-usage-xcheck-row is-head" });
+    header.createSpan({ text: t.settings.usageColProvider });
+    header.createSpan({ text: t.settings.usageBillingEstimate });
+    header.createSpan({ text: t.settings.usageBillingReal });
+    header.createSpan({ text: t.settings.usageBillingStatusCol });
+
+    const realCells: Record<string, HTMLElement> = {};
+    for (const [p] of sortBucketEntries(agg.byProvider)) {
+      if (!p || p === "(desconhecido)") continue;
+      const cap = billingCapabilityFor(p);
+      const bucket = agg.byProvider[p];
+      const row = table.createDiv({
+        cls: "axxa-usage-xcheck-row axxa-usage-xcheck-cap-" + cap.capability,
+      });
+      row.createSpan({ text: p, cls: "axxa-usage-xcheck-prov" });
+      row.createSpan({ text: formatUsd(bucket.cost), cls: "axxa-usage-num" });
+      realCells[p] = row.createSpan({
+        text: "—",
+        cls: "axxa-usage-num axxa-usage-xcheck-real",
+      });
+      const status = row.createSpan({ cls: "axxa-usage-xcheck-status" });
+      status.createSpan({ text: cap.note });
+      if (cap.consoleUrl) {
+        const a = status.createEl("a", {
+          text: " ↗",
+          href: cap.consoleUrl,
+          cls: "axxa-usage-xcheck-link",
+        });
+        a.setAttr("target", "_blank");
+      }
+    }
+
+    btn.onclick = async () => {
+      const orKey = this.plugin.settings.openrouterApiKey;
+      if (!realCells["openrouter"] || !orKey || !orKey.trim()) {
+        new Notice(t.settings.usageBillingNoLive);
+        return;
+      }
+      btn.disabled = true;
+      btn.setText(t.settings.usageBillingCrossing);
+      try {
+        const b = await fetchOpenRouterBilling(orKey, requestUrl);
+        const remain =
+          b.remainingUsd != null
+            ? ` (${formatUsd(b.remainingUsd)} ${t.settings.usageBillingLeft})`
+            : "";
+        realCells["openrouter"].setText(formatUsd(b.usageUsd) + remain);
+        realCells["openrouter"].addClass("is-real");
+      } catch (err) {
+        realCells["openrouter"].setText("erro");
+        new Notice(
+          `OpenRouter: ${err instanceof Error ? err.message : String(err)}`
+        );
+      } finally {
+        btn.disabled = false;
+        btn.setText(t.settings.usageBillingCross);
+      }
+    };
+  }
+
   /** Painel data-sharing: bruto vs cobrado vs economia + cota grátis de HOJE. */
   private renderDataSharingPanel(
     parent: HTMLElement,
@@ -2235,6 +2319,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     // ===== Painel data-sharing (cota grátis aplicada) =====
     if (billed) this.renderDataSharingPanel(parent, agg, billed, t);
+
+    // ===== Cross-check do billing real (OpenRouter ao vivo + status dos demais) =====
+    this.renderBillingCrossCheck(parent, agg, t);
 
     // ===== Tabela por provider =====
     this.usageTable(

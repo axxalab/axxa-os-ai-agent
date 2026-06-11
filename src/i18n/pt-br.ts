@@ -625,6 +625,16 @@ export const PT_BR = {
     usageDsMini: "Mini/nano — hoje",
     usageDsNote:
       "Estimativa. A cota grátis é diária (reseta à meia-noite) e por pool. ⚠️ Ela é compartilhada com TODO o seu uso da OpenAI API — o plugin só enxerga os chats do vault, então o 'grátis restante' é otimista se você usa a API em outro lugar. Imagem nunca entra na cota.",
+    // Cross-check de billing real (v0.1.169)
+    usageBillingTitle: "Billing real (cross-check)",
+    usageBillingCross: "Cruzar com a API",
+    usageBillingCrossing: "Cruzando…",
+    usageBillingEstimate: "Estimado",
+    usageBillingReal: "Real",
+    usageBillingStatusCol: "Status",
+    usageBillingLeft: "restante",
+    usageBillingNoLive:
+      "Só o OpenRouter expõe billing real via chave normal. Configure a chave do OpenRouter pra cruzar.",
     usageTokensInLabel: "Tokens in",
     usageTokensOutLabel: "Tokens out",
     usageChatsLabel: "Conversas",
