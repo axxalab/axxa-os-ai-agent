@@ -53,17 +53,71 @@ export interface StoreMessageLike {
   agentSteps?: AIToolStep[];
 }
 
+// ── Flatten de agentSteps → texto (modos SEM tools) ────────
+// Mandar `tool_calls`/`tool` num request que NÃO declara `tools` quebra em
+// vários providers: Anthropic responde 400 ("tool_use/tool_result exigem tools
+// definidas"); Gemini-compat / OpenRouter / NIM podem rejeitar. Então, fora do
+// Agent mode, as ações do agent viram um BLOCO DE TEXTO no assistant — o modelo
+// mantém a MEMÓRIA do que fez e funciona em TODO provider e modo. v0.1.161
+
+function truncateInline(s: string, max: number): string {
+  const flat = s.replace(/\s+/g, " ").trim();
+  return flat.length > max ? flat.slice(0, max).trimEnd() + "…" : flat;
+}
+
+/** Arg mais significativo de um step pra rotular a ação no texto. */
+function stepKeyArg(args: Record<string, unknown> | undefined): string {
+  if (!args) return "";
+  for (const k of ["path", "from", "to", "folder", "query", "note", "title"]) {
+    const v = args[k];
+    if (typeof v === "string" && v) return v;
+  }
+  return "";
+}
+
+function summarizeStepLine(s: AIToolStep, i: number): string {
+  const arg = stepKeyArg(s.arguments);
+  const head = arg ? `${s.name}(${truncateInline(arg, 80)})` : s.name;
+  const status = s.ok ? "ok" : "ERRO";
+  const excerpt = s.result ? ` — ${truncateInline(s.result, 160)}` : "";
+  return `${i + 1}. ${head} → ${status}${excerpt}`;
+}
+
+/**
+ * ai-response COM agentSteps → um único assistant em TEXTO que preserva a
+ * memória do que o agent fez. Usado fora do Agent mode (request sem `tools`),
+ * onde mandar tool_calls wire-level quebraria o provider. Puro/testável.
+ */
+export function flattenAgentResponse(
+  finalText: string,
+  steps: AIToolStep[]
+): string {
+  const lines = steps.map((s, i) => summarizeStepLine(s, i));
+  const block =
+    "〔memória do agente — ações já executadas nesta conversa:\n" +
+    lines.join("\n") +
+    "〕";
+  const t = (finalText ?? "").trim();
+  return t ? `${t}\n\n${block}` : block;
+}
+
 /**
  * Converte mensagens do store em ProviderMessage[] mandadas ao LLM:
  *   - mantém só `user` e `ai-response` SEM erro (isError não polui o contexto)
  *   - a ÚLTIMA user-msg recebe os attachments multimodais (quando passados)
- *   - ai-response COM agentSteps (Agent mode) é EXPANDIDA pro shape que o LLM
- *     espera — assistant(tool_calls) + tool(results) + assistant(texto final) —
- *     dando ao agent a memória do que já fez ao reabrir o chat. v0.1.160
+ *   - ai-response COM agentSteps (Agent mode) recupera a memória do agent:
+ *       · `toolMode=true`  (Agent mode — request declara tools): EXPANDE pro
+ *         shape wire — assistant(tool_calls) + tool(results) + assistant(texto)
+ *         — replay PRECISO, cross-provider. v0.1.160
+ *       · `toolMode=false` (chat / vault-qa / regenerate / continue, ou
+ *         qualquer provider sem tools na request): ACHATA num assistant de
+ *         TEXTO. Portável em todo provider — não há tool_calls num request sem
+ *         `tools` pra quebrar Anthropic/Gemini-compat. v0.1.161
  */
 export function storeMessagesToProvider(
   messages: StoreMessageLike[],
-  lastUserAttachments?: MessageAttachment[]
+  lastUserAttachments?: MessageAttachment[],
+  toolMode = false
 ): ProviderMessage[] {
   const usable = messages.filter(
     (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
@@ -71,20 +125,28 @@ export function storeMessagesToProvider(
   const out: ProviderMessage[] = [];
   usable.forEach((m, idx) => {
     if (m.type === "ai-response" && m.agentSteps && m.agentSteps.length > 0) {
-      // assistant com as tool_calls + os tool results + a resposta final.
-      out.push({
-        role: "assistant",
-        content: "",
-        toolCalls: m.agentSteps.map((s) => ({
-          id: s.id,
-          name: s.name,
-          arguments: s.arguments,
-        })),
-      });
-      for (const s of m.agentSteps) {
-        out.push({ role: "tool", toolCallId: s.id, content: s.result });
+      if (toolMode) {
+        // Agent mode: assistant(tool_calls) + tool results + resposta final.
+        out.push({
+          role: "assistant",
+          content: "",
+          toolCalls: m.agentSteps.map((s) => ({
+            id: s.id,
+            name: s.name,
+            arguments: s.arguments,
+          })),
+        });
+        for (const s of m.agentSteps) {
+          out.push({ role: "tool", toolCallId: s.id, content: s.result });
+        }
+        if (m.content) out.push({ role: "assistant", content: m.content });
+      } else {
+        // Qualquer outro modo/provider: ações viram texto (memória portável).
+        out.push({
+          role: "assistant",
+          content: flattenAgentResponse(m.content ?? "", m.agentSteps),
+        });
       }
-      if (m.content) out.push({ role: "assistant", content: m.content });
       return;
     }
     const base: ProviderMessage = {

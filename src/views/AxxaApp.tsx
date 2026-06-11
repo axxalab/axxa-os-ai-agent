@@ -795,9 +795,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           t.agent.systemPrompt
         ),
       },
+      // toolMode=true → o agent declara tools, então agentSteps são expandidos
+      // pro shape wire (replay PRECISO). Nos demais modos fica false (achata).
       ...storeMessagesToProvider(
         useChatStore.getState().messages,
-        userAttachments
+        userAttachments,
+        true
       ),
     ];
 
@@ -1531,7 +1534,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
       ) as Array<UserMessage | AIResponseMessage>;
     const history: ProviderMessage[] = [
-      { role: "system", content: t.systemPrompt.base },
+      {
+        role: "system",
+        content: buildChatSystemPrompt({
+          persona: useChatStore.getState().sessionPersona,
+          base: t.systemPrompt.base,
+        }),
+      },
       ...storeMessagesToProvider(hist),
       {
         role: "user",
