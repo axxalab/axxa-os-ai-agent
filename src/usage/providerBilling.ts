@@ -190,14 +190,20 @@ export function parseAnthropicCosts(json: unknown): number {
 export async function fetchAnthropicCosts(
   adminKey: string,
   requestUrlFn: RequestUrlLike,
-  startingAtIso: string
+  startingAtIso: string,
+  /** Filtra a UM workspace (atribuição). Vazio = org inteira. */
+  workspaceId?: string
 ): Promise<number> {
   if (!adminKey || !adminKey.trim()) {
     throw new Error("Sem Admin key da Anthropic.");
   }
+  const wsFilter =
+    workspaceId && workspaceId.trim()
+      ? `&workspace_ids[]=${encodeURIComponent(workspaceId.trim())}`
+      : "";
   const url =
     `https://api.anthropic.com/v1/organizations/cost_report` +
-    `?starting_at=${encodeURIComponent(startingAtIso)}`;
+    `?starting_at=${encodeURIComponent(startingAtIso)}${wsFilter}`;
   const res = await requestUrlFn({
     url,
     method: "GET",

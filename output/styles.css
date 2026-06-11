@@ -916,6 +916,114 @@ body.is-mobile
 }
 
 /* =====================================================
+ * ThinkingGlyph — faísca "clauding" (gira + respira + brilha). v0.1.173
+ * Animação REAL: o <svg> gira, a faísca escala (compõem por estarem em
+ * elementos diferentes). É o elemento que prende o olho.
+ * ===================================================== */
+.axxa-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  vertical-align: -2px;
+}
+.axxa-glyph-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: 50% 50%;
+  animation: axxa-glyph-spin 2.8s linear infinite;
+}
+.axxa-glyph-spark {
+  fill: var(--text-accent, var(--interactive-accent));
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: axxa-glyph-breathe 1.25s ease-in-out infinite;
+  filter: drop-shadow(
+    0 0 2px color-mix(in srgb, var(--interactive-accent) 55%, transparent)
+  );
+}
+@keyframes axxa-glyph-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes axxa-glyph-breathe {
+  0%,
+  100% {
+    transform: scale(0.76);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+/* Caret de streaming — a mesma faísca, menor, no fim do texto que está saindo. */
+.axxa-stream-caret {
+  width: 13px;
+  height: 13px;
+  margin-left: 3px;
+  vertical-align: -1px;
+}
+
+/* Glyph dentro do bubble "Pensando..." (ai-comment fallback). */
+.axxa-bubble-glyph {
+  color: var(--text-accent);
+}
+
+/* Glyph como ícone de activity pending — herda o tamanho do .axxa-activity-icon. */
+.axxa-activity-icon .axxa-glyph {
+  width: 16px;
+  height: 16px;
+}
+
+/* =====================================================
+ * Shimmer de texto — o highlight que VARRE a palavra ("Pensando…"),
+ * a assinatura do "clauding". Gradiente animado clipado no texto.
+ * ===================================================== */
+.axxa-shimmer-text {
+  background: linear-gradient(
+    100deg,
+    var(--text-muted) 28%,
+    var(--text-normal) 50%,
+    var(--text-muted) 72%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: axxa-text-shimmer 1.7s linear infinite;
+}
+@keyframes axxa-text-shimmer {
+  0% {
+    background-position: 160% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .axxa-glyph-svg,
+  .axxa-glyph-spark {
+    animation: none;
+  }
+  .axxa-glyph-spark {
+    opacity: 0.9;
+  }
+  .axxa-shimmer-text {
+    animation: none;
+    color: var(--text-muted);
+    -webkit-text-fill-color: var(--text-muted);
+  }
+}
+
+/* =====================================================
  * Image placeholder (shimmer) — para anexos enquanto a thumb carrega
  * Inspiração: ChatGPT "loading image" skeleton com gradient sweep.
  * ===================================================== */

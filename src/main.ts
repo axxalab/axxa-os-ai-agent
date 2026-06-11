@@ -131,6 +131,9 @@ interface AxxaSettings {
    *  projeto (atribuição). Use um projeto dedicado pro plugin pra ver só o gasto
    *  dele em vez da org inteira. v0.1.172 */
   openaiProjectId: string;
+  /** Workspace ID OPCIONAL da Anthropic — filtra o custo real só desse
+   *  workspace (atribuição), análogo ao project da OpenAI. v0.1.173 */
+  anthropicWorkspaceId: string;
   /** Âncora de saldo por provider (v0.1.171): { amount, date(ISO) }. O saldo é
    *  estimado/real = âncora − gasto desde a data. Crédito é separado por provider. */
   balanceAnchors: Record<string, { amount: number; date: string }>;
@@ -219,6 +222,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   openaiAdminKey: "",
   anthropicAdminKey: "",
   openaiProjectId: "",
+  anthropicWorkspaceId: "",
   balanceAnchors: {},
 };
 

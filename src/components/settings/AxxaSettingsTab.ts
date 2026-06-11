@@ -863,6 +863,21 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "sk-ant-admin-... (opcional)"
     );
 
+    // Workspace ID — atribui o custo real a UM workspace (análogo ao project).
+    new Setting(parent)
+      .setName(t.settings.anthropicWorkspaceName)
+      .setDesc(t.settings.anthropicWorkspaceDesc)
+      .addText((text) => {
+        text
+          .setPlaceholder("wrkspc_... (opcional)")
+          .setValue(this.plugin.settings.anthropicWorkspaceId)
+          .onChange(async (value) => {
+            this.plugin.settings.anthropicWorkspaceId = value.trim();
+            await this.plugin.saveSettings();
+          });
+        text.inputEl.autocomplete = "off";
+      });
+
     this.createActiveModelsField(
       parent,
       t,
@@ -2365,7 +2380,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
         tasks.push(
           (async () => {
             try {
-              const spent = await fetchAnthropicCosts(antAdmin, requestUrl, antA.date);
+              const spent = await fetchAnthropicCosts(
+                antAdmin,
+                requestUrl,
+                antA.date,
+                this.plugin.settings.anthropicWorkspaceId
+              );
               valueCells["anthropic"].setText(
                 `≈ ${formatUsd(antA.amount - spent)} · ${t.settings.balanceReal}`
               );
@@ -2498,7 +2518,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
         (async () => {
           if (!canANT) return;
           try {
-            const cost = await fetchAnthropicCosts(antAdmin, requestUrl, startIso);
+            const cost = await fetchAnthropicCosts(
+              antAdmin,
+              requestUrl,
+              startIso,
+              this.plugin.settings.anthropicWorkspaceId
+            );
             realCells["anthropic"].setText(formatUsd(cost));
             realCells["anthropic"].addClass("is-real");
             realCells["anthropic"].setAttr("title", t.settings.usageBillingOrgNote);

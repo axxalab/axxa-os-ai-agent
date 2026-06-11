@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import { Icon } from "../_shared/Icon";
+import { ThinkingGlyph } from "../_shared/ThinkingGlyph";
 import { hapticTick } from "../_shared/haptics";
 import { Markdown } from "../_shared/Markdown";
 import { formatTime } from "../_shared/timestamps";
@@ -234,6 +235,8 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
       {...menuHandlers}
     >
       <Markdown content={msg.content} />
+      {/* Caret animado enquanto os tokens chegam — segura o olho no streaming. */}
+      {isStreaming && <ThinkingGlyph className="axxa-stream-caret" />}
       {msg.agentSteps && msg.agentSteps.length > 0 && !isStreaming && (
         <AgentSteps steps={msg.agentSteps} />
       )}
@@ -407,8 +410,8 @@ export function AIComment({ msg }: { msg: AICommentMessage }) {
   return (
     <div className="axxa-msg axxa-msg-ai-comment">
       <div className="axxa-bubble axxa-bubble-ai axxa-bubble-thinking">
-        <Icon name="sparkles" className="axxa-bubble-icon" />
-        <span>{msg.content}</span>
+        <ThinkingGlyph className="axxa-bubble-glyph" />
+        <span className="axxa-shimmer-text">{msg.content}</span>
       </div>
     </div>
   );
@@ -439,6 +442,10 @@ function ActivityComment({ msg }: { msg: AICommentMessage }) {
     : isFailed
       ? activity.iconFailed ?? "x"
       : activity.iconDone ?? "check";
+
+  // "Pensando..." (sparkles) vira o glyph animado; tools/gen mantêm o ícone
+  // contextual (radar/wrench/image-plus) com o pulse. v0.1.173
+  const showGlyph = isPending && iconName === "sparkles";
 
   const label = isPending
     ? activity.pendingText
@@ -481,14 +488,20 @@ function ActivityComment({ msg }: { msg: AICommentMessage }) {
         <span
           className={
             "axxa-activity-icon" +
-            (isPending ? " axxa-activity-pulse" : "") +
+            (isPending && !showGlyph ? " axxa-activity-pulse" : "") +
             (isDone ? " axxa-activity-pop" : "")
           }
           aria-hidden="true"
         >
-          <Icon name={iconName} />
+          {showGlyph ? <ThinkingGlyph /> : <Icon name={iconName} />}
         </span>
-        <span className="axxa-activity-text">{label}</span>
+        <span
+          className={
+            "axxa-activity-text" + (isPending ? " axxa-shimmer-text" : "")
+          }
+        >
+          {label}
+        </span>
         {stat && (
           <span className={"axxa-activity-stat axxa-activity-stat-" + statTone}>
             {stat}

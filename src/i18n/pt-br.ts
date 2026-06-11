@@ -652,6 +652,9 @@ export const PT_BR = {
     openaiProjectDesc:
       "Atribui o custo real só a este projeto. Crie um projeto dedicado pro AXXA no painel da OpenAI e use uma chave desse projeto — aí o saldo/custo reflete só o plugin, não a org inteira.",
     usageBillingProjNote: "Custo REAL só deste projeto da OpenAI (atribuição).",
+    anthropicWorkspaceName: "Workspace ID (opcional)",
+    anthropicWorkspaceDesc:
+      "Atribui o custo real só a este workspace. Crie um workspace dedicado pro AXXA no Console da Anthropic e use uma chave dele — o custo reflete só o plugin.",
     // Saldo por provider (âncora). v0.1.171
     balanceTitle: "Saldo",
     balanceRefresh: "Atualizar saldo",

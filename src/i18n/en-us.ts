@@ -640,6 +640,9 @@ export const EN_US: Translations = {
     openaiProjectDesc:
       "Attributes the real cost to this project only. Create a dedicated AXXA project in the OpenAI dashboard and use a key from it — then balance/cost reflects only the plugin, not the whole org.",
     usageBillingProjNote: "REAL cost of this OpenAI project only (attribution).",
+    anthropicWorkspaceName: "Workspace ID (optional)",
+    anthropicWorkspaceDesc:
+      "Attributes the real cost to this workspace only. Create a dedicated AXXA workspace in the Anthropic Console and use a key from it — cost reflects only the plugin.",
     balanceTitle: "Balance",
     balanceRefresh: "Refresh balance",
     balanceSetAnchor: "set an anchor →",
