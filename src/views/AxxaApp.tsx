@@ -64,8 +64,8 @@ import { ensureFolder } from "../components/_shared/chatPersistence";
 import { hybridSearch } from "../rag/hybrid";
 import type { AxxaCommand } from "../components/composer/completions";
 import { TOOL_DEFINITIONS, getToolDefinition } from "../agent/toolSchemas";
-import { TOOL_REGISTRY } from "../agent/tools";
-import { evaluatePermission } from "../agent/permissions";
+import { TOOL_REGISTRY, isTransientError } from "../agent/tools";
+import { decideToolGate } from "../agent/permissions";
 import { ConfirmationModal } from "../agent/ConfirmationModal";
 import type { PermissionLevel } from "../agent/types";
 import type { ChatMessage, UserMessage, AIResponseMessage, AIErrorCode } from "../store/chat";
@@ -950,15 +950,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             continue;
           }
 
-          const decision = evaluatePermission(def, permissionLevel);
-          let approved = decision.autoApprove;
-          // Diff-approval ON → toda ação que escreve (def.destructive) passa
-          // pelo preview, a menos que "aprovar todas" já tenha sido marcado
-          // (exceto irreversível: delete é sempre por ação).
-          const needsDiff = diffApproval && def.destructive;
-          if (needsDiff && agentApproveAllRef.current && !def.irreversible) {
-            approved = true;
-          } else if (needsDiff || !approved) {
+          // Gate: roda direto ("auto") ou abre o preview de confirmação.
+          // Lógica (permissão + diff-approval + irreversível) em permissions.ts.
+          const gate = decideToolGate(def, permissionLevel, {
+            diffApproval,
+            approveAll: agentApproveAllRef.current,
+          });
+          let approved = gate === "auto";
+          if (gate === "confirm") {
             const modal = new ConfirmationModal(plugin.app, {
               toolCall: call,
               definition: def,
@@ -1047,14 +1046,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               lastErr = err;
               // Só retenta erros transitórios (network / fs lock). Path errado
               // ou arg inválido não vão dar certo no retry — cai direto.
-              const msg =
-                err instanceof Error ? err.message.toLowerCase() : "";
-              const isTransient =
-                msg.includes("network") ||
-                msg.includes("timeout") ||
-                msg.includes("locked") ||
-                msg.includes("busy");
-              if (!isTransient || attempt === maxAttempts) break;
+              const msg = err instanceof Error ? err.message : "";
+              if (!isTransientError(msg) || attempt === maxAttempts) break;
             }
           }
           const msg =

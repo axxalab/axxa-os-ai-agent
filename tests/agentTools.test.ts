@@ -5,6 +5,8 @@ import {
   toolVaultEdit,
   toolVaultMove,
   toolVaultDelete,
+  normalizePath,
+  isTransientError,
 } from "../src/agent/tools";
 
 // As tools do agent MODIFICAM/APAGAM arquivos do vault — o sandboxing de path
@@ -86,6 +88,32 @@ describe("path sandboxing (segurança — anti traversal)", () => {
     const { app } = makeApp();
     await toolVaultCreate(app, { path: "notes/ok.md", content: "hi" });
     expect(await toolVaultRead(app, { path: "notes/ok.md" })).toBe("hi");
+  });
+});
+
+describe("normalizePath (direto)", () => {
+  it("normaliza barras e tira leading slash", () => {
+    expect(normalizePath("/notes//a.md")).toBe("notes/a.md");
+    expect(normalizePath("notes\\sub\\a.md")).toBe("notes/sub/a.md");
+  });
+  it("recusa .., : e profundidade", () => {
+    expect(() => normalizePath("../x")).toThrow();
+    expect(() => normalizePath("c:/x")).toThrow();
+    expect(() => normalizePath("a/" + "b/".repeat(40) + "c")).toThrow();
+    expect(() => normalizePath("")).toThrow();
+  });
+});
+
+describe("isTransientError (retry só em erro transitório)", () => {
+  it("rede/timeout/lock/busy → true", () => {
+    for (const m of ["network down", "Request timeout", "file is locked", "resource busy"]) {
+      expect(isTransientError(m)).toBe(true);
+    }
+  });
+  it("erro de path/arg → false (não retenta)", () => {
+    expect(isTransientError("Arquivo não existe: a.md")).toBe(false);
+    expect(isTransientError("String não encontrada")).toBe(false);
+    expect(isTransientError("")).toBe(false);
   });
 });
 

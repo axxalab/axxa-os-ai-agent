@@ -41,6 +41,32 @@ export function evaluatePermission(
   }
 }
 
+/** Resultado do "portão" de uma tool: roda direto ou abre o modal de confirmação. */
+export type ToolGate = "auto" | "confirm";
+
+/**
+ * Decisão FINAL de gate, combinando o nível de permissão com o diff-approval.
+ * Era inline no agent loop — agora pura e testável (segurança: bug aqui = ação
+ * destrutiva sem perguntar).
+ *
+ * Regras:
+ *   - irreversível (delete) → SEMPRE "confirm" (nem o "aprovar todas" pula).
+ *   - diffApproval ON + ação destrutiva → "confirm" (preview do diff)…
+ *     …a menos que "aprovar todas" já tenha sido marcado nesta sessão.
+ *   - senão, segue o evaluatePermission (auto p/ não-destrutivo, etc).
+ */
+export function decideToolGate(
+  tool: ToolDefinition,
+  level: PermissionLevel,
+  opts: { diffApproval: boolean; approveAll: boolean }
+): ToolGate {
+  const auto = evaluatePermission(tool, level).autoApprove;
+  const needsDiff = opts.diffApproval && !!tool.destructive;
+  if (needsDiff && opts.approveAll && !tool.irreversible) return "auto";
+  if (needsDiff || !auto) return "confirm";
+  return "auto";
+}
+
 /** Helper pra exibir o nível na UI. */
 export const PERMISSION_LABELS: Record<PermissionLevel, string> = {
   ask: "Ask (confirma cada ação destrutiva)",

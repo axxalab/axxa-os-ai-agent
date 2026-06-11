@@ -18,8 +18,20 @@ const VAULT_ROOT_MAX_DEPTH = 32; // sanity check: ninguém precisa de 100 nívei
 // Helpers — path safety
 // ============================================================
 
-/** Normaliza separadores e remove leading slash. Lança se tem `..` ou `:`. */
-function normalizePath(path: string): string {
+/** Erro transitório (vale retry): rede/timeout/lock. Path/arg errado NÃO é. */
+export function isTransientError(message: string): boolean {
+  const m = (message || "").toLowerCase();
+  return (
+    m.includes("network") ||
+    m.includes("timeout") ||
+    m.includes("locked") ||
+    m.includes("busy")
+  );
+}
+
+/** Normaliza separadores e remove leading slash. Lança se tem `..` ou `:`.
+ *  Exportada pra teste do boundary de segurança (anti path-traversal). */
+export function normalizePath(path: string): string {
   if (!path || typeof path !== "string") {
     throw new Error("Path vazio ou inválido.");
   }
