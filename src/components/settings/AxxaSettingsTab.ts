@@ -51,7 +51,7 @@ import {
   recommendProfile,
 } from "../../rag/quant";
 import {
-  aggregateUsage,
+  aggregateFromSummaries,
   sortBucketEntries,
   lastNDays,
   type UsageAggregate,
@@ -2256,13 +2256,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
     });
 
     try {
+      // Reusa o cache ÚNICO de summaries (v0.1.175) — sem disk-walk próprio.
       const agg =
         this.cachedUsage ??
-        (await aggregateUsage(
-          this.plugin.app,
-          this.plugin.settings.chatsPath,
+        aggregateFromSummaries(
+          await this.plugin.loadChatSummaries(),
           this.usagePeriodDays
-        ));
+        );
       this.cachedUsage = agg;
       contentEl.empty();
       this.renderUsageBody(contentEl, agg, t);

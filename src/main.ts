@@ -14,7 +14,10 @@ import {
   type EmbeddingProvider,
 } from "./rag/types";
 import { registerLocalUsage } from "./providers/dataCollect";
-import { listAllChats } from "./components/_shared/chatPersistence";
+import {
+  listAllChats,
+  type ChatSummary,
+} from "./components/_shared/chatPersistence";
 import { registerBrandIcons } from "./components/_shared/brandIcons";
 import { registerBrandLogos } from "./components/_shared/brandLogos";
 import {
@@ -248,6 +251,73 @@ export default class AxxaPlugin extends Plugin {
   /** Skills carregados da pasta (settings.skillsPath) — viram slash-commands. */
   skills: Skill[] = [];
 
+  // ============================================================
+  // Cache ÚNICO de summaries de conversa (v0.1.175) — UMA fonte da verdade
+  // pra TODOS os consumidores (StarterScreen, Sidebar, ConversationsList,
+  // Statistics, Usage, hot). Antes cada um fazia seu próprio listAllChats
+  // (disk-walk) → várias passadas no abrir = lento. Agora: 1 walk, cacheado,
+  // reusado, atualizado INCREMENTAL no save/rename/delete (sem re-walk).
+  // ============================================================
+  chatSummaries: ChatSummary[] | null = null;
+  private chatSummariesPromise: Promise<ChatSummary[]> | null = null;
+  private chatsListeners = new Set<() => void>();
+
+  /** Inscreve um callback chamado quando o cache de conversas muda. */
+  onChatsChange(cb: () => void): () => void {
+    this.chatsListeners.add(cb);
+    return () => this.chatsListeners.delete(cb);
+  }
+  private notifyChats(): void {
+    this.chatsListeners.forEach((cb) => {
+      try {
+        cb();
+      } catch (err) {
+        console.error("[axxa] chats listener falhou:", err);
+      }
+    });
+  }
+
+  /** Carrega (uma vez) e cacheia os summaries. Concorrentes compartilham a
+   *  mesma Promise. `force` re-faz o walk (ex: troca de chatsPath). */
+  async loadChatSummaries(force = false): Promise<ChatSummary[]> {
+    if (!force && this.chatSummaries) return this.chatSummaries;
+    if (!force && this.chatSummariesPromise) return this.chatSummariesPromise;
+    this.chatSummariesPromise = listAllChats(
+      this.app,
+      this.settings.chatsPath,
+      100_000
+    )
+      .then((all) => {
+        this.chatSummaries = all;
+        this.chatSummariesPromise = null;
+        this.notifyChats();
+        return all;
+      })
+      .catch((err) => {
+        console.error("[axxa] loadChatSummaries falhou:", err);
+        this.chatSummariesPromise = null;
+        return this.chatSummaries ?? [];
+      });
+    return this.chatSummariesPromise;
+  }
+
+  /** Upsert INCREMENTAL após salvar um chat — evita re-walk do disco. */
+  upsertChatSummary(s: ChatSummary): void {
+    if (!this.chatSummaries) return;
+    const idx = this.chatSummaries.findIndex((c) => c.id === s.id);
+    if (idx >= 0) this.chatSummaries[idx] = s;
+    else this.chatSummaries.push(s);
+    this.chatSummaries.sort((a, b) => b.date.localeCompare(a.date));
+    this.notifyChats();
+  }
+
+  /** Remove um chat do cache (após delete). */
+  removeChatSummary(id: string): void {
+    if (!this.chatSummaries) return;
+    this.chatSummaries = this.chatSummaries.filter((c) => c.id !== id);
+    this.notifyChats();
+  }
+
   /** Inscreve um callback chamado a cada saveSettings. Retorna unsubscribe. */
   onSettingsChange(cb: () => void): () => void {
     this.settingsListeners.add(cb);
@@ -290,7 +360,7 @@ export default class AxxaPlugin extends Plugin {
    */
   async refreshLocalUsageHot(): Promise<void> {
     try {
-      const chats = await listAllChats(this.app, this.settings.chatsPath);
+      const chats = await this.loadChatSummaries();
       const byModel: Record<string, number> = {};
       for (const c of chats) {
         if (c.model) byModel[c.model] = (byModel[c.model] ?? 0) + 1;

@@ -403,19 +403,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setComposerInject((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
   };
 
+  // Carregamento ÚNICO das conversas (v0.1.175): UM disk-walk cacheado no
+  // plugin, reusado por TODOS (Starter/Sidebar/Conversas/Statistics). Antes cada
+  // tela fazia seu próprio listAllChats → várias passadas = abrir lento. Aqui
+  // só sincronizamos os estados locais com o cache (e a cada mudança dele).
   useEffect(() => {
-    if (!isEmpty) return;
-    listAllChats(plugin.app, plugin.settings.chatsPath, 100_000)
-      .then((all) => {
-        setChatSummaries(all);
-        setRecentChats(all.slice(0, 8));
-      })
-      .catch((err) => {
-        console.error("[axxa] listAllChats falhou:", err);
-        setChatSummaries([]);
-        setRecentChats([]);
-      });
-  }, [isEmpty, plugin.app, plugin.settings.chatsPath]);
+    const sync = () => {
+      const all = plugin.chatSummaries ?? [];
+      setAllChats(all);
+      setChatSummaries(all);
+      setRecentChats(all.slice(0, 8));
+    };
+    plugin.loadChatSummaries().then(sync);
+    const unsub = plugin.onChatsChange(sync);
+    return unsub;
+  }, [plugin]);
 
   // ============================================================
   // Auto-save debounced — escreve .axxa/chats/chat/[id].md
@@ -457,9 +459,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             : {}),
         })),
       };
-      saveChat(plugin.app, plugin.settings.chatsPath, chat).catch((err) =>
-        console.error("[axxa] saveChat falhou:", err)
-      );
+      saveChat(plugin.app, plugin.settings.chatsPath, chat)
+        .then((path) => {
+          // Upsert INCREMENTAL no cache compartilhado — mantém as listas em dia
+          // (Starter/Sidebar/Conversas) sem re-ler o disco. v0.1.175
+          plugin.upsertChatSummary({
+            id: chat.id,
+            title: chat.title,
+            date: chat.date,
+            mode: chat.mode,
+            provider: chat.provider,
+            model: chat.model,
+            effort: chat.effort,
+            tokensIn: chat.tokensIn,
+            tokensOut: chat.tokensOut,
+            messageCount: chat.messages.length,
+            filePath: path,
+          });
+        })
+        .catch((err) => console.error("[axxa] saveChat falhou:", err));
     }, 500);
     return () => window.clearTimeout(timer);
   }, [
@@ -2003,19 +2021,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setView("chat");
   };
 
-  // Carrega TODAS as conversas (todos os modos) e abre a tela cheia
+  // Abre a tela cheia de conversas — usa o cache compartilhado (sem novo walk).
   const handleOpenConversations = async () => {
-    try {
-      // limit alto pra trazer todas — se vault tiver 10k+ conversas isso pode
-      // pesar; nesse caso paginar fica como próximo polish
-      const all = await listAllChats(plugin.app, plugin.settings.chatsPath, 1000);
-      setAllChats(all);
-      setView("conversations");
-    } catch (err) {
-      console.error("[axxa] listAllChats (full) falhou:", err);
-      setAllChats([]);
-      setView("conversations");
-    }
+    const all = await plugin.loadChatSummaries();
+    setAllChats(all);
+    setView("conversations");
   };
 
   // Quando user clica numa conversa da lista cheia, descobre o modo dela
@@ -2044,24 +2054,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         newTitle
       );
       useChatStore.getState().setCurrentChatTitle(newTitle);
-      // Sync nas listas em memória
-      setAllChats((prev) =>
-        prev.map((c) =>
-          c.id === currentChatId ? { ...c, title: newTitle } : c
-        )
-      );
-      setRecentChats((prev) =>
-        prev.map((c) =>
-          c.id === currentChatId ? { ...c, title: newTitle } : c
-        )
-      );
-      setChatSummaries((prev) =>
-        prev
-          ? prev.map((c) =>
-              c.id === currentChatId ? { ...c, title: newTitle } : c
-            )
-          : prev
-      );
+      // Atualiza o cache compartilhado → re-sincroniza todas as listas. v0.1.175
+      const cur = plugin.chatSummaries?.find((c) => c.id === currentChatId);
+      if (cur) plugin.upsertChatSummary({ ...cur, title: newTitle });
       new Notice(t.conversations.renameSuccess(newTitle));
     } catch (err) {
       const msg = err instanceof Error ? err.message : t.ai.unknownError;
