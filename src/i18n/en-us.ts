@@ -400,6 +400,8 @@ export const EN_US: Translations = {
     activeModelsAvailable: (count: number) =>
       `${count} models available. Check the ones to appear in the picker:`,
     activeModelsRemoveTitle: "Remove",
+    modelSetDefault: "Set as default model",
+    modelDefaultTag: "default",
     geminiIntro:
       "Google Gemini via OpenAI-compatible endpoint. Tool calling works on 2.5+/3.x. Generous free tier on AI Studio.",
     openrouterIntro:

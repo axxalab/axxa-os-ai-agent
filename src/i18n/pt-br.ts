@@ -405,6 +405,8 @@ export const PT_BR = {
     activeModelsAvailable: (count: number) =>
       `${count} modelos disponíveis. Marque os que devem aparecer no seletor:`,
     activeModelsRemoveTitle: "Remover",
+    modelSetDefault: "Definir como modelo padrão",
+    modelDefaultTag: "padrão",
     geminiIntro:
       "Google Gemini via endpoint OpenAI-compatible. Tool calling funciona em 2.5+/3.x. Tier free generoso no AI Studio.",
     openrouterIntro:

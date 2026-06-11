@@ -450,16 +450,42 @@ export class AnthropicProvider implements Provider {
 
   /** Monta ProviderResponse do stream — text + tool_use blocks parseados. */
 
-  async listModels(_apiKey: string): Promise<string[]> {
-    // A Anthropic não tem endpoint público de listagem estável → lista curada.
-    // Manter em sincronia com os lançamentos (modelCapabilities / pricing /
-    // modelDescriptions / contextWindows usam os mesmos prefixos).
+  /** Lista curada — fallback quando não há key ou o fetch falha. Manter em
+   *  sincronia com os 5 arquivos de metadata (caps/pricing/cards/ctx). */
+  private curatedModels(): string[] {
     return [
       "claude-fable-5",
       "claude-opus-4-8",
       "claude-sonnet-4-6",
       "claude-haiku-4-5-20251001",
     ];
+  }
+
+  async listModels(apiKey: string): Promise<string[]> {
+    // Com key, busca o catálogo VIVO da Anthropic (GET /v1/models) — assim a
+    // lista nunca fica presa nos hardcoded. Sem key / em erro, cai na curada.
+    if (!apiKey || !apiKey.trim()) return this.curatedModels();
+    try {
+      const res = await requestUrl({
+        url: "https://api.anthropic.com/v1/models?limit=100",
+        method: "GET",
+        headers: {
+          "x-api-key": apiKey.trim(),
+          "anthropic-version": ANTHROPIC_VERSION,
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        throw: false,
+      });
+      if (res.status < 200 || res.status >= 300) return this.curatedModels();
+      const ids: string[] = (res.json?.data ?? [])
+        .map((m: { id?: string }) => m.id)
+        .filter((id: unknown): id is string => typeof id === "string");
+      // Une com a curada (garante Fable/4.x mesmo se a API atrasar) + dedup.
+      const merged = Array.from(new Set([...ids, ...this.curatedModels()]));
+      return merged.length > 0 ? merged : this.curatedModels();
+    } catch {
+      return this.curatedModels();
+    }
   }
 }
 

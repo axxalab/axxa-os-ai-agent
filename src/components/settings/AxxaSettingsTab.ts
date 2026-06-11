@@ -57,6 +57,11 @@ import {
   getModelCapabilities,
   capabilityBadges,
 } from "../../providers/modelCapabilities";
+import { getModelCard, CATEGORY_LABELS } from "../../providers/modelDescriptions";
+import {
+  modelVendorLogoId,
+  modelVendorLabel,
+} from "../_shared/modelLogo";
 import {
   saveUsageMarkdown,
   saveUsageHtml,
@@ -74,6 +79,25 @@ type ProviderTabId =
 type OutrosTabId = "geral" | "ui" | "agent" | "rag" | "usage";
 type AppearanceTabId = "background" | "chips" | "ui";
 
+// Filtros da lista de modelos (Settings → Providers). v0.1.150
+type ModelFilterId =
+  | "all"
+  | "vision"
+  | "tools"
+  | "free"
+  | "stream"
+  | "img-gen"
+  | "audio-gen";
+const MODEL_FILTERS: { id: ModelFilterId; label: string; icon: string }[] = [
+  { id: "all", label: "Todos", icon: "layout-grid" },
+  { id: "vision", label: "Vision", icon: "image" },
+  { id: "tools", label: "Tools", icon: "wrench" },
+  { id: "free", label: "Free", icon: "gift" },
+  { id: "stream", label: "Stream", icon: "zap" },
+  { id: "img-gen", label: "Imagem", icon: "image-plus" },
+  { id: "audio-gen", label: "Áudio", icon: "volume-2" },
+];
+
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
   /** Top-level tab (Providers / Outros) */
@@ -83,6 +107,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   /** Cache dos modelos buscados por provider (sobrevive a re-render do tab,
    *  pra a lista de toggle não sumir a cada saveSettings). v0.1.148 */
   private modelCache: Record<string, string[]> = {};
+  /** Filtro de capacidade ativo por provider na lista de modelos. v0.1.150 */
+  private modelFilter: Record<string, ModelFilterId> = {};
   /** Sub-tab quando topTab = outros (v0.1.39 reorganização) */
   private activeOutrosTab: OutrosTabId = "geral";
   /** Sub-tab quando topTab = appearance (v0.1.107: Fundo / Chips / Interface) */
@@ -612,19 +638,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
         text.inputEl.autocomplete = "off";
       });
 
-    this.createModelField(
-      parent,
-      t,
-      "OpenAI",
-      this.plugin.settings.defaultModel,
-      async (value) => {
-        this.plugin.settings.defaultModel = value || "gpt-4o";
-        await this.plugin.saveSettings();
-      },
-      () => openaiProvider.listModels(this.plugin.settings.openaiApiKey),
-      "gpt-4o"
-    );
-
     this.createActiveModelsField(
       parent,
       t,
@@ -658,19 +671,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
         text.inputEl.type = "password";
         text.inputEl.autocomplete = "off";
       });
-
-    this.createModelField(
-      parent,
-      t,
-      "Anthropic",
-      this.plugin.settings.anthropicModel,
-      async (value) => {
-        this.plugin.settings.anthropicModel = value || "claude-sonnet-4-6";
-        await this.plugin.saveSettings();
-      },
-      () => anthropicProvider.listModels(this.plugin.settings.anthropicApiKey),
-      "claude-sonnet-4-6"
-    );
 
     this.createActiveModelsField(
       parent,
@@ -706,19 +706,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
         text.inputEl.autocomplete = "off";
       });
 
-    this.createModelField(
-      parent,
-      t,
-      "Gemini",
-      this.plugin.settings.geminiModel,
-      async (value) => {
-        this.plugin.settings.geminiModel = value || "gemini-2.5-flash";
-        await this.plugin.saveSettings();
-      },
-      () => geminiProvider.listModels(this.plugin.settings.geminiApiKey),
-      "gemini-2.5-flash"
-    );
-
     this.createActiveModelsField(
       parent,
       t,
@@ -752,20 +739,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
         text.inputEl.type = "password";
         text.inputEl.autocomplete = "off";
       });
-
-    this.createModelField(
-      parent,
-      t,
-      "OpenRouter",
-      this.plugin.settings.openrouterModel,
-      async (value) => {
-        this.plugin.settings.openrouterModel =
-          value || "anthropic/claude-3.5-sonnet";
-        await this.plugin.saveSettings();
-      },
-      () => openrouterProvider.listModels(this.plugin.settings.openrouterApiKey),
-      "anthropic/claude-3.5-sonnet"
-    );
 
     this.createActiveModelsField(
       parent,
@@ -801,20 +774,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
         text.inputEl.autocomplete = "off";
       });
 
-    this.createModelField(
-      parent,
-      t,
-      "Nvidia NIM",
-      this.plugin.settings.nimModel,
-      async (value) => {
-        this.plugin.settings.nimModel =
-          value || "nvidia/llama-3.3-nemotron-super-49b-v1.5";
-        await this.plugin.saveSettings();
-      },
-      () => nimProvider.listModels(this.plugin.settings.nimApiKey),
-      "nvidia/llama-3.3-nemotron-super-49b-v1.5"
-    );
-
     this.createActiveModelsField(
       parent,
       t,
@@ -848,19 +807,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
-    this.createModelField(
-      parent,
-      t,
-      "Ollama",
-      this.plugin.settings.ollamaModel,
-      async (value) => {
-        this.plugin.settings.ollamaModel = value || "llama3.2";
-        await this.plugin.saveSettings();
-      },
-      () => ollamaProvider.listModels(this.plugin.settings.ollamaEndpoint),
-      "llama3.2"
-    );
-
     this.createActiveModelsField(
       parent,
       t,
@@ -872,73 +818,52 @@ export class AxxaSettingsTab extends PluginSettingTab {
   }
 
   // ============================================================
-  // Modelo padrão — input + Buscar
+  // Modelos ativos — LISTA DE TOGGLE v2 (v0.1.150)
+  // Filtro por capacidade (vision/free/stream/…) + agrupado por categoria.
+  // Cada linha: logo do VENDOR (🟣 quando falta o SVG) + nome + tier FREE/PAID
+  // + badges + ★ (define o modelo PADRÃO do provider) + switch on/off.
+  // O ★ substituiu o card "Modelo padrão" (removido). Persiste via modelCache.
   // ============================================================
-  private createModelField(
-    parent: HTMLElement,
-    t: Translations,
-    providerLabel: string,
-    currentValue: string,
-    onSave: (value: string) => Promise<void>,
-    fetchModels: () => Promise<string[]>,
-    placeholder: string
-  ) {
-    const setting = new Setting(parent)
-      .setName(t.settings.model)
-      .setDesc(t.settings.modelDesc(providerLabel));
-
-    setting.addText((text) => {
-      text
-        .setPlaceholder(placeholder)
-        .setValue(currentValue)
-        .onChange(async (value) => {
-          await onSave(value.trim());
-        });
-    });
-
-    setting.addButton((btn) =>
-      btn
-        .setIcon("refresh-cw")
-        .setTooltip(t.settings.modelFetchTooltip)
-        .onClick(async () => {
-          btn.setDisabled(true);
-          new Notice(t.settings.modelSearchingNotice(providerLabel));
-          try {
-            const models = await fetchModels();
-            if (!models.length) {
-              new Notice(t.settings.modelNoneNotice(providerLabel));
-              return;
-            }
-            // Substitui o text input por um dropdown com os modelos
-            setting.controlEl.empty();
-            const dropdown = setting.controlEl.createEl("select", {
-              cls: "dropdown",
-            });
-            for (const m of models) {
-              const opt = dropdown.createEl("option", { value: m, text: m });
-              if (m === currentValue) opt.selected = true;
-            }
-            dropdown.onchange = async () => {
-              await onSave(dropdown.value);
-              new Notice(t.settings.modelSetNotice(dropdown.value));
-            };
-            new Notice(t.settings.modelLoadedNotice(models.length));
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : t.ai.unknownError;
-            new Notice(t.settings.modelFailedNotice(msg));
-          } finally {
-            btn.setDisabled(false);
-          }
-        })
-    );
+  private getProviderDefault(providerId: string): string {
+    const s = this.plugin.settings;
+    switch (providerId) {
+      case "anthropic": return s.anthropicModel;
+      case "gemini": return s.geminiModel;
+      case "openrouter": return s.openrouterModel;
+      case "nim": return s.nimModel;
+      case "ollama": return s.ollamaModel;
+      default: return s.defaultModel;
+    }
   }
 
-  // ============================================================
-  // Modelos ativos — LISTA DE TOGGLE (v0.1.148)
-  // Cada modelo = linha rica (logo + nome + tier FREE/PAID + badges de
-  // capacidade) com um switch on/off. Persiste entre re-renders via modelCache
-  // e NÃO fecha a cada escolha (era o problema do <select>/checkbox antigo).
-  // ============================================================
+  private async setProviderDefault(providerId: string, model: string): Promise<void> {
+    const s = this.plugin.settings;
+    switch (providerId) {
+      case "anthropic": s.anthropicModel = model; break;
+      case "gemini": s.geminiModel = model; break;
+      case "openrouter": s.openrouterModel = model; break;
+      case "nim": s.nimModel = model; break;
+      case "ollama": s.ollamaModel = model; break;
+      default: s.defaultModel = model; break;
+    }
+    await this.plugin.saveSettings();
+  }
+
+  private modelPassesFilter(providerId: string, model: string, f: ModelFilterId): boolean {
+    if (f === "all") return true;
+    const caps = getModelCapabilities(providerId, model);
+    switch (f) {
+      case "vision": return !!caps.vision;
+      case "tools": return !!caps.tools;
+      case "stream": return !!caps.streaming;
+      case "img-gen": return !!caps.imageGen;
+      case "audio-gen": return !!caps.audioGen;
+      case "free":
+        return getPricing(providerId, model).tier === "free" || !!caps.free;
+      default: return true;
+    }
+  }
+
   private createActiveModelsField(
     parent: HTMLElement,
     t: Translations,
@@ -953,23 +878,23 @@ export class AxxaSettingsTab extends PluginSettingTab {
       .setName(t.settings.activeModels)
       .setDesc(t.settings.activeModelsDesc(providerLabel));
 
+    const filterRow = section.createDiv({ cls: "axxa-model-filter-row" });
     const listEl = section.createDiv({ cls: "axxa-model-toggle-list" });
 
-    // União: modelos ATIVOS + os do cache de fetch. Ativos sobem pro topo,
-    // depois alfabético — quem você usa fica à mão.
     const allModels = (): string[] => {
       const active = this.plugin.settings.activeModels[providerId] ?? [];
       const cached = this.modelCache[providerId] ?? [];
-      const set = new Set<string>([...active, ...cached]);
-      return Array.from(set).sort((a, b) => {
-        const d = Number(active.includes(b)) - Number(active.includes(a));
-        return d !== 0 ? d : a.localeCompare(b);
-      });
+      // O default sempre aparece, mesmo que não esteja no cache/ativos.
+      const def = this.getProviderDefault(providerId);
+      return Array.from(new Set([...active, ...cached, def].filter(Boolean)));
     };
 
     const renderRows = () => {
       listEl.empty();
-      const models = allModels();
+      const filter = this.modelFilter[providerId] ?? "all";
+      const models = allModels().filter((m) =>
+        this.modelPassesFilter(providerId, m, filter)
+      );
       if (models.length === 0) {
         listEl.createEl("p", {
           text: t.settings.activeModelsEmpty,
@@ -977,10 +902,48 @@ export class AxxaSettingsTab extends PluginSettingTab {
         });
         return;
       }
+      // Agrupa por categoria do modelo (Chat multimodal / Raciocínio / Imagem…)
+      const active = this.plugin.settings.activeModels[providerId] ?? [];
+      const groups = new Map<string, string[]>();
       for (const m of models) {
-        this.renderModelToggleRow(listEl, providerId, m);
+        const cat = getModelCard(providerId, m, getModelCapabilities(providerId, m)).category;
+        if (!groups.has(cat)) groups.set(cat, []);
+        groups.get(cat)!.push(m);
+      }
+      for (const [cat, mods] of groups) {
+        listEl.createEl("div", {
+          text: CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS] ?? cat,
+          cls: "axxa-model-cat-head",
+        });
+        mods.sort((a, b) => {
+          const d = Number(active.includes(b)) - Number(active.includes(a));
+          return d !== 0 ? d : a.localeCompare(b);
+        });
+        for (const m of mods) {
+          this.renderModelToggleRow(listEl, t, providerId, m, renderRows);
+        }
       }
     };
+
+    // Chips de filtro por capacidade
+    for (const f of MODEL_FILTERS) {
+      const active = (this.modelFilter[providerId] ?? "all") === f.id;
+      const chip = filterRow.createEl("button", {
+        cls: "axxa-model-filter-chip" + (active ? " is-active" : ""),
+        attr: { type: "button", title: f.label },
+      });
+      setIcon(chip.createSpan({ cls: "axxa-model-filter-ico" }), f.icon);
+      chip.createSpan({ text: f.label, cls: "axxa-model-filter-lbl" });
+      chip.onclick = () => {
+        this.modelFilter[providerId] = f.id;
+        filterRow
+          .findAll(".axxa-model-filter-chip")
+          .forEach((c) => c.removeClass("is-active"));
+        chip.addClass("is-active");
+        renderRows();
+      };
+    }
+
     renderRows();
 
     const addRow = section.createDiv({ cls: "axxa-active-models-add" });
@@ -1000,7 +963,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
       attr: { type: "button" },
     });
 
-    // Adicionar modelo custom (ID manual) — entra no cache E já fica ativo.
     const doAdd = async () => {
       const v = input.value.trim();
       if (!v) return;
@@ -1049,47 +1011,45 @@ export class AxxaSettingsTab extends PluginSettingTab {
     };
   }
 
-  /** Logo (lucide) por provider — usado na linha de modelo da lista de toggle. */
-  private providerLogoIcon(providerId: string): string {
-    const LOGO: Record<string, string> = {
-      openai: "logo-openai",
-      anthropic: "logo-anthropic",
-      gemini: "logo-gemini",
-      openrouter: "logo-openrouter",
-      nim: "logo-nvidia",
-      ollama: "logo-ollama",
-    };
-    return LOGO[providerId] ?? "cpu";
-  }
-
   /**
-   * Uma linha da lista de toggle: logo + nome + tier (FREE/PAID) + badges de
-   * capacidade + switch. Clicar alterna ativo/inativo e atualiza SÓ esta linha
-   * (sem rebuild, sem fechar a lista).
+   * Linha de modelo: logo do vendor (🟣 se falta SVG) + nome + tier + badges +
+   * ★ default + switch. ★ define o modelo padrão do provider (e ativa). Toggle
+   * liga/desliga a visibilidade no seletor.
    */
   private renderModelToggleRow(
     listEl: HTMLElement,
+    t: Translations,
     providerId: string,
-    model: string
+    model: string,
+    refresh: () => void
   ) {
     const isActive = () =>
       (this.plugin.settings.activeModels[providerId] ?? []).includes(model);
+    const isDefault = () => this.getProviderDefault(providerId) === model;
 
     const row = listEl.createEl("button", {
       cls:
         "axxa-model-opt axxa-model-toggle-row" +
-        (isActive() ? " axxa-model-opt-active" : ""),
+        (isActive() ? " axxa-model-opt-active" : "") +
+        (isDefault() ? " is-default" : ""),
       attr: { type: "button", "aria-pressed": String(isActive()) },
     });
 
+    // Logo do VENDOR do modelo, ou 🟣 quando ainda falta o SVG.
     const logo = row.createSpan({ cls: "axxa-model-opt-logo" });
-    setIcon(logo, this.providerLogoIcon(providerId));
+    const logoId = modelVendorLogoId(providerId, model);
+    if (logoId) {
+      setIcon(logo, logoId);
+    } else {
+      logo.addClass("axxa-logo-missing");
+      logo.setText("🟣");
+      logo.setAttr("title", `logo ausente: ${modelVendorLabel(providerId, model)}`);
+    }
 
     const main = row.createSpan({ cls: "axxa-model-opt-main" });
     const nameRow = main.createSpan({ cls: "axxa-model-toggle-namerow" });
     nameRow.createSpan({ text: model, cls: "axxa-model-opt-name" });
 
-    // Tier FREE / PAID (fonte: pricing). "unknown" some via CSS.
     const caps = getModelCapabilities(providerId, model);
     const pricing = getPricing(providerId, model);
     const tier =
@@ -1102,8 +1062,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
       text: tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?",
       cls: "axxa-model-tier axxa-model-tier-" + tier,
     });
+    if (isDefault()) {
+      nameRow.createSpan({
+        text: t.settings.modelDefaultTag,
+        cls: "axxa-model-default-tag",
+      });
+    }
 
-    // Badges de capacidade (sem "free" — já coberto pelo tier pill).
     const badges = capabilityBadges(caps).filter((b) => b.id !== "free");
     if (badges.length > 0) {
       const badgeRow = main.createSpan({ cls: "axxa-model-toggle-badges" });
@@ -1116,10 +1081,30 @@ export class AxxaSettingsTab extends PluginSettingTab {
       }
     }
 
-    const sw = row.createSpan({
+    const ctrls = row.createSpan({ cls: "axxa-model-toggle-ctrls" });
+    const star = ctrls.createSpan({
+      cls: "axxa-model-star" + (isDefault() ? " is-default" : ""),
+      attr: { title: t.settings.modelSetDefault, "aria-label": t.settings.modelSetDefault },
+    });
+    setIcon(star, "star");
+    const sw = ctrls.createSpan({
       cls: "axxa-model-toggle-switch" + (isActive() ? " is-on" : ""),
     });
 
+    // ★ — define como padrão (e garante ativo). Re-renderiza pra mover o badge.
+    star.onclick = async (e: MouseEvent) => {
+      e.stopPropagation();
+      await this.setProviderDefault(providerId, model);
+      const list = this.plugin.settings.activeModels[providerId] ?? [];
+      if (!list.includes(model)) {
+        list.push(model);
+        this.plugin.settings.activeModels[providerId] = list;
+        await this.plugin.saveSettings();
+      }
+      refresh();
+    };
+
+    // Resto da linha (incl. switch) — liga/desliga visibilidade no seletor.
     row.onclick = async () => {
       const list = this.plugin.settings.activeModels[providerId] ?? [];
       const idx = list.indexOf(model);
@@ -1128,7 +1113,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
       else list.splice(idx, 1);
       this.plugin.settings.activeModels[providerId] = list;
       await this.plugin.saveSettings();
-      // Atualiza só ESTA linha — sem rebuild, sem fechar a lista.
       row.toggleClass("axxa-model-opt-active", nowOn);
       sw.toggleClass("is-on", nowOn);
       row.setAttr("aria-pressed", String(nowOn));

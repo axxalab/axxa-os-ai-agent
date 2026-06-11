@@ -49,7 +49,11 @@ import {
   CATEGORY_ORDER,
   type ModelFullInfo,
 } from "../../providers/modelDescriptions";
-import { hasBrandLogo } from "../_shared/brandLogos";
+import {
+  PROVIDER_LOGO,
+  modelVendorLogoId,
+  modelVendorLabel,
+} from "../_shared/modelLogo";
 import { formatUsd } from "../../usage/pricing";
 
 // Cores DS pra badges de capacidade — cada flag tem uma cor semântica fixa.
@@ -82,40 +86,12 @@ function modeColor(mode: string): string {
   return MODE_COLOR[mode] ?? "var(--text-muted)";
 }
 
-// Logo de marca por provider (abas + fallback dos cards de modelo).
-const PROVIDER_LOGO: Record<string, string> = {
-  openai: "logo-openai",
-  anthropic: "logo-anthropic",
-  gemini: "logo-gemini",
-  openrouter: "logo-openrouter",
-  nim: "logo-nvidia",
-  ollama: "logo-ollama",
-};
+// PROVIDER_LOGO + as regras de vendor agora vivem em _shared/modelLogo.ts
+// (fonte única, reusada pelos Settings). v0.1.150
 
-// model-id → logo do VENDOR real do modelo (ex: um llama no OpenRouter mostra a
-// Meta). 1ª regra que casa vence; fallback no logo do provider. (v0.1.92)
-const MODEL_LOGO_RULES: [RegExp, string][] = [
-  [/claude/, "logo-claude-color"],
-  [/(gemini[\w.-]*image|nano-?banana)/, "logo-nanobanana-color"],
-  [/(gemini|imagen|gemma|palm|bison)/, "logo-gemini-color"],
-  [/(llama|meta-)/, "logo-meta-color"],
-  [/qwen/, "logo-qwen-color"],
-  [/(mistral|mixtral|codestral|pixtral|ministral)/, "logo-mistral-color"],
-  [/deepseek/, "logo-deepseek-color"],
-  [/flux/, "logo-flux"],
-  [/(stable-?diffusion|sdxl|stability)/, "logo-stability-color"],
-  [/(gpt|^o[1-9]|davinci|dall|whisper|tts|chatgpt|text-embedding)/, "logo-openai"],
-  [/(nemotron|nvidia)/, "logo-nvidia-color"],
-];
-
-/** Resolve o logo de um modelo: tenta o vendor do modelo, senão o do provider. */
+/** Resolve o logo de um modelo: vendor do modelo, senão o do provider. */
 function modelLogo(provider: string, model: string): string {
-  const id = (model || "").toLowerCase();
-  const tail = id.includes("/") ? id.slice(id.lastIndexOf("/") + 1) : id;
-  for (const [re, logo] of MODEL_LOGO_RULES) {
-    if (re.test(tail) || re.test(id)) return logo;
-  }
-  return PROVIDER_LOGO[provider] ?? "logo-openai";
+  return modelVendorLogoId(provider, model) ?? PROVIDER_LOGO[provider] ?? "logo-openai";
 }
 
 /** Linha de custo (números reais): tokens in/out, por imagem, ou por chars (TTS). */
@@ -157,21 +133,10 @@ function ModelVendorLogo({
   provider: string;
   model: string;
 }) {
-  const id = (model || "").toLowerCase();
-  const tail = id.includes("/") ? id.slice(id.lastIndexOf("/") + 1) : id;
-  let logoId: string | null = null;
-  for (const [re, logo] of MODEL_LOGO_RULES) {
-    if (re.test(tail) || re.test(id)) {
-      logoId = hasBrandLogo(logo) ? logo : null;
-      break;
-    }
-  }
+  const logoId = modelVendorLogoId(provider, model);
   if (logoId) return <Icon name={logoId} />;
-  // placeholder roxo vivo com o vendor detectado
-  const raw = model && model.includes("/")
-    ? model.slice(0, model.indexOf("/"))
-    : (model || provider).split(/[-.\s:]/)[0];
-  const label = (raw || provider).toUpperCase().slice(0, 10);
+  // placeholder roxo vivo com o vendor detectado (sinaliza "falta o SVG")
+  const label = modelVendorLabel(provider, model);
   return (
     <span className="axxa-logo-ph" title={`logo ausente: ${label}`}>
       {label}
