@@ -7,32 +7,28 @@
 // único pra adicionar novas coletas no futuro.
 //
 // Fontes do "hot" (privacidade primeiro — SEM telemetria):
-//   1. Baseline curado: modelos reconhecidamente populares/acima-da-média.
+//   1. Baseline de POPULARIDADE (hotData.generated.ts): dado REAL do HuggingFace
+//      (downloads) pros modelos open + curado pros closed. Atualizado semanal
+//      por scripts/collect-hot.mjs (automação) — ver scripts/README.md.
 //   2. Uso LOCAL do próprio usuário (nº de chats por modelo) — o plugin
 //      registra via registerLocalUsage() no load. É o seu uso, fica no device.
 //
 // O "hot" final é um blend dos dois → nível 0..3 (chama de chama 🔥).
 
-/** Baseline de popularidade por padrão de id de modelo. 1ª regra que casa vence.
- *  Score 0..1 — quão "above average" o modelo é no mercado (curado, jun/2026). */
-const HOT_BASELINE: [RegExp, number][] = [
-  [/claude-(fable|opus|sonnet)/, 0.96],
-  [/(^|\/)gpt-5/, 0.95],
-  [/(^|\/)gpt-4o/, 0.92],
-  [/gemini-(3|2\.5-(pro|flash))/, 0.9],
-  [/(^|\/)o[34](\b|-)/, 0.82],
-  [/deepseek-(r1|v3)/, 0.82],
-  [/llama-3\.[123]/, 0.74],
-  [/claude-haiku/, 0.7],
-  [/(^|\/)o1(\b|-)/, 0.68],
-  [/qwen(2\.5|3)/, 0.62],
-  [/(mistral-large|mixtral|pixtral)/, 0.6],
-  [/(flux|stable-?diffusion|sdxl)/, 0.62],
-  [/(dall-e|gpt-image|nano-?banana|imagen)/, 0.6],
-  [/claude-3/, 0.5],
-  [/gemini-(1\.5|2\.0)/, 0.5],
-  [/(mistral|gemma|phi)/, 0.42],
-];
+// Baseline de popularidade vem do arquivo GERADO (dado REAL do HuggingFace pros
+// open + curado pros closed), atualizado semanalmente por scripts/collect-hot.mjs.
+// Compila os padrões (string → RegExp) uma vez. Fallback minúsculo se vazio.
+import { HOT_DATA } from "./hotData.generated";
+
+const HOT_BASELINE: [RegExp, number][] = (
+  HOT_DATA.length > 0
+    ? HOT_DATA
+    : ([
+        ["claude-(fable|opus|sonnet)", 0.96],
+        ["(^|/)gpt-(4o|5)", 0.9],
+        ["gemini-(3|2\\.5)", 0.85],
+      ] as [string, number][])
+).map(([pat, score]) => [new RegExp(pat), score] as [RegExp, number]);
 
 /** Uso local normalizado (0..1) por model id lowercase. Vazio até o registro. */
 let LOCAL_USAGE: Record<string, number> = {};
@@ -61,10 +57,12 @@ export interface HotInfo {
 }
 
 function baselineFor(id: string): number {
+  // Maior score entre TODOS os padrões que casam (robusto à ordem da lista).
+  let best = 0;
   for (const [re, s] of HOT_BASELINE) {
-    if (re.test(id)) return s;
+    if (s > best && re.test(id)) best = s;
   }
-  return 0;
+  return best;
 }
 
 /**

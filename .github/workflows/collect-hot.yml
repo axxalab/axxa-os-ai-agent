@@ -1,0 +1,38 @@
+name: Weekly hot-ranking update
+
+# Coleta a popularidade real dos modelos (HuggingFace) e commita o
+# src/providers/hotData.generated.ts SE houver mudança. Toda quinta 09:00 UTC.
+# Idempotente: sem mudança no dado → sem diff → sem commit.
+
+on:
+  schedule:
+    - cron: "0 9 * * 4" # quinta-feira, 09:00 UTC
+  workflow_dispatch: {} # permite rodar manualmente pela aba Actions
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Collect hot ranking
+        run: node scripts/collect-hot.mjs
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet src/providers/hotData.generated.ts; then
+            echo "Sem mudança na popularidade — nada a commitar."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add src/providers/hotData.generated.ts
+            git commit -m "chore(data): weekly hot ranking update"
+            git push
+          fi
