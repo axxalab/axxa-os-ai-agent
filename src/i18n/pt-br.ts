@@ -304,6 +304,27 @@ export const PT_BR = {
     },
   },
 
+  // Modal de geração de imagem (fallback manual) — v0.1.166
+  imageGen: {
+    title: "Gerar imagem",
+    editTitle: "Editar imagem",
+    promptLabel: "Prompt",
+    promptPlaceholder: "Descreva a imagem que você quer…",
+    modelLabel: "Modelo",
+    generate: "Gerar",
+    cancel: "Cancelar",
+    connected: "conectado",
+    notConnected: "sem chave",
+    noModels:
+      "Nenhum modelo de imagem ativo. Ative um em Configurações → Providers (ex: gemini-2.5-flash-image, gpt-image-1).",
+    free: "grátis",
+    useAttached: "Editar a imagem anexada (IMG2IMG)",
+    editOnlyNano: "edição só no Nano Banana",
+    perImage: (usd: string) => `~${usd}/img`,
+    menuLabel: "Criar imagem",
+    menuDesc: "Gera uma imagem na conversa atual — sem trocar de modelo.",
+  },
+
   systemPrompt: {
     base:
       "Você é o AXXA Agent, um assistente integrado ao Obsidian. " +

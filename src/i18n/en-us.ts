@@ -295,6 +295,26 @@ export const EN_US: Translations = {
     },
   },
 
+  imageGen: {
+    title: "Generate image",
+    editTitle: "Edit image",
+    promptLabel: "Prompt",
+    promptPlaceholder: "Describe the image you want…",
+    modelLabel: "Model",
+    generate: "Generate",
+    cancel: "Cancel",
+    connected: "connected",
+    notConnected: "no key",
+    noModels:
+      "No image model enabled. Enable one in Settings → Providers (e.g. gemini-2.5-flash-image, gpt-image-1).",
+    free: "free",
+    useAttached: "Edit the attached image (IMG2IMG)",
+    editOnlyNano: "editing only on Nano Banana",
+    perImage: (usd: string) => `~${usd}/img`,
+    menuLabel: "Create image",
+    menuDesc: "Generates an image in the current chat — no model switch.",
+  },
+
   systemPrompt: {
     base:
       "You are AXXA Agent, an assistant integrated into Obsidian. " +

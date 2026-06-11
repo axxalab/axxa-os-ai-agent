@@ -47,6 +47,10 @@ interface PlusModalProps {
   onToggle?: (key: string, value: boolean) => void;
   /** True se o modelo ativo suporta image gen (habilita Create Image toggle). */
   imageGenEnabled?: boolean;
+  /** True se há QUALQUER modelo de imagem conectado (habilita "Criar imagem"). */
+  createImageAvailable?: boolean;
+  /** Abre o modal de geração de imagem in-chat (fallback). v0.1.166 */
+  onCreateImage?: () => void;
 }
 
 export function PlusModal({
@@ -58,7 +62,10 @@ export function PlusModal({
   toggles = {},
   onToggle,
   imageGenEnabled = false,
+  createImageAvailable = false,
+  onCreateImage,
 }: PlusModalProps) {
+  void imageGenEnabled;
   const t = useT();
   const app = useApp();
   // Inputs hidden — disparados pelos botões da row
@@ -234,18 +241,16 @@ export function PlusModal({
             checked={Boolean(toggles.webSearch)}
             onChange={(v) => onToggle?.("webSearch", v)}
           />
-          <PlusToggleRow
+          <PlusActionRow
             icon="image-plus"
             tone="pink"
-            label={t.plus.createImageTitle}
-            desc={
-              imageGenEnabled
-                ? t.plus.createImageDesc
-                : t.plus.createImageNoGen
-            }
-            checked={Boolean(toggles.createImage)}
-            onChange={(v) => onToggle?.("createImage", v)}
-            disabled={!imageGenEnabled}
+            label={t.imageGen.menuLabel}
+            desc={t.imageGen.menuDesc}
+            disabled={!createImageAvailable}
+            onClick={() => {
+              onCreateImage?.();
+              onClose();
+            }}
           />
           <PlusToggleRow
             icon="brain"
@@ -346,6 +351,55 @@ function PlusToggleRow({
         role="switch"
       >
         <span className="axxa-plus-row-switch-thumb" />
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Action row no PlusModal — igual ao ToggleRow mas DISPARA uma ação (chevron à
+ * direita em vez de switch). Usado por "Criar imagem". v0.1.166
+ */
+function PlusActionRow({
+  icon,
+  tone,
+  label,
+  desc,
+  onClick,
+  disabled = false,
+}: {
+  icon: string;
+  tone: "blue" | "pink" | "orange" | "green" | "purple" | "red";
+  label: string;
+  desc: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "axxa-plus-row axxa-plus-row-tone-" + tone +
+        (disabled ? " axxa-plus-row-disabled" : "")
+      }
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      onClick={() => !disabled && onClick()}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
+      <span className="axxa-plus-row-icon">
+        <Icon name={icon} />
+      </span>
+      <span className="axxa-plus-row-text">
+        <span className="axxa-plus-row-label">{label}</span>
+        <span className="axxa-plus-row-desc">{desc}</span>
+      </span>
+      <span className="axxa-plus-row-chevron">
+        <Icon name="chevron-right" />
       </span>
     </div>
   );

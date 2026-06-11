@@ -6644,6 +6644,134 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   background: var(--background-secondary);
   line-height: 1.4;
 }
+/* Modal de geração de imagem in-chat. v0.1.166 */
+.axxa-imggen-modal h2 {
+  margin: 0 0 12px;
+}
+.axxa-imggen-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 10px 0 4px;
+}
+.axxa-imggen-prompt {
+  width: 100%;
+  resize: vertical;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 14px;
+}
+.axxa-imggen-editrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 2px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.axxa-imggen-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.axxa-imggen-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+}
+.axxa-imggen-opt:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-imggen-opt.is-selected {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+.axxa-imggen-opt.is-disconnected {
+  opacity: 0.6;
+}
+.axxa-imggen-opt-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.axxa-imggen-opt-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-imggen-opt-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.axxa-imggen-opt-price {
+  color: var(--text-accent);
+}
+.axxa-imggen-opt-note {
+  font-style: italic;
+}
+.axxa-imggen-opt-conn {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--background-secondary);
+}
+.axxa-imggen-opt-conn.is-on {
+  color: var(--color-green, #3ba55d);
+}
+.axxa-imggen-opt-conn.is-off {
+  color: var(--color-red, #e5534b);
+}
+.axxa-imggen-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.axxa-imggen-btn {
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.axxa-imggen-btn-cta {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.axxa-imggen-btn-cta.is-disabled,
+.axxa-imggen-btn-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.axxa-imggen-empty {
+  color: var(--text-muted);
+  margin: 8px 0 16px;
+}
+.axxa-plus-row-chevron {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  display: inline-flex;
+}
+.axxa-plus-row-chevron .svg-icon {
+  width: 18px;
+  height: 18px;
+}
 /* Switch on/off à direita */
 .axxa-model-toggle-switch {
   flex: 0 0 auto;

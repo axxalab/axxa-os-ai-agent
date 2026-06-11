@@ -48,6 +48,11 @@ import {
   type GenerationMediaType,
 } from "../generation/save";
 import {
+  ImageGenModal,
+  type ImageModelOption,
+} from "../generation/ImageGenModal";
+import { getPricing } from "../usage/pricing";
+import {
   effortToMaxTokensSmart,
   effortToVaultLookup,
   resolveEffortConfig,
@@ -1431,6 +1436,180 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
+  // ============================================================
+  // Geração de imagem IN-CHAT (sem trocar de modelo) — v0.1.166
+  // O fallback que o user pediu: abre um modal de confirmação (modelo + preço +
+  // conectado), gera com o modelo escolhido e injeta a imagem NA CONVERSA ATUAL.
+  // Suporta IMG2IMG quando há imagem anexada e o modelo edita (Nano Banana).
+  // ============================================================
+
+  /** Enumera os modelos de imagem ATIVOS (que o plugin gera de fato) com preço
+   *  por imagem + se o provider está conectado (first-user case). */
+  const buildImageModelOptions = (): ImageModelOption[] => {
+    const opts: ImageModelOption[] = [];
+    const active = plugin.settings.activeModels ?? {};
+    for (const providerId of Object.keys(active)) {
+      if (!generationSupported(providerId, "image")) continue;
+      for (const model of active[providerId] ?? []) {
+        if (!getModelCapabilities(providerId, model).imageGen) continue;
+        const pricing = getPricing(providerId, model);
+        opts.push({
+          providerId,
+          providerLabel: getProvider(providerId).name,
+          model,
+          pricePerImage: pricing.imagePerCall ?? undefined,
+          connected:
+            providerId === "ollama" ? true : apiKeyFor(providerId).trim().length > 0,
+          // Edição (IMG2IMG) hoje só no Nano Banana.
+          supportsEdit:
+            providerId === "gemini" && model.startsWith("gemini-2.5-flash-image"),
+        });
+      }
+    }
+    return opts;
+  };
+
+  /** Gera UMA imagem com provider/modelo explícitos e injeta na conversa atual. */
+  const runImageGeneration = async (
+    prompt: string,
+    providerId: string,
+    model: string,
+    inputImage?: { data: string; mimeType: string }
+  ) => {
+    const { addMessage, updateActivity, setLoading } = useChatStore.getState();
+    const provider = getProvider(providerId);
+    const apiKey = apiKeyFor(providerId);
+    if (providerNeedsKey(providerId) && !apiKey.trim()) {
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(provider.name)}`,
+        isError: true,
+        errorCode: "no-key",
+      });
+      return;
+    }
+    if (!generationSupported(providerId, "image") || !provider.generateImage) {
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${t.ai.genUnsupported("image", generationSupportSummary())}`,
+        isError: true,
+        errorCode: "unknown",
+      });
+      return;
+    }
+    setLoading(true);
+    const activityId = addMessage({
+      type: "ai-comment",
+      content: "",
+      activity: {
+        phase: "pending",
+        iconPending: inputImage ? "wand-2" : "image-plus",
+        iconDone: "check",
+        pendingText: inputImage ? "Editando imagem..." : "Gerando imagem...",
+        doneText: "",
+      },
+    });
+    try {
+      const items = await provider.generateImage(
+        {
+          model,
+          prompt,
+          size: "1024x1024",
+          ...(inputImage ? { image: inputImage } : {}),
+        },
+        apiKey
+      );
+      const savedPaths: string[] = [];
+      for (const item of items) {
+        const r = await saveGeneration(
+          plugin.app,
+          plugin.settings.generationPath,
+          item.data,
+          {
+            id: makeId(),
+            type: "image",
+            provider: providerId,
+            model,
+            prompt,
+            created: new Date().toISOString(),
+            size: item.data.byteLength,
+            mime: item.mime,
+            width: item.width,
+            height: item.height,
+            seed: item.seed,
+            chatId: useChatStore.getState().currentChatId ?? undefined,
+          }
+        );
+        savedPaths.push(r.mediaPath);
+      }
+      updateActivity(
+        activityId,
+        {
+          phase: "done",
+          doneText: `${items.length} imagem${items.length > 1 ? "ns" : ""} gerada${items.length > 1 ? "s" : ""}`,
+        },
+        savedPaths[0]
+      );
+      addMessage({
+        type: "ai-response",
+        content: savedPaths.map((p) => `![[${p}]]`).join("\n\n"),
+      });
+    } catch (err) {
+      const { message, code } = describeProviderError(err, t, provider.name);
+      updateActivity(
+        activityId,
+        { phase: "failed", iconFailed: "x-circle", failedText: t.ai.failed },
+        message
+      );
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${message}`,
+        isError: true,
+        errorCode: code,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** Abre o modal de confirmação (fallback do + → Criar imagem). */
+  const handleCreateImage = async () => {
+    // Imagem anexada vira candidata a IMG2IMG.
+    const imgAtt = pendingAttachments.find(
+      (p) => p.attachment.type === "image"
+    );
+    let inputImage: { data: string; mimeType: string } | undefined;
+    if (imgAtt && imgAtt.attachment.type === "image") {
+      const m = /^data:([^;]+);base64,(.+)$/.exec(imgAtt.attachment.dataUrl);
+      if (m) inputImage = { mimeType: m[1], data: m[2] };
+    }
+    const modal = new ImageGenModal(plugin.app, {
+      options: buildImageModelOptions(),
+      initialPrompt: "",
+      hasInputImage: !!inputImage,
+      strings: t.imageGen,
+    });
+    const choice = await modal.openAndWait();
+    if (!choice) return;
+    const store = useChatStore.getState();
+    if (store.messages.length === 0) {
+      const newId = makeId();
+      store.setCurrentChatId(newId);
+      store.setCurrentChatTitle(generateTitle(choice.prompt));
+      store.lockSession(activeProviderId, activeModel, activeMode);
+    }
+    store.addMessage({ type: "user", content: `🖼️ ${choice.prompt}` });
+    if (choice.useInputImage && inputImage) {
+      setPendingAttachments([]);
+    }
+    await runImageGeneration(
+      choice.prompt,
+      choice.providerId,
+      choice.model,
+      choice.useInputImage ? inputImage : undefined
+    );
+  };
+
   // Regenerar: remove o ai-response (e qualquer msg posterior) e re-roda
   // streamReply usando a user-msg que precedia. Ignora se já tá streamando.
   // Regenerar com BRANCHING: a resposta atual vira uma variante e a nova é
@@ -2251,6 +2430,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               imageGenEnabled={
                 Boolean(getModelCapabilities(activeProviderId, activeModel).imageGen)
               }
+              createImageAvailable={buildImageModelOptions().some((o) => o.connected)}
+              onCreateImage={handleCreateImage}
               toggles={plusToggles}
               onToggle={(key, value) =>
                 setPlusToggles((prev) => ({ ...prev, [key]: value }))
