@@ -606,6 +606,15 @@ export const EN_US: Translations = {
     usageEmpty:
       "No saved conversations yet. Send your first message to start.",
     usageCostLabel: "Estimated spend",
+    usageCostBilledLabel: "Billed (data-sharing)",
+    usageDsTitle: (tier: number) => `Data-sharing — Tier ${tier}`,
+    usageDsGross: (v: string) => `Gross: ${v}`,
+    usageDsBilled: (v: string) => `Billed: ${v}`,
+    usageDsSaved: (v: string) => `Saved: ${v}`,
+    usageDsBig: "Large models — today",
+    usageDsMini: "Mini/nano — today",
+    usageDsNote:
+      "Estimate. The free allowance is daily (resets at midnight) and per pool. ⚠️ It's shared across ALL your OpenAI API usage — the plugin only sees vault chats, so 'free remaining' is optimistic if you use the API elsewhere. Images never count toward the allowance.",
     usageTokensInLabel: "Tokens in",
     usageTokensOutLabel: "Tokens out",
     usageChatsLabel: "Conversations",

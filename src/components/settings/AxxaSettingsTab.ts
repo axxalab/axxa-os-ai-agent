@@ -59,6 +59,11 @@ import {
 import { formatUsd, getPricing } from "../../usage/pricing";
 import { openaiFreeAllowance } from "../../usage/freeTokens";
 import {
+  computeBilledUsage,
+  todayFreeStatus,
+  type BilledUsage,
+} from "../../usage/freeBilling";
+import {
   getModelCapabilities,
   capabilityBadges,
 } from "../../providers/modelCapabilities";
@@ -2123,17 +2128,78 @@ export class AxxaSettingsTab extends PluginSettingTab {
     }
   }
 
+  /** Painel data-sharing: bruto vs cobrado vs economia + cota grátis de HOJE. */
+  private renderDataSharingPanel(
+    parent: HTMLElement,
+    agg: UsageAggregate,
+    billed: BilledUsage,
+    t: Translations
+  ) {
+    const tier = this.plugin.settings.openaiUsageTier || 1;
+    const sec = parent.createDiv({ cls: "axxa-usage-ds" });
+    sec.createEl("h4", { text: t.settings.usageDsTitle(tier) });
+
+    const line = sec.createDiv({ cls: "axxa-usage-ds-line" });
+    line.createSpan({ text: t.settings.usageDsGross(formatUsd(billed.grossCost)) });
+    line.createSpan({
+      text: t.settings.usageDsBilled(formatUsd(billed.billedCost)),
+      cls: "axxa-usage-ds-billed",
+    });
+    line.createSpan({
+      text: t.settings.usageDsSaved(formatUsd(billed.saved)),
+      cls: "axxa-usage-ds-saved",
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    const st = todayFreeStatus(agg.chats, { tier, dataSharing: true }, today);
+    this.freeBar(sec, t.settings.usageDsBig, st.big.used, st.big.allowance);
+    this.freeBar(sec, t.settings.usageDsMini, st.mini.used, st.mini.allowance);
+
+    sec.createDiv({ cls: "axxa-usage-ds-note", text: t.settings.usageDsNote });
+  }
+
+  /** Barra de progresso de uma cota grátis (usado / total) do dia. */
+  private freeBar(
+    parent: HTMLElement,
+    label: string,
+    used: number,
+    allowance: number
+  ) {
+    const row = parent.createDiv({ cls: "axxa-usage-freebar-row" });
+    row.createSpan({ text: label, cls: "axxa-usage-freebar-label" });
+    const track = row.createDiv({ cls: "axxa-usage-freebar-track" });
+    const pct = allowance > 0 ? Math.min(100, (used / allowance) * 100) : 0;
+    const fill = track.createDiv({
+      cls: "axxa-usage-freebar-fill" + (pct >= 100 ? " is-full" : ""),
+    });
+    fill.style.width = pct.toFixed(1) + "%";
+    row.createSpan({
+      text: `${formatTokens(used)} / ${formatTokens(allowance)}`,
+      cls: "axxa-usage-freebar-num",
+    });
+  }
+
   private renderUsageBody(
     parent: HTMLElement,
     agg: UsageAggregate,
     t: Translations
   ) {
+    // Data-sharing: cobra só o excedente da cota grátis (v0.1.168). O headline
+    // de custo passa a refletir o COBRADO (out-of-pocket real).
+    const billed: BilledUsage | null = this.plugin.settings.openaiDataSharing
+      ? computeBilledUsage(agg.chats, {
+          tier: this.plugin.settings.openaiUsageTier || 1,
+          dataSharing: true,
+        })
+      : null;
+    const headlineCost = billed ? billed.billedCost : agg.total.cost;
+
     // ===== Cards de resumo =====
     const summaryGrid = parent.createDiv({ cls: "axxa-usage-summary" });
     this.usageCard(
       summaryGrid,
-      t.settings.usageCostLabel,
-      formatUsd(agg.total.cost) + (agg.total.hasUnknownCost ? "*" : ""),
+      billed ? t.settings.usageCostBilledLabel : t.settings.usageCostLabel,
+      formatUsd(headlineCost) + (agg.total.hasUnknownCost ? "*" : ""),
       "dollar-sign",
       "var(--color-green, #06d6a0)"
     );
@@ -2166,6 +2232,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
       });
       return;
     }
+
+    // ===== Painel data-sharing (cota grátis aplicada) =====
+    if (billed) this.renderDataSharingPanel(parent, agg, billed, t);
 
     // ===== Tabela por provider =====
     this.usageTable(

@@ -615,6 +615,16 @@ export const PT_BR = {
     usageEmpty:
       "Nenhuma conversa salva ainda. Mande sua primeira mensagem pra começar.",
     usageCostLabel: "Gasto estimado",
+    usageCostBilledLabel: "Cobrado (data-sharing)",
+    // Painel data-sharing — cobra só o excedente da cota grátis. v0.1.168
+    usageDsTitle: (tier: number) => `Data-sharing — Tier ${tier}`,
+    usageDsGross: (v: string) => `Bruto: ${v}`,
+    usageDsBilled: (v: string) => `Cobrado: ${v}`,
+    usageDsSaved: (v: string) => `Economia: ${v}`,
+    usageDsBig: "Modelos grandes — hoje",
+    usageDsMini: "Mini/nano — hoje",
+    usageDsNote:
+      "Estimativa. A cota grátis é diária (reseta à meia-noite) e por pool. ⚠️ Ela é compartilhada com TODO o seu uso da OpenAI API — o plugin só enxerga os chats do vault, então o 'grátis restante' é otimista se você usa a API em outro lugar. Imagem nunca entra na cota.",
     usageTokensInLabel: "Tokens in",
     usageTokensOutLabel: "Tokens out",
     usageChatsLabel: "Conversas",
