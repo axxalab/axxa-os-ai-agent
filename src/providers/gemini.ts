@@ -27,8 +27,14 @@ import {
   MediaGenerationItem,
 } from "./base";
 import { isEmbeddingModelId } from "../rag/types";
-import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
-import { toOpenAIMessages, finalizeOpenAIResponse } from "./openai";
+import {
+  buildChatBody,
+  ensureOkStream,
+  ensureOkRequest,
+  parseOpenAIChatMessage,
+  usageFrom,
+  parseOpenAICompatSSE,
+} from "./_shared";
 
 const GEMINI_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
@@ -49,30 +55,9 @@ export class GeminiProvider implements Provider {
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError(
-        "API key do Gemini não configurada. Gere uma em aistudio.google.com/apikey.",
-        "no-key"
-      );
+      throw new ProviderError("API key do Gemini não configurada.", "no-key");
     }
-
-    const body: Record<string, unknown> = {
-      model: req.model,
-      messages: toOpenAIMessages(req.messages),
-      max_tokens: resolveMaxTokens("gemini", req.model, req.maxTokens ?? 2000),
-    };
-    const temp = resolveTemperature("gemini", req.model, req.temperature);
-    if (temp !== undefined) body.temperature = temp;
-    if (req.tools && req.tools.length > 0) {
-      body.tools = req.tools.map((t) => ({
-        type: "function",
-        function: {
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters,
-        },
-      }));
-      body.tool_choice = "auto";
-    }
+    const body = buildChatBody(req, { provider: "gemini" });
 
     let res;
     try {
@@ -80,69 +65,22 @@ export class GeminiProvider implements Provider {
         url: GEMINI_ENDPOINT,
         method: "POST",
         contentType: "application/json",
-        headers: {
-          Authorization: `Bearer ${apiKey.trim()}`,
-        },
+        headers: { Authorization: `Bearer ${apiKey.trim()}` },
         body: JSON.stringify(body),
         throw: false,
       });
-    } catch (err) {
+    } catch {
       throw new ProviderError("Falha de conexão.", "network");
     }
-
-    if (res.status === 401 || res.status === 403) {
-      throw new ProviderError(
-        "API key Gemini inválida. Verifique em aistudio.google.com/apikey.",
-        "invalid-key"
-      );
-    }
-    if (res.status === 429) {
-      throw new ProviderError(
-        "Rate limit Gemini. Aguarde alguns segundos.",
-        "rate-limit"
-      );
-    }
-    if (res.status < 200 || res.status >= 300) {
-      const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
-      throw new ProviderError(`Gemini: ${msg}`, "unknown");
-    }
+    ensureOkRequest(res, { label: "Gemini", authStatuses: [401, 403] });
 
     const message = res.json?.choices?.[0]?.message;
     if (!message) throw new ProviderError("Resposta vazia do Gemini.", "unknown");
-
-    let toolCalls: ProviderToolCall[] | undefined;
-    if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
-      toolCalls = message.tool_calls
-        .filter((tc: { type: string }) => tc.type === "function")
-        .map((tc: { id: string; function: { name: string; arguments: string } }) => {
-          let parsedArgs: Record<string, unknown> = {};
-          try {
-            parsedArgs = JSON.parse(tc.function.arguments);
-          } catch {
-            parsedArgs = { _raw: tc.function.arguments };
-          }
-          return { id: tc.id, name: tc.function.name, arguments: parsedArgs };
-        });
-    }
-
-    const content = typeof message.content === "string" ? message.content : "";
+    const { content, toolCalls } = parseOpenAIChatMessage(message);
     if (!toolCalls && !content) {
-      throw new ProviderError(
-        "Resposta vazia do Gemini (sem texto nem tool_calls).",
-        "unknown"
-      );
+      throw new ProviderError("Resposta vazia do Gemini (sem texto nem tool_calls).", "unknown");
     }
-
-    const result: ProviderResponse = { content };
-    if (toolCalls) result.toolCalls = toolCalls;
-    const usage = res.json?.usage;
-    if (usage) {
-      result.usage = {
-        input: usage.prompt_tokens ?? 0,
-        output: usage.completion_tokens ?? 0,
-      };
-    }
-    return result;
+    return { content, toolCalls, usage: usageFrom(res.json) };
   }
 
   async streamChat(
@@ -159,26 +97,11 @@ export class GeminiProvider implements Provider {
       );
     }
 
-    const body: Record<string, unknown> = {
-      model: req.model,
-      messages: toOpenAIMessages(req.messages),
+    const body = buildChatBody(req, {
+      provider: "gemini",
       stream: true,
-      stream_options: { include_usage: true },
-      max_tokens: resolveMaxTokens("gemini", req.model, req.maxTokens ?? 2000),
-    };
-    const temp = resolveTemperature("gemini", req.model, req.temperature);
-    if (temp !== undefined) body.temperature = temp;
-    if (req.tools && req.tools.length > 0) {
-      body.tools = req.tools.map((t) => ({
-        type: "function",
-        function: {
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters,
-        },
-      }));
-      body.tool_choice = "auto";
-    }
+      includeUsage: true,
+    });
 
     let res: Response;
     try {
@@ -195,93 +118,10 @@ export class GeminiProvider implements Provider {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
       throw new ProviderError("Falha de conexão.", "network");
     }
+    await ensureOkStream(res, { label: "Gemini", authStatuses: [401, 403] });
+    if (!res.body) throw new ProviderError("Stream vazio do Gemini.", "unknown");
 
-    if (res.status === 401 || res.status === 403) {
-      throw new ProviderError(
-        "API key Gemini inválida. Verifique em aistudio.google.com/apikey.",
-        "invalid-key"
-      );
-    }
-    if (res.status === 429) {
-      throw new ProviderError(
-        "Rate limit Gemini. Aguarde alguns segundos.",
-        "rate-limit"
-      );
-    }
-    if (!res.ok) {
-      let msg = `HTTP ${res.status}`;
-      try {
-        const json = await res.json();
-        msg = json?.error?.message ?? msg;
-      } catch {
-        /* ignora — usa o HTTP status mesmo */
-      }
-      throw new ProviderError(`Gemini: ${msg}`, "unknown");
-    }
-    if (!res.body) {
-      throw new ProviderError("Stream vazio do Gemini.", "unknown");
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let accumulatedText = "";
-    const toolCallAccum: Record<number, { id: string; name: string; argsBuf: string }> = {};
-    let usage: { input: number; output: number } | undefined;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const data = trimmed.slice(5).trim();
-        if (!data || data === "[DONE]") {
-          if (data === "[DONE]") {
-            return finalizeOpenAIResponse(accumulatedText, toolCallAccum, usage, "gemini_call");
-          }
-          continue;
-        }
-        try {
-          const json = JSON.parse(data);
-          const delta = json?.choices?.[0]?.delta;
-          if (delta) {
-            const token = delta.content;
-            if (typeof token === "string" && token.length > 0) {
-              accumulatedText += token;
-              onToken(token);
-            }
-            if (Array.isArray(delta.tool_calls)) {
-              for (const tc of delta.tool_calls) {
-                const idx = tc.index ?? 0;
-                if (!toolCallAccum[idx]) {
-                  toolCallAccum[idx] = { id: "", name: "", argsBuf: "" };
-                }
-                if (tc.id) toolCallAccum[idx].id = tc.id;
-                if (tc.function?.name) toolCallAccum[idx].name = tc.function.name;
-                if (typeof tc.function?.arguments === "string") {
-                  toolCallAccum[idx].argsBuf += tc.function.arguments;
-                }
-              }
-            }
-          }
-          if (json?.usage) {
-            usage = {
-              input: json.usage.prompt_tokens ?? 0,
-              output: json.usage.completion_tokens ?? 0,
-            };
-            if (onUsage) onUsage(usage);
-          }
-        } catch {
-          /* JSON inválido — pula */
-        }
-      }
-    }
-    return finalizeOpenAIResponse(accumulatedText, toolCallAccum, usage, "gemini_call");
+    return parseOpenAICompatSSE(res.body, onToken, onUsage, "gemini_call");
   }
 
   /**

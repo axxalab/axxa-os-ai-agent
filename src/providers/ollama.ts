@@ -30,7 +30,11 @@ import {
   UsageHandler,
 } from "./base";
 import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
-import { toOpenAIMessages } from "./openai";
+import {
+  toOpenAIMessages,
+  ensureOkRequest,
+  ensureOkStream,
+} from "./_shared";
 
 export class OllamaProvider implements Provider {
   id = "ollama";
@@ -92,9 +96,7 @@ export class OllamaProvider implements Provider {
       );
     }
 
-    if (res.status < 200 || res.status >= 300) {
-      throw new ProviderError(`Ollama: HTTP ${res.status}`, "unknown");
-    }
+    ensureOkRequest(res, { label: "Ollama" });
 
     const message = res.json?.message;
     if (!message) {
@@ -198,9 +200,7 @@ export class OllamaProvider implements Provider {
       );
     }
 
-    if (!res.ok) {
-      throw new ProviderError(`Ollama: HTTP ${res.status}`, "unknown");
-    }
+    await ensureOkStream(res, { label: "Ollama" });
     if (!res.body) {
       throw new ProviderError("Stream vazio do Ollama.", "unknown");
     }

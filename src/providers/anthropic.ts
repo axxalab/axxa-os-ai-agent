@@ -29,6 +29,7 @@ import {
   UsageHandler,
 } from "./base";
 import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
+import { ensureOkRequest, ensureOkStream } from "./_shared";
 
 const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -259,16 +260,7 @@ export class AnthropicProvider implements Provider {
       throw new ProviderError("Falha de conexão. Confira sua internet.", "network");
     }
 
-    if (res.status === 401) {
-      throw new ProviderError("API key inválida da Anthropic.", "invalid-key");
-    }
-    if (res.status === 429) {
-      throw new ProviderError("Rate limit Anthropic. Aguarde alguns segundos.", "rate-limit");
-    }
-    if (res.status < 200 || res.status >= 300) {
-      const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
-      throw new ProviderError(`Anthropic: ${msg}`, "unknown");
-    }
+    ensureOkRequest(res, { label: "Anthropic" });
 
     // Anthropic devolve content como array de blocks tipados (text + tool_use)
     const content = res.json?.content;
@@ -342,22 +334,7 @@ export class AnthropicProvider implements Provider {
       throw new ProviderError("Falha de conexão. Confira sua internet.", "network");
     }
 
-    if (res.status === 401) {
-      throw new ProviderError("API key inválida da Anthropic.", "invalid-key");
-    }
-    if (res.status === 429) {
-      throw new ProviderError("Rate limit Anthropic. Aguarde alguns segundos.", "rate-limit");
-    }
-    if (!res.ok) {
-      let msg = `HTTP ${res.status}`;
-      try {
-        const json = await res.json();
-        msg = json?.error?.message ?? msg;
-      } catch {
-        /* ignora */
-      }
-      throw new ProviderError(`Anthropic: ${msg}`, "unknown");
-    }
+    await ensureOkStream(res, { label: "Anthropic" });
     if (!res.body) {
       throw new ProviderError("Stream vazio da Anthropic.", "unknown");
     }

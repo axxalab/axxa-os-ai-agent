@@ -31,8 +31,7 @@ import {
   MediaGenerationItem,
 } from "./base";
 import { isEmbeddingModelId } from "../rag/types";
-import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
-import { toOpenAIMessages } from "./openai";
+import { buildChatBody, parseOpenAIChatMessage, usageFrom } from "./_shared";
 
 const NIM_ENDPOINT =
   "https://integrate.api.nvidia.com/v1/chat/completions";
@@ -57,24 +56,7 @@ export class NimProvider implements Provider {
       );
     }
 
-    const body: Record<string, unknown> = {
-      model: req.model,
-      messages: toOpenAIMessages(req.messages),
-      max_tokens: resolveMaxTokens("nim", req.model, req.maxTokens ?? 2000),
-    };
-    const temp = resolveTemperature("nim", req.model, req.temperature);
-    if (temp !== undefined) body.temperature = temp;
-    if (req.tools && req.tools.length > 0) {
-      body.tools = req.tools.map((t) => ({
-        type: "function",
-        function: {
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters,
-        },
-      }));
-      body.tool_choice = "auto";
-    }
+    const body = buildChatBody(req, { provider: "nim" });
 
     let res;
     try {
@@ -151,40 +133,11 @@ export class NimProvider implements Provider {
 
     const message = res.json?.choices?.[0]?.message;
     if (!message) throw new ProviderError("Resposta vazia do NIM.", "unknown");
-
-    let toolCalls: ProviderToolCall[] | undefined;
-    if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
-      toolCalls = message.tool_calls
-        .filter((tc: { type: string }) => tc.type === "function")
-        .map((tc: { id: string; function: { name: string; arguments: string } }) => {
-          let parsedArgs: Record<string, unknown> = {};
-          try {
-            parsedArgs = JSON.parse(tc.function.arguments);
-          } catch {
-            parsedArgs = { _raw: tc.function.arguments };
-          }
-          return { id: tc.id, name: tc.function.name, arguments: parsedArgs };
-        });
-    }
-
-    const content = typeof message.content === "string" ? message.content : "";
+    const { content, toolCalls } = parseOpenAIChatMessage(message);
     if (!toolCalls && !content) {
-      throw new ProviderError(
-        "Resposta vazia do NIM (sem texto nem tool_calls).",
-        "unknown"
-      );
+      throw new ProviderError("Resposta vazia do NIM (sem texto nem tool_calls).", "unknown");
     }
-
-    const result: ProviderResponse = { content };
-    if (toolCalls) result.toolCalls = toolCalls;
-    const usage = res.json?.usage;
-    if (usage) {
-      result.usage = {
-        input: usage.prompt_tokens ?? 0,
-        output: usage.completion_tokens ?? 0,
-      };
-    }
-    return result;
+    return { content, toolCalls, usage: usageFrom(res.json) };
   }
 
   /**
