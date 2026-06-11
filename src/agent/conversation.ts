@@ -1,0 +1,76 @@
+// src/agent/conversation.ts
+// Montagem do SYSTEM PROMPT e do history — antes copiada em 4 lugares do
+// AxxaApp (streamReply / runAgentTurn / regenerate / continue). Centralizado
+// aqui, puro e testável.
+
+import type { ProviderMessage, MessageAttachment } from "../providers/base";
+
+// ── System prompt ──────────────────────────────────────────
+
+export interface ChatSystemParts {
+  /** Persona custom do chat (sessionPersona). Se truthy, SUBSTITUI o base. */
+  persona?: string;
+  /** System prompt padrão (t.systemPrompt.base). */
+  base: string;
+  /** Sufixo do modo Vault Q&A (t.systemPrompt.vaultQaSuffix). */
+  vaultSuffix?: string;
+  /** Bloco de notas recuperadas (RAG). Só entra se não-vazio. */
+  vaultBlock?: string;
+  /** Bloco de notas anexadas pelo user. */
+  noteBlock?: string;
+}
+
+/** Monta o system prompt do CHAT/Vault-QA: (persona || base) + vault + notes. */
+export function buildChatSystemPrompt(p: ChatSystemParts): string {
+  const head = (p.persona && p.persona.trim()) || p.base;
+  const vault =
+    p.vaultBlock && p.vaultBlock.length > 0
+      ? (p.vaultSuffix ?? "") + p.vaultBlock
+      : "";
+  return head + vault + (p.noteBlock ?? "");
+}
+
+/** Monta o system prompt do AGENT: persona é PREPENDIDA (não substitui). */
+export function buildAgentSystemPrompt(
+  persona: string | undefined,
+  agentPrompt: string
+): string {
+  const p = persona && persona.trim();
+  return (p ? p + "\n\n" : "") + agentPrompt;
+}
+
+// ── History (store → provider) ─────────────────────────────
+
+/** Forma mínima de uma mensagem do store que vira mensagem de provider.
+ *  content é opcional pois o store tem variantes sem ele (ai-options) — elas
+ *  são filtradas fora de qualquer jeito. */
+export interface StoreMessageLike {
+  type: string;
+  content?: string;
+  isError?: boolean;
+}
+
+/**
+ * Converte mensagens do store em ProviderMessage[] mandadas ao LLM:
+ *   - mantém só `user` e `ai-response` SEM erro (isError não polui o contexto)
+ *   - a ÚLTIMA user-msg recebe os attachments multimodais (quando passados)
+ */
+export function storeMessagesToProvider(
+  messages: StoreMessageLike[],
+  lastUserAttachments?: MessageAttachment[]
+): ProviderMessage[] {
+  const usable = messages.filter(
+    (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
+  );
+  return usable.map((m, idx) => {
+    const base: ProviderMessage = {
+      role: m.type === "user" ? "user" : "assistant",
+      content: m.content ?? "",
+    };
+    const isLastUser = idx === usable.length - 1 && m.type === "user";
+    if (isLastUser && lastUserAttachments && lastUserAttachments.length > 0) {
+      return { ...base, attachments: lastUserAttachments };
+    }
+    return base;
+  });
+}

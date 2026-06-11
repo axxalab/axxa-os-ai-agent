@@ -29,6 +29,16 @@ import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage, type MessageAttachment } from "../providers/base";
 import { getModelCapabilities, isGenerationModel } from "../providers/modelCapabilities";
+import {
+  buildChatSystemPrompt,
+  buildAgentSystemPrompt,
+  storeMessagesToProvider,
+} from "../agent/conversation";
+import {
+  makeCallSignature,
+  isLooping,
+  trimSignatures,
+} from "../agent/loopDetection";
 import { checkCompatibility } from "../providers/compatibility";
 import { IncompatibleBanner } from "../components/composer/IncompatibleBanner";
 import { saveGeneration, type GenerationMediaType } from "../generation/save";
@@ -582,38 +592,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             noteAtts.map((n) => `### ${n.path}\n\n${n.content}`).join("\n\n---\n\n");
         }
       }
-      // Persona custom do chat (se definida) substitui o system prompt base.
-      const personaBase = useChatStore.getState().sessionPersona.trim();
-      const fullSystem =
-        (personaBase || t.systemPrompt.base) +
-        (vaultContextBlock.length > 0
-          ? t.systemPrompt.vaultQaSuffix + vaultContextBlock
-          : "") +
-        noteContextBlock;
-
-      // Pega só user/assistant do store. Última user msg ganha attachments
-      // multimodais se foram passados pra essa chamada.
-      const storeMsgs = useChatStore
-        .getState()
-        .messages.filter(
-          (m) =>
-            m.type === "user" || (m.type === "ai-response" && !m.isError)
-        );
-      const historyConverted: ProviderMessage[] = storeMsgs.map((m, idx) => {
-        const base = {
-          role: (m.type === "user" ? "user" : "assistant") as "user" | "assistant",
-          content: (m as { content: string }).content,
-        };
-        const isLastUser =
-          idx === storeMsgs.length - 1 && m.type === "user";
-        if (isLastUser && userAttachments && userAttachments.length > 0) {
-          return { ...base, attachments: userAttachments };
-        }
-        return base;
+      // System prompt + history centralizados em agent/conversation.ts.
+      const fullSystem = buildChatSystemPrompt({
+        persona: useChatStore.getState().sessionPersona,
+        base: t.systemPrompt.base,
+        vaultSuffix: t.systemPrompt.vaultQaSuffix,
+        vaultBlock: vaultContextBlock,
+        noteBlock: noteContextBlock,
       });
       const history: ProviderMessage[] = [
         { role: "system", content: fullSystem },
-        ...historyConverted,
+        ...storeMessagesToProvider(
+          useChatStore.getState().messages,
+          userAttachments
+        ),
       ];
 
       const apiKey = apiKeyFor(activeProviderId);
@@ -786,35 +778,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // Config do effort atual — agentMaxTurns, retry, loop detection, etc.
     const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
 
-    // System prompt específico do agent — reforça uso eficiente das tools
-    // e atitude "incansável" pra effort alto (não desiste em max).
-    const agentPersona = useChatStore.getState().sessionPersona.trim();
-    const AGENT_SYSTEM_PROMPT =
-      (agentPersona ? agentPersona + "\n\n" : "") + t.agent.systemPrompt;
-
-    // Constrói history inicial — pega só user/assistant do store (chat anterior).
-    // Última user msg recebe attachments multimodais se vieram.
-    const storeMsgs = useChatStore
-      .getState()
-      .messages.filter(
-        (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
-      );
-    const conversationHistory: ProviderMessage[] = storeMsgs.map((m, idx) => {
-      const isLastUser =
-        idx === storeMsgs.length - 1 && m.type === "user";
-      const base = {
-        role: (m.type === "user" ? "user" : "assistant") as "user" | "assistant",
-        content: (m as { content: string }).content,
-      };
-      if (isLastUser && userAttachments && userAttachments.length > 0) {
-        return { ...base, attachments: userAttachments };
-      }
-      return base;
-    });
-
+    // System prompt + history do agent (persona é PREPENDIDA no agent) —
+    // centralizados em agent/conversation.ts.
     const history: ProviderMessage[] = [
-      { role: "system", content: AGENT_SYSTEM_PROMPT },
-      ...conversationHistory,
+      {
+        role: "system",
+        content: buildAgentSystemPrompt(
+          useChatStore.getState().sessionPersona,
+          t.agent.systemPrompt
+        ),
+      },
+      ...storeMessagesToProvider(
+        useChatStore.getState().messages,
+        userAttachments
+      ),
     ];
 
     const tools = TOOL_DEFINITIONS.map((td) => ({
@@ -835,8 +812,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // injeta uma msg "tool" forçada pedindo pra mudar de estratégia.
     const loopWindow = effortCfg.loopDetectionWindow;
     const recentCallSignatures: string[] = [];
-    const makeSignature = (name: string, args: Record<string, unknown>) =>
-      `${name}::${JSON.stringify(args)}`;
 
     let turn = 0;
     let firstTurn = true;
@@ -923,19 +898,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         let loopDetected = false;
         if (loopWindow > 0) {
           for (const call of response.toolCalls) {
-            recentCallSignatures.push(makeSignature(call.name, call.arguments));
-          }
-          // Mantém só as últimas N×2 entries (gasta pouca memória)
-          if (recentCallSignatures.length > loopWindow * 4) {
-            recentCallSignatures.splice(
-              0,
-              recentCallSignatures.length - loopWindow * 4
+            recentCallSignatures.push(
+              makeCallSignature(call.name, call.arguments)
             );
           }
-          const lastN = recentCallSignatures.slice(-loopWindow);
-          if (lastN.length === loopWindow && lastN.every((s) => s === lastN[0])) {
-            loopDetected = true;
-          }
+          trimSignatures(recentCallSignatures, loopWindow * 4);
+          loopDetected = isLooping(recentCallSignatures, loopWindow);
         }
 
         // Executa as tool calls — em paralelo se effort permite e há >1 call,
@@ -1454,15 +1422,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       .filter(
         (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
       ) as Array<UserMessage | AIResponseMessage>;
-    const personaBase = useChatStore.getState().sessionPersona.trim();
     const history: ProviderMessage[] = [
-      { role: "system", content: personaBase || t.systemPrompt.base },
-      ...before.map((m) => ({
-        role: (m.type === "user" ? "user" : "assistant") as
-          | "user"
-          | "assistant",
-        content: m.content,
-      })),
+      {
+        role: "system",
+        content: buildChatSystemPrompt({
+          persona: useChatStore.getState().sessionPersona,
+          base: t.systemPrompt.base,
+        }),
+      },
+      ...storeMessagesToProvider(before),
     ];
 
     beginVariant(aiMessageId); // arquiva a versão atual + abre variante vazia
@@ -1544,12 +1512,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       ) as Array<UserMessage | AIResponseMessage>;
     const history: ProviderMessage[] = [
       { role: "system", content: t.systemPrompt.base },
-      ...hist.map((m) => ({
-        role: (m.type === "user" ? "user" : "assistant") as
-          | "user"
-          | "assistant",
-        content: m.content,
-      })),
+      ...storeMessagesToProvider(hist),
       {
         role: "user",
         content:
