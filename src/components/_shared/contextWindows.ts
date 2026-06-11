@@ -15,6 +15,7 @@ const WINDOWS: Record<string, number> = {
   "o4": 256_000,
 
   // Anthropic
+  "claude-fable-5": 200_000,
   "claude-opus-4-8": 200_000,
   "claude-sonnet-4-6": 200_000,
   "claude-haiku-4-5-20251001": 200_000,

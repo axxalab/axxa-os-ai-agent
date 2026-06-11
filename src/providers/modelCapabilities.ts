@@ -67,6 +67,8 @@ const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
 
   // ─────────────────────────────── Anthropic ───────────────────────────
   anthropic: [
+    // Fable 5 — modelo topo mais recente: multimodal + tools + streaming
+    { prefix: "claude-fable", caps: { vision: true, tools: true, streaming: true } },
     // Toda família Claude 3/4 tem vision + tools + streaming
     { prefix: "claude-opus-4", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "claude-sonnet-4", caps: { vision: true, tools: true, streaming: true } },

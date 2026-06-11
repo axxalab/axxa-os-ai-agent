@@ -63,6 +63,8 @@ const PRICES_BY_PROVIDER: Record<string, PricingEntry[]> = {
   // ─────────────────────────────── Anthropic ─────────────────────────────
   // Fonte: anthropic.com/pricing (jun/2026)
   anthropic: [
+    // Fable 5: preço exato ainda não publicado → tier paid, valores null (UI mostra "—" no custo, mas "PAID" no badge).
+    { prefix: "claude-fable-5", pricing: { inputPerMillion: null, outputPerMillion: null, tier: "paid", asOf: "2026-06" } },
     { prefix: "claude-opus-4-8", pricing: { inputPerMillion: 15.00, outputPerMillion: 75.00, tier: "paid", asOf: "2026-06" } },
     { prefix: "claude-opus-4", pricing: { inputPerMillion: 15.00, outputPerMillion: 75.00, tier: "paid", asOf: "2026-06" } },
     { prefix: "claude-sonnet-4-6", pricing: { inputPerMillion: 3.00, outputPerMillion: 15.00, tier: "paid", asOf: "2026-06" } },

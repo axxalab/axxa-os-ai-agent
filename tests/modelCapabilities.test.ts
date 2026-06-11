@@ -31,6 +31,14 @@ describe("getModelCapabilities — ordem de prefixo (o que quebra calado)", () =
     expect(getModelCapabilities("openai", "dall-e-3").imageGen).toBe(true);
   });
 
+  it("claude-fable-5 (modelo novo) tem vision + tools + streaming", () => {
+    expect(getModelCapabilities("anthropic", "claude-fable-5")).toMatchObject({
+      vision: true,
+      tools: true,
+      streaming: true,
+    });
+  });
+
   it("llama-3.2-vision casa vision antes do llama-3.2 base texto-only", () => {
     expect(
       getModelCapabilities("openrouter", "meta-llama/llama-3.2-vision-instruct")

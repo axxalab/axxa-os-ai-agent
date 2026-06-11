@@ -68,6 +68,7 @@ const OPENAI_CARDS: CardEntry[] = [
 
 // ─────────────────────────── Anthropic ───────────────────────────
 const ANTHROPIC_CARDS: CardEntry[] = [
+  { prefix: "claude-fable-5", card: { category: "chat-vision", description: "Claude Fable 5 — modelo Anthropic mais recente. Multimodal + tool calling, forte em raciocínio e código.", contextWindow: 200_000, goodFor: "Tasks complexas, agent, vision" } },
   { prefix: "claude-opus-4-8", card: { category: "chat-vision", description: "Claude Opus 4.8 — topo de linha. Excelente em coding agentic + raciocínio extenso.", contextWindow: 200_000, goodFor: "Coding agentic complexo" } },
   { prefix: "claude-opus-4", card: { category: "chat-vision", description: "Opus 4 — raciocínio profundo. Caro.", contextWindow: 200_000, goodFor: "Tasks que exigem profundidade" } },
   { prefix: "claude-sonnet-4-6", card: { category: "chat-vision", description: "Sonnet 4.6 — equilíbrio entre custo e qualidade. Excelente em tools.", contextWindow: 200_000, goodFor: "Daily driver, agent geral" } },
