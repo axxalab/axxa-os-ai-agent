@@ -82,6 +82,8 @@ export interface EmbeddingModelSpec {
   supportsDimensions?: boolean;
   /** Indica que é tier free do OpenRouter (rate limits mais apertados). */
   free?: boolean;
+  /** Descoberto via fetch da API (spec inferida, não curada). v0.1.151 */
+  discovered?: boolean;
 }
 
 export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
@@ -154,8 +156,77 @@ export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
   },
 ];
 
+// ============================================================
+// Modelos de embedding DESCOBERTOS via fetch da API (v0.1.151)
+// Registro mutável: o plugin popula no load + a cada "Buscar da API". Assim
+// getEmbeddingSpec/getAllEmbeddingModels enxergam os descobertos em todo lugar
+// (indexer, settings, hybrid) sem prop drilling.
+// ============================================================
+let DISCOVERED_EMBEDDINGS: EmbeddingModelSpec[] = [];
+
+/** Substitui o conjunto de embeddings descobertos (chamado pelo plugin). */
+export function registerDiscoveredEmbeddings(specs: EmbeddingModelSpec[]): void {
+  DISCOVERED_EMBEDDINGS = specs;
+}
+
+/** Curados + descobertos, sem duplicar por model id. */
+export function getAllEmbeddingModels(): EmbeddingModelSpec[] {
+  const seen = new Set(EMBEDDING_MODELS.map((m) => m.model));
+  const extra = DISCOVERED_EMBEDDINGS.filter((m) => !seen.has(m.model));
+  return [...EMBEDDING_MODELS, ...extra];
+}
+
+/** True se o id parece um modelo de embedding (filtra o fetch). */
+export function isEmbeddingModelId(id: string): boolean {
+  return /embed/i.test(id);
+}
+
+/**
+ * Monta um spec pra um modelo de embedding: usa o curado se existir, senão
+ * INFERE (dim por heurística de nome, free/imagem/dimensions por padrão). É a
+ * info "best-effort" mostrada na UI pros modelos recém-descobertos. v0.1.151
+ */
+export function inferEmbeddingSpec(
+  provider: EmbeddingProvider,
+  model: string
+): EmbeddingModelSpec {
+  const curated = EMBEDDING_MODELS.find((m) => m.model === model);
+  if (curated) return curated;
+
+  const id = model.toLowerCase();
+  // Dimensão — heurística pelos nomes conhecidos; default 1536.
+  let dim = 1536;
+  if (id.includes("3-large") || id.includes("gemini-embedding")) dim = 3072;
+  else if (id.includes("004")) dim = 768;
+  else if (id.includes("nv-embedqa-e5") || id.includes("e5-v5")) dim = 1024;
+  else if (id.includes("nemotron-embed") || id.includes("nv-embedqa-1b") || id.includes("-2048")) dim = 2048;
+  else if (id.includes("3-small") || id.includes("ada-002")) dim = 1536;
+
+  const supportsImage = /(\bvl\b|vision|multimodal|embed-vl)/.test(id);
+  const supportsDimensions =
+    id.includes("text-embedding-3") || id.includes("gemini-embedding");
+  const free =
+    provider === "nim" ||
+    (provider === "openrouter" && id.includes(":free")) ||
+    id.includes("004");
+
+  return {
+    provider,
+    model,
+    dim,
+    maxInputTokens: 8192,
+    pricePerMillion: free ? 0 : 0.1, // estimativa — só pra ordem de grandeza
+    ...(supportsImage ? { supportsImage: true } : {}),
+    ...(supportsDimensions ? { supportsDimensions: true } : {}),
+    ...(free ? { free: true } : {}),
+    discovered: true,
+  };
+}
+
 export function getEmbeddingSpec(model: string): EmbeddingModelSpec {
-  return EMBEDDING_MODELS.find((m) => m.model === model) ?? EMBEDDING_MODELS[0];
+  return (
+    getAllEmbeddingModels().find((m) => m.model === model) ?? EMBEDDING_MODELS[0]
+  );
 }
 
 /** Helper: extensões de imagem suportadas pelos modelos VL. */

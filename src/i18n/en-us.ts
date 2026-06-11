@@ -402,6 +402,8 @@ export const EN_US: Translations = {
     activeModelsRemoveTitle: "Remove",
     modelSetDefault: "Set as default model",
     modelDefaultTag: "default",
+    modelsFetchedWithEmbeds: (chat: number, emb: number) =>
+      `${chat} models + ${emb} embedding (RAG) found.`,
     geminiIntro:
       "Google Gemini via OpenAI-compatible endpoint. Tool calling works on 2.5+/3.x. Generous free tier on AI Studio.",
     openrouterIntro:

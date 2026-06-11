@@ -7,6 +7,12 @@ import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 import { VectorIndex, loadIndex } from "./rag/vectorIndex";
 import { indexVault } from "./rag/indexer";
+import {
+  inferEmbeddingSpec,
+  registerDiscoveredEmbeddings,
+  type EmbeddingModelSpec,
+  type EmbeddingProvider,
+} from "./rag/types";
 import { registerBrandIcons } from "./components/_shared/brandIcons";
 import { registerBrandLogos } from "./components/_shared/brandLogos";
 import {
@@ -45,6 +51,9 @@ interface AxxaSettings {
    *  Curado pelo user nas Settings (manual + fetch da API). Permite incluir
    *  modelos legacy que não aparecem no /v1/models moderno. */
   activeModels: Record<string, string[]>;
+  /** Modelos de embedding descobertos via fetch da API, por provider. Alimentam
+   *  o seletor de embedding do RAG com info inferida. v0.1.151 */
+  discoveredEmbeddings: Record<string, string[]>;
   defaultMode: string;
   defaultEffort: string;
   chatsPath: string;
@@ -160,6 +169,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
     ],
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },
+  discoveredEmbeddings: {},
   defaultMode: "chat",
   defaultEffort: "med",
   chatsPath: "axxa-ai/chats",
@@ -214,6 +224,24 @@ export default class AxxaPlugin extends Plugin {
         console.error("[axxa] settings listener falhou:", err);
       }
     });
+  }
+
+  /**
+   * Reconstrói o registro global de embeddings descobertos a partir dos ids
+   * salvos em settings.discoveredEmbeddings (infere spec de cada um). Chamado
+   * no load e após cada "Buscar da API". v0.1.151
+   */
+  refreshDiscoveredEmbeddings(): void {
+    const specs: EmbeddingModelSpec[] = [];
+    const map = this.settings.discoveredEmbeddings ?? {};
+    for (const [provider, ids] of Object.entries(map)) {
+      // Só providers que o RAG suporta como fonte de embedding.
+      if (!["openai", "openrouter", "gemini", "nim"].includes(provider)) continue;
+      for (const id of ids) {
+        specs.push(inferEmbeddingSpec(provider as EmbeddingProvider, id));
+      }
+    }
+    registerDiscoveredEmbeddings(specs);
   }
 
   /** (Re)carrega os skills da pasta e re-renderiza. v0.1.139 */
@@ -289,6 +317,9 @@ export default class AxxaPlugin extends Plugin {
 
     // Cache de specs dos modelos (Fetch info / OpenRouter) — hidrata o store.
     await this.loadModelInfoCache();
+
+    // Embeddings descobertos (fetch anterior) → registro global do RAG.
+    this.refreshDiscoveredEmbeddings();
 
     // Skills (.md na pasta de skills) → slash-commands no composer.
     await this.reloadSkills();
@@ -474,6 +505,7 @@ export default class AxxaPlugin extends Plugin {
       ...DEFAULT_SETTINGS.activeModels,
       ...(saved.activeModels ?? {}),
     };
+    this.settings.discoveredEmbeddings = saved.discoveredEmbeddings ?? {};
     // Same pra effortConfigs — preserva overrides salvos do usuário.
     this.settings.effortConfigs = saved.effortConfigs ?? {};
 

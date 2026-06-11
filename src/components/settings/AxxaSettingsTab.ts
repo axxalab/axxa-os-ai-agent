@@ -37,7 +37,11 @@ import {
 } from "../_shared/effort";
 import { indexVault, type IndexProgress } from "../../rag/indexer";
 import { deleteIndex } from "../../rag/vectorIndex";
-import { EMBEDDING_MODELS, getEmbeddingSpec } from "../../rag/types";
+import {
+  EMBEDDING_MODELS,
+  getEmbeddingSpec,
+  getAllEmbeddingModels,
+} from "../../rag/types";
 import {
   QUANT_PROFILE_IDS,
   QUANT_PROFILE_LABELS,
@@ -644,7 +648,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "OpenAI",
       "openai",
       () => openaiProvider.listModels(this.plugin.settings.openaiApiKey),
-      "gpt-3.5-turbo"
+      "gpt-3.5-turbo",
+      () => openaiProvider.listEmbeddingModels(this.plugin.settings.openaiApiKey)
     );
   }
 
@@ -712,7 +717,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "Gemini",
       "gemini",
       () => geminiProvider.listModels(this.plugin.settings.geminiApiKey),
-      "gemini-2.5-pro"
+      "gemini-2.5-pro",
+      () => geminiProvider.listEmbeddingModels(this.plugin.settings.geminiApiKey)
     );
   }
 
@@ -746,7 +752,11 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "OpenRouter",
       "openrouter",
       () => openrouterProvider.listModels(this.plugin.settings.openrouterApiKey),
-      "openai/gpt-3.5-turbo"
+      "openai/gpt-3.5-turbo",
+      () =>
+        openrouterProvider.listEmbeddingModels(
+          this.plugin.settings.openrouterApiKey
+        )
     );
   }
 
@@ -780,7 +790,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "Nvidia NIM",
       "nim",
       () => nimProvider.listModels(this.plugin.settings.nimApiKey),
-      "meta/llama-3.3-70b-instruct"
+      "meta/llama-3.3-70b-instruct",
+      () => nimProvider.listEmbeddingModels(this.plugin.settings.nimApiKey)
     );
   }
 
@@ -870,7 +881,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
     providerLabel: string,
     providerId: string,
     fetchModels: () => Promise<string[]>,
-    placeholderExample: string
+    placeholderExample: string,
+    /** Busca os modelos de EMBEDDING do provider (RAG). Só os 4 com /models. */
+    fetchEmbeddings?: () => Promise<string[]>
   ) {
     const section = parent.createDiv({ cls: "axxa-active-models-section" });
 
@@ -991,7 +1004,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
       const originalText = fetchBtn.textContent ?? t.settings.activeModelsFetchBtn;
       fetchBtn.textContent = t.settings.activeModelsFetchingBtn;
       try {
-        const fetched = await fetchModels();
+        // Busca chat + embeddings em paralelo. Embeddings nunca derrubam o
+        // fetch principal (catch → []).
+        const [fetched, embeds] = await Promise.all([
+          fetchModels(),
+          fetchEmbeddings ? fetchEmbeddings().catch(() => []) : Promise.resolve([]),
+        ]);
         if (!fetched.length) {
           new Notice(t.settings.modelNoneNotice(providerLabel));
           return;
@@ -999,8 +1017,21 @@ export class AxxaSettingsTab extends PluginSettingTab {
         this.modelCache[providerId] = Array.from(
           new Set([...(this.modelCache[providerId] ?? []), ...fetched])
         );
+        // Embeddings descobertos → settings + registro global do RAG. v0.1.151
+        if (embeds.length > 0) {
+          const prev = this.plugin.settings.discoveredEmbeddings[providerId] ?? [];
+          this.plugin.settings.discoveredEmbeddings[providerId] = Array.from(
+            new Set([...prev, ...embeds])
+          );
+          this.plugin.refreshDiscoveredEmbeddings();
+        }
+        await this.plugin.saveSettings();
         renderRows();
-        new Notice(t.settings.activeModelsAvailable(fetched.length));
+        new Notice(
+          embeds.length > 0
+            ? t.settings.modelsFetchedWithEmbeds(fetched.length, embeds.length)
+            : t.settings.activeModelsAvailable(fetched.length)
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : t.ai.unknownError;
         new Notice(t.settings.modelFailedNotice(msg));
@@ -1471,20 +1502,31 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private renderRagSection(parent: HTMLElement, t: Translations) {
     const section = parent.createDiv({ cls: "axxa-rag-section" });
 
+    // Providers que têm modelos de embedding (curados + descobertos via fetch).
+    const EMB_PROVIDER_LABEL: Record<string, string> = {
+      openai: "OpenAI (texto)",
+      openrouter: "OpenRouter (multimodal)",
+      gemini: "Gemini",
+      nim: "Nvidia NIM",
+    };
+    const ORDER = ["openai", "openrouter", "gemini", "nim"];
+    const availProviders = ORDER.filter((p) =>
+      getAllEmbeddingModels().some((m) => m.provider === p)
+    );
+
     // ---- Provider dropdown ----
     new Setting(section)
       .setName(t.settings.ragProvider)
       .setDesc(t.settings.ragProviderDesc)
-      .addDropdown((dd) =>
-        dd
-          .addOption("openai", "OpenAI (texto)")
-          .addOption("openrouter", "OpenRouter (multimodal free)")
-          .setValue(this.plugin.settings.ragEmbeddingProvider)
-          .onChange(async (value) => {
+      .addDropdown((dd) => {
+        for (const p of availProviders) {
+          dd.addOption(p, EMB_PROVIDER_LABEL[p] ?? p);
+        }
+        dd.setValue(this.plugin.settings.ragEmbeddingProvider).onChange(
+          async (value) => {
             this.plugin.settings.ragEmbeddingProvider = value;
-            // Quando troca provider, escolhe automaticamente o 1º model dele
-            // (senão fica modelo openai com provider openrouter — inválido)
-            const firstModel = EMBEDDING_MODELS.find(
+            // Troca de provider → 1º model dele (senão fica par inválido)
+            const firstModel = getAllEmbeddingModels().find(
               (m) => m.provider === value
             );
             if (firstModel) {
@@ -1492,31 +1534,29 @@ export class AxxaSettingsTab extends PluginSettingTab {
             }
             await this.plugin.saveSettings();
             this.display();
-          })
-      );
+          }
+        );
+      });
 
-    // ---- Model dropdown ----
+    // ---- Model dropdown (curados + descobertos, com info) ----
     new Setting(section)
       .setName(t.settings.ragModel)
       .setDesc(t.settings.ragModelDesc)
       .addDropdown((dd) => {
-        EMBEDDING_MODELS.filter(
-          (m) => m.provider === this.plugin.settings.ragEmbeddingProvider
-        ).forEach((m) => {
-          // Label: model + dim + price + badges (free / multimodal)
-          const badges: string[] = [];
-          if (m.free) badges.push("FREE");
-          if (m.supportsImage) badges.push("🖼️");
-          const badgeStr = badges.length > 0 ? ` [${badges.join(" ")}]` : "";
-          const priceStr =
-            m.pricePerMillion === 0
-              ? ""
-              : ` · $${m.pricePerMillion}/M`;
-          dd.addOption(
-            m.model,
-            `${m.model} (${m.dim}d${priceStr})${badgeStr}`
-          );
-        });
+        getAllEmbeddingModels()
+          .filter(
+            (m) => m.provider === this.plugin.settings.ragEmbeddingProvider
+          )
+          .forEach((m) => {
+            const badges: string[] = [];
+            if (m.free) badges.push("FREE");
+            if (m.supportsImage) badges.push("🖼️");
+            if (m.discovered) badges.push("novo");
+            const badgeStr = badges.length > 0 ? ` [${badges.join(" ")}]` : "";
+            const priceStr =
+              m.pricePerMillion === 0 ? "" : ` · $${m.pricePerMillion}/M`;
+            dd.addOption(m.model, `${m.model} (${m.dim}d${priceStr})${badgeStr}`);
+          });
         dd.setValue(this.plugin.settings.ragEmbeddingModel).onChange(
           async (value) => {
             this.plugin.settings.ragEmbeddingModel = value;

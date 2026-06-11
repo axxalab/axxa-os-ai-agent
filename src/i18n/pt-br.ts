@@ -407,6 +407,8 @@ export const PT_BR = {
     activeModelsRemoveTitle: "Remover",
     modelSetDefault: "Definir como modelo padrão",
     modelDefaultTag: "padrão",
+    modelsFetchedWithEmbeds: (chat: number, emb: number) =>
+      `${chat} modelos + ${emb} de embedding (RAG) encontrados.`,
     geminiIntro:
       "Google Gemini via endpoint OpenAI-compatible. Tool calling funciona em 2.5+/3.x. Tier free generoso no AI Studio.",
     openrouterIntro:

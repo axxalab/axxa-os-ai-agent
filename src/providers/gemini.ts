@@ -26,6 +26,7 @@ import {
   MediaGenerationRequest,
   MediaGenerationItem,
 } from "./base";
+import { isEmbeddingModelId } from "../rag/types";
 import { toOpenAIMessages, finalizeOpenAIResponse } from "./openai";
 
 const GEMINI_ENDPOINT =
@@ -425,6 +426,27 @@ export class GeminiProvider implements Provider {
       .map((id) => (id.startsWith("models/") ? id.slice(7) : id))
       .filter(isRelevantGeminiModel)
       .sort();
+  }
+
+  /** Modelos de EMBEDDING do catálogo (pro RAG). Graceful: [] em erro/no-key. */
+  async listEmbeddingModels(apiKey: string): Promise<string[]> {
+    if (!apiKey || !apiKey.trim()) return [];
+    try {
+      const res = await requestUrl({
+        url: GEMINI_MODELS_ENDPOINT,
+        method: "GET",
+        headers: { Authorization: `Bearer ${apiKey.trim()}` },
+        throw: false,
+      });
+      if (res.status < 200 || res.status >= 300) return [];
+      const all: string[] = (res.json?.data ?? []).map((m: { id: string }) => m.id);
+      return all
+        .map((id) => (id.startsWith("models/") ? id.slice(7) : id))
+        .filter(isEmbeddingModelId)
+        .sort();
+    } catch {
+      return [];
+    }
   }
 }
 
