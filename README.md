@@ -2,9 +2,9 @@
 
 > **Your AI workspace, native to Obsidian.** Chat, ask your vault, and let an agent act on your notes — across 6 LLM providers, with your own API keys. Mobile-first.
 
-[![Version](https://img.shields.io/badge/version-0.1.138-6c5ce7)](manifest.json)
+[![Version](https://img.shields.io/badge/version-0.1.147-6c5ce7)](manifest.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Obsidian](https://img.shields.io/badge/Obsidian-1.4.0%2B-7c3aed)](https://obsidian.md)
+[![Obsidian](https://img.shields.io/badge/Obsidian-1.11.4%2B-7c3aed)](https://obsidian.md)
 [![Mobile](https://img.shields.io/badge/mobile-supported-success)](#)
 
 AXXA OS — AI Agent turns Obsidian into a full AI workspace. It feels like a native feature, not a bolted-on panel: a chat lives in the right sidebar (a drawer on mobile), talks to the model of your choice, and — when you let it — reads, searches, and edits the notes in your vault. Bring your own keys, pick any of six providers, and keep every conversation as plain Markdown inside your vault.
@@ -15,7 +15,7 @@ AXXA OS — AI Agent turns Obsidian into a full AI workspace. It feels like a na
 
 ## ✨ Highlights
 
-- **4 modes, one panel** — Chat, Vault Q&A (RAG over your notes), Agent (tool-calling on your files), and Coder *(in development)*.
+- **3 modes, one panel** — Chat, Vault Q&A (RAG over your notes), and Agent (tool-calling on your files).
 - **6 providers, bring your own key** — OpenAI, Anthropic (Claude), Google Gemini, OpenRouter, Nvidia NIM, and local Ollama. Switch freely; your keys never leave your device.
 - **Talk to your vault** — local semantic search (RAG) with hybrid keyword + vector ranking and wikilink-graph awareness. 8 embedding models across 4 providers, including free options.
 - **An agent that acts** — create, read, edit, move, and delete notes through a safe, permissioned tool layer. Destructive actions always ask first.
@@ -25,7 +25,20 @@ AXXA OS — AI Agent turns Obsidian into a full AI workspace. It feels like a na
 - **Mobile-first** — built for the Obsidian mobile drawer first: edge-to-edge composer, hold-to-record audio, haptics, keyboard-aware layout, screen wake-lock during generation.
 - **Bilingual UI** — Portuguese (BR) and English, auto-detected from your locale.
 
-> 📸 *Screenshots coming soon — desktop sidebar + mobile drawer.*
+### 📸 Screenshots
+
+> Capture targets and naming live in [`docs/screenshots/`](docs/screenshots/). Drop the PNGs there and uncomment below.
+
+<!-- Uncomment as the images land:
+| Desktop — chat | Mobile — drawer | Vault Q&A with citations |
+|---|---|---|
+| ![Desktop chat](docs/screenshots/desktop-chat.png) | ![Mobile drawer](docs/screenshots/mobile-drawer.png) | ![Vault Q&A](docs/screenshots/vault-qa.png) |
+
+| Agent diff approval | Usage dashboard | Starter screen |
+|---|---|---|
+| ![Agent diff](docs/screenshots/agent-diff.png) | ![Usage](docs/screenshots/usage-dashboard.png) | ![Starter](docs/screenshots/starter.png) |
+-->
+
 
 ---
 
@@ -35,7 +48,7 @@ AXXA OS is built for the Obsidian ethos — **your notes are yours**.
 
 - **Everything stays in your vault.** Chats, generated media, and skills are plain `.md` files on disk. Nothing is uploaded to us.
 - **No telemetry, no tracking, no accounts.** The plugin phones home to *nobody*. The only network calls are the ones you trigger to the LLM provider you chose (with your own key).
-- **Bring your own key — keys never leave your device.** They live in your vault's plugin data, used only to call the provider you picked.
+- **Bring your own key — keys never leave your device.** They live in your OS keychain (secure storage), used only to call the provider you picked.
 - **Works fully offline with Ollama.** Run local models with zero data leaving your machine — chat, RAG, and the agent all work air-gapped.
 - **Cite & open your notes.** Vault answers cite the source notes as clickable `[[wikilinks]]` that open the real note.
 
@@ -58,7 +71,7 @@ AXXA OS is built for the Obsidian ethos — **your notes are yours**.
 2. Copy them into your vault at `<vault>/.obsidian/plugins/axxa-os-ai-agent/`.
 3. Reload Obsidian and enable the plugin in **Settings → Community plugins**.
 
-> **Requires** Obsidian **1.4.0+**. Works on desktop and mobile.
+> **Requires** Obsidian **1.11.4+** (for OS-level secret storage of API keys). Works on desktop and mobile.
 
 ---
 
@@ -73,14 +86,13 @@ That's it. The first message **locks** the provider, model, and mode for that co
 
 ---
 
-## 🧠 The four modes
+## 🧠 The three modes
 
 | Mode | What it does |
 |---|---|
 | **Chat** | Classic conversational AI with streaming responses, Markdown rendering, and code blocks with copy buttons. No vault access. |
 | **Vault Q&A** | Retrieval-augmented chat grounded in *your* notes. Local semantic search finds the relevant passages and feeds them to the model as context. |
 | **Agent** | The model can use tools to act on your vault — search, list, read, create, edit, move, delete files and folders — under a permission system with confirmations for destructive actions. |
-| **Coder** *(in development)* | A code-focused agent with diff previews before applying edits. Reuses the Agent's tool + permission layer. |
 
 ---
 
@@ -143,7 +155,7 @@ A single **Effort** selector (Low → Max) scales how hard the model works: max 
 
 AXXA OS — AI Agent is **bring-your-own-key** and stores everything locally. Specifically:
 
-- **Your API keys** are stored locally in the plugin's data file inside your vault (`.obsidian/plugins/axxa-os-ai-agent/data.json`) and are sent **only** to the corresponding provider's official API endpoint. If you use Obsidian Sync or back up your vault, treat that file as a secret. *(Migration to Obsidian's OS-level secret storage is planned.)*
+- **Your API keys** are stored in your operating system's secure storage (Obsidian's `secretStorage` / OS keychain) — **not** in the plugin's `data.json`, so they don't leak through Obsidian Sync or vault backups. They're sent **only** to the corresponding provider's official API endpoint. *(Legacy keys from older versions are migrated automatically on first load.)*
 - **Network requests** are made **only** to the LLM/embedding/image provider you choose (OpenAI, Anthropic, Google, OpenRouter, Nvidia, or your local Ollama), to send your prompts and vault context and stream back responses.
 - **Vault content** leaves your device only as part of the prompts/embeddings you explicitly send to your chosen provider. The semantic index itself is stored locally in your vault.
 - **No telemetry, no analytics, no tracking.** AXXA does not phone home.
@@ -182,7 +194,7 @@ O AXXA OS — AI Agent transforma o Obsidian num workspace de IA completo. Parec
 
 ## ✨ Destaques
 
-- **4 modos, um painel** — Chat, Vault Q&A (RAG sobre suas notas), Agente (tool-calling nos seus arquivos) e Coder *(em desenvolvimento)*.
+- **3 modos, um painel** — Chat, Vault Q&A (RAG sobre suas notas) e Agente (tool-calling nos seus arquivos).
 - **6 provedores, com sua própria chave** — OpenAI, Anthropic (Claude), Google Gemini, OpenRouter, Nvidia NIM e Ollama local. Troque à vontade; suas chaves não saem do seu aparelho.
 - **Converse com o vault** — busca semântica local (RAG) com ranqueamento híbrido (palavra-chave + vetor) e consciência do grafo de wikilinks. 8 modelos de embedding em 4 provedores, incluindo opções gratuitas.
 - **Um agente que age** — criar, ler, editar, mover e deletar notas por uma camada de ferramentas com permissões. Ações destrutivas sempre pedem confirmação.
@@ -198,7 +210,7 @@ O AXXA OS — AI Agent transforma o Obsidian num workspace de IA completo. Parec
 
 **Manual:** baixe `main.js`, `manifest.json` e `styles.css` da [última release](../../releases) e copie pra `<vault>/.obsidian/plugins/axxa-os-ai-agent/`. Recarregue o Obsidian e ative o plugin.
 
-> **Requer** Obsidian **1.4.0+**. Funciona em desktop e mobile.
+> **Requer** Obsidian **1.11.4+** (pra guardar as chaves no cofre seguro do SO). Funciona em desktop e mobile.
 
 ## ⚡ Começo rápido
 
@@ -209,20 +221,19 @@ O AXXA OS — AI Agent transforma o Obsidian num workspace de IA completo. Parec
 
 A primeira mensagem **trava** provedor, modelo e modo daquela conversa, mantendo o chat consistente do início ao fim. Configurações novas valem pra chats novos.
 
-## 🧠 Os quatro modos
+## 🧠 Os três modos
 
 | Modo | O que faz |
 |---|---|
 | **Chat** | IA conversacional clássica com respostas em streaming, render de Markdown e blocos de código com botão de copiar. Sem acesso ao vault. |
 | **Vault Q&A** | Chat com RAG ancorado nas *suas* notas. A busca semântica local encontra os trechos relevantes e os passa ao modelo como contexto. |
 | **Agente** | O modelo usa ferramentas pra agir no vault — buscar, listar, ler, criar, editar, mover, deletar arquivos e pastas — sob um sistema de permissões com confirmação pra ações destrutivas. |
-| **Coder** *(em desenvolvimento)* | Agente focado em código, com preview de diff antes de aplicar. Reusa a camada de ferramentas e permissões do Agente. |
 
 ## 🔐 Privacidade & uso de rede
 
 O AXXA é **BYOK** (suas próprias chaves) e guarda tudo localmente:
 
-- **Suas chaves** ficam salvas localmente no arquivo de dados do plugin dentro do seu vault (`.obsidian/plugins/axxa-os-ai-agent/data.json`) e são enviadas **apenas** pra API oficial do provedor correspondente. Se você usa Obsidian Sync ou faz backup do vault, trate esse arquivo como segredo. *(Migração pro armazenamento seguro do SO está planejada.)*
+- **Suas chaves** ficam no armazenamento seguro do sistema operacional (o `secretStorage` do Obsidian / keychain do SO) — **não** no `data.json` do plugin, então não vazam por Obsidian Sync nem backup do vault. São enviadas **apenas** pra API oficial do provedor correspondente. *(Chaves legadas de versões antigas são migradas automaticamente no primeiro load.)*
 - **Requisições de rede** acontecem **só** com o provedor que você escolher (OpenAI, Anthropic, Google, OpenRouter, Nvidia ou seu Ollama local), pra mandar seus prompts/contexto e receber as respostas.
 - **Conteúdo do vault** sai do aparelho apenas como parte dos prompts/embeddings que você explicitamente envia. O índice semântico fica salvo localmente no vault.
 - **Sem telemetria, sem analytics, sem rastreio.** O AXXA não "liga pra casa".
