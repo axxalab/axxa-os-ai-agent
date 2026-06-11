@@ -30,6 +30,7 @@ import {
   type EffortLevel,
 } from "../_shared/effort";
 import type { ChatSummary } from "../_shared/chatPersistence";
+import { InspireScreen } from "./InspireScreen";
 import { formatTokens } from "../_shared/contextWindows";
 import {
   aggregateFromSummaries,
@@ -1472,6 +1473,7 @@ export function StarterScreen({
 }: StarterScreenProps) {
   const t = useT();
   const modelOptions = activeModels[provider] ?? [];
+  const [inspireOpen, setInspireOpen] = useState(false);
 
   // (Overview/usage saiu daqui — vive em Settings → Usage. v0.1.120)
   // (Effort agora é o componente EffortSlider, com estado próprio. v0.1.122)
@@ -1593,6 +1595,30 @@ export function StarterScreen({
 
       {/* Launcher — prompt starters por modo → preenchem o composer */}
       <PromptStarters mode={mode} onPromptStarter={onPromptStarter} />
+
+      {/* Galeria "Inspire-se" (ref: Claude iOS 57) — abre overlay com ideias */}
+      <button
+        type="button"
+        className="axxa-inspire-open"
+        onClick={() => {
+          hapticTick();
+          setInspireOpen(true);
+        }}
+      >
+        <Icon name="sparkles" />
+        <span>{t.inspire.openLabel}</span>
+        <Icon name="chevron-right" className="axxa-inspire-open-chev" />
+      </button>
+
+      {inspireOpen && (
+        <InspireScreen
+          onClose={() => setInspireOpen(false)}
+          onPick={(prompt) => {
+            setInspireOpen(false);
+            onPromptStarter(prompt);
+          }}
+        />
+      )}
 
       {/* ===== Nova conversa — setup (provider / modo+modelo / effort) ===== */}
       <div className="axxa-dash-setup">

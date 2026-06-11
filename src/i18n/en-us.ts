@@ -47,6 +47,28 @@ export const EN_US: Translations = {
     fileName: (stamp: string) => `Photo ${stamp}.jpg`,
   },
 
+  inspire: {
+    openLabel: "Get inspired",
+    title: "Get inspired",
+    subtitle: "Tap an idea to start",
+    close: "Close",
+    catAll: "All",
+    catCreate: "Create",
+    catLearn: "Learn",
+    catPlay: "Play",
+    cards: [
+      { title: "Writing editor", desc: "Improves clarity, tone and grammar", icon: "pen-line", cat: "create", prompt: "Revise the text below improving clarity, tone and grammar, keeping the meaning:\n\n" },
+      { title: "Brainstorm", desc: "10 creative ideas on a topic", icon: "lightbulb", cat: "create", prompt: "Give me 10 creative, varied ideas about: " },
+      { title: "Commented code", desc: "Writes and explains step by step", icon: "code", cat: "create", prompt: "Write and comment, step by step, code that: " },
+      { title: "Summarize note", desc: "Key points as bullets", icon: "list", cat: "learn", prompt: "Summarize the key points as short bullets:\n\n" },
+      { title: "Explain simply", desc: "Like I'm five", icon: "graduation-cap", cat: "learn", prompt: "Explain very simply, like to a child: " },
+      { title: "Flashcards", desc: "Q&A to study", icon: "layers", cat: "learn", prompt: "Create 10 flashcards (question → answer) about: " },
+      { title: "Study plan", desc: "A 7-day roadmap", icon: "calendar-days", cat: "learn", prompt: "Build a 7-day study plan with daily goals about: " },
+      { title: "Quick quiz", desc: "5 questions to test you", icon: "puzzle", cat: "play", prompt: "Create a 5-question quiz (with the answer key at the end) about: " },
+      { title: "Guess the word", desc: "A yes/no game", icon: "gamepad-2", cat: "play", prompt: "Let's play: think of a word and I'll guess it by asking yes/no questions. Go ahead." },
+    ],
+  },
+
   responseStyle: {
     menuLabel: "Choose style",
     normal: "Normal",

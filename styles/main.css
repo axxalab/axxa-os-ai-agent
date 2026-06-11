@@ -2085,6 +2085,182 @@ body.is-mobile
 }
 
 /* =====================================================
+ * "Inspire-se" — botão de entrada + galeria overlay (ref: Claude iOS 57)
+ * ===================================================== */
+.axxa-inspire-open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 4px 0 2px 0;
+  padding: 11px 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text-normal) 4%, transparent);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-inspire-open {
+    background: var(--background-secondary);
+  }
+}
+.axxa-inspire-open:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-inspire-open:active {
+  transform: scale(0.99);
+}
+.axxa-inspire-open .axxa-icon:first-child {
+  color: var(--text-accent);
+}
+.axxa-inspire-open-chev {
+  margin-left: auto;
+  color: var(--text-faint);
+}
+
+.axxa-inspire {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+  animation: axxa-plus-fade 0.18s ease;
+  overflow: hidden;
+}
+.axxa-inspire-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: max(16px, env(safe-area-inset-top)) 18px 8px 14px;
+}
+.axxa-inspire-back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-normal);
+  cursor: pointer;
+}
+.axxa-inspire-back:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-inspire-title {
+  margin: 0;
+  font-size: var(--font-ui-large);
+  font-weight: 700;
+}
+.axxa-inspire-subtitle {
+  margin: 1px 0 0 0;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.axxa-inspire-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 6px 16px 12px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.axxa-inspire-tabs::-webkit-scrollbar {
+  display: none;
+}
+.axxa-inspire-tab {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-normal) 7%, transparent);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-inspire-tab {
+    background: var(--background-secondary);
+  }
+}
+.axxa-inspire-tab-active {
+  background: var(--text-normal);
+  color: var(--background-primary);
+}
+.axxa-inspire-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 4px 16px max(20px, env(safe-area-inset-bottom)) 16px;
+  align-content: start;
+}
+.axxa-inspire-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 116px;
+  padding: 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--text-normal) 4%, transparent);
+  color: var(--text-normal);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-inspire-card {
+    background: var(--background-secondary);
+  }
+}
+.axxa-inspire-card:hover {
+  background: var(--background-modifier-hover);
+  border-color: color-mix(in srgb, var(--interactive-accent) 40%, transparent);
+}
+.axxa-inspire-card:active {
+  transform: scale(0.98);
+}
+.axxa-inspire-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  color: var(--text-accent);
+  margin-bottom: 2px;
+}
+.axxa-inspire-card-icon .svg-icon {
+  width: 19px;
+  height: 19px;
+}
+.axxa-inspire-card-title {
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.axxa-inspire-card-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* =====================================================
  * LinkSafetyModal — confirma antes de abrir link externo (ref: ChatGPT iOS 115)
  * ===================================================== */
 .axxa-linksafe-modal {

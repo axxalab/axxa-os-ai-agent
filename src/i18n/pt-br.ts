@@ -47,6 +47,28 @@ export const PT_BR = {
     fileName: (stamp: string) => `Foto ${stamp}.jpg`,
   },
 
+  inspire: {
+    openLabel: "Inspire-se",
+    title: "Inspire-se",
+    subtitle: "Toque numa ideia pra começar",
+    close: "Fechar",
+    catAll: "Tudo",
+    catCreate: "Criar",
+    catLearn: "Aprender",
+    catPlay: "Brincar",
+    cards: [
+      { title: "Editor de escrita", desc: "Revisa clareza, tom e gramática", icon: "pen-line", cat: "create", prompt: "Revise o texto abaixo melhorando clareza, tom e gramática, mantendo o sentido:\n\n" },
+      { title: "Chuva de ideias", desc: "10 ideias criativas sobre um tema", icon: "lightbulb", cat: "create", prompt: "Me dê 10 ideias criativas e variadas sobre: " },
+      { title: "Código comentado", desc: "Escreve e explica passo a passo", icon: "code", cat: "create", prompt: "Escreva e comente, passo a passo, um código que: " },
+      { title: "Resumir nota", desc: "Pontos principais em tópicos", icon: "list", cat: "learn", prompt: "Resuma os pontos principais em tópicos curtos:\n\n" },
+      { title: "Explique simples", desc: "Como se eu tivesse 5 anos", icon: "graduation-cap", cat: "learn", prompt: "Explique de forma bem simples, como para uma criança: " },
+      { title: "Flashcards", desc: "Pergunta e resposta pra estudar", icon: "layers", cat: "learn", prompt: "Crie 10 flashcards (pergunta → resposta) sobre: " },
+      { title: "Plano de estudos", desc: "Roteiro de 7 dias", icon: "calendar-days", cat: "learn", prompt: "Monte um plano de estudos de 7 dias, com metas diárias, sobre: " },
+      { title: "Quiz relâmpago", desc: "5 perguntas pra testar", icon: "puzzle", cat: "play", prompt: "Crie um quiz de 5 perguntas (com gabarito no final) sobre: " },
+      { title: "Adivinhe a palavra", desc: "Jogo de sim ou não", icon: "gamepad-2", cat: "play", prompt: "Vamos brincar: pense numa palavra e eu adivinho fazendo perguntas de sim ou não. Pode começar." },
+    ],
+  },
+
   responseStyle: {
     menuLabel: "Escolher estilo",
     normal: "Normal",
