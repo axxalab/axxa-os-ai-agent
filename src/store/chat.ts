@@ -80,6 +80,9 @@ export interface ActivityMeta {
   /** Conteúdo expansível (snippet do resultado) — mostrado no chip ao clicar
    *  no chevron, estilo Claude Code (v0.1.111). */
   detail?: string;
+  /** Quando "image" e phase=pending, renderiza um PLACEHOLDER com gradiente
+   *  animado (a "moldura" da imagem sendo gerada, estilo ChatGPT). v0.1.182 */
+  placeholder?: "image";
 }
 
 export interface AICommentMessage extends BaseMessage {

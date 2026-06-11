@@ -1625,6 +1625,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         iconDone: "check",
         pendingText: inputImage ? "Editando imagem..." : "Gerando imagem...",
         doneText: "",
+        placeholder: "image",
       },
     });
     try {

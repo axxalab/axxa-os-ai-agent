@@ -998,6 +998,81 @@ body.is-mobile
   }
 }
 
+/* Skeleton loader — barras cinzas com sweep (ref print #187). v0.1.182 */
+.axxa-skeleton {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.axxa-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--text-normal) 7%, transparent),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: axxa-skeleton-sweep 1.3s ease-in-out infinite;
+}
+@keyframes axxa-skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+.axxa-skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.axxa-skeleton-card {
+  height: 64px;
+  border-radius: 12px;
+}
+.axxa-skeleton-bar {
+  height: 14px;
+  margin: 9px 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .axxa-skeleton::after {
+    animation: none;
+  }
+}
+
+/* Placeholder da imagem sendo gerada — gradiente suave que deriva (#73). v0.1.182 */
+.axxa-img-placeholder {
+  margin: 8px 0 2px;
+  width: min(260px, 72%);
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-pink, #f472b6) 30%, var(--background-secondary)),
+    color-mix(in srgb, var(--color-purple, #a370f7) 26%, var(--background-secondary)),
+    color-mix(in srgb, var(--color-blue, #4361ee) 24%, var(--background-secondary))
+  );
+  background-size: 220% 220%;
+  animation: axxa-img-ph-drift 3.4s ease-in-out infinite;
+}
+@keyframes axxa-img-ph-drift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .axxa-img-placeholder {
+    animation: none;
+  }
+}
+
 /* Glyph dentro do bubble "Pensando..." (ai-comment fallback). */
 .axxa-bubble-glyph {
   color: var(--text-accent);

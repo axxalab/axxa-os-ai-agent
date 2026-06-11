@@ -522,6 +522,10 @@ function ActivityComment({ msg }: { msg: AICommentMessage }) {
       {canExpand && open && (
         <pre className="axxa-activity-detail">{detail}</pre>
       )}
+      {/* Placeholder com gradiente animado da imagem sendo gerada (#73). */}
+      {isPending && activity.placeholder === "image" && (
+        <div className="axxa-img-placeholder" aria-hidden="true" />
+      )}
     </div>
   );
 }

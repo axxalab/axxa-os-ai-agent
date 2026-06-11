@@ -2248,12 +2248,21 @@ export class AxxaSettingsTab extends PluginSettingTab {
       };
     }
 
-    // Loading placeholder enquanto computa
+    // Skeleton loader enquanto computa (estilo premium, ref print #187).
     const contentEl = parent.createDiv({ cls: "axxa-usage-content" });
-    contentEl.createDiv({
+    const skel = contentEl.createDiv({
       cls: "axxa-usage-loading",
-      text: t.settings.usageLoading,
+      attr: { "aria-label": t.settings.usageLoading, role: "status" },
     });
+    const cards = skel.createDiv({ cls: "axxa-skeleton-cards" });
+    for (let i = 0; i < 3; i++) {
+      cards.createDiv({ cls: "axxa-skeleton axxa-skeleton-card" });
+    }
+    const barW = ["75%", "55%", "85%", "60%"];
+    for (let i = 0; i < barW.length; i++) {
+      const b = skel.createDiv({ cls: "axxa-skeleton axxa-skeleton-bar" });
+      b.style.width = barW[i];
+    }
 
     try {
       // Reusa o cache ÚNICO de summaries (v0.1.175) — sem disk-walk próprio.
