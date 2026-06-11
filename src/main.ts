@@ -261,6 +261,8 @@ export default class AxxaPlugin extends Plugin {
   chatSummaries: ChatSummary[] | null = null;
   private chatSummariesPromise: Promise<ChatSummary[]> | null = null;
   private chatsListeners = new Set<() => void>();
+  private reconcilingChats = false;
+  private chatIndexWriteTimer: number | null = null;
 
   /** Inscreve um callback chamado quando o cache de conversas muda. */
   onChatsChange(cb: () => void): () => void {
@@ -277,28 +279,92 @@ export default class AxxaPlugin extends Plugin {
     });
   }
 
-  /** Carrega (uma vez) e cacheia os summaries. Concorrentes compartilham a
-   *  mesma Promise. `force` re-faz o walk (ex: troca de chatsPath). */
+  /** Índice persistido (JSON no diretório do plugin, fora do vault content). */
+  private chatIndexPath(): string {
+    const dir = this.manifest.dir ?? ".obsidian/plugins/axxa-os-ai-agent";
+    return `${dir}/chatIndex.json`;
+  }
+  private async readChatIndex(): Promise<ChatSummary[] | null> {
+    try {
+      const p = this.chatIndexPath();
+      if (!(await this.app.vault.adapter.exists(p))) return null;
+      const parsed = JSON.parse(await this.app.vault.adapter.read(p));
+      return Array.isArray(parsed) ? (parsed as ChatSummary[]) : null;
+    } catch {
+      return null;
+    }
+  }
+  private async writeChatIndex(arr: ChatSummary[]): Promise<void> {
+    try {
+      await this.app.vault.adapter.write(this.chatIndexPath(), JSON.stringify(arr));
+    } catch (err) {
+      console.error("[axxa] writeChatIndex falhou:", err);
+    }
+  }
+  /** Persiste o índice debounced (após upsert/remove). */
+  private scheduleChatIndexWrite(): void {
+    if (this.chatIndexWriteTimer != null) {
+      window.clearTimeout(this.chatIndexWriteTimer);
+    }
+    this.chatIndexWriteTimer = window.setTimeout(() => {
+      if (this.chatSummaries) void this.writeChatIndex(this.chatSummaries);
+    }, 800);
+  }
+
+  /**
+   * Carrega os summaries com PINTURA INSTANTÂNEA (v0.1.176):
+   *   1. Índice JSON persistido → cache na hora (sem disk-walk, sem cache frio).
+   *   2. Reconcilia em BACKGROUND (walk) pra pegar mudanças externas.
+   * Sem índice (1ª vez) ou `force` → walk completo + grava o índice.
+   * Concorrentes compartilham a mesma Promise.
+   */
   async loadChatSummaries(force = false): Promise<ChatSummary[]> {
     if (!force && this.chatSummaries) return this.chatSummaries;
     if (!force && this.chatSummariesPromise) return this.chatSummariesPromise;
-    this.chatSummariesPromise = listAllChats(
-      this.app,
-      this.settings.chatsPath,
-      100_000
-    )
-      .then((all) => {
+    this.chatSummariesPromise = (async () => {
+      try {
+        if (!force) {
+          const cached = await this.readChatIndex();
+          if (cached) {
+            this.chatSummaries = cached;
+            this.notifyChats();
+            void this.reconcileChatSummaries(); // background, não bloqueia
+            return cached;
+          }
+        }
+        const all = await listAllChats(this.app, this.settings.chatsPath, 100_000);
         this.chatSummaries = all;
-        this.chatSummariesPromise = null;
         this.notifyChats();
+        void this.writeChatIndex(all);
         return all;
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("[axxa] loadChatSummaries falhou:", err);
-        this.chatSummariesPromise = null;
         return this.chatSummaries ?? [];
-      });
+      } finally {
+        this.chatSummariesPromise = null;
+      }
+    })();
     return this.chatSummariesPromise;
+  }
+
+  /** Walk em background: se o disco divergir do cache, atualiza + reescreve. */
+  private async reconcileChatSummaries(): Promise<void> {
+    if (this.reconcilingChats) return;
+    this.reconcilingChats = true;
+    try {
+      const fresh = await listAllChats(this.app, this.settings.chatsPath, 100_000);
+      const sig = (arr: ChatSummary[]) =>
+        arr.length + ":" + arr.map((c) => c.id + c.date).join("|");
+      if (!this.chatSummaries || sig(fresh) !== sig(this.chatSummaries)) {
+        this.chatSummaries = fresh;
+        this.notifyChats();
+        void this.writeChatIndex(fresh);
+      }
+    } catch (err) {
+      console.error("[axxa] reconcileChatSummaries falhou:", err);
+    } finally {
+      this.reconcilingChats = false;
+    }
   }
 
   /** Upsert INCREMENTAL após salvar um chat — evita re-walk do disco. */
@@ -309,6 +375,7 @@ export default class AxxaPlugin extends Plugin {
     else this.chatSummaries.push(s);
     this.chatSummaries.sort((a, b) => b.date.localeCompare(a.date));
     this.notifyChats();
+    this.scheduleChatIndexWrite();
   }
 
   /** Remove um chat do cache (após delete). */
@@ -316,6 +383,7 @@ export default class AxxaPlugin extends Plugin {
     if (!this.chatSummaries) return;
     this.chatSummaries = this.chatSummaries.filter((c) => c.id !== id);
     this.notifyChats();
+    this.scheduleChatIndexWrite();
   }
 
   /** Inscreve um callback chamado a cada saveSettings. Retorna unsubscribe. */
