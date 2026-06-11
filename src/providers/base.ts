@@ -112,6 +112,10 @@ export interface MediaGenerationRequest {
   seed?: number;
   /** Voz pra TTS (provider-specific). */
   voice?: string;
+  /** Imagem de ENTRADA pra edição (IMG2IMG). base64 puro (sem o prefixo
+   *  `data:`) + mime. Só providers/modelos que editam imagem usam (ex: Nano
+   *  Banana). Ignorado pelos demais. v0.1.165 */
+  image?: { data: string; mimeType: string };
 }
 
 /** Result item de geração — UM arquivo binário + meta de retorno. */

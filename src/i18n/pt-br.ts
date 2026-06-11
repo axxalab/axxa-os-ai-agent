@@ -392,6 +392,15 @@ export const PT_BR = {
     defaultProviderDesc: "Qual API usar nas conversas",
     apiKey: "API Key",
     apiKeyDescOpenai: "sk-... — armazenada localmente no vault.",
+    openaiDataSharing: "Programa de data-sharing",
+    openaiDataSharingDesc:
+      "Compartilhar o tráfego da API com a OpenAI rende tokens grátis diários em modelos de TEXTO. Marque se você está inscrito.",
+    openaiTier: "Usage tier",
+    openaiTierDesc: "Seu tier na OpenAI (1–5). Define o volume de tokens grátis do data-sharing.",
+    openaiFreeHint: (eligible: boolean, bigK: number, miniM: number) =>
+      eligible
+        ? `Tokens grátis/dia (data-sharing): ~${bigK}k em modelos grandes · ~${miniM}M em mini. ⚠️ Geração de IMAGEM não é coberta — é cobrada normal (~$0.04/img).`
+        : "Ative o data-sharing (Tier 1+) pra ganhar tokens grátis diários em modelos de TEXTO. Geração de imagem nunca é coberta.",
     apiKeyDescAnthropic: "sk-ant-... — armazenada localmente.",
     apiKeyDescGemini: "Chave do aistudio.google.com/apikey — armazenada localmente.",
     apiKeyDescOpenrouter: "sk-or-... — armazenada localmente.",

@@ -57,6 +57,7 @@ import {
   type UsageBucket,
 } from "../../usage/aggregate";
 import { formatUsd, getPricing } from "../../usage/pricing";
+import { openaiFreeAllowance } from "../../usage/freeTokens";
 import {
   getModelCapabilities,
   capabilityBadges,
@@ -657,6 +658,54 @@ export class AxxaSettingsTab extends PluginSettingTab {
         text.inputEl.type = "password";
         text.inputEl.autocomplete = "off";
       });
+
+    // Data-sharing + tier (v0.1.165) — define os tokens grátis diários (texto).
+    let freeHintEl: HTMLElement;
+    const updateFreeHint = () => {
+      const allow = openaiFreeAllowance(
+        this.plugin.settings.openaiUsageTier || 1,
+        this.plugin.settings.openaiDataSharing
+      );
+      freeHintEl.setText(
+        t.settings.openaiFreeHint(
+          allow.eligible,
+          Math.round(allow.bigPerDay / 1000),
+          Math.round(allow.miniPerDay / 1_000_000)
+        )
+      );
+    };
+
+    new Setting(parent)
+      .setName(t.settings.openaiDataSharing)
+      .setDesc(t.settings.openaiDataSharingDesc)
+      .addToggle((tg) =>
+        tg
+          .setValue(this.plugin.settings.openaiDataSharing)
+          .onChange(async (v) => {
+            this.plugin.settings.openaiDataSharing = v;
+            await this.plugin.saveSettings();
+            updateFreeHint();
+          })
+      );
+
+    new Setting(parent)
+      .setName(t.settings.openaiTier)
+      .setDesc(t.settings.openaiTierDesc)
+      .addDropdown((dd) => {
+        for (let i = 1; i <= 5; i++) dd.addOption(String(i), `Tier ${i}`);
+        dd.setValue(String(this.plugin.settings.openaiUsageTier || 1)).onChange(
+          async (v) => {
+            this.plugin.settings.openaiUsageTier = Number(v);
+            await this.plugin.saveSettings();
+            updateFreeHint();
+          }
+        );
+      });
+
+    freeHintEl = parent.createDiv({
+      cls: "axxa-openai-free-hint setting-item-description",
+    });
+    updateFreeHint();
 
     this.createActiveModelsField(
       parent,

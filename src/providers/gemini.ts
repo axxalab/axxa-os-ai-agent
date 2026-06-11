@@ -227,8 +227,19 @@ export class GeminiProvider implements Provider {
     // Erro observado: "Unknown name 'responseModalities' at 'generation_config'"
     // → mudar pra response_modalities (snake_case) resolve.
     // Também precisa de TEXT + IMAGE (só IMAGE retorna parts vazio).
+    // IMG2IMG: se veio imagem de entrada, anexa como inline_data — o Nano Banana
+    // EDITA a imagem seguindo o prompt em vez de gerar do zero. v0.1.165
+    const inputParts: Array<Record<string, unknown>> = [{ text: request.prompt }];
+    if (request.image) {
+      inputParts.push({
+        inline_data: {
+          mime_type: request.image.mimeType,
+          data: request.image.data,
+        },
+      });
+    }
     const body = {
-      contents: [{ parts: [{ text: request.prompt }] }],
+      contents: [{ parts: inputParts }],
       generation_config: {
         response_modalities: ["TEXT", "IMAGE"],
         ...(request.seed != null ? { seed: request.seed } : {}),

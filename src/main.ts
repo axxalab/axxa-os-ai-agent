@@ -114,6 +114,14 @@ interface AxxaSettings {
    *  nativo do Obsidian (drawer-header, tabs, footer). Toggle via menu
    *  "..." no Header. Persiste entre reloads. */
   mobileFullscreen: boolean;
+  // ============ OpenAI specifics (v0.1.165) ============
+  /** Inscrito no programa de data-sharing da OpenAI — dá tokens grátis diários
+   *  em modelos de TEXTO (NÃO cobre geração de imagem). Informa os hints de
+   *  custo no seletor de geração. */
+  openaiDataSharing: boolean;
+  /** Usage tier da conta OpenAI (1–5) — define o volume de tokens grátis do
+   *  data-sharing. Default 1. */
+  openaiUsageTier: number;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -194,6 +202,8 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   // Vazio = usa DEFAULT_EFFORT_CONFIGS sem overrides. User edita via Settings.
   effortConfigs: {},
   mobileFullscreen: false,
+  openaiDataSharing: false,
+  openaiUsageTier: 1,
 };
 
 export default class AxxaPlugin extends Plugin {

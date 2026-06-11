@@ -6636,6 +6636,14 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-hidden {
   display: none !important;
 }
+/* Hint de tokens grátis (data-sharing) na aba OpenAI. v0.1.165 */
+.axxa-openai-free-hint {
+  margin: 6px 0 2px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  line-height: 1.4;
+}
 /* Switch on/off à direita */
 .axxa-model-toggle-switch {
   flex: 0 0 auto;

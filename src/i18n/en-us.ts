@@ -384,6 +384,15 @@ export const EN_US: Translations = {
     defaultProviderDesc: "Which API to use in conversations",
     apiKey: "API Key",
     apiKeyDescOpenai: "sk-... — stored locally in the vault.",
+    openaiDataSharing: "Data-sharing program",
+    openaiDataSharingDesc:
+      "Sharing your API traffic with OpenAI earns free daily tokens on TEXT models. Check this if you're enrolled.",
+    openaiTier: "Usage tier",
+    openaiTierDesc: "Your OpenAI tier (1–5). Sets the free daily token volume from data-sharing.",
+    openaiFreeHint: (eligible: boolean, bigK: number, miniM: number) =>
+      eligible
+        ? `Free tokens/day (data-sharing): ~${bigK}k on large models · ~${miniM}M on mini. ⚠️ IMAGE generation isn't covered — billed normally (~$0.04/img).`
+        : "Enable data-sharing (Tier 1+) to earn free daily tokens on TEXT models. Image generation is never covered.",
     apiKeyDescAnthropic: "sk-ant-... — stored locally.",
     apiKeyDescGemini: "Key from aistudio.google.com/apikey — stored locally.",
     apiKeyDescOpenrouter: "sk-or-... — stored locally.",
