@@ -93,7 +93,7 @@ interface AnthropicBody {
  * - tool_results consecutivos viram 1 user msg com content[] mergeado
  *   (Anthropic exige alternância user/assistant)
  */
-function toAnthropicPayload(messages: ProviderMessage[]): {
+export function toAnthropicPayload(messages: ProviderMessage[]): {
   system: string | undefined;
   messages: AnthropicMessage[];
 } {
@@ -181,19 +181,22 @@ function toAnthropicPayload(messages: ProviderMessage[]): {
     });
   }
 
-  // Merge user msgs consecutivos (Anthropic exige roles alternados)
+  // Anthropic exige alternância ESTRITA user/assistant. Juntamos msgs
+  // consecutivas do MESMO role num content[] só. Cobre dois casos:
+  //   - user: tool_results consecutivos (expansão do agentSteps)
+  //   - assistant: múltiplos turns do agent (ao reabrir um chat de agente
+  //     multi-turn, cada turn vira um ai-response → assistant consecutivos).
+  //     OpenAI-compat tolera, Anthropic não — sem o merge, dá 400. v0.1.162
+  // toBlocks dropa texto vazio (assistant com toolCalls tem content:"" → não
+  // vira um text-block vazio, que o Anthropic rejeita).
+  const toBlocks = (c: string | ContentBlock[]): ContentBlock[] =>
+    Array.isArray(c) ? c : c ? [{ type: "text" as const, text: c }] : [];
+
   const merged: AnthropicMessage[] = [];
   for (const m of converted) {
     const last = merged[merged.length - 1];
-    if (last && last.role === m.role && m.role === "user") {
-      // Garante que ambos viram arrays pra mergear
-      const lastArr = Array.isArray(last.content)
-        ? last.content
-        : [{ type: "text" as const, text: last.content }];
-      const curArr = Array.isArray(m.content)
-        ? m.content
-        : [{ type: "text" as const, text: m.content }];
-      last.content = [...lastArr, ...curArr];
+    if (last && last.role === m.role) {
+      last.content = [...toBlocks(last.content), ...toBlocks(m.content)];
     } else {
       merged.push({ ...m });
     }

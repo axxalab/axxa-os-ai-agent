@@ -283,9 +283,12 @@ export const EN_US: Translations = {
         `Your ${provider} API key looks invalid or expired. Check it in Settings.`,
       rateLimit: "Rate limit reached. Wait a few seconds and try again.",
       network: "Connection failed. Check your internet and try again.",
+      billing:
+        "Gemini needs active API billing for this model. Your Google AI Pro/Ultra subscription does NOT cover the API — it's billed separately in AI Studio. Enable billing (Prepay plan, min $10) and try again.",
     },
     retry: "Try again",
     openSettings: "Open Settings",
+    openBilling: "Enable billing in AI Studio",
   },
 
   systemPrompt: {

@@ -15,6 +15,7 @@ export type AIErrorCode =
   | "invalid-key"
   | "rate-limit"
   | "network"
+  | "billing"
   | "unknown";
 
 interface BaseMessage {

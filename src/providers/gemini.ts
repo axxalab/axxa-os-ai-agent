@@ -46,6 +46,50 @@ const GEMINI_MODELS_ENDPOINT =
 // que tudo de generation passa por v1beta com fields snake_case.
 const GEMINI_NATIVE_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
+/**
+ * Detecta o "muro" de billing do Gemini (free tier / sem billing ativo na API).
+ *
+ * Contexto (v0.1.162): a assinatura CONSUMER (Google AI Pro/Ultra) NÃO cobre a
+ * Gemini API — ela é cobrada à parte no AI Studio (Cloud Billing / Prepay).
+ * Quando o user só tem a assinatura, a API responde com erro de quota/billing.
+ * A ação certa nesse caso é "ativar billing", não "tentar de novo" — por isso
+ * mapeamos pro código `billing` (bolha de erro com botão dedicado).
+ *
+ * - Frases fortes (billed users / paid tier / billing / FAILED_PRECONDITION /
+ *   free tier) → billing em QUALQUER contexto.
+ * - context="image": 429 com quota/credit é quase sempre free-tier barrando
+ *   modelos de imagem (Imagen/Nano Banana não entram no free tier) → billing.
+ *   No chat deixamos 429 genérico como rate-limit (pode ser limite real numa
+ *   conta JÁ paga).
+ */
+export function isGeminiBillingError(
+  status: number,
+  message: string,
+  context: "chat" | "image"
+): boolean {
+  const m = (message || "").toLowerCase();
+  if (
+    m.includes("billed users") ||
+    m.includes("paid tier") ||
+    m.includes("only available on the paid") ||
+    m.includes("only accessible to billed") ||
+    m.includes("billing") ||
+    m.includes("failed_precondition") ||
+    m.includes("free tier") ||
+    m.includes("free_tier")
+  ) {
+    return true;
+  }
+  if (
+    context === "image" &&
+    status === 429 &&
+    (m.includes("quota") || m.includes("credit"))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export class GeminiProvider implements Provider {
   id = "gemini";
   name = "Gemini";
@@ -71,6 +115,13 @@ export class GeminiProvider implements Provider {
       });
     } catch {
       throw new ProviderError("Falha de conexão.", "network");
+    }
+    // Muro de billing ANTES do mapeamento genérico (senão 429 vira rate-limit).
+    if (res.status >= 400) {
+      const detail = res.json?.error?.message ?? "";
+      if (isGeminiBillingError(res.status, detail, "chat")) {
+        throw new ProviderError(`Gemini billing: ${detail}`, "billing");
+      }
     }
     ensureOkRequest(res, { label: "Gemini", authStatuses: [401, 403] });
 
@@ -117,6 +168,19 @@ export class GeminiProvider implements Provider {
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
       throw new ProviderError("Falha de conexão.", "network");
+    }
+    // Billing primeiro (lê uma cópia do corpo; ensureOkStream ainda lê o original).
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const j = await res.clone().json();
+        detail = j?.error?.message ?? JSON.stringify(j ?? "");
+      } catch {
+        /* corpo não-JSON — segue pro mapeamento padrão */
+      }
+      if (isGeminiBillingError(res.status, detail, "chat")) {
+        throw new ProviderError(`Gemini billing: ${detail}`, "billing");
+      }
     }
     await ensureOkStream(res, { label: "Gemini", authStatuses: [401, 403] });
     if (!res.body) throw new ProviderError("Stream vazio do Gemini.", "unknown");
@@ -178,26 +242,24 @@ export class GeminiProvider implements Provider {
       throw new ProviderError("Falha de conexão.", "network");
     }
     if (res.status < 200 || res.status >= 300) {
-      console.error("[axxa] Gemini image gen failed:", res.status, res.json ?? res.text);
-    }
-    if (res.status === 401 || res.status === 403) {
-      throw new ProviderError(
-        "API key Gemini inválida.",
-        "invalid-key"
-      );
-    }
-    if (res.status === 429) {
-      throw new ProviderError(
-        "Rate limit Gemini.",
-        "rate-limit"
-      );
-    }
-    if (res.status < 200 || res.status >= 300) {
-      const msg =
+      const detail =
         res.json?.error?.message ??
         (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
         `HTTP ${res.status}`;
-      throw new ProviderError(`Gemini imagens (${res.status}): ${msg}`, "unknown");
+      console.error("[axxa] Gemini image gen failed:", res.status, res.json ?? res.text);
+      if (res.status === 401 || res.status === 403) {
+        throw new ProviderError("API key Gemini inválida.", "invalid-key");
+      }
+      // Muro de billing: modelos de imagem (Imagen/Nano Banana) NÃO entram no
+      // free tier — sem billing ativo na API o request é barrado. A assinatura
+      // consumer (AI Pro/Ultra) não cobre a API. Ação certa = ativar billing.
+      if (isGeminiBillingError(res.status, detail, "image")) {
+        throw new ProviderError(`Gemini billing: ${detail}`, "billing");
+      }
+      if (res.status === 429) {
+        throw new ProviderError("Rate limit Gemini.", "rate-limit");
+      }
+      throw new ProviderError(`Gemini imagens (${res.status}): ${detail}`, "unknown");
     }
     // Aceita ambos os shapes: inlineData (camelCase, comum em REST JS clients)
     // OU inline_data (snake_case, formato cru REST)

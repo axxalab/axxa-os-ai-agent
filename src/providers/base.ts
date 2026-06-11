@@ -176,7 +176,14 @@ export interface Provider {
 export class ProviderError extends Error {
   constructor(
     message: string,
-    public readonly code: "no-key" | "invalid-key" | "rate-limit" | "network" | "unknown"
+    public readonly code:
+      | "no-key"
+      | "invalid-key"
+      | "rate-limit"
+      | "network"
+      // Gemini: API exige billing ativo (assinatura consumer não cobre a API). v0.1.162
+      | "billing"
+      | "unknown"
   ) {
     super(message);
     this.name = "ProviderError";

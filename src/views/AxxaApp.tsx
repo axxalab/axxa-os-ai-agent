@@ -246,6 +246,8 @@ function describeProviderError(
         return { message: t.ai.err.rateLimit, code: "rate-limit" };
       case "network":
         return { message: t.ai.err.network, code: "network" };
+      case "billing":
+        return { message: t.ai.err.billing, code: "billing" };
       default:
         // "unknown" carrega a msg detalhada do provider (única com info real).
         return { message: err.message || t.ai.unknownError, code: "unknown" };

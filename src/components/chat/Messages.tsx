@@ -348,6 +348,9 @@ export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
     : msg.content;
   const isKeyError =
     msg.errorCode === "no-key" || msg.errorCode === "invalid-key";
+  // Billing do Gemini: ação dedicada → abre o AI Studio pra ativar billing
+  // (a assinatura consumer não cobre a API). v0.1.162
+  const isBilling = msg.errorCode === "billing";
 
   return (
     <div className="axxa-msg axxa-msg-error" data-msg-id={msg.id}>
@@ -366,6 +369,18 @@ export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
           >
             <Icon name="settings" />
             {t.ai.openSettings}
+          </button>
+        )}
+        {isBilling && (
+          <button
+            type="button"
+            className="axxa-error-btn axxa-error-btn-primary"
+            onClick={() =>
+              window.open("https://aistudio.google.com/apikey", "_blank")
+            }
+          >
+            <Icon name="credit-card" />
+            {t.ai.openBilling}
           </button>
         )}
         <button

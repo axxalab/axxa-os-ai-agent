@@ -288,10 +288,15 @@ export const PT_BR = {
         `A API key de ${provider} parece inválida ou expirada. Confira nas Configurações.`,
       rateLimit: "Limite de requisições atingido. Aguarde alguns segundos e tente de novo.",
       network: "Falha de conexão. Confira sua internet e tente de novo.",
+      // Billing do Gemini: a assinatura consumer (Google AI Pro/Ultra) NÃO cobre
+      // a API — ela é cobrada à parte no AI Studio. v0.1.162
+      billing:
+        "O Gemini precisa de billing ativo na API pra esse modelo. Sua assinatura Google AI Pro/Ultra NÃO cobre a API — ela é cobrada à parte no AI Studio. Ative o billing (plano Prepay, mín. US$10) e tente de novo.",
     },
     // Ações da bolha de erro
     retry: "Tentar de novo",
     openSettings: "Abrir Configurações",
+    openBilling: "Ativar billing no AI Studio",
   },
 
   systemPrompt: {
