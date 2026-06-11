@@ -7981,6 +7981,17 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   width: 18px;
   height: 18px;
 }
+
+/* Valor à direita numa row (ex: estilo atual "Conciso ›"). v0.1.189 */
+.axxa-plus-row-value {
+  flex: 0 0 auto;
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: auto;
+  padding-right: 2px;
+  white-space: nowrap;
+}
 /* Painel data-sharing no Usage (cota grátis aplicada). v0.1.168 */
 .axxa-usage-ds {
   margin: 14px 0;

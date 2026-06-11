@@ -7,7 +7,7 @@
 //   4. Future: settings (max_tokens, system prompt override, etc)
 
 import { useEffect, useState } from "react";
-import { FuzzySuggestModal, Notice, TFile } from "obsidian";
+import { FuzzySuggestModal, Menu, Notice, TFile } from "obsidian";
 import type { App } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { CameraModal } from "./CameraModal";
@@ -52,6 +52,10 @@ interface PlusModalProps {
   createImageAvailable?: boolean;
   /** Abre o modal de geração de imagem in-chat (fallback). v0.1.166 */
   onCreateImage?: () => void;
+  /** Estilo de resposta atual (normal/concise/...). Ref: Claude "Choose style". */
+  responseStyle?: string;
+  /** Callback quando user troca o estilo de resposta. */
+  onSelectStyle?: (id: string) => void;
 }
 
 export function PlusModal({
@@ -65,10 +69,40 @@ export function PlusModal({
   imageGenEnabled = false,
   createImageAvailable = false,
   onCreateImage,
+  responseStyle = "normal",
+  onSelectStyle,
 }: PlusModalProps) {
   void imageGenEnabled;
   const t = useT();
   const app = useApp();
+
+  // Estilo de resposta (ref: Claude iOS 23 "Choose style ›") — menu nativo.
+  const STYLE_IDS = ["normal", "concise", "explanatory", "formal", "friendly"];
+  const styleLabel = (id: string): string => {
+    const map: Record<string, string> = {
+      normal: t.responseStyle.normal,
+      concise: t.responseStyle.concise,
+      explanatory: t.responseStyle.explanatory,
+      formal: t.responseStyle.formal,
+      friendly: t.responseStyle.friendly,
+    };
+    return map[id] ?? id;
+  };
+  const openStyleMenu = (e: React.MouseEvent) => {
+    if (!onSelectStyle) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const menu = new Menu();
+    STYLE_IDS.forEach((id) =>
+      menu.addItem((i) =>
+        i
+          .setTitle(styleLabel(id))
+          .setChecked(id === responseStyle)
+          .onClick(() => onSelectStyle(id))
+      )
+    );
+    menu.showAtMouseEvent(e.nativeEvent);
+  };
   // Inputs hidden — disparados pelos botões da row
   const [imageInput, setImageInput] = useState<HTMLInputElement | null>(null);
   const [pdfInput, setPdfInput] = useState<HTMLInputElement | null>(null);
@@ -294,6 +328,38 @@ export function PlusModal({
             checked={Boolean(toggles.extendedThinking)}
             onChange={(v) => onToggle?.("extendedThinking", v)}
           />
+          {onSelectStyle && (
+            <div
+              className="axxa-plus-row axxa-plus-row-tone-purple"
+              role="button"
+              tabIndex={0}
+              onClick={openStyleMenu}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  (e.currentTarget as HTMLElement).click();
+                }
+              }}
+            >
+              <span className="axxa-plus-row-icon">
+                <Icon name="feather" />
+              </span>
+              <span className="axxa-plus-row-text">
+                <span className="axxa-plus-row-label">
+                  {t.responseStyle.menuLabel}
+                </span>
+                <span className="axxa-plus-row-desc">
+                  {t.plus.styleDesc}
+                </span>
+              </span>
+              <span className="axxa-plus-row-value">
+                {styleLabel(responseStyle)}
+              </span>
+              <span className="axxa-plus-row-chevron">
+                <Icon name="chevron-right" />
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="axxa-plus-divider" />

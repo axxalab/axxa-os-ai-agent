@@ -47,6 +47,22 @@ export const EN_US: Translations = {
     fileName: (stamp: string) => `Photo ${stamp}.jpg`,
   },
 
+  responseStyle: {
+    menuLabel: "Choose style",
+    normal: "Normal",
+    concise: "Concise",
+    explanatory: "Explanatory",
+    formal: "Formal",
+    friendly: "Friendly",
+    instrConcise:
+      "Answer concisely and directly, with no preamble or repetition.",
+    instrExplanatory:
+      "Explain in depth: lay out the reasoning, give examples, and break it into steps.",
+    instrFormal: "Use a formal, professional tone with precise language.",
+    instrFriendly:
+      "Use a friendly, approachable tone, like a conversation between friends.",
+  },
+
   linkSafety: {
     title: "Is this link safe?",
     desc: "This link isn't verified and may lead to a third-party site. Check the full address before opening.",
@@ -275,6 +291,7 @@ export const EN_US: Translations = {
     attachPhotos: "Photos",
     attachFiles: "File",
     attachNoteDesc: "Reference a note from your vault",
+    styleDesc: "Tone and format of responses",
     attachTitle: "Attach file",
     attachSub: "PDFs, images, vault notes — coming in Module 5",
     attachSoonBadge: "soon",

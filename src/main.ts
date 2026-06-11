@@ -73,6 +73,9 @@ interface AxxaSettings {
   recordingsPath: string;
   /** Pasta no Vault onde respostas da IA salvas como nota (footer) vão. */
   notesPath: string;
+  /** Estilo de resposta global (normal/concise/explanatory/formal/friendly).
+   *  Vira uma instrução anexada ao system prompt. Ref: Claude "Choose style". */
+  responseStyle: string;
   /** Pasta no Vault onde mídias geradas por modelos (imagem/áudio/vídeo)
    *  são salvas. Cada saída gera 2 arquivos: mídia + sidecar .md com
    *  frontmatter (prompt, model, provider, timestamp, etc). */
@@ -217,6 +220,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   background: "none",
   recordingsPath: "axxa-ai/recordings",
   notesPath: "axxa-ai/notes",
+  responseStyle: "normal",
   generationPath: "axxa-ai/generation",
   ragIndexPath: "axxa-ai/index",
   ragEmbeddingProvider: "openai",

@@ -19,16 +19,23 @@ export interface ChatSystemParts {
   vaultBlock?: string;
   /** Bloco de notas anexadas pelo user. */
   noteBlock?: string;
+  /** Instrução de estilo de resposta (Conciso/Explicativo/etc). Anexada ao
+   *  head sem substituir a persona/base. Vazio = sem efeito. */
+  styleInstruction?: string;
 }
 
-/** Monta o system prompt do CHAT/Vault-QA: (persona || base) + vault + notes. */
+/** Monta o system prompt do CHAT/Vault-QA: (persona || base) + style + vault + notes. */
 export function buildChatSystemPrompt(p: ChatSystemParts): string {
   const head = (p.persona && p.persona.trim()) || p.base;
+  const style =
+    p.styleInstruction && p.styleInstruction.trim()
+      ? "\n\n" + p.styleInstruction.trim()
+      : "";
   const vault =
     p.vaultBlock && p.vaultBlock.length > 0
       ? (p.vaultSuffix ?? "") + p.vaultBlock
       : "";
-  return head + vault + (p.noteBlock ?? "");
+  return head + style + vault + (p.noteBlock ?? "");
 }
 
 /** Monta o system prompt do AGENT: persona é PREPENDIDA (não substitui). */

@@ -411,6 +411,24 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   const starterModel = modelFor(providerSel);
 
+  // Estilo de resposta global (espelha plugin.settings.responseStyle) — state
+  // só pra reatividade do PlusModal. v0.1.189
+  const [responseStyle, setResponseStyle] = useState(
+    plugin.settings.responseStyle
+  );
+
+  // Estilo de resposta global (ref: Claude "Choose style") → instrução anexada
+  // ao system prompt. "normal" não adiciona nada. v0.1.189
+  const resolveStyleInstruction = (): string => {
+    switch (plugin.settings.responseStyle) {
+      case "concise": return t.responseStyle.instrConcise;
+      case "explanatory": return t.responseStyle.instrExplanatory;
+      case "formal": return t.responseStyle.instrFormal;
+      case "friendly": return t.responseStyle.instrFriendly;
+      default: return "";
+    }
+  };
+
   // ============================================================
   // Carrega lista de chats quando chat tá vazio — UMA varredura só:
   // recentes = slice(0,8); o array completo vai pros stats do dashboard.
@@ -677,6 +695,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         vaultSuffix: t.systemPrompt.vaultQaSuffix,
         vaultBlock: vaultContextBlock,
         noteBlock: noteContextBlock,
+        styleInstruction: resolveStyleInstruction(),
       });
       const history: ProviderMessage[] = [
         { role: "system", content: fullSystem },
@@ -1776,6 +1795,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         content: buildChatSystemPrompt({
           persona: useChatStore.getState().sessionPersona,
           base: t.systemPrompt.base,
+          styleInstruction: resolveStyleInstruction(),
         }),
       },
       ...storeMessagesToProvider(before),
@@ -1865,6 +1885,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         content: buildChatSystemPrompt({
           persona: useChatStore.getState().sessionPersona,
           base: t.systemPrompt.base,
+          styleInstruction: resolveStyleInstruction(),
         }),
       },
       ...storeMessagesToProvider(hist),
@@ -2250,6 +2271,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const handleSelectEffort = async (level: EffortLevel) => {
     setEffort(level);
     plugin.settings.defaultEffort = level;
+    await plugin.saveSettings();
+  };
+
+  const handleSelectStyle = async (id: string) => {
+    setResponseStyle(id);
+    plugin.settings.responseStyle = id;
     await plugin.saveSettings();
   };
 
@@ -2716,6 +2743,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               }
               createImageAvailable={buildImageModelOptions().some((o) => o.connected)}
               onCreateImage={handleCreateImage}
+              responseStyle={responseStyle}
+              onSelectStyle={handleSelectStyle}
               toggles={plusToggles}
               onToggle={(key, value) =>
                 setPlusToggles((prev) => ({ ...prev, [key]: value }))

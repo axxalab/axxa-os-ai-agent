@@ -47,6 +47,22 @@ export const PT_BR = {
     fileName: (stamp: string) => `Foto ${stamp}.jpg`,
   },
 
+  responseStyle: {
+    menuLabel: "Escolher estilo",
+    normal: "Normal",
+    concise: "Conciso",
+    explanatory: "Explicativo",
+    formal: "Formal",
+    friendly: "Amigável",
+    instrConcise:
+      "Responda de forma concisa e direta, sem preâmbulos nem repetição.",
+    instrExplanatory:
+      "Explique com profundidade: detalhe o raciocínio, dê exemplos e quebre em passos.",
+    instrFormal: "Use um tom formal e profissional, em linguagem precisa.",
+    instrFriendly:
+      "Use um tom amigável e acessível, como uma conversa entre amigos.",
+  },
+
   linkSafety: {
     title: "Esse link é seguro?",
     desc: "Esse link não foi verificado e pode levar a um site de terceiros. Confira o endereço completo antes de abrir.",
@@ -275,6 +291,7 @@ export const PT_BR = {
     attachPhotos: "Fotos",
     attachFiles: "Arquivo",
     attachNoteDesc: "Referenciar uma nota do vault",
+    styleDesc: "Tom e formato das respostas",
     attachTitle: "Anexar arquivo",
     attachSub: "PDFs, imagens, notas do vault — virão no Módulo 5",
     attachSoonBadge: "em breve",
