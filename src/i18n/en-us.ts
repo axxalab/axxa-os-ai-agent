@@ -623,7 +623,16 @@ export const EN_US: Translations = {
     usageBillingStatusCol: "Status",
     usageBillingLeft: "left",
     usageBillingNoLive:
-      "Only OpenRouter exposes real billing via the normal key. Set the OpenRouter key to cross-check.",
+      "To cross-check real billing: an OpenRouter key (normal) and/or an OpenAI Admin key in the API key field.",
+    usageBillingOrgNote:
+      "REAL cost of the whole org (all your OpenAI usage), not just this plugin.",
+    keyKindNormal:
+      "🔑 Project key — chat & generation OK. Real costs need an Admin key.",
+    keyKindAdmin:
+      "🛡️ Admin key — real costs ON in Usage. ⚠️ Admin keys can't do chat; use a project key to talk.",
+    keyKindUnknown: "⚠️ Unrecognized key format — double-check what you pasted.",
+    keyAdminReady: "Admin key detected — click “Cross-check with API”.",
+    keyAdminSoon: "Admin key detected — Anthropic real costs coming soon.",
     usageTokensInLabel: "Tokens in",
     usageTokensOutLabel: "Tokens out",
     usageChatsLabel: "Conversations",

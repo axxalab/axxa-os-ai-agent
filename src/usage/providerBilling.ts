@@ -113,3 +113,47 @@ export async function fetchOpenRouterBilling(
   }
   return parseOpenRouterKey(res.json);
 }
+
+// ── OpenAI Costs API (GASTO real, exige ADMIN key) ──────────
+// GET /v1/organization/costs?start_time=<unix>&bucket_width=1d → soma dos
+// data[].results[].amount.value. Shape confirmado em developers.openai.com.
+
+/** Parser puro: soma o gasto (USD) de todos os buckets. */
+export function parseOpenAICosts(json: unknown): number {
+  const data =
+    (json as { data?: Array<{ results?: Array<{ amount?: { value?: number } }> }> })
+      ?.data ?? [];
+  let total = 0;
+  for (const bucket of data) {
+    for (const r of bucket.results ?? []) {
+      if (typeof r.amount?.value === "number") total += r.amount.value;
+    }
+  }
+  return total;
+}
+
+export async function fetchOpenAICosts(
+  adminKey: string,
+  requestUrlFn: RequestUrlLike,
+  startTimeUnix: number
+): Promise<number> {
+  if (!adminKey || !adminKey.trim()) {
+    throw new Error("Sem Admin key da OpenAI.");
+  }
+  const url =
+    `https://api.openai.com/v1/organization/costs` +
+    `?start_time=${startTimeUnix}&bucket_width=1d&limit=180`;
+  const res = await requestUrlFn({
+    url,
+    method: "GET",
+    headers: { Authorization: `Bearer ${adminKey.trim()}` },
+    throw: false,
+  });
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("Admin key inválida ou sem permissão de billing.");
+  }
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(`OpenAI costs: HTTP ${res.status}`);
+  }
+  return parseOpenAICosts(res.json);
+}

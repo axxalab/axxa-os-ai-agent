@@ -634,7 +634,17 @@ export const PT_BR = {
     usageBillingStatusCol: "Status",
     usageBillingLeft: "restante",
     usageBillingNoLive:
-      "Só o OpenRouter expõe billing real via chave normal. Configure a chave do OpenRouter pra cruzar.",
+      "Pra cruzar billing real: chave do OpenRouter (normal) e/ou uma Admin key da OpenAI no campo de API key.",
+    usageBillingOrgNote:
+      "Custo REAL da organização inteira (todo o uso da OpenAI), não só do plugin.",
+    // Badge de formato da key (campo único reconhece projeto vs admin). v0.1.170
+    keyKindNormal:
+      "🔑 Chave de projeto — chat e geração OK. Custos reais precisam de uma Admin key.",
+    keyKindAdmin:
+      "🛡️ Admin key — custos reais ON no Usage. ⚠️ Admin key NÃO faz chat; use uma chave de projeto pra conversar.",
+    keyKindUnknown: "⚠️ Formato de chave não reconhecido — confira se colou certo.",
+    keyAdminReady: "Admin key detectada — clique “Cruzar com a API”.",
+    keyAdminSoon: "Admin key detectada — custos reais da Anthropic em breve.",
     usageTokensInLabel: "Tokens in",
     usageTokensOutLabel: "Tokens out",
     usageChatsLabel: "Conversas",

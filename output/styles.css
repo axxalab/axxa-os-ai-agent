@@ -6913,6 +6913,25 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-usage-xcheck-cap-free {
   box-shadow: inset 3px 0 0 var(--color-blue, #4361ee);
 }
+/* Badge de formato da API key (projeto vs admin). v0.1.170 */
+.axxa-key-kind {
+  margin: -4px 0 8px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  padding-left: 2px;
+}
+.axxa-key-kind.is-empty {
+  display: none;
+}
+.axxa-key-kind.is-admin {
+  color: var(--color-yellow, #e9c46a);
+}
+.axxa-key-kind.is-normal {
+  color: var(--text-muted);
+}
+.axxa-key-kind.is-unknown {
+  color: var(--color-red, #e5534b);
+}
 /* Polish dos cards de resumo (v0.1.169) */
 .axxa-usage-card {
   transition: border-color 0.15s ease;

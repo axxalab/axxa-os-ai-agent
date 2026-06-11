@@ -67,7 +67,9 @@ import {
 import {
   billingCapabilityFor,
   fetchOpenRouterBilling,
+  fetchOpenAICosts,
 } from "../../usage/providerBilling";
+import { detectKeyKind, type KeyKind } from "../../providers/keyFormat";
 import {
   getModelCapabilities,
   capabilityBadges,
@@ -648,26 +650,56 @@ export class AxxaSettingsTab extends PluginSettingTab {
   // ============================================================
   // Tab: OpenAI
   // ============================================================
+  /**
+   * Badge VIVO sob o campo de API key: detecta projeto vs admin e explica o que
+   * cada formato habilita. Um campo só — o plugin reconhece e propaga. v0.1.170
+   */
+  private renderKeyKindBadge(
+    parent: HTMLElement,
+    provider: string,
+    t: Translations
+  ): (key: string) => void {
+    const el = parent.createDiv({ cls: "axxa-key-kind setting-item-description" });
+    return (key: string) => {
+      const kind: KeyKind = detectKeyKind(provider, key);
+      el.removeClass("is-admin", "is-normal", "is-unknown", "is-empty");
+      el.addClass("is-" + kind);
+      el.setText(
+        kind === "admin"
+          ? t.settings.keyKindAdmin
+          : kind === "normal"
+            ? t.settings.keyKindNormal
+            : kind === "unknown"
+              ? t.settings.keyKindUnknown
+              : ""
+      );
+    };
+  }
+
   private renderOpenAI(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
       text: t.settings.providerIntro,
       cls: "setting-item-description",
     });
 
+    let updateKeyBadge: (k: string) => void = () => {};
     new Setting(parent)
       .setName(t.settings.apiKey)
       .setDesc(t.settings.apiKeyDescOpenai)
       .addText((text) => {
         text
-          .setPlaceholder("sk-...")
+          .setPlaceholder("sk-... ou sk-admin-...")
           .setValue(this.plugin.settings.openaiApiKey)
           .onChange(async (value) => {
             this.plugin.settings.openaiApiKey = value.trim();
             await this.plugin.saveSettings();
+            updateKeyBadge(value);
           });
         text.inputEl.type = "password";
         text.inputEl.autocomplete = "off";
       });
+    updateKeyBadge = this.renderKeyKindBadge(parent, "openai", t);
+    updateKeyBadge(this.plugin.settings.openaiApiKey);
 
     // Data-sharing + tier (v0.1.165) — define os tokens grátis diários (texto).
     let freeHintEl: HTMLElement;
@@ -737,20 +769,24 @@ export class AxxaSettingsTab extends PluginSettingTab {
       cls: "setting-item-description",
     });
 
+    let updateAntKeyBadge: (k: string) => void = () => {};
     new Setting(parent)
       .setName(t.settings.apiKey)
       .setDesc(t.settings.apiKeyDescAnthropic)
       .addText((text) => {
         text
-          .setPlaceholder("sk-ant-...")
+          .setPlaceholder("sk-ant-... ou sk-ant-admin-...")
           .setValue(this.plugin.settings.anthropicApiKey)
           .onChange(async (value) => {
             this.plugin.settings.anthropicApiKey = value.trim();
             await this.plugin.saveSettings();
+            updateAntKeyBadge(value);
           });
         text.inputEl.type = "password";
         text.inputEl.autocomplete = "off";
       });
+    updateAntKeyBadge = this.renderKeyKindBadge(parent, "anthropic", t);
+    updateAntKeyBadge(this.plugin.settings.anthropicApiKey);
 
     this.createActiveModelsField(
       parent,
@@ -2172,8 +2208,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
         text: "—",
         cls: "axxa-usage-num axxa-usage-xcheck-real",
       });
+      // Status dinâmico: se o campo já tem uma ADMIN key, o custo real fica
+      // disponível (OpenAI agora; Anthropic em breve).
+      let note = cap.note;
+      if (cap.capability === "admin-key") {
+        const k =
+          p === "openai"
+            ? this.plugin.settings.openaiApiKey
+            : this.plugin.settings.anthropicApiKey;
+        if (detectKeyKind(p, k) === "admin") {
+          note = p === "openai" ? t.settings.keyAdminReady : t.settings.keyAdminSoon;
+        }
+      }
       const status = row.createSpan({ cls: "axxa-usage-xcheck-status" });
-      status.createSpan({ text: cap.note });
+      status.createSpan({ text: note });
       if (cap.consoleUrl) {
         const a = status.createEl("a", {
           text: " ↗",
@@ -2186,29 +2234,51 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     btn.onclick = async () => {
       const orKey = this.plugin.settings.openrouterApiKey;
-      if (!realCells["openrouter"] || !orKey || !orKey.trim()) {
+      const oaKey = this.plugin.settings.openaiApiKey;
+      const hasOpenAIAdmin = detectKeyKind("openai", oaKey) === "admin";
+      const canOR = realCells["openrouter"] && orKey && orKey.trim();
+      const canOA = realCells["openai"] && hasOpenAIAdmin;
+      if (!canOR && !canOA) {
         new Notice(t.settings.usageBillingNoLive);
         return;
       }
       btn.disabled = true;
       btn.setText(t.settings.usageBillingCrossing);
-      try {
-        const b = await fetchOpenRouterBilling(orKey, requestUrl);
-        const remain =
-          b.remainingUsd != null
-            ? ` (${formatUsd(b.remainingUsd)} ${t.settings.usageBillingLeft})`
-            : "";
-        realCells["openrouter"].setText(formatUsd(b.usageUsd) + remain);
-        realCells["openrouter"].addClass("is-real");
-      } catch (err) {
-        realCells["openrouter"].setText("erro");
-        new Notice(
-          `OpenRouter: ${err instanceof Error ? err.message : String(err)}`
-        );
-      } finally {
-        btn.disabled = false;
-        btn.setText(t.settings.usageBillingCross);
-      }
+      const periodDays = this.usagePeriodDays > 0 ? this.usagePeriodDays : 30;
+      const startTime = Math.floor(
+        (Date.now() - periodDays * 24 * 60 * 60 * 1000) / 1000
+      );
+      await Promise.all([
+        (async () => {
+          if (!canOR) return;
+          try {
+            const b = await fetchOpenRouterBilling(orKey, requestUrl);
+            const remain =
+              b.remainingUsd != null
+                ? ` (${formatUsd(b.remainingUsd)} ${t.settings.usageBillingLeft})`
+                : "";
+            realCells["openrouter"].setText(formatUsd(b.usageUsd) + remain);
+            realCells["openrouter"].addClass("is-real");
+          } catch (err) {
+            realCells["openrouter"].setText("erro");
+            new Notice(`OpenRouter: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        })(),
+        (async () => {
+          if (!canOA) return;
+          try {
+            const cost = await fetchOpenAICosts(oaKey, requestUrl, startTime);
+            realCells["openai"].setText(formatUsd(cost));
+            realCells["openai"].addClass("is-real");
+            realCells["openai"].setAttr("title", t.settings.usageBillingOrgNote);
+          } catch (err) {
+            realCells["openai"].setText("erro");
+            new Notice(`OpenAI: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        })(),
+      ]);
+      btn.disabled = false;
+      btn.setText(t.settings.usageBillingCross);
     };
   }
 
