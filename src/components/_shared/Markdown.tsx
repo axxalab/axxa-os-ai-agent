@@ -14,6 +14,8 @@
 import { useEffect, useRef } from "react";
 import { type App, Component, MarkdownRenderer, setIcon } from "obsidian";
 import { useApp } from "./AppContext";
+import { useT } from "../../i18n";
+import { wireExternalLinkSafety } from "../chat/LinkSafetyModal";
 
 interface MarkdownProps {
   content: string;
@@ -22,6 +24,7 @@ interface MarkdownProps {
 export function Markdown({ content }: MarkdownProps) {
   const ref = useRef<HTMLDivElement>(null);
   const app = useApp();
+  const t = useT();
 
   useEffect(() => {
     const el = ref.current;
@@ -43,13 +46,22 @@ export function Markdown({ content }: MarkdownProps) {
       if (cancelled) return;
       enhanceCodeBlocks(el);
       enhanceInternalLinks(el, app);
+      wireExternalLinkSafety(el, app, {
+        title: t.linkSafety.title,
+        desc: t.linkSafety.desc,
+        open: t.linkSafety.open,
+        copy: t.linkSafety.copy,
+        cancel: t.linkSafety.cancel,
+        copied: t.linkSafety.copied,
+        muteSession: t.linkSafety.muteSession,
+      });
     });
 
     return () => {
       cancelled = true;
       component.unload();
     };
-  }, [app, content]);
+  }, [app, content, t]);
 
   return <div ref={ref} className="axxa-markdown" />;
 }

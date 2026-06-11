@@ -47,6 +47,16 @@ export const PT_BR = {
     fileName: (stamp: string) => `Foto ${stamp}.jpg`,
   },
 
+  linkSafety: {
+    title: "Esse link é seguro?",
+    desc: "Esse link não foi verificado e pode levar a um site de terceiros. Confira o endereço completo antes de abrir.",
+    open: "Abrir link",
+    copy: "Copiar link",
+    cancel: "Cancelar",
+    copied: "Link copiado",
+    muteSession: "Não perguntar de novo nesta sessão",
+  },
+
   menu: {
     copy: "Copiar",
     regenerate: "Regenerar",

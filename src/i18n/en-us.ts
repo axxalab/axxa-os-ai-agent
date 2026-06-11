@@ -47,6 +47,16 @@ export const EN_US: Translations = {
     fileName: (stamp: string) => `Photo ${stamp}.jpg`,
   },
 
+  linkSafety: {
+    title: "Is this link safe?",
+    desc: "This link isn't verified and may lead to a third-party site. Check the full address before opening.",
+    open: "Open link",
+    copy: "Copy link",
+    cancel: "Cancel",
+    copied: "Link copied",
+    muteSession: "Don't ask again this session",
+  },
+
   menu: {
     copy: "Copy",
     regenerate: "Regenerate",

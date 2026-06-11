@@ -2084,6 +2084,77 @@ body.is-mobile
   margin-top: 8px;
 }
 
+/* =====================================================
+ * LinkSafetyModal — confirma antes de abrir link externo (ref: ChatGPT iOS 115)
+ * ===================================================== */
+.axxa-linksafe-modal {
+  text-align: center;
+}
+.axxa-linksafe-title {
+  margin: 4px 0 8px 0;
+  font-size: var(--font-ui-large);
+  font-weight: 700;
+}
+.axxa-linksafe-desc {
+  margin: 0 auto 14px auto;
+  max-width: 360px;
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.axxa-linksafe-url {
+  margin: 0 0 18px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-normal);
+  word-break: break-all;
+  text-align: left;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.axxa-linksafe-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.axxa-linksafe-actions button {
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 999px;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  cursor: pointer;
+}
+.axxa-linksafe-open.mod-cta {
+  border: none;
+}
+.axxa-linksafe-copy,
+.axxa-linksafe-cancel {
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+}
+.axxa-linksafe-cancel {
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.axxa-linksafe-mute {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 14px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+.axxa-linksafe-mute label {
+  cursor: pointer;
+}
+
 /* Disclaimer discreto abaixo do composer (a IA pode errar). v0.1.186 */
 .axxa-composer-disclaimer {
   text-align: center;
