@@ -13,6 +13,8 @@ import {
   type EmbeddingModelSpec,
   type EmbeddingProvider,
 } from "./rag/types";
+import { registerLocalUsage } from "./providers/dataCollect";
+import { listAllChats } from "./components/_shared/chatPersistence";
 import { registerBrandIcons } from "./components/_shared/brandIcons";
 import { registerBrandLogos } from "./components/_shared/brandLogos";
 import {
@@ -244,6 +246,24 @@ export default class AxxaPlugin extends Plugin {
     registerDiscoveredEmbeddings(specs);
   }
 
+  /**
+   * Coleta o uso LOCAL (nº de chats por modelo) e alimenta o "hot" do
+   * dataCollect. Best-effort — nunca quebra o load. Sem telemetria: é só o
+   * seu próprio histórico, no device. v0.1.152
+   */
+  async refreshLocalUsageHot(): Promise<void> {
+    try {
+      const chats = await listAllChats(this.app, this.settings.chatsPath);
+      const byModel: Record<string, number> = {};
+      for (const c of chats) {
+        if (c.model) byModel[c.model] = (byModel[c.model] ?? 0) + 1;
+      }
+      registerLocalUsage(byModel);
+    } catch (err) {
+      console.error("[axxa] refreshLocalUsageHot falhou:", err);
+    }
+  }
+
   /** (Re)carrega os skills da pasta e re-renderiza. v0.1.139 */
   async reloadSkills(): Promise<void> {
     try {
@@ -320,6 +340,9 @@ export default class AxxaPlugin extends Plugin {
 
     // Embeddings descobertos (fetch anterior) → registro global do RAG.
     this.refreshDiscoveredEmbeddings();
+
+    // "Hot" dos modelos a partir do uso local — fire-and-forget (não bloqueia).
+    void this.refreshLocalUsageHot();
 
     // Skills (.md na pasta de skills) → slash-commands no composer.
     await this.reloadSkills();

@@ -66,13 +66,20 @@ import {
   modelVendorLogoId,
   modelVendorLabel,
 } from "../_shared/modelLogo";
+import { getHotLevel, hotLabel } from "../../providers/dataCollect";
 import {
   saveUsageMarkdown,
   saveUsageHtml,
   printUsageReport,
 } from "../../usage/export";
 
-type TopTabId = "providers" | "appearance" | "effort" | "usage" | "outros";
+type TopTabId =
+  | "providers"
+  | "setup"
+  | "appearance"
+  | "effort"
+  | "usage"
+  | "outros";
 type ProviderTabId =
   | "openai"
   | "anthropic"
@@ -154,6 +161,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // ============================================================
     const topTabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
     this.createTopTabButton(topTabsEl, "providers", t.settings.topTabs.providers);
+    this.createTopTabButton(topTabsEl, "setup", t.settings.topTabs.setup);
     this.createTopTabButton(topTabsEl, "appearance", t.settings.topTabs.appearance);
     this.createTopTabButton(topTabsEl, "effort", t.settings.topTabs.effort);
     this.createTopTabButton(topTabsEl, "usage", t.settings.topTabs.usage);
@@ -167,6 +175,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
     switch (this.activeTopTab) {
       case "providers":
         this.renderProvidersTab(contentEl, t);
+        break;
+      case "setup":
+        this.renderSetupTab(contentEl, t);
         break;
       case "appearance":
         this.renderAppearanceTab(contentEl, t);
@@ -938,15 +949,25 @@ export class AxxaSettingsTab extends PluginSettingTab {
       }
     };
 
-    // Chips de filtro por capacidade
+    // Chips de filtro por capacidade — compactos, numa linha (no-wrap), com a
+    // CONTAGEM de modelos que casam cada filtro. v0.1.152
+    const all = allModels();
     for (const f of MODEL_FILTERS) {
       const active = (this.modelFilter[providerId] ?? "all") === f.id;
+      const count =
+        f.id === "all"
+          ? all.length
+          : all.filter((m) => this.modelPassesFilter(providerId, m, f.id)).length;
       const chip = filterRow.createEl("button", {
-        cls: "axxa-model-filter-chip" + (active ? " is-active" : ""),
-        attr: { type: "button", title: f.label },
+        cls:
+          "axxa-model-filter-chip" +
+          (active ? " is-active" : "") +
+          (count === 0 ? " is-empty" : ""),
+        attr: { type: "button", title: `${f.label} · ${count}` },
       });
       setIcon(chip.createSpan({ cls: "axxa-model-filter-ico" }), f.icon);
       chip.createSpan({ text: f.label, cls: "axxa-model-filter-lbl" });
+      chip.createSpan({ text: String(count), cls: "axxa-model-filter-count" });
       chip.onclick = () => {
         this.modelFilter[providerId] = f.id;
         filterRow
@@ -1093,6 +1114,18 @@ export class AxxaSettingsTab extends PluginSettingTab {
       text: tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?",
       cls: "axxa-model-tier axxa-model-tier-" + tier,
     });
+    // "Hot" — popularidade (baseline curado + seu uso local). 🔥 por nível.
+    const hot = getHotLevel(providerId, model);
+    if (hot.level > 0) {
+      nameRow.createSpan({
+        text: "🔥".repeat(hot.level),
+        cls:
+          "axxa-model-hot axxa-model-hot-" +
+          hot.level +
+          (hot.usedLocally ? " is-local" : ""),
+        attr: { title: hotLabel(hot) },
+      });
+    }
     if (isDefault()) {
       nameRow.createSpan({
         text: t.settings.modelDefaultTag,
@@ -1164,10 +1197,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const subTabsEl = parent.createDiv({ cls: "axxa-settings-subtabs" });
     this.createOutrosSubTab(subTabsEl, "geral", t.settings.outrosTabs.geral);
     this.createOutrosSubTab(subTabsEl, "agent", t.settings.outrosTabs.agent);
-    this.createOutrosSubTab(subTabsEl, "rag", t.settings.outrosTabs.rag);
 
-    // Se activeOutrosTab for "ui" ou "usage" (state legado), redireciona pra geral
-    if (this.activeOutrosTab === "ui" || this.activeOutrosTab === "usage") {
+    // RAG migrou pra top-tab "Setup & RAG" (v0.1.152). State legado → geral.
+    if (
+      this.activeOutrosTab === "ui" ||
+      this.activeOutrosTab === "usage" ||
+      this.activeOutrosTab === "rag"
+    ) {
       this.activeOutrosTab = "geral";
     }
 
@@ -1178,9 +1214,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
         break;
       case "agent":
         this.renderOutrosAgent(subContentEl, t);
-        break;
-      case "rag":
-        this.renderOutrosRAG(subContentEl, t);
         break;
     }
   }
@@ -1260,6 +1293,35 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
+    parent.createEl("h3", { text: t.settings.comingSoon });
+    const todo = parent.createEl("ul");
+    t.settings.comingSoonItems.forEach((item) => {
+      todo.createEl("li", { text: item });
+    });
+  }
+
+  // ============================================================
+  // Tab: Setup & RAG (v0.1.152) — pastas do vault + RAG, ao lado de Providers.
+  // ============================================================
+  private renderSetupTab(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      text: t.settings.setupIntro,
+      cls: "setting-item-description",
+    });
+
+    parent.createEl("h3", { text: t.settings.setupFoldersTitle });
+    this.renderFolderPaths(parent, t);
+
+    parent.createEl("h3", { text: t.settings.setupRagTitle });
+    parent.createEl("p", {
+      text: t.settings.ragDesc,
+      cls: "setting-item-description",
+    });
+    this.renderRagSection(parent, t);
+  }
+
+  /** Config das pastas do vault + gestão de skills. Reusado pela tab Setup. */
+  private renderFolderPaths(parent: HTMLElement, t: Translations) {
     new Setting(parent)
       .setName(t.settings.chatsPath)
       .setDesc(t.settings.chatsPathDesc)
@@ -1346,12 +1408,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
           });
         this.attachFolderAutocomplete(text.inputEl);
       });
-
-    parent.createEl("h3", { text: t.settings.comingSoon });
-    const todo = parent.createEl("ul");
-    t.settings.comingSoonItems.forEach((item) => {
-      todo.createEl("li", { text: item });
-    });
   }
 
   /** Sub-tab Interface — chips, aparência, code wrap */
@@ -1388,19 +1444,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
-  }
-
-  /** Sub-tab RAG — embeddings + indexação */
-  private renderOutrosRAG(parent: HTMLElement, t: Translations) {
-    parent.createEl("p", {
-      text: t.settings.outrosRagIntro,
-      cls: "setting-item-description",
-    });
-    parent.createEl("p", {
-      text: t.settings.ragDesc,
-      cls: "setting-item-description",
-    });
-    this.renderRagSection(parent, t);
   }
 
   // ============================================================

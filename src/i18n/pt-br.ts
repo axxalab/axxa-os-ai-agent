@@ -312,11 +312,16 @@ export const PT_BR = {
     title: "AXXA OS — AI Agent",
     topTabs: {
       providers: "Providers",
+      setup: "Setup & RAG",
       appearance: "Aparência",
       effort: "Effort",
       usage: "Usage",
       outros: "Outros",
     },
+    setupIntro:
+      "Pastas onde o AXXA salva tudo no vault + busca semântica (RAG) sobre suas notas.",
+    setupFoldersTitle: "Pastas",
+    setupRagTitle: "Vault Q&A / RAG",
     appearanceTabs: {
       background: "Fundo",
       chips: "Chips",

@@ -306,11 +306,16 @@ export const EN_US: Translations = {
     title: "AXXA OS — AI Agent",
     topTabs: {
       providers: "Providers",
+      setup: "Setup & RAG",
       appearance: "Appearance",
       effort: "Effort",
       usage: "Usage",
       outros: "Other",
     },
+    setupIntro:
+      "Folders where AXXA saves everything in your vault + semantic search (RAG) over your notes.",
+    setupFoldersTitle: "Folders",
+    setupRagTitle: "Vault Q&A / RAG",
     appearanceTabs: {
       background: "Background",
       chips: "Chips",

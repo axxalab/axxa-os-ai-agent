@@ -6506,18 +6506,28 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   transform: translateX(16px);
 }
 
-/* === Model list v2 (v0.1.150): filtros + categorias + star + 🟣 === */
+/* === Model list v2 (v0.1.150-152): filtros + categorias + star + 🟣 + hot === */
+/* Filtros COMPACTOS numa única linha (no-wrap) com scroll horizontal suave. */
 .axxa-model-filter-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 5px;
   margin: 8px 0 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 3px;
+}
+.axxa-model-filter-row::-webkit-scrollbar {
+  height: 4px;
 }
 .axxa-model-filter-chip {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
+  gap: 4px;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid
     color-mix(in srgb, var(--background-modifier-border) 60%, transparent) !important;
@@ -6526,6 +6536,7 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 0.13s, color 0.13s, border-color 0.13s;
 }
@@ -6533,8 +6544,17 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   display: inline-flex;
 }
 .axxa-model-filter-chip .svg-icon {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
+}
+/* Contagem de modelos por filtro */
+.axxa-model-filter-count {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
 }
 .axxa-model-filter-chip:hover {
   color: var(--text-normal);
@@ -6544,6 +6564,33 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   color: var(--text-on-accent) !important;
   background: var(--interactive-accent) !important;
   border-color: transparent !important;
+}
+.axxa-model-filter-chip.is-active .axxa-model-filter-count {
+  background: color-mix(in srgb, var(--text-on-accent) 28%, transparent);
+  color: var(--text-on-accent);
+}
+/* Filtro sem nenhum modelo — apagado */
+.axxa-model-filter-chip.is-empty {
+  opacity: 0.4;
+}
+
+/* "Hot" — popularidade do modelo (🔥 por nível) */
+.axxa-model-hot {
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: -2px;
+  filter: grayscale(0.35);
+}
+.axxa-model-hot-2 {
+  filter: grayscale(0.15);
+}
+.axxa-model-hot-3 {
+  filter: none;
+}
+/* Modelo que VOCÊ usa localmente — leve glow pra destacar do baseline */
+.axxa-model-hot.is-local {
+  text-shadow: 0 0 6px color-mix(in srgb, var(--color-orange, #ec7b3e) 60%, transparent);
 }
 
 /* Header de categoria dentro da lista */
