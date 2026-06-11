@@ -648,6 +648,10 @@ export const PT_BR = {
     adminKeyName: "Admin key (opcional)",
     adminKeyDesc:
       "Só pra custos/saldo reais (Admin API). NÃO faz chat — a chave de projeto fica no campo acima.",
+    openaiProjectName: "Project ID (opcional)",
+    openaiProjectDesc:
+      "Atribui o custo real só a este projeto. Crie um projeto dedicado pro AXXA no painel da OpenAI e use uma chave desse projeto — aí o saldo/custo reflete só o plugin, não a org inteira.",
+    usageBillingProjNote: "Custo REAL só deste projeto da OpenAI (atribuição).",
     // Saldo por provider (âncora). v0.1.171
     balanceTitle: "Saldo",
     balanceRefresh: "Atualizar saldo",

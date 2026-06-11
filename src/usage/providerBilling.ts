@@ -135,14 +135,20 @@ export function parseOpenAICosts(json: unknown): number {
 export async function fetchOpenAICosts(
   adminKey: string,
   requestUrlFn: RequestUrlLike,
-  startTimeUnix: number
+  startTimeUnix: number,
+  /** Filtra o custo a UM projeto (proj_…) — atribuição. Vazio = org inteira. */
+  projectId?: string
 ): Promise<number> {
   if (!adminKey || !adminKey.trim()) {
     throw new Error("Sem Admin key da OpenAI.");
   }
+  const projectFilter =
+    projectId && projectId.trim()
+      ? `&project_ids=${encodeURIComponent(projectId.trim())}`
+      : "";
   const url =
     `https://api.openai.com/v1/organization/costs` +
-    `?start_time=${startTimeUnix}&bucket_width=1d&limit=180`;
+    `?start_time=${startTimeUnix}&bucket_width=1d&limit=180${projectFilter}`;
   const res = await requestUrlFn({
     url,
     method: "GET",

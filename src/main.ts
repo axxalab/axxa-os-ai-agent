@@ -127,6 +127,10 @@ interface AxxaSettings {
   openaiAdminKey: string;
   /** Admin key OPCIONAL da Anthropic (sk-ant-admin…) — custos reais. */
   anthropicAdminKey: string;
+  /** Project ID OPCIONAL da OpenAI (proj_…) — filtra o custo real só desse
+   *  projeto (atribuição). Use um projeto dedicado pro plugin pra ver só o gasto
+   *  dele em vez da org inteira. v0.1.172 */
+  openaiProjectId: string;
   /** Âncora de saldo por provider (v0.1.171): { amount, date(ISO) }. O saldo é
    *  estimado/real = âncora − gasto desde a data. Crédito é separado por provider. */
   balanceAnchors: Record<string, { amount: number; date: string }>;
@@ -214,6 +218,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   openaiUsageTier: 1,
   openaiAdminKey: "",
   anthropicAdminKey: "",
+  openaiProjectId: "",
   balanceAnchors: {},
 };
 

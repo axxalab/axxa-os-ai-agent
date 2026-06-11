@@ -3,6 +3,7 @@ import {
   parseOpenRouterKey,
   billingCapabilityFor,
   fetchOpenRouterBilling,
+  fetchOpenAICosts,
   type RequestUrlLike,
 } from "../src/usage/providerBilling";
 
@@ -68,5 +69,34 @@ describe("fetchOpenRouterBilling", () => {
   it("HTTP de erro → throw", async () => {
     const fake: RequestUrlLike = async () => ({ status: 401, json: {} });
     await expect(fetchOpenRouterBilling("k", fake)).rejects.toThrow();
+  });
+});
+
+describe("fetchOpenAICosts — atribuição de projeto", () => {
+  it("inclui project_ids quando projectId é passado", async () => {
+    let captured = "";
+    const fake: RequestUrlLike = async (opts) => {
+      captured = opts.url;
+      return { status: 200, json: { data: [{ results: [{ amount: { value: 3 } }] }] } };
+    };
+    const cost = await fetchOpenAICosts("sk-admin-x", fake, 1_700_000_000, "proj_abc");
+    expect(captured).toContain("start_time=1700000000");
+    expect(captured).toContain("project_ids=proj_abc");
+    expect(cost).toBeCloseTo(3);
+  });
+
+  it("sem projectId → NÃO inclui project_ids (org inteira)", async () => {
+    let captured = "";
+    const fake: RequestUrlLike = async (opts) => {
+      captured = opts.url;
+      return { status: 200, json: {} };
+    };
+    await fetchOpenAICosts("sk-admin-x", fake, 1_700_000_000);
+    expect(captured).not.toContain("project_ids");
+  });
+
+  it("401 → erro de admin key", async () => {
+    const fake: RequestUrlLike = async () => ({ status: 401, json: {} });
+    await expect(fetchOpenAICosts("k", fake, 1)).rejects.toThrow();
   });
 });

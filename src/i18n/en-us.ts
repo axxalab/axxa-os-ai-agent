@@ -636,6 +636,10 @@ export const EN_US: Translations = {
     adminKeyName: "Admin key (optional)",
     adminKeyDesc:
       "Only for real costs/balance (Admin API). Can't do chat — your project key stays in the field above.",
+    openaiProjectName: "Project ID (optional)",
+    openaiProjectDesc:
+      "Attributes the real cost to this project only. Create a dedicated AXXA project in the OpenAI dashboard and use a key from it — then balance/cost reflects only the plugin, not the whole org.",
+    usageBillingProjNote: "REAL cost of this OpenAI project only (attribution).",
     balanceTitle: "Balance",
     balanceRefresh: "Refresh balance",
     balanceSetAnchor: "set an anchor →",

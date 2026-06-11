@@ -753,6 +753,21 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "sk-admin-... (opcional)"
     );
 
+    // Project ID — atribui o custo real a UM projeto (controle por projeto).
+    new Setting(parent)
+      .setName(t.settings.openaiProjectName)
+      .setDesc(t.settings.openaiProjectDesc)
+      .addText((text) => {
+        text
+          .setPlaceholder("proj_... (opcional)")
+          .setValue(this.plugin.settings.openaiProjectId)
+          .onChange(async (value) => {
+            this.plugin.settings.openaiProjectId = value.trim();
+            await this.plugin.saveSettings();
+          });
+        text.inputEl.autocomplete = "off";
+      });
+
     // Data-sharing + tier (v0.1.165) — define os tokens grátis diários (texto).
     let freeHintEl: HTMLElement;
     const updateFreeHint = () => {
@@ -2327,7 +2342,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
           (async () => {
             try {
               const start = Math.floor(Date.parse(oaA.date) / 1000);
-              const spent = await fetchOpenAICosts(oaAdmin, requestUrl, start);
+              const spent = await fetchOpenAICosts(
+                oaAdmin,
+                requestUrl,
+                start,
+                this.plugin.settings.openaiProjectId
+              );
               valueCells["openai"].setText(
                 `≈ ${formatUsd(oaA.amount - spent)} · ${t.settings.balanceReal}`
               );
@@ -2456,10 +2476,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
         (async () => {
           if (!canOA) return;
           try {
-            const cost = await fetchOpenAICosts(oaAdmin, requestUrl, startUnix);
+            const cost = await fetchOpenAICosts(
+              oaAdmin,
+              requestUrl,
+              startUnix,
+              this.plugin.settings.openaiProjectId
+            );
             realCells["openai"].setText(formatUsd(cost));
             realCells["openai"].addClass("is-real");
-            realCells["openai"].setAttr("title", t.settings.usageBillingOrgNote);
+            realCells["openai"].setAttr(
+              "title",
+              this.plugin.settings.openaiProjectId
+                ? t.settings.usageBillingProjNote
+                : t.settings.usageBillingOrgNote
+            );
           } catch (err) {
             realCells["openai"].setText("erro");
             new Notice(`OpenAI: ${err instanceof Error ? err.message : String(err)}`);
