@@ -645,6 +645,18 @@ export const PT_BR = {
     keyKindUnknown: "⚠️ Formato de chave não reconhecido — confira se colou certo.",
     keyAdminReady: "Admin key detectada — clique “Cruzar com a API”.",
     keyAdminSoon: "Admin key detectada — custos reais da Anthropic em breve.",
+    adminKeyName: "Admin key (opcional)",
+    adminKeyDesc:
+      "Só pra custos/saldo reais (Admin API). NÃO faz chat — a chave de projeto fica no campo acima.",
+    // Saldo por provider (âncora). v0.1.171
+    balanceTitle: "Saldo",
+    balanceRefresh: "Atualizar saldo",
+    balanceSetAnchor: "defina a âncora →",
+    balanceEstimate: "estimado",
+    balanceReal: "real",
+    balanceLiveHint: "saldo real direto da API (clique Atualizar)",
+    balanceNote:
+      "Saldo = âncora − gasto desde a data. “real” usa o billing do provider (OpenAI/Anthropic admin · OpenRouter nativo); senão é “estimado” pelos chats do vault. Crédito é separado por provider.",
     usageTokensInLabel: "Tokens in",
     usageTokensOutLabel: "Tokens out",
     usageChatsLabel: "Conversas",

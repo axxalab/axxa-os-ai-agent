@@ -122,6 +122,14 @@ interface AxxaSettings {
   /** Usage tier da conta OpenAI (1–5) — define o volume de tokens grátis do
    *  data-sharing. Default 1. */
   openaiUsageTier: number;
+  /** Admin key OPCIONAL da OpenAI (sk-admin-…) — só pra custos/saldo reais
+   *  (Admin API). NÃO faz chat; a chave de projeto continua no campo principal. */
+  openaiAdminKey: string;
+  /** Admin key OPCIONAL da Anthropic (sk-ant-admin…) — custos reais. */
+  anthropicAdminKey: string;
+  /** Âncora de saldo por provider (v0.1.171): { amount, date(ISO) }. O saldo é
+   *  estimado/real = âncora − gasto desde a data. Crédito é separado por provider. */
+  balanceAnchors: Record<string, { amount: number; date: string }>;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -204,6 +212,9 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   mobileFullscreen: false,
   openaiDataSharing: false,
   openaiUsageTier: 1,
+  openaiAdminKey: "",
+  anthropicAdminKey: "",
+  balanceAnchors: {},
 };
 
 export default class AxxaPlugin extends Plugin {

@@ -68,8 +68,10 @@ import {
   billingCapabilityFor,
   fetchOpenRouterBilling,
   fetchOpenAICosts,
+  fetchAnthropicCosts,
 } from "../../usage/providerBilling";
 import { detectKeyKind, type KeyKind } from "../../providers/keyFormat";
+import { spentSinceFromRows } from "../../usage/balance";
 import {
   getModelCapabilities,
   capabilityBadges,
@@ -676,6 +678,48 @@ export class AxxaSettingsTab extends PluginSettingTab {
     };
   }
 
+  /** Resolve a admin key de um provider: campo dedicado, ou o campo principal
+   *  se ele contiver uma admin key. "" se não há. v0.1.171 */
+  private adminKeyFor(provider: string): string {
+    if (provider === "openai") {
+      const d = this.plugin.settings.openaiAdminKey?.trim();
+      if (d) return d;
+      const main = this.plugin.settings.openaiApiKey;
+      return detectKeyKind("openai", main) === "admin" ? main : "";
+    }
+    if (provider === "anthropic") {
+      const d = this.plugin.settings.anthropicAdminKey?.trim();
+      if (d) return d;
+      const main = this.plugin.settings.anthropicApiKey;
+      return detectKeyKind("anthropic", main) === "admin" ? main : "";
+    }
+    return "";
+  }
+
+  /** Campo OPCIONAL de admin key (custos/saldo reais), sob o campo principal. */
+  private renderAdminKeyField(
+    parent: HTMLElement,
+    t: Translations,
+    get: () => string,
+    set: (v: string) => void,
+    placeholder: string
+  ) {
+    new Setting(parent)
+      .setName(t.settings.adminKeyName)
+      .setDesc(t.settings.adminKeyDesc)
+      .addText((text) => {
+        text
+          .setPlaceholder(placeholder)
+          .setValue(get())
+          .onChange(async (value) => {
+            set(value.trim());
+            await this.plugin.saveSettings();
+          });
+        text.inputEl.type = "password";
+        text.inputEl.autocomplete = "off";
+      });
+  }
+
   private renderOpenAI(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
       text: t.settings.providerIntro,
@@ -700,6 +744,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       });
     updateKeyBadge = this.renderKeyKindBadge(parent, "openai", t);
     updateKeyBadge(this.plugin.settings.openaiApiKey);
+
+    this.renderAdminKeyField(
+      parent,
+      t,
+      () => this.plugin.settings.openaiAdminKey,
+      (v) => (this.plugin.settings.openaiAdminKey = v),
+      "sk-admin-... (opcional)"
+    );
 
     // Data-sharing + tier (v0.1.165) — define os tokens grátis diários (texto).
     let freeHintEl: HTMLElement;
@@ -787,6 +839,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       });
     updateAntKeyBadge = this.renderKeyKindBadge(parent, "anthropic", t);
     updateAntKeyBadge(this.plugin.settings.anthropicApiKey);
+
+    this.renderAdminKeyField(
+      parent,
+      t,
+      () => this.plugin.settings.anthropicAdminKey,
+      (v) => (this.plugin.settings.anthropicAdminKey = v),
+      "sk-ant-admin-... (opcional)"
+    );
 
     this.createActiveModelsField(
       parent,
@@ -2170,6 +2230,140 @@ export class AxxaSettingsTab extends PluginSettingTab {
   }
 
   /**
+   * Painel de SALDO (v0.1.171) — o workaround pro fato de não haver API de saldo.
+   * O user ancora ("tenho $X em DD/MM") e o plugin mostra saldo = âncora − gasto.
+   * "Atualizar" busca o gasto REAL (OpenAI/Anthropic admin · OpenRouter nativo);
+   * sem isso, o saldo é ESTIMADO pelos chats do vault.
+   */
+  private renderBalancePanel(
+    parent: HTMLElement,
+    agg: UsageAggregate,
+    t: Translations
+  ) {
+    const sec = parent.createDiv({ cls: "axxa-balance" });
+    const head = sec.createDiv({ cls: "axxa-balance-head" });
+    head.createEl("h4", { text: t.settings.balanceTitle });
+    const refresh = head.createEl("button", {
+      text: t.settings.balanceRefresh,
+      cls: "axxa-usage-xcheck-btn",
+    });
+
+    const list = sec.createDiv({ cls: "axxa-balance-list" });
+    const PROVS = ["openai", "anthropic", "gemini", "openrouter", "nim"];
+    const valueCells: Record<string, HTMLElement> = {};
+    if (!this.plugin.settings.balanceAnchors) this.plugin.settings.balanceAnchors = {};
+    const anchors = this.plugin.settings.balanceAnchors;
+
+    const recompute = (p: string) => {
+      const cell = valueCells[p];
+      if (!cell || p === "openrouter") return;
+      const a = anchors[p];
+      if (!a || typeof a.amount !== "number" || !a.date) {
+        cell.setText(t.settings.balanceSetAnchor);
+        cell.removeClass("is-real", "is-est");
+        return;
+      }
+      const spent = spentSinceFromRows(agg.chats, p, a.date);
+      cell.setText(`≈ ${formatUsd(a.amount - spent)} · ${t.settings.balanceEstimate}`);
+      cell.removeClass("is-real");
+      cell.addClass("is-est");
+    };
+
+    for (const p of PROVS) {
+      const row = list.createDiv({ cls: "axxa-balance-row" });
+      row.createSpan({ text: p, cls: "axxa-balance-prov" });
+      if (p === "openrouter") {
+        row.createSpan({ text: t.settings.balanceLiveHint, cls: "axxa-balance-hint" });
+      } else {
+        const a = anchors[p] ?? { amount: 0, date: "" };
+        const amt = row.createEl("input", {
+          cls: "axxa-balance-amt",
+          attr: { type: "number", step: "0.01", placeholder: "$ âncora" },
+        }) as HTMLInputElement;
+        if (a.amount) amt.value = String(a.amount);
+        const dt = row.createEl("input", {
+          cls: "axxa-balance-date",
+          attr: { type: "date" },
+        }) as HTMLInputElement;
+        if (a.date) dt.value = a.date;
+        const save = async () => {
+          anchors[p] = { amount: parseFloat(amt.value) || 0, date: dt.value };
+          await this.plugin.saveSettings();
+          recompute(p);
+        };
+        amt.onchange = save;
+        dt.onchange = save;
+      }
+      valueCells[p] = row.createSpan({ text: "—", cls: "axxa-balance-value" });
+      recompute(p);
+    }
+
+    sec.createDiv({ cls: "axxa-balance-note", text: t.settings.balanceNote });
+
+    refresh.onclick = async () => {
+      refresh.disabled = true;
+      refresh.setText(t.settings.usageBillingCrossing);
+      const tasks: Promise<void>[] = [];
+      const orKey = this.plugin.settings.openrouterApiKey;
+      if (orKey && orKey.trim()) {
+        tasks.push(
+          (async () => {
+            try {
+              const b = await fetchOpenRouterBilling(orKey, requestUrl);
+              valueCells["openrouter"].setText(
+                `${b.remainingUsd != null ? formatUsd(b.remainingUsd) : "∞"} · ${t.settings.balanceReal}`
+              );
+              valueCells["openrouter"].addClass("is-real");
+            } catch {
+              valueCells["openrouter"].setText("erro");
+            }
+          })()
+        );
+      }
+      const oaAdmin = this.adminKeyFor("openai");
+      const oaA = anchors["openai"];
+      if (oaAdmin && oaA?.date && typeof oaA.amount === "number") {
+        tasks.push(
+          (async () => {
+            try {
+              const start = Math.floor(Date.parse(oaA.date) / 1000);
+              const spent = await fetchOpenAICosts(oaAdmin, requestUrl, start);
+              valueCells["openai"].setText(
+                `≈ ${formatUsd(oaA.amount - spent)} · ${t.settings.balanceReal}`
+              );
+              valueCells["openai"].removeClass("is-est");
+              valueCells["openai"].addClass("is-real");
+            } catch (err) {
+              new Notice(`OpenAI: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          })()
+        );
+      }
+      const antAdmin = this.adminKeyFor("anthropic");
+      const antA = anchors["anthropic"];
+      if (antAdmin && antA?.date && typeof antA.amount === "number") {
+        tasks.push(
+          (async () => {
+            try {
+              const spent = await fetchAnthropicCosts(antAdmin, requestUrl, antA.date);
+              valueCells["anthropic"].setText(
+                `≈ ${formatUsd(antA.amount - spent)} · ${t.settings.balanceReal}`
+              );
+              valueCells["anthropic"].removeClass("is-est");
+              valueCells["anthropic"].addClass("is-real");
+            } catch (err) {
+              new Notice(`Anthropic: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          })()
+        );
+      }
+      await Promise.all(tasks);
+      refresh.disabled = false;
+      refresh.setText(t.settings.balanceRefresh);
+    };
+  }
+
+  /**
    * Cross-check do billing real: estimativa do plugin vs o que o provider
    * reporta. OpenRouter dá real com a chave normal (botão "Cruzar"); os demais
    * mostram a capacidade (admin key / console / local). v0.1.169
@@ -2211,14 +2405,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
       // Status dinâmico: se o campo já tem uma ADMIN key, o custo real fica
       // disponível (OpenAI agora; Anthropic em breve).
       let note = cap.note;
-      if (cap.capability === "admin-key") {
-        const k =
-          p === "openai"
-            ? this.plugin.settings.openaiApiKey
-            : this.plugin.settings.anthropicApiKey;
-        if (detectKeyKind(p, k) === "admin") {
-          note = p === "openai" ? t.settings.keyAdminReady : t.settings.keyAdminSoon;
-        }
+      if (cap.capability === "admin-key" && this.adminKeyFor(p)) {
+        note = t.settings.keyAdminReady;
       }
       const status = row.createSpan({ cls: "axxa-usage-xcheck-status" });
       status.createSpan({ text: note });
@@ -2234,20 +2422,21 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     btn.onclick = async () => {
       const orKey = this.plugin.settings.openrouterApiKey;
-      const oaKey = this.plugin.settings.openaiApiKey;
-      const hasOpenAIAdmin = detectKeyKind("openai", oaKey) === "admin";
+      const oaAdmin = this.adminKeyFor("openai");
+      const antAdmin = this.adminKeyFor("anthropic");
       const canOR = realCells["openrouter"] && orKey && orKey.trim();
-      const canOA = realCells["openai"] && hasOpenAIAdmin;
-      if (!canOR && !canOA) {
+      const canOA = realCells["openai"] && oaAdmin;
+      const canANT = realCells["anthropic"] && antAdmin;
+      if (!canOR && !canOA && !canANT) {
         new Notice(t.settings.usageBillingNoLive);
         return;
       }
       btn.disabled = true;
       btn.setText(t.settings.usageBillingCrossing);
       const periodDays = this.usagePeriodDays > 0 ? this.usagePeriodDays : 30;
-      const startTime = Math.floor(
-        (Date.now() - periodDays * 24 * 60 * 60 * 1000) / 1000
-      );
+      const startMs = Date.now() - periodDays * 24 * 60 * 60 * 1000;
+      const startUnix = Math.floor(startMs / 1000);
+      const startIso = new Date(startMs).toISOString().slice(0, 10);
       await Promise.all([
         (async () => {
           if (!canOR) return;
@@ -2267,13 +2456,25 @@ export class AxxaSettingsTab extends PluginSettingTab {
         (async () => {
           if (!canOA) return;
           try {
-            const cost = await fetchOpenAICosts(oaKey, requestUrl, startTime);
+            const cost = await fetchOpenAICosts(oaAdmin, requestUrl, startUnix);
             realCells["openai"].setText(formatUsd(cost));
             realCells["openai"].addClass("is-real");
             realCells["openai"].setAttr("title", t.settings.usageBillingOrgNote);
           } catch (err) {
             realCells["openai"].setText("erro");
             new Notice(`OpenAI: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        })(),
+        (async () => {
+          if (!canANT) return;
+          try {
+            const cost = await fetchAnthropicCosts(antAdmin, requestUrl, startIso);
+            realCells["anthropic"].setText(formatUsd(cost));
+            realCells["anthropic"].addClass("is-real");
+            realCells["anthropic"].setAttr("title", t.settings.usageBillingOrgNote);
+          } catch (err) {
+            realCells["anthropic"].setText("erro");
+            new Notice(`Anthropic: ${err instanceof Error ? err.message : String(err)}`);
           }
         })(),
       ]);
@@ -2338,6 +2539,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
     agg: UsageAggregate,
     t: Translations
   ) {
+    // Saldo por provider (âncora + gasto) — no topo, é a info mais acionável.
+    this.renderBalancePanel(parent, agg, t);
+
     // Data-sharing: cobra só o excedente da cota grátis (v0.1.168). O headline
     // de custo passa a refletir o COBRADO (out-of-pocket real).
     const billed: BilledUsage | null = this.plugin.settings.openaiDataSharing

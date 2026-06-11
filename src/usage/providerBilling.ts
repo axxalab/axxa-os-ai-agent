@@ -157,3 +157,56 @@ export async function fetchOpenAICosts(
   }
   return parseOpenAICosts(res.json);
 }
+
+// ── Anthropic cost report (GASTO real, exige ADMIN key) ─────
+// GET /v1/organizations/cost_report?starting_at=YYYY-MM-DD. amount pode vir como
+// number OU string decimal — parser tolerante; cai pra 0 se o shape mudar.
+export function parseAnthropicCosts(json: unknown): number {
+  const data =
+    (json as { data?: Array<{ results?: Array<Record<string, unknown>> }> })?.data ??
+    [];
+  let total = 0;
+  for (const bucket of data) {
+    for (const r of bucket.results ?? []) {
+      const amt = (r as { amount?: unknown }).amount;
+      const n =
+        typeof amt === "number"
+          ? amt
+          : typeof amt === "string"
+            ? parseFloat(amt)
+            : NaN;
+      if (Number.isFinite(n)) total += n;
+    }
+  }
+  return total;
+}
+
+export async function fetchAnthropicCosts(
+  adminKey: string,
+  requestUrlFn: RequestUrlLike,
+  startingAtIso: string
+): Promise<number> {
+  if (!adminKey || !adminKey.trim()) {
+    throw new Error("Sem Admin key da Anthropic.");
+  }
+  const url =
+    `https://api.anthropic.com/v1/organizations/cost_report` +
+    `?starting_at=${encodeURIComponent(startingAtIso)}`;
+  const res = await requestUrlFn({
+    url,
+    method: "GET",
+    headers: {
+      "x-api-key": adminKey.trim(),
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    throw: false,
+  });
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("Admin key Anthropic inválida ou sem permissão.");
+  }
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(`Anthropic costs: HTTP ${res.status}`);
+  }
+  return parseAnthropicCosts(res.json);
+}

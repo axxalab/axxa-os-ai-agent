@@ -633,6 +633,17 @@ export const EN_US: Translations = {
     keyKindUnknown: "⚠️ Unrecognized key format — double-check what you pasted.",
     keyAdminReady: "Admin key detected — click “Cross-check with API”.",
     keyAdminSoon: "Admin key detected — Anthropic real costs coming soon.",
+    adminKeyName: "Admin key (optional)",
+    adminKeyDesc:
+      "Only for real costs/balance (Admin API). Can't do chat — your project key stays in the field above.",
+    balanceTitle: "Balance",
+    balanceRefresh: "Refresh balance",
+    balanceSetAnchor: "set an anchor →",
+    balanceEstimate: "estimated",
+    balanceReal: "real",
+    balanceLiveHint: "real balance straight from the API (click Refresh)",
+    balanceNote:
+      "Balance = anchor − spend since that date. “real” uses the provider's billing (OpenAI/Anthropic admin · OpenRouter native); otherwise it's “estimated” from vault chats. Credit is separate per provider.",
     usageTokensInLabel: "Tokens in",
     usageTokensOutLabel: "Tokens out",
     usageChatsLabel: "Conversations",

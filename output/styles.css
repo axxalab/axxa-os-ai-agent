@@ -6913,6 +6913,72 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-usage-xcheck-cap-free {
   box-shadow: inset 3px 0 0 var(--color-blue, #4361ee);
 }
+/* Painel de saldo por provider (âncora + gasto). v0.1.171 */
+.axxa-balance {
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+.axxa-balance-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.axxa-balance-head h4 {
+  margin: 0;
+}
+.axxa-balance-list {
+  display: flex;
+  flex-direction: column;
+}
+.axxa-balance-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto 1.3fr;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 12.5px;
+}
+.axxa-balance-row:last-child {
+  border-bottom: none;
+}
+.axxa-balance-prov {
+  font-weight: 600;
+}
+.axxa-balance-amt {
+  width: 86px;
+}
+.axxa-balance-date {
+  width: 132px;
+}
+.axxa-balance-hint {
+  grid-column: 2 / 4;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+.axxa-balance-value {
+  text-align: right;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.axxa-balance-value.is-real {
+  color: var(--color-green, #06d6a0);
+  font-weight: 700;
+}
+.axxa-balance-value.is-est {
+  color: var(--text-normal);
+}
+.axxa-balance-note {
+  margin-top: 9px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
 /* Badge de formato da API key (projeto vs admin). v0.1.170 */
 .axxa-key-kind {
   margin: -4px 0 8px;
