@@ -32,6 +32,21 @@ export const PT_BR = {
     alias: (duration: string) => `Áudio ${duration}`,
   },
 
+  camera: {
+    title: "Câmera",
+    previewAlt: "Foto capturada",
+    close: "Fechar câmera",
+    flash: "Lanterna",
+    retake: "Refazer",
+    use: "Usar foto",
+    useSystem: "Câmera do sistema",
+    shutter: "Tirar foto",
+    flip: "Virar câmera",
+    unsupported: "Câmera não disponível neste dispositivo.",
+    denied: "Não foi possível acessar a câmera. Permita o acesso ou use a câmera do sistema.",
+    fileName: (stamp: string) => `Foto ${stamp}.jpg`,
+  },
+
   menu: {
     copy: "Copiar",
     regenerate: "Regenerar",
@@ -232,6 +247,11 @@ export const PT_BR = {
   plus: {
     dialogLabel: "Opções da conversa",
     title: "Opções da conversa",
+    addToChat: "Adicionar à conversa",
+    attachCamera: "Câmera",
+    attachPhotos: "Fotos",
+    attachFiles: "Arquivo",
+    attachNoteDesc: "Referenciar uma nota do vault",
     attachTitle: "Anexar arquivo",
     attachSub: "PDFs, imagens, notas do vault — virão no Módulo 5",
     attachSoonBadge: "em breve",

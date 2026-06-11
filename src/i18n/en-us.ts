@@ -32,6 +32,21 @@ export const EN_US: Translations = {
     alias: (duration: string) => `Audio ${duration}`,
   },
 
+  camera: {
+    title: "Camera",
+    previewAlt: "Captured photo",
+    close: "Close camera",
+    flash: "Flashlight",
+    retake: "Retake",
+    use: "Use photo",
+    useSystem: "System camera",
+    shutter: "Take photo",
+    flip: "Flip camera",
+    unsupported: "Camera not available on this device.",
+    denied: "Couldn't access the camera. Allow access or use the system camera.",
+    fileName: (stamp: string) => `Photo ${stamp}.jpg`,
+  },
+
   menu: {
     copy: "Copy",
     regenerate: "Regenerate",
@@ -232,6 +247,11 @@ export const EN_US: Translations = {
   plus: {
     dialogLabel: "Conversation options",
     title: "Conversation options",
+    addToChat: "Add to chat",
+    attachCamera: "Camera",
+    attachPhotos: "Photos",
+    attachFiles: "File",
+    attachNoteDesc: "Reference a note from your vault",
     attachTitle: "Attach file",
     attachSub: "PDFs, images, vault notes — coming in Module 5",
     attachSoonBadge: "soon",

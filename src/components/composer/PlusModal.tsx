@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { FuzzySuggestModal, Notice, TFile } from "obsidian";
 import type { App } from "obsidian";
 import { Icon } from "../_shared/Icon";
+import { CameraModal } from "./CameraModal";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
@@ -71,6 +72,8 @@ export function PlusModal({
   // Inputs hidden — disparados pelos botões da row
   const [imageInput, setImageInput] = useState<HTMLInputElement | null>(null);
   const [pdfInput, setPdfInput] = useState<HTMLInputElement | null>(null);
+  // Câmera in-app (getUserMedia) — overlay full-screen sobre o sheet.
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   // Fecha com Escape
   useEffect(() => {
@@ -156,6 +159,30 @@ export function PlusModal({
     imageInput?.click();
   };
 
+  // ===== Câmera (tira foto → vira anexo de imagem) =====
+  const handleOpenCamera = () => {
+    if (!visionEnabled) {
+      new Notice(t.composer.attachImageNoVision);
+      return;
+    }
+    setCameraOpen(true);
+  };
+
+  const handleCameraCapture = (dataUrl: string, mimeType: string) => {
+    const stamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .replace("T", " ")
+      .slice(0, 16);
+    onAttachPicked?.({
+      type: "image",
+      name: t.camera.fileName(stamp),
+      dataUrl,
+      mimeType,
+    });
+    onClose();
+  };
+
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
@@ -186,28 +213,28 @@ export function PlusModal({
         aria-label={t.plus.dialogLabel}
       >
         <div className="axxa-plus-handle" />
+        <div className="axxa-plus-title">{t.plus.addToChat}</div>
 
-        {/* Row de ícones grandes — estilo Claude chat */}
-        <div className="axxa-plus-attach-row">
-          <PlusAttachButton
-            icon="file-text"
-            label={t.plus.attachNote}
-            tone="green"
-            onClick={handlePickNote}
+        {/* Tiles grandes monocromáticos — estrutura "Add to Chat" (Claude iOS 23) */}
+        <div className="axxa-plus-tiles">
+          <PlusTile
+            icon="camera"
+            label={t.plus.attachCamera}
+            onClick={handleOpenCamera}
+            disabled={!visionEnabled}
+            disabledTitle={t.composer.attachImageNoVision}
           />
-          <PlusAttachButton
-            icon="file"
-            label={t.plus.attachPdf}
-            tone="red"
-            onClick={handlePickPdf}
-          />
-          <PlusAttachButton
+          <PlusTile
             icon="image"
-            label={t.plus.attachImage}
-            tone="purple"
+            label={t.plus.attachPhotos}
             onClick={handlePickImage}
             disabled={!visionEnabled}
             disabledTitle={t.composer.attachImageNoVision}
+          />
+          <PlusTile
+            icon="file-up"
+            label={t.plus.attachFiles}
+            onClick={handlePickPdf}
           />
         </div>
 
@@ -233,6 +260,13 @@ export function PlusModal({
         {/* Action rows estilo Claude chat — cada feature numa linha
             com ícone à esquerda, label/desc no meio, toggle/chevron à direita */}
         <div className="axxa-plus-rows">
+          <PlusActionRow
+            icon="file-text"
+            tone="green"
+            label={t.plus.attachNote}
+            desc={t.plus.attachNoteDesc}
+            onClick={handlePickNote}
+          />
           <PlusToggleRow
             icon="globe"
             tone="blue"
@@ -294,6 +328,13 @@ export function PlusModal({
           </div>
         </div>
       </div>
+
+      {cameraOpen && (
+        <CameraModal
+          onCapture={handleCameraCapture}
+          onClose={() => setCameraOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -406,20 +447,18 @@ function PlusActionRow({
 }
 
 /**
- * Botão de attach do row top — ícone circular grande + label embaixo.
- * Tone controla a cor do bg do círculo (red/green/purple/etc).
+ * Tile grande monocromático do topo — ícone centralizado + label embaixo,
+ * fundo neutro arredondado. Estrutura "Add to Chat" (Câmera/Fotos/Arquivo).
  */
-function PlusAttachButton({
+function PlusTile({
   icon,
   label,
-  tone,
   onClick,
   disabled = false,
   disabledTitle,
 }: {
   icon: string;
   label: string;
-  tone: "red" | "green" | "purple";
   onClick: () => void;
   disabled?: boolean;
   disabledTitle?: string;
@@ -428,17 +467,16 @@ function PlusAttachButton({
     <button
       type="button"
       className={
-        "axxa-plus-attach-pill axxa-plus-attach-tone-" + tone +
-        (disabled ? " axxa-plus-attach-disabled" : "")
+        "axxa-plus-tile" + (disabled ? " axxa-plus-tile-disabled" : "")
       }
       onClick={onClick}
       disabled={disabled}
       title={disabled && disabledTitle ? disabledTitle : label}
     >
-      <span className="axxa-plus-attach-circle">
+      <span className="axxa-plus-tile-icon">
         <Icon name={icon} />
       </span>
-      <span className="axxa-plus-attach-label">{label}</span>
+      <span className="axxa-plus-tile-label">{label}</span>
     </button>
   );
 }
