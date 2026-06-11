@@ -9,7 +9,8 @@
 // (desktop) ou long-press 500ms (mobile) — ações: Copiar, Regenerar (só AI),
 // Deletar. Regen e Delete vêm do ChatActionsContext (lógica no AxxaApp).
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { ThinkingGlyph } from "../_shared/ThinkingGlyph";
 import { hapticTick } from "../_shared/haptics";
@@ -188,6 +189,7 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
     try {
       await navigator.clipboard.writeText(msg.content);
       setCopied(true);
+      new Notice(t.chat.copied);
       window.setTimeout(() => setCopied(false), 1500);
     } catch (err) {
       console.error("[axxa] copy falhou:", err);
@@ -197,6 +199,47 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   const handleRegen = () => {
     actions.regenerate(msg.id);
   };
+
+  const handleSaveNote = () => {
+    actions.saveResponseAsNote(msg.content);
+  };
+
+  // Read-aloud via Web Speech API (local, sem custo). Toggle: fala / para.
+  const [speaking, setSpeaking] = useState(false);
+  const handleReadAloud = () => {
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      new Notice(t.chat.saveAsNoteFailed);
+      return;
+    }
+    if (speaking) {
+      synth.cancel();
+      setSpeaking(false);
+      return;
+    }
+    // Tira a sintaxe markdown mais ruidosa antes de falar.
+    const plain = msg.content
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/[#*_>~|]/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/\n{2,}/g, ". ")
+      .trim();
+    if (!plain) return;
+    const utter = new SpeechSynthesisUtterance(plain);
+    utter.onend = () => setSpeaking(false);
+    utter.onerror = () => setSpeaking(false);
+    synth.cancel();
+    synth.speak(utter);
+    setSpeaking(true);
+  };
+
+  // Para a leitura se a mensagem desmontar (troca de chat, delete, etc).
+  useEffect(() => {
+    return () => {
+      if (speaking) window.speechSynthesis?.cancel();
+    };
+  }, [speaking]);
 
   const handleDelete = () => {
     actions.deleteMessage(msg.id);
@@ -286,17 +329,35 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
             type="button"
             className="axxa-footer-btn"
             onClick={handleCopy}
-            aria-label="Copiar resposta"
-            title="Copiar"
+            aria-label={t.chat.actionCopy}
+            title={t.chat.actionCopy}
           >
             <Icon name={copied ? "check" : "copy"} />
           </button>
           <button
             type="button"
             className="axxa-footer-btn"
+            onClick={handleSaveNote}
+            aria-label={t.chat.actionSaveNote}
+            title={t.chat.actionSaveNote}
+          >
+            <Icon name="file-plus-2" />
+          </button>
+          <button
+            type="button"
+            className={"axxa-footer-btn" + (speaking ? " axxa-footer-btn-active" : "")}
+            onClick={handleReadAloud}
+            aria-label={speaking ? t.chat.actionStopReading : t.chat.actionReadAloud}
+            title={speaking ? t.chat.actionStopReading : t.chat.actionReadAloud}
+          >
+            <Icon name={speaking ? "square" : "volume-2"} />
+          </button>
+          <button
+            type="button"
+            className="axxa-footer-btn"
             onClick={handleRegen}
-            aria-label="Regenerar"
-            title="Regenerar"
+            aria-label={t.chat.actionRegen}
+            title={t.chat.actionRegen}
           >
             <Icon name="refresh-cw" />
           </button>
@@ -304,8 +365,8 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
             type="button"
             className={"axxa-footer-btn" + (liked === true ? " axxa-footer-btn-active" : "")}
             onClick={handleLike}
-            aria-label="Curtir"
-            title="Curtir"
+            aria-label={t.chat.actionLike}
+            title={t.chat.actionLike}
           >
             <Icon name="thumbs-up" />
           </button>
@@ -313,19 +374,10 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
             type="button"
             className={"axxa-footer-btn" + (liked === false ? " axxa-footer-btn-active" : "")}
             onClick={handleDislike}
-            aria-label="Descurtir"
-            title="Descurtir"
+            aria-label={t.chat.actionDislike}
+            title={t.chat.actionDislike}
           >
             <Icon name="thumbs-down" />
-          </button>
-          <button
-            type="button"
-            className="axxa-footer-btn"
-            aria-label="Mais opções"
-            title="Mais opções (em breve)"
-            disabled
-          >
-            <Icon name="more-horizontal" />
           </button>
           <span className="axxa-pro-pill" aria-label="Upgrade para PRO">PRO</span>
         </div>

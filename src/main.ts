@@ -71,6 +71,8 @@ interface AxxaSettings {
   background: string;
   /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
   recordingsPath: string;
+  /** Pasta no Vault onde respostas da IA salvas como nota (footer) vão. */
+  notesPath: string;
   /** Pasta no Vault onde mídias geradas por modelos (imagem/áudio/vídeo)
    *  são salvas. Cada saída gera 2 arquivos: mídia + sidecar .md com
    *  frontmatter (prompt, model, provider, timestamp, etc). */
@@ -214,6 +216,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   language: "pt-br",
   background: "none",
   recordingsPath: "axxa-ai/recordings",
+  notesPath: "axxa-ai/notes",
   generationPath: "axxa-ai/generation",
   ragIndexPath: "axxa-ai/index",
   ragEmbeddingProvider: "openai",

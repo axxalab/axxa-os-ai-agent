@@ -972,6 +972,10 @@ export function Composer({
           </InfoChip>
         )}
       </div>
+
+      {/* Disclaimer discreto — "a IA pode errar" (refs: Claude iOS 17,
+          ChatGPT iOS 133). Uma linha só, abaixo do composer. */}
+      <div className="axxa-composer-disclaimer">{t.chat.disclaimer}</div>
     </div>
   );
 }

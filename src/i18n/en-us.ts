@@ -88,6 +88,17 @@ export const EN_US: Translations = {
     personaClear: "Clear",
     personaSet: "Persona set for this chat",
     personaCleared: "Persona removed — using the default",
+    copied: "Response copied",
+    savedAsNote: (path: string) => `Note created: ${path}`,
+    saveAsNoteFailed: "Failed to save the note.",
+    disclaimer: "AXXA can make mistakes. Check important info.",
+    actionCopy: "Copy",
+    actionRegen: "Regenerate",
+    actionLike: "Like",
+    actionDislike: "Dislike",
+    actionReadAloud: "Read aloud",
+    actionStopReading: "Stop reading",
+    actionSaveNote: "Save as note",
   },
 
   conversations: {

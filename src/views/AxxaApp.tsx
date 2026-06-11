@@ -84,7 +84,7 @@ import {
   type ChatData,
   type ChatSummary,
 } from "../components/_shared/chatPersistence";
-import { Notice } from "obsidian";
+import { Notice, TFile } from "obsidian";
 import { ensureFolder } from "../components/_shared/chatPersistence";
 import { hybridSearch } from "../rag/hybrid";
 import type { AxxaCommand } from "../components/composer/completions";
@@ -2001,6 +2001,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // Arrow defere o lookup pra DEPOIS de handleOpenSettings ser inicializado
     // (ele é declarado mais abaixo — evita o temporal dead zone).
     openSettings: () => handleOpenSettings(),
+    saveResponseAsNote: (content: string) => void handleSaveResponseAsNote(content),
   };
 
   const handleStop = () => abortRef.current?.abort();
@@ -2032,6 +2033,43 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     } catch (err) {
       console.error("[axxa] save audio falhou:", err);
       return null;
+    }
+  };
+
+  // Salva uma resposta da IA como NOVA nota markdown no vault e abre ela.
+  // Título derivado da 1ª linha/heading do conteúdo; pasta = notesPath setting
+  // (fallback "axxa-ai/notes"). É o "joga no meu vault" do footer. v0.1.186
+  const handleSaveResponseAsNote = async (content: string) => {
+    try {
+      const folder = plugin.settings.notesPath || "axxa-ai/notes";
+      await ensureFolder(plugin.app.vault.adapter, folder);
+      // Título: 1ª linha não-vazia, sem markdown de heading, limitada e
+      // higienizada pra um nome de arquivo válido.
+      const firstLine =
+        content
+          .split("\n")
+          .map((l) => l.replace(/^#+\s*/, "").trim())
+          .find((l) => l.length > 0) ?? "Nota AXXA";
+      const safeTitle =
+        firstLine.replace(/[\\/:*?"<>|#^[\]]/g, "").slice(0, 60).trim() ||
+        "Nota AXXA";
+      // Evita colisão: sufixo incremental se já existir.
+      let path = `${folder}/${safeTitle}.md`;
+      let n = 2;
+      while (await plugin.app.vault.adapter.exists(path)) {
+        path = `${folder}/${safeTitle} ${n}.md`;
+        n += 1;
+      }
+      await plugin.app.vault.create(path, content);
+      new Notice(t.chat.savedAsNote(path));
+      // Abre a nota recém-criada numa nova aba (lazy — não bloqueia se falhar).
+      const file = plugin.app.vault.getAbstractFileByPath(path);
+      if (file instanceof TFile) {
+        void plugin.app.workspace.getLeaf(true).openFile(file);
+      }
+    } catch (err) {
+      console.error("[axxa] save response as note falhou:", err);
+      new Notice(t.chat.saveAsNoteFailed);
     }
   };
 

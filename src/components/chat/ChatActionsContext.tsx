@@ -23,6 +23,8 @@ export interface ChatActions {
   retryError: (errorMessageId: string) => void;
   /** Abre a aba de Configurações do plugin (CTA de erro de API key). */
   openSettings: () => void;
+  /** Salva o conteúdo de uma resposta da IA como nova nota no vault. */
+  saveResponseAsNote: (content: string) => void;
 }
 
 export const ChatActionsContext = createContext<ChatActions | null>(null);

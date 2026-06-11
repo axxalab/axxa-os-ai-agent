@@ -88,6 +88,17 @@ export const PT_BR = {
     personaClear: "Limpar",
     personaSet: "Persona definida pra este chat",
     personaCleared: "Persona removida — usando o padrão",
+    copied: "Resposta copiada",
+    savedAsNote: (path: string) => `Nota criada: ${path}`,
+    saveAsNoteFailed: "Falha ao salvar a nota.",
+    disclaimer: "O AXXA pode errar. Confira informações importantes.",
+    actionCopy: "Copiar",
+    actionRegen: "Regenerar",
+    actionLike: "Curtir",
+    actionDislike: "Descurtir",
+    actionReadAloud: "Ler em voz alta",
+    actionStopReading: "Parar leitura",
+    actionSaveNote: "Salvar como nota",
   },
 
   conversations: {
