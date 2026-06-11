@@ -34,6 +34,14 @@ interface HeaderProps {
   onEditPersona: () => void;
   /** Persona ativa — destaca o item no menu. */
   personaActive: boolean;
+  /** Modelo ativo da conversa (mostrado no switcher central). */
+  modelName: string;
+  /** Modelos conectados do provider ativo (opções do switcher). */
+  modelOptions: string[];
+  /** Troca o modelo. Se a sessão estiver locked, o caller inicia nova conversa. */
+  onSelectModel: (model: string) => void;
+  /** Sessão travada (após 1ª msg) — switcher mostra cadeado + dica. */
+  modelLocked: boolean;
 }
 
 export function Header({
@@ -49,6 +57,10 @@ export function Header({
   canCopy,
   onEditPersona,
   personaActive,
+  modelName,
+  modelOptions,
+  onSelectModel,
+  modelLocked,
 }: HeaderProps) {
   const t = useT();
   const [draft, setDraft] = useState(chatTitle);
@@ -130,26 +142,36 @@ export function Header({
       </button>
       <div className="axxa-header-title">
         {hasChat ? (
-          <input
-            ref={inputRef}
-            type="text"
-            className="axxa-header-chat-title"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                (e.target as HTMLInputElement).blur();
-              } else if (e.key === "Escape") {
-                setDraft(chatTitle);
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            aria-label={t.conversations.renameAria}
-            title={t.conversations.renameTitle}
-            placeholder={t.conversations.renameInputLabel}
-          />
+          <div className="axxa-header-center">
+            <input
+              ref={inputRef}
+              type="text"
+              className="axxa-header-chat-title"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  (e.target as HTMLInputElement).blur();
+                } else if (e.key === "Escape") {
+                  setDraft(chatTitle);
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              aria-label={t.conversations.renameAria}
+              title={t.conversations.renameTitle}
+              placeholder={t.conversations.renameInputLabel}
+            />
+            {modelName && (
+              <HeaderModelSwitcher
+                modelName={modelName}
+                modelOptions={modelOptions}
+                onSelectModel={onSelectModel}
+                locked={modelLocked}
+              />
+            )}
+          </div>
         ) : (
           <span className="axxa-header-brand">
             <span className="axxa-header-brand-dot" />
@@ -266,5 +288,123 @@ export function Header({
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * Switcher de modelo no header (ref: Claude iOS 16/23/33) — chip discreto
+ * "● modelo ⌄" embaixo do título. Tap abre dropdown com os modelos conectados
+ * do provider ativo. Quando a sessão está locked, escolher outro modelo inicia
+ * uma nova conversa com ele (continuidade preservada — quem decide é o caller).
+ */
+function HeaderModelSwitcher({
+  modelName,
+  modelOptions,
+  onSelectModel,
+  locked,
+}: {
+  modelName: string;
+  modelOptions: string[];
+  onSelectModel: (model: string) => void;
+  locked: boolean;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  const toggle = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 6, left: r.left });
+    setOpen((o) => !o);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onDoc = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (wrapRef.current?.contains(target)) return;
+      if (popRef.current?.contains(target)) return;
+      close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  const opts = modelOptions.includes(modelName)
+    ? modelOptions
+    : [modelName, ...modelOptions];
+
+  return (
+    <div className="axxa-header-model" ref={wrapRef}>
+      <button
+        ref={btnRef}
+        type="button"
+        className={
+          "axxa-header-model-btn" + (open ? " axxa-header-model-btn-open" : "")
+        }
+        onClick={toggle}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={t.header.modelSwitcherLabel}
+      >
+        {locked && <Icon name="lock" className="axxa-header-model-lock" />}
+        <span className="axxa-header-model-name">{modelName}</span>
+        <Icon name="chevron-down" className="axxa-header-model-caret" />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={popRef}
+            className="axxa-popover-menu axxa-model-menu"
+            role="menu"
+            style={pos ? { top: pos.top, left: pos.left } : undefined}
+          >
+            {locked && (
+              <div className="axxa-model-menu-hint">
+                {t.header.modelLockedHint}
+              </div>
+            )}
+            {opts.map((m) => {
+              const active = m === modelName;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  role="menuitem"
+                  className={
+                    "axxa-popover-item" +
+                    (active ? " axxa-popover-item-active" : "")
+                  }
+                  onClick={() => {
+                    setOpen(false);
+                    if (!active) onSelectModel(m);
+                  }}
+                >
+                  <Icon name={active ? "check" : "circle"} />
+                  <span className="axxa-popover-label axxa-model-menu-label">
+                    {m}
+                  </span>
+                </button>
+              );
+            })}
+          </div>,
+          (wrapRef.current?.ownerDocument ?? document).body
+        )}
+    </div>
   );
 }

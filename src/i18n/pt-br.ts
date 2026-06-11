@@ -68,6 +68,8 @@ export const PT_BR = {
     copyConversationDone: "Conversa copiada",
     persona: "Persona do chat",
     personaActive: "Persona do chat (ativa)",
+    modelSwitcherLabel: "Trocar modelo",
+    modelLockedHint: "Escolher outro modelo abre uma nova conversa.",
   },
 
   chat: {

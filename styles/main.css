@@ -311,6 +311,101 @@ body.is-mobile
   overflow: visible;
 }
 
+/* Centro do header em coluna: título (linha 1) + switcher de modelo (linha 2).
+   Ref: Claude iOS 16/23/33 — modelo trocável no header. v0.1.185 */
+.axxa-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.axxa-header-center .axxa-header-chat-title {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.axxa-header-model {
+  display: inline-flex;
+  max-width: 100%;
+  padding-left: 8px;
+}
+.axxa-header-model-btn,
+.axxa-header-model-btn:focus,
+.axxa-header-model-btn:active,
+.axxa-header-model-btn:hover {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.axxa-header-model-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 1px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+@media (hover: hover) {
+  .axxa-header-model-btn:hover {
+    background: var(--background-modifier-hover) !important;
+    color: var(--text-normal);
+  }
+}
+.axxa-header-model-btn-open {
+  color: var(--text-normal);
+}
+.axxa-header-model-name {
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.axxa-header-model-lock {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+.axxa-header-model-lock svg {
+  width: 11px;
+  height: 11px;
+}
+.axxa-header-model-caret {
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+.axxa-header-model-caret svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Dropdown do switcher — ancorado à esquerda (o popover padrão usa right). */
+.axxa-model-menu {
+  left: var(--axxa-model-menu-left, auto);
+  min-width: 200px;
+  max-width: min(320px, 86vw);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.axxa-model-menu-hint {
+  padding: 8px 12px 6px 12px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  line-height: 1.35;
+}
+.axxa-model-menu-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Grupo de botões à direita do header */
 .axxa-header-actions {
   display: flex;

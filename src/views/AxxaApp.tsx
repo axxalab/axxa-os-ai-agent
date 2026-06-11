@@ -2189,8 +2189,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await plugin.saveSettings();
   };
 
-  const handleStarterModel = async (m: string) => {
-    switch (providerSel) {
+  const setModelForProvider = async (provider: string, m: string) => {
+    switch (provider) {
       case "anthropic":
         setAnthropicModelSel(m);
         plugin.settings.anthropicModel = m;
@@ -2216,6 +2216,28 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         plugin.settings.defaultModel = m;
     }
     await plugin.saveSettings();
+  };
+
+  const handleStarterModel = async (m: string) => {
+    await setModelForProvider(providerSel, m);
+  };
+
+  // Switcher do header (ref: Claude iOS 16). Troca o modelo. Se a sessão já
+  // está locked (continuidade), abrir outro modelo inicia uma NOVA conversa
+  // nele — preservando a sessão atual intacta.
+  const handleHeaderModelSelect = (m: string) => {
+    if (m === activeModel) return;
+    const targetProvider = activeProviderId;
+    if (isLocked) {
+      abortRef.current?.abort();
+      useChatStore.getState().newChat();
+      setView("chat");
+      if (providerSel !== targetProvider) {
+        setProviderSel(targetProvider);
+        plugin.settings.defaultProvider = targetProvider;
+      }
+    }
+    void setModelForProvider(targetProvider, m);
   };
 
   // chatMode opcional — quando vem da ConversationsList (que conhece o modo
@@ -2369,6 +2391,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             )}
             onEditPersona={handleEditPersona}
             personaActive={sessionPersona.trim().length > 0}
+            modelName={activeModel}
+            modelOptions={activeModelsList}
+            onSelectModel={handleHeaderModelSelect}
+            modelLocked={isLocked}
           />
         {view === "conversations" ? (
           <ConversationsList

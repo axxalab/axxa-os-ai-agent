@@ -68,6 +68,8 @@ export const EN_US: Translations = {
     copyConversationDone: "Conversation copied",
     persona: "Chat persona",
     personaActive: "Chat persona (active)",
+    modelSwitcherLabel: "Switch model",
+    modelLockedHint: "Choosing another model opens a new conversation.",
   },
 
   chat: {
