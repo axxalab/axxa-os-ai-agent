@@ -150,6 +150,23 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
     destructive: true,
   },
+  {
+    name: "generate_image",
+    description:
+      "Gera uma imagem a partir de um prompt de texto e a renderiza NA CONVERSA (salva no vault). Use quando o usuário pedir uma imagem, ilustração, mockup, logo, ícone, capa, etc. O usuário confirma o modelo num modal antes de gerar — você NÃO escolhe o modelo. Escreva um prompt visual rico e específico. Não precisa trocar de modelo de chat.",
+    parameters: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description:
+            "Descrição visual detalhada da imagem (estilo, composição, cores, enquadramento). Em inglês costuma render melhor.",
+        },
+      },
+      required: ["prompt"],
+    },
+    destructive: false,
+  },
 ];
 
 /** Helper: pega ToolDefinition pelo nome. */

@@ -957,6 +957,62 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           spec: ReturnType<typeof agentActivitySpec>;
         }> = [];
         for (const call of response.toolCalls) {
+          // generate_image: fluxo PRÓPRIO (modal de confirmação modelo+preço+
+          // conectado + render inline), fora do registry de tools de vault. O
+          // usuário confirma o modelo; a imagem entra na conversa. v0.1.167
+          if (call.name === "generate_image") {
+            const genPrompt =
+              typeof call.arguments.prompt === "string"
+                ? call.arguments.prompt
+                : "";
+            const imgAtt = pendingAttachments.find(
+              (p) => p.attachment.type === "image"
+            );
+            let inputImage: { data: string; mimeType: string } | undefined;
+            if (imgAtt && imgAtt.attachment.type === "image") {
+              const mm = /^data:([^;]+);base64,(.+)$/.exec(
+                imgAtt.attachment.dataUrl
+              );
+              if (mm) inputImage = { mimeType: mm[1], data: mm[2] };
+            }
+            const modal = new ImageGenModal(plugin.app, {
+              options: buildImageModelOptions(),
+              initialPrompt: genPrompt,
+              hasInputImage: !!inputImage,
+              strings: t.imageGen,
+            });
+            const choice = await modal.openAndWait();
+            let resultText: string;
+            let ok = false;
+            if (!choice) {
+              resultText =
+                "Usuário cancelou a geração da imagem. NÃO tente de novo automaticamente — pergunte o que ele prefere.";
+            } else {
+              const gen = await runImageGeneration(
+                choice.prompt,
+                choice.providerId,
+                choice.model,
+                choice.useInputImage ? inputImage : undefined
+              );
+              ok = gen.ok;
+              resultText = gen.ok
+                ? `Imagem gerada (${choice.model}) e já renderizada na conversa: ${gen.paths.join(", ")}. NÃO repita a geração; comente o resultado pro usuário.`
+                : `Falha ao gerar imagem: ${gen.error}`;
+            }
+            history.push({
+              role: "tool",
+              toolCallId: call.id,
+              content: resultText,
+            });
+            runSteps.push({
+              id: call.id,
+              name: "generate_image",
+              arguments: call.arguments,
+              result: resultText.slice(0, 1200),
+              ok,
+            });
+            continue;
+          }
           const def = getToolDefinition(call.name);
           if (!def) {
             addMessage({
@@ -1469,35 +1525,38 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     return opts;
   };
 
-  /** Gera UMA imagem com provider/modelo explícitos e injeta na conversa atual. */
+  /** Gera UMA imagem com provider/modelo explícitos e injeta na conversa atual.
+   *  Retorna o resultado (pra tool do agente reportar). NÃO mexe no loading
+   *  global — quem chama gerencia. */
   const runImageGeneration = async (
     prompt: string,
     providerId: string,
     model: string,
     inputImage?: { data: string; mimeType: string }
-  ) => {
-    const { addMessage, updateActivity, setLoading } = useChatStore.getState();
+  ): Promise<{ ok: boolean; paths: string[]; error?: string }> => {
+    const { addMessage, updateActivity } = useChatStore.getState();
     const provider = getProvider(providerId);
     const apiKey = apiKeyFor(providerId);
     if (providerNeedsKey(providerId) && !apiKey.trim()) {
+      const msg = t.ai.err.noKey(provider.name);
       addMessage({
         type: "ai-response",
-        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(provider.name)}`,
+        content: `${t.ai.errorPrefix} ${msg}`,
         isError: true,
         errorCode: "no-key",
       });
-      return;
+      return { ok: false, paths: [], error: msg };
     }
     if (!generationSupported(providerId, "image") || !provider.generateImage) {
+      const msg = t.ai.genUnsupported("image", generationSupportSummary());
       addMessage({
         type: "ai-response",
-        content: `${t.ai.errorPrefix} ${t.ai.genUnsupported("image", generationSupportSummary())}`,
+        content: `${t.ai.errorPrefix} ${msg}`,
         isError: true,
         errorCode: "unknown",
       });
-      return;
+      return { ok: false, paths: [], error: msg };
     }
-    setLoading(true);
     const activityId = addMessage({
       type: "ai-comment",
       content: "",
@@ -1554,6 +1613,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         type: "ai-response",
         content: savedPaths.map((p) => `![[${p}]]`).join("\n\n"),
       });
+      return { ok: true, paths: savedPaths };
     } catch (err) {
       const { message, code } = describeProviderError(err, t, provider.name);
       updateActivity(
@@ -1567,8 +1627,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         isError: true,
         errorCode: code,
       });
-    } finally {
-      setLoading(false);
+      return { ok: false, paths: [], error: message };
     }
   };
 
@@ -1602,12 +1661,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     if (choice.useInputImage && inputImage) {
       setPendingAttachments([]);
     }
-    await runImageGeneration(
-      choice.prompt,
-      choice.providerId,
-      choice.model,
-      choice.useInputImage ? inputImage : undefined
-    );
+    store.setLoading(true);
+    try {
+      await runImageGeneration(
+        choice.prompt,
+        choice.providerId,
+        choice.model,
+        choice.useInputImage ? inputImage : undefined
+      );
+    } finally {
+      store.setLoading(false);
+    }
   };
 
   // Regenerar: remove o ai-response (e qualquer msg posterior) e re-roda
