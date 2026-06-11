@@ -14,6 +14,7 @@ import { Header } from "../components/layout/Header";
 import { Sidebar } from "../components/layout/Sidebar";
 import { PersonaModal } from "../components/chat/PersonaModal";
 import { ChatSearchModal } from "../components/chat/ChatSearchModal";
+import { RenameChatModal } from "../components/chat/RenameChatModal";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
@@ -2150,6 +2151,43 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
+  // Renomeia uma conversa QUALQUER a partir da lista (modal nativo). v0.1.187
+  const handleRenameChatFromList = (
+    chatId: string,
+    chatMode: string,
+    currentTitle: string
+  ) => {
+    new RenameChatModal(plugin.app, {
+      currentTitle,
+      title: t.conversations.renameModalTitle,
+      inputLabel: t.conversations.renameInputLabel,
+      submitLabel: t.conversations.renameSubmit,
+      cancelLabel: t.conversations.renameCancel,
+      onSubmit: async (newTitle) => {
+        try {
+          await renameChat(
+            plugin.app,
+            plugin.settings.chatsPath,
+            chatMode,
+            chatId,
+            newTitle
+          );
+          if (currentChatId === chatId) {
+            useChatStore.getState().setCurrentChatTitle(newTitle);
+          }
+          const cur = plugin.chatSummaries?.find((c) => c.id === chatId);
+          if (cur) plugin.upsertChatSummary({ ...cur, title: newTitle });
+          // Re-sincroniza a lista cheia aberta.
+          setAllChats(await plugin.loadChatSummaries());
+          new Notice(t.conversations.renameSuccess(newTitle));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : t.ai.unknownError;
+          new Notice(t.conversations.renameFailed(msg));
+        }
+      },
+    }).open();
+  };
+
   const handleOpenSearch = () => {
     const hits = useChatStore
       .getState()
@@ -2440,6 +2478,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onLoadChat={handleLoadChatFromList}
             onClose={() => setView("chat")}
             visibleChips={plugin.settings.listChips}
+            onRenameChat={handleRenameChatFromList}
+            onDeleteChat={handleDeleteChat}
+            onNewChat={handleNewChat}
           />
         ) : view === "media" ? (
           canAccess("media", tier) ? (

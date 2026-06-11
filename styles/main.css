@@ -4275,6 +4275,7 @@ body.is-mobile .axxa-dash .axxa-launch-chip {
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+  position: relative;
 }
 
 .axxa-conversations-head {
@@ -8458,6 +8459,74 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-recent-chevron .axxa-icon svg {
   width: 18px;
   height: 18px;
+}
+
+/* Botão "..." trailing nos itens da lista (menu Renomear/Deletar). v0.1.187
+   Discreto: aparece no hover (desktop) e sempre no mobile (sem hover). */
+.axxa-recent-more {
+  flex: 0 0 auto;
+  display: flex;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.axxa-recent-item:hover .axxa-recent-more {
+  opacity: 1;
+}
+@media (hover: none) {
+  .axxa-recent-more {
+    opacity: 0.7;
+  }
+}
+.axxa-recent-more:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.axxa-recent-more .axxa-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* FAB "Nova conversa" — flutua no canto inferior direito (refs: Claude iOS 49,
+   ChatGPT iOS 148). Pill com ícone + label. v0.1.187 */
+.axxa-conversations-fab {
+  position: absolute;
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 18px 11px 15px;
+  border: none;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px -6px color-mix(in srgb, var(--interactive-accent) 60%, transparent);
+  transition: transform 0.12s, box-shadow 0.15s, background 0.15s;
+}
+.axxa-conversations-fab:hover {
+  background: var(--interactive-accent-hover);
+}
+.axxa-conversations-fab:active {
+  transform: scale(0.96);
+}
+.axxa-conversations-fab .axxa-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.axxa-conversations-fab-label {
+  white-space: nowrap;
 }
 /* Status line = só texto, sem fundo */
 .axxa-recent-status {

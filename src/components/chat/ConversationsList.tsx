@@ -6,6 +6,7 @@
 // relativa + chips + chevron), no mesmo padrão dos "recentes" da home.
 
 import { useMemo, useState } from "react";
+import { Menu } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
 import { SegmentedRow } from "../_shared/SegmentedRow";
@@ -20,6 +21,12 @@ interface ConversationsListProps {
   onClose: () => void;
   /** Chips visíveis em cada item (curado em Settings → Outros → Chips). */
   visibleChips: string[];
+  /** Abre o renomear de uma conversa (modal nativo). */
+  onRenameChat?: (chatId: string, mode: string, currentTitle: string) => void;
+  /** Move a conversa pra lixeira. */
+  onDeleteChat?: (chatId: string, mode: string) => void;
+  /** Inicia uma nova conversa (FAB flutuante). */
+  onNewChat?: () => void;
 }
 
 type SortKey =
@@ -121,11 +128,44 @@ export function ConversationsList({
   onLoadChat,
   onClose,
   visibleChips,
+  onRenameChat,
+  onDeleteChat,
+  onNewChat,
 }: ConversationsListProps) {
   const t = useT();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("date-desc");
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
+
+  // Menu de contexto por item (ref: Claude iOS 51) — Renomear / Deletar.
+  // Nativo do Obsidian: long-press no mobile, right-click no desktop, ou tap
+  // no botão "..." trailing. v0.1.187
+  const openItemMenu = (
+    e: React.MouseEvent,
+    c: ChatSummary
+  ): void => {
+    if (!onRenameChat && !onDeleteChat) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const menu = new Menu();
+    if (onRenameChat) {
+      menu.addItem((i) =>
+        i
+          .setTitle(t.conversations.renameTitle)
+          .setIcon("pencil")
+          .onClick(() => onRenameChat(c.id, c.mode, c.title))
+      );
+    }
+    if (onDeleteChat) {
+      menu.addItem((i) =>
+        i
+          .setTitle(t.menu.delete)
+          .setIcon("trash-2")
+          .onClick(() => onDeleteChat(c.id, c.mode))
+      );
+    }
+    menu.showAtMouseEvent(e.nativeEvent);
+  };
 
   // Filtra: search + modo
   const filtered = useMemo(() => {
@@ -269,6 +309,7 @@ export function ConversationsList({
                 className="axxa-recent-item"
                 data-mode={c.mode}
                 onClick={() => onLoadChat(c.id)}
+                onContextMenu={(e) => openItemMenu(e, c)}
               >
                 <span className="axxa-recent-logo">
                   <Icon name={modeIcon(c.mode)} />
@@ -304,6 +345,18 @@ export function ConversationsList({
                     )}
                   </span>
                 </span>
+                {(onRenameChat || onDeleteChat) && (
+                  <span
+                    className="axxa-recent-more"
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={t.header.moreOptions}
+                    title={t.header.moreOptions}
+                    onClick={(e) => openItemMenu(e, c)}
+                  >
+                    <Icon name="more-horizontal" />
+                  </span>
+                )}
                 <span className="axxa-recent-chevron">
                   <Icon name="chevron-right" />
                 </span>
@@ -312,6 +365,21 @@ export function ConversationsList({
           </div>
         ))}
       </div>
+
+      {onNewChat && (
+        <button
+          type="button"
+          className="axxa-conversations-fab"
+          onClick={onNewChat}
+          aria-label={t.header.newChat}
+          title={t.header.newChat}
+        >
+          <Icon name="plus" />
+          <span className="axxa-conversations-fab-label">
+            {t.header.newChat}
+          </span>
+        </button>
+      )}
     </div>
   );
 }
