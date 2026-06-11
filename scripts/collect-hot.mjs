@@ -45,18 +45,36 @@ const CLOSED = [
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
-async function hfPopularity(org) {
+// ADOÇÃO ACUMULADA: soma de downloads do top-20 do org (sort=downloads).
+async function hfDownloads(org) {
   const url = `https://huggingface.co/api/models?author=${org}&sort=downloads&limit=20`;
   const res = await fetch(url, { headers: { "User-Agent": "axxa-collect-hot" } });
   if (!res.ok) throw new Error(`HF ${org}: HTTP ${res.status}`);
   const arr = await res.json();
   let downloads = 0;
-  let trending = 0;
-  for (const m of arr) {
-    downloads += m.downloads ?? 0;
-    trending += m.trendingScore ?? 0;
-  }
-  return { downloads, trending };
+  for (const m of arr) downloads += m.downloads ?? 0;
+  return downloads;
+}
+
+// MOMENTUM: top-100 modelos em alta AGORA (sort=trendingScore), global. Cada
+// família soma o trendingScore dos modelos cujo id casa o seu padrão — assim um
+// modelo recém-lançado bombando empurra a família, mesmo sem downloads ainda.
+async function hfTrending() {
+  const url = `https://huggingface.co/api/models?sort=trendingScore&limit=100`;
+  const res = await fetch(url, { headers: { "User-Agent": "axxa-collect-hot" } });
+  if (!res.ok) throw new Error(`HF trending: HTTP ${res.status}`);
+  const arr = await res.json();
+  return arr.map((m) => ({
+    id: String(m.id ?? m.modelId ?? "").toLowerCase(),
+    trending: m.trendingScore ?? 0,
+  }));
+}
+
+function trendingForPattern(patternStr, trendingList) {
+  const re = new RegExp(patternStr, "i");
+  let sum = 0;
+  for (const t of trendingList) if (re.test(t.id)) sum += t.trending;
+  return sum;
 }
 
 function writeOut(entries) {
@@ -81,18 +99,28 @@ ${lines}
 }
 
 async function main() {
+  // Uma query global de trending serve pra todas as famílias.
+  let trendingList = [];
+  try {
+    trendingList = await hfTrending();
+  } catch (e) {
+    console.error(`! trending: ${e.message} — seguindo só com downloads`);
+  }
+
   const open = [];
   for (const fam of HF_FAMILIES) {
     try {
-      const pop = await hfPopularity(fam.org);
-      open.push({ pattern: fam.pattern, ...pop });
-      console.log(`  ${fam.org}: ${pop.downloads} downloads, trending ${pop.trending}`);
+      const downloads = await hfDownloads(fam.org);
+      const trending = trendingForPattern(fam.pattern, trendingList);
+      open.push({ pattern: fam.pattern, downloads, trending });
+      console.log(`  ${fam.org}: ${downloads} downloads, trending ${trending}`);
     } catch (e) {
       console.error(`! ${fam.org}: ${e.message} — pulando`);
     }
   }
 
-  // Normaliza downloads em escala LOG (variam ordens de grandeza) + trending.
+  // ADOÇÃO (downloads, escala LOG — variam ordens de grandeza) + MOMENTUM
+  // (trending, linear). Ambos normalizados 0..1 e blendados.
   const logs = open.map((o) => Math.log10((o.downloads || 0) + 10));
   const maxLog = Math.max(...logs, 1);
   const minLog = Math.min(...logs, 0);
@@ -100,7 +128,7 @@ async function main() {
   const openScored = open.map((o, i) => {
     const dl = (logs[i] - minLog) / (maxLog - minLog || 1);
     const tr = (o.trending || 0) / maxTrend;
-    const raw = dl * 0.75 + tr * 0.25;
+    const raw = dl * 0.7 + tr * 0.3;
     // Open vai de ~0.4 a ~0.85 (closed flagships lideram acima disso).
     return { pattern: o.pattern, score: round2(0.4 + raw * 0.45) };
   });
