@@ -2415,6 +2415,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             )}
             totalChats={allChats.length}
             onClose={() => setView("chat")}
+            onOpenPlans={() => setView("plans")}
+            onOpenSettings={handleOpenSettings}
           />
         ) : view === "plans" ? (
           <PlansScreen

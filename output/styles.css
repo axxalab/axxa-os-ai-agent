@@ -1449,7 +1449,85 @@ body.is-mobile
   font-weight: 600;
 }
 
-/* Profile */
+/* Profile v2 — hero centralizado + lista agrupada iOS (ref print #318). v0.1.183 */
+.axxa-profile-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 20px;
+}
+.axxa-profile-avatar2 {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+}
+.axxa-profile-name2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.axxa-profile-group-head {
+  font-size: var(--font-ui-smaller);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin: 0 4px 8px;
+}
+.axxa-profile-group {
+  border-radius: 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  overflow: hidden;
+}
+.axxa-profile-grow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  text-align: left;
+  cursor: pointer;
+}
+.axxa-profile-group .axxa-profile-grow:last-child {
+  border-bottom: none;
+}
+.axxa-profile-grow.is-static {
+  cursor: default;
+}
+.axxa-profile-grow:not(.is-static):hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-profile-grow .svg-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-accent);
+  flex: 0 0 auto;
+}
+.axxa-profile-grow-label {
+  flex: 1 1 auto;
+}
+.axxa-profile-grow-val {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.axxa-profile-grow .axxa-profile-chev.svg-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-faint);
+}
+/* Profile (legado) */
 .axxa-profile-card {
   display: flex;
   align-items: center;

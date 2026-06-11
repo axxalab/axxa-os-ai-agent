@@ -221,36 +221,58 @@ export function ProfileScreen({
   connectedProviders,
   totalChats,
   onClose,
+  onOpenPlans,
+  onOpenSettings,
 }: {
   tier: Tier;
   email: string;
   connectedProviders: string[];
   totalChats: number;
   onClose: () => void;
+  onOpenPlans: () => void;
+  onOpenSettings: () => void;
 }) {
   const t = useT();
+  const initials = (email || "AXXA").trim().slice(0, 2).toUpperCase();
   return (
     <ScreenShell title={t.nav.profile} icon="user-round" onClose={onClose}>
-      <div className="axxa-profile-card">
-        <div className="axxa-profile-avatar"><Icon name="user-round" /></div>
-        <div className="axxa-profile-id">
-          <span className="axxa-profile-name">{email || "AXXA OS"}</span>
-          <span className={"axxa-profile-tier axxa-profile-tier-" + tier}>
-            {tier === "pro" ? "PRO" : "FREE"}
-          </span>
-        </div>
+      {/* Hero centralizado (avatar com iniciais + nome + tier) — ref print #318. */}
+      <div className="axxa-profile-hero">
+        <div className="axxa-profile-avatar2">{initials}</div>
+        <div className="axxa-profile-name2">{email || "AXXA OS"}</div>
+        <span className={"axxa-profile-tier axxa-profile-tier-" + tier}>
+          {tier === "pro" ? "PRO" : "FREE"}
+        </span>
       </div>
-      <div className="axxa-profile-rows">
-        <div className="axxa-profile-row">
-          <span>{t.screens.profileProviders}</span>
-          <span className="axxa-profile-row-val">
-            {connectedProviders.length > 0 ? connectedProviders.join(" · ") : "—"}
+
+      {/* Lista agrupada estilo iOS (ícone + label + valor/chevron). */}
+      <div className="axxa-profile-group-head">{t.screens.profileAccount}</div>
+      <div className="axxa-profile-group">
+        <button type="button" className="axxa-profile-grow" onClick={onOpenPlans}>
+          <Icon name="sparkles" />
+          <span className="axxa-profile-grow-label">{t.screens.profilePlan}</span>
+          <span className="axxa-profile-grow-val">
+            {tier === "pro" ? "Pro" : "Free"}
+          </span>
+          <Icon name="chevron-right" className="axxa-profile-chev" />
+        </button>
+        <div className="axxa-profile-grow is-static">
+          <Icon name="plug" />
+          <span className="axxa-profile-grow-label">{t.screens.profileProviders}</span>
+          <span className="axxa-profile-grow-val">
+            {connectedProviders.length || "—"}
           </span>
         </div>
-        <div className="axxa-profile-row">
-          <span>{t.screens.profileChats}</span>
-          <span className="axxa-profile-row-val">{totalChats}</span>
+        <div className="axxa-profile-grow is-static">
+          <Icon name="message-square" />
+          <span className="axxa-profile-grow-label">{t.screens.profileChats}</span>
+          <span className="axxa-profile-grow-val">{totalChats}</span>
         </div>
+        <button type="button" className="axxa-profile-grow" onClick={onOpenSettings}>
+          <Icon name="settings" />
+          <span className="axxa-profile-grow-label">{t.screens.profileSettings}</span>
+          <Icon name="chevron-right" className="axxa-profile-chev" />
+        </button>
       </div>
     </ScreenShell>
   );
