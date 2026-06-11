@@ -154,7 +154,8 @@ function parseMessageMeta(content: string): {
   return { cleanContent, timestamp, reaction };
 }
 
-function renderChatMarkdown(chat: ChatData): string {
+// Exportadas pra teste de round-trip (integridade de dados). v0.1.149
+export function renderChatMarkdown(chat: ChatData): string {
   return `${renderFrontmatter(chat)}\n\n${renderBody(chat)}`;
 }
 
@@ -226,15 +227,31 @@ function parseBody(body: string): ChatMessageStored[] {
   const messages: ChatMessageStored[] = [];
   const sectionRegex = /^## (You|Assistant)\s*$/gm;
   let match: RegExpExecArray | null;
-  const starts: { type: "user" | "ai-response"; start: number }[] = [];
+  // Guarda o início do HEADING (match.index) E o início do CONTEÚDO
+  // (após o match). O fim de cada conteúdo é o heading do próximo.
+  // v0.1.149: antes o fim era calculado subtraindo o tamanho fixo do label
+  // de next.start — mas `\s*$` engole um \n, então match[0] tinha 1 char a
+  // mais e vazava o "#" do próximo heading pro fim da mensagem anterior.
+  const starts: {
+    type: "user" | "ai-response";
+    headingStart: number;
+    contentStart: number;
+  }[] = [];
   while ((match = sectionRegex.exec(body)) !== null) {
     const type = match[1] === "You" ? "user" : "ai-response";
-    starts.push({ type, start: match.index + match[0].length });
+    starts.push({
+      type,
+      headingStart: match.index,
+      contentStart: match.index + match[0].length,
+    });
   }
   for (let i = 0; i < starts.length; i++) {
     const cur = starts[i];
     const next = starts[i + 1];
-    const rawContent = body.slice(cur.start, next ? next.start - (next ? `## ${next.type === "user" ? "You" : "Assistant"}`.length : 0) : body.length);
+    const rawContent = body.slice(
+      cur.contentStart,
+      next ? next.headingStart : body.length
+    );
     // Extrai metadata (timestamp + reaction) da linha HTML comment
     const { cleanContent, timestamp, reaction } = parseMessageMeta(rawContent.trim());
     messages.push({
@@ -248,7 +265,7 @@ function parseBody(body: string): ChatMessageStored[] {
   return messages;
 }
 
-function parseChatMarkdown(content: string): ChatData {
+export function parseChatMarkdown(content: string): ChatData {
   const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match) {
     throw new Error("Frontmatter inválido — não encontrei `---` delimitadores.");

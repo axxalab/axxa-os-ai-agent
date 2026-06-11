@@ -2,13 +2,17 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { openaiProvider } from "../src/providers/openai";
 import { geminiProvider } from "../src/providers/gemini";
 import { anthropicProvider } from "../src/providers/anthropic";
+import { openrouterProvider } from "../src/providers/openrouter";
+import { ollamaProvider } from "../src/providers/ollama";
+import { nimProvider } from "../src/providers/nim";
 import { fakeStreamResponse, sse } from "./helpers/streamMock";
+import { __setRequestUrl } from "./obsidian-stub";
 
-// Dirige o streamChat REAL de cada provider com fetch mockado. Cobre o parser
+// Dirige o streamChat REAL de cada provider com a rede mockada. Cobre o parser
 // de verdade (buffer de linha, acumulação de delta, tool_calls, usage, [DONE]),
-// não uma reimplementação. fetch-based: openai / gemini / anthropic.
-//
-// NÃO coberto aqui (requestUrl do Obsidian, follow-up): openrouter / nim / ollama.
+// não uma reimplementação.
+//   - via fetch (SSE/NDJSON): openai / gemini / anthropic / openrouter / ollama
+//   - via requestUrl do Obsidian (pseudo-stream): nim
 
 const userReq = (model: string) => ({
   model,
@@ -193,5 +197,139 @@ describe("anthropic streamChat — eventos tipados", () => {
     await expect(
       anthropicProvider.streamChat(userReq("claude-opus-4-8"), "key", () => {})
     ).rejects.toMatchObject({ name: "ProviderError" });
+  });
+});
+
+describe("openrouter streamChat — formato OpenAI-compat via fetch", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("acumula content + usage + [DONE]", async () => {
+    mockFetch([
+      sse({ choices: [{ delta: { content: "Hello" } }] }),
+      sse({ choices: [{ delta: { content: " OR" } }], usage: { prompt_tokens: 4, completion_tokens: 2 } }),
+      "data: [DONE]\n\n",
+    ]);
+    const tokens: string[] = [];
+    let usage: unknown;
+    const res = await openrouterProvider.streamChat(
+      userReq("anthropic/claude-sonnet-4"),
+      "key",
+      (t) => tokens.push(t),
+      (u) => (usage = u)
+    );
+    expect(res.content).toBe("Hello OR");
+    expect(tokens).toEqual(["Hello", " OR"]);
+    expect(usage).toEqual({ input: 4, output: 2 });
+  });
+
+  it("HTTP 401 → ProviderError invalid-key", async () => {
+    mockFetch([], { status: 401, ok: false });
+    await expect(
+      openrouterProvider.streamChat(userReq("x"), "key", () => {})
+    ).rejects.toMatchObject({ code: "invalid-key" });
+  });
+});
+
+describe("ollama streamChat — NDJSON (uma linha JSON por chunk)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const ndjson = (obj: unknown) => JSON.stringify(obj) + "\n";
+
+  it("acumula content + usage no done:true", async () => {
+    mockFetch([
+      ndjson({ message: { content: "Oi" }, done: false }),
+      ndjson({ message: { content: " mundo" }, done: false }),
+      ndjson({ message: { content: "" }, done: true, prompt_eval_count: 5, eval_count: 2 }),
+    ]);
+    const tokens: string[] = [];
+    let usage: unknown;
+    const res = await ollamaProvider.streamChat(
+      userReq("llama3.2"),
+      "http://localhost:11434",
+      (t) => tokens.push(t),
+      (u) => (usage = u)
+    );
+    expect(res.content).toBe("Oi mundo");
+    expect(tokens).toEqual(["Oi", " mundo"]);
+    expect(usage).toEqual({ input: 5, output: 2 });
+  });
+
+  it("REGRESSÃO buffer: linha NDJSON partida entre dois reads é remontada", async () => {
+    mockFetch([
+      '{"message":{"content":"Re',
+      'cursão"},"done":false}\n{"message":{"content":""},"done":true,"prompt_eval_count":1,"eval_count":1}\n',
+    ]);
+    const res = await ollamaProvider.streamChat(
+      userReq("llama3.2"),
+      "http://localhost:11434",
+      () => {}
+    );
+    expect(res.content).toBe("Recursão");
+  });
+
+  it("tool_calls inteiros (args como objeto) viram toolCalls", async () => {
+    mockFetch([
+      ndjson({
+        message: { content: "", tool_calls: [{ function: { name: "search", arguments: { q: "cats" } } }] },
+        done: false,
+      }),
+      ndjson({ message: { content: "" }, done: true, prompt_eval_count: 1, eval_count: 1 }),
+    ]);
+    const res = await ollamaProvider.streamChat(
+      userReq("llama3.2"),
+      "http://localhost:11434",
+      () => {}
+    );
+    expect(res.toolCalls).toHaveLength(1);
+    expect(res.toolCalls![0]).toMatchObject({ name: "search", arguments: { q: "cats" } });
+  });
+});
+
+describe("nim streamChat — pseudo-stream via requestUrl", () => {
+  afterEach(() => __setRequestUrl(null));
+
+  it("emite o content inteiro num token só + usage", async () => {
+    __setRequestUrl(async () => ({
+      status: 200,
+      json: {
+        choices: [{ message: { content: "resposta completa" } }],
+        usage: { prompt_tokens: 8, completion_tokens: 3 },
+      },
+    }));
+    const tokens: string[] = [];
+    let usage: unknown;
+    const res = await nimProvider.streamChat(
+      userReq("meta/llama-3.1-8b-instruct"),
+      "key",
+      (t) => tokens.push(t),
+      (u) => (usage = u)
+    );
+    expect(tokens).toEqual(["resposta completa"]);
+    expect(res.content).toBe("resposta completa");
+    expect(usage).toEqual({ input: 8, output: 3 });
+  });
+
+  it("signal já abortado → AbortError sem nem chamar requestUrl", async () => {
+    const spy = vi.fn(async () => ({ status: 200, json: {} }));
+    __setRequestUrl(spy);
+    const ctrl = new AbortController();
+    ctrl.abort();
+    await expect(
+      nimProvider.streamChat(
+        userReq("meta/llama-3.1-8b-instruct"),
+        "key",
+        () => {},
+        undefined,
+        ctrl.signal
+      )
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("HTTP 401 → ProviderError invalid-key", async () => {
+    __setRequestUrl(async () => ({ status: 401, json: {} }));
+    await expect(
+      nimProvider.streamChat(userReq("meta/llama-3.1-8b-instruct"), "key", () => {})
+    ).rejects.toMatchObject({ code: "invalid-key" });
   });
 });
