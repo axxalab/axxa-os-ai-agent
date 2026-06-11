@@ -75,8 +75,8 @@ import { useWakeLock } from "../components/_shared/useWakeLock";
 import {
   saveChat,
   loadChat,
-  listAllChats,
   renameChat,
+  deleteChat,
   generateTitle,
   type ChatData,
   type ChatSummary,
@@ -2021,6 +2021,26 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setView("chat");
   };
 
+  // Deleta uma conversa (vai pra lixeira do sistema, recuperável). #3
+  const handleDeleteChat = async (chatId: string, mode: string) => {
+    try {
+      await deleteChat(plugin.app, plugin.settings.chatsPath, mode, chatId);
+      plugin.removeChatSummary(chatId);
+      // Se era a conversa aberta, limpa a tela.
+      if (currentChatId === chatId) {
+        abortRef.current?.abort();
+        useChatStore.getState().newChat();
+        setView("chat");
+      }
+      new Notice(t.chat.deletedToTrash);
+    } catch (err) {
+      console.error("[axxa] deleteChat falhou:", err);
+      new Notice(
+        `${t.ai.errorPrefix} ${err instanceof Error ? err.message : ""}`
+      );
+    }
+  };
+
   // Abre a tela cheia de conversas — usa o cache compartilhado (sem novo walk).
   const handleOpenConversations = async () => {
     const all = await plugin.loadChatSummaries();
@@ -2597,6 +2617,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onOpenSettings={handleOpenSettings}
             onNavigate={handleNavigate}
             tier={tier}
+            onDeleteChat={handleDeleteChat}
           />
         </div>
         </ChatActionsContext.Provider>

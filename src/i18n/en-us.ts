@@ -61,6 +61,7 @@ export const EN_US: Translations = {
     searchNoResults: "No results in this conversation.",
     continueLabel: "Continue",
     continueTitle: "Response cut at the limit — continue where it stopped",
+    deletedToTrash: "Conversation moved to trash.",
     personaTitle: "Chat persona",
     personaDesc:
       "Custom system instruction for this conversation — sets role, tone and rules. Empty = use the default.",
@@ -662,6 +663,9 @@ export const EN_US: Translations = {
     keyKindUnknown: "⚠️ Unrecognized key format — double-check what you pasted.",
     keyAdminReady: "Admin key detected — click “Cross-check with API”.",
     keyAdminSoon: "Admin key detected — Anthropic real costs coming soon.",
+    keyAdminAntExp:
+      "Admin key detected — Anthropic is EXPERIMENTAL (cost_report shape unverified). Click “Cross-check”.",
+    balanceRealExp: "real (exp)",
     adminKeyName: "Admin key (optional)",
     adminKeyDesc:
       "Only for real costs/balance (Admin API). Can't do chat — your project key stays in the field above.",

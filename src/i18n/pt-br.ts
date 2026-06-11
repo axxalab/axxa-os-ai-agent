@@ -61,6 +61,7 @@ export const PT_BR = {
     searchNoResults: "Nenhum resultado nesta conversa.",
     continueLabel: "Continuar",
     continueTitle: "Resposta cortada no limite — continuar de onde parou",
+    deletedToTrash: "Conversa movida pra lixeira.",
     personaTitle: "Persona do chat",
     personaDesc:
       "Instrução de sistema custom pra esta conversa — define papel, tom e regras. Vazio = usa o padrão.",
@@ -675,6 +676,9 @@ export const PT_BR = {
     keyKindUnknown: "⚠️ Formato de chave não reconhecido — confira se colou certo.",
     keyAdminReady: "Admin key detectada — clique “Cruzar com a API”.",
     keyAdminSoon: "Admin key detectada — custos reais da Anthropic em breve.",
+    keyAdminAntExp:
+      "Admin key detectada — Anthropic é EXPERIMENTAL (shape do cost_report não verificado). Clique “Cruzar”.",
+    balanceRealExp: "real (exp)",
     adminKeyName: "Admin key (opcional)",
     adminKeyDesc:
       "Só pra custos/saldo reais (Admin API). NÃO faz chat — a chave de projeto fica no campo acima.",

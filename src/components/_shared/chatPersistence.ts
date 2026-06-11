@@ -456,6 +456,27 @@ export async function listAllChats(
  * Renomeia o título de um chat (sem mudar o id / file path).
  * Reescreve frontmatter `title:` e o `# Heading` do body.
  */
+/**
+ * Deleta o .md de um chat — manda pra LIXEIRA do sistema (recuperável), com
+ * fallback pro adapter.remove se a Vault API não conhecer o arquivo. #3
+ */
+export async function deleteChat(
+  app: App,
+  chatsPath: string,
+  mode: string,
+  chatId: string
+): Promise<void> {
+  const path = chatFilePath(chatsPath, mode, chatId);
+  const file = app.vault.getAbstractFileByPath(path);
+  if (file) {
+    await app.vault.trash(file, true);
+    return;
+  }
+  if (await app.vault.adapter.exists(path)) {
+    await app.vault.adapter.remove(path);
+  }
+}
+
 export async function renameChat(
   app: App,
   chatsPath: string,

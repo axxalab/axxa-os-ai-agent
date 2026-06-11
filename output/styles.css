@@ -1085,6 +1085,41 @@ body.is-mobile
   width: 15px;
   height: 15px;
 }
+/* Botão de deletar conversa (aparece no hover; semi-visível no toque). #3 */
+.axxa-sidebar-item {
+  position: relative;
+}
+.axxa-sidebar-item-del {
+  position: absolute;
+  right: 6px;
+  top: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--background-secondary);
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+.axxa-sidebar-item:hover .axxa-sidebar-item-del {
+  opacity: 1;
+}
+.axxa-sidebar-item-del:hover {
+  background: var(--background-modifier-hover);
+  color: var(--color-red, #e5534b);
+}
+.axxa-sidebar-item-del .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+@media (hover: none) {
+  .axxa-sidebar-item-del {
+    opacity: 0.55;
+  }
+}
 
 /* Telas-base (full panel) */
 .axxa-screen {

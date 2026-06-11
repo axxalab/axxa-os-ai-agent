@@ -36,8 +36,8 @@ describe("canAccess / viewRequiresPro", () => {
 });
 
 describe("estrutura da navegação", () => {
-  it("PAID_VIEWS = media/projects/statistics/profile", () => {
-    expect([...PAID_VIEWS].sort()).toEqual(["media", "profile", "projects", "statistics"]);
+  it("PAID_VIEWS = media/statistics (profile livre; projects fora da nav)", () => {
+    expect([...PAID_VIEWS].sort()).toEqual(["media", "statistics"]);
   });
   it("3 itens primários e todos têm ícone", () => {
     expect(PRIMARY_COUNT).toBe(3);

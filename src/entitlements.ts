@@ -17,13 +17,9 @@ export type AppView =
   | "statistics"
   | "profile";
 
-/** Telas que exigem plano pago. */
-export const PAID_VIEWS: AppView[] = [
-  "media",
-  "projects",
-  "statistics",
-  "profile",
-];
+/** Telas que exigem plano pago. Perfil é livre (info da conta); Projetos saiu da
+ *  navegação até ter conteúdo (não vender vazio como pago). #5 */
+export const PAID_VIEWS: AppView[] = ["media", "statistics"];
 
 export interface TierSettings {
   accountTier?: string;
@@ -58,8 +54,8 @@ export const NAV_ITEMS: NavItemMeta[] = [
   { view: "conversations", icon: "messages-square" },
   { view: "media", icon: "image" },
   { view: "statistics", icon: "bar-chart-3" },
-  { view: "projects", icon: "folder-kanban" },
   { view: "profile", icon: "user-round" },
+  // "projects" fica fora da nav até ter conteúdo (a tela existe, só não é exposta).
 ];
 
 export const PRIMARY_COUNT = 3;

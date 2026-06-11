@@ -34,6 +34,8 @@ interface SidebarProps {
   onNavigate: (view: AppView) => void;
   /** Plano efetivo — gateia as telas pagas (cadeado no free). */
   tier: Tier;
+  /** Deleta uma conversa (vai pra lixeira). #3 */
+  onDeleteChat: (chatId: string, mode: string) => void;
 }
 
 const MODE_COLOR: Record<string, string> = {
@@ -107,6 +109,7 @@ export function Sidebar({
   onOpenSettings,
   onNavigate,
   tier,
+  onDeleteChat,
 }: SidebarProps) {
   const t = useT();
   const [search, setSearch] = useState("");
@@ -281,6 +284,18 @@ export function Sidebar({
                         {formatTokens(c.tokensIn + c.tokensOut)}
                       </InfoChip>
                     </span>
+                  </span>
+                  <span
+                    className="axxa-sidebar-item-del"
+                    role="button"
+                    aria-label={t.menu.delete}
+                    title={t.menu.delete}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteChat(c.id, c.mode);
+                    }}
+                  >
+                    <Icon name="trash-2" />
                   </span>
                 </button>
               ))}

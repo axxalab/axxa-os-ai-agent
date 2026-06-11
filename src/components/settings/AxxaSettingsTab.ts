@@ -2403,7 +2403,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
                 this.plugin.settings.anthropicWorkspaceId
               );
               valueCells["anthropic"].setText(
-                `≈ ${formatUsd(antA.amount - spent)} · ${t.settings.balanceReal}`
+                `≈ ${formatUsd(antA.amount - spent)} · ${t.settings.balanceRealExp}`
               );
               valueCells["anthropic"].removeClass("is-est");
               valueCells["anthropic"].addClass("is-real");
@@ -2462,7 +2462,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       // disponível (OpenAI agora; Anthropic em breve).
       let note = cap.note;
       if (cap.capability === "admin-key" && this.adminKeyFor(p)) {
-        note = t.settings.keyAdminReady;
+        note = p === "anthropic" ? t.settings.keyAdminAntExp : t.settings.keyAdminReady;
       }
       const status = row.createSpan({ cls: "axxa-usage-xcheck-status" });
       status.createSpan({ text: note });

@@ -4,6 +4,7 @@
 
 import { getModelCapabilities, type ModelCapabilities } from "./modelCapabilities";
 import { getModelCard } from "./modelDescriptions";
+import { generationSupported } from "../generation/save";
 
 export type IncompatibleReason =
   | "agent-no-tools"
@@ -68,6 +69,22 @@ export function checkCompatibility(
       message: `"${model}" é um modelo de geração — não roda em Agent Mode.`,
       suggestions: findCompatibleModels(provider, activeModels, "tools"),
     };
+  }
+
+  // === 4. Geração que o plugin AINDA NÃO suporta neste provider — avisa ANTES
+  //         de gastar o clique (vídeo em todos; áudio fora da OpenAI; etc). #1
+  if ((caps.imageGen || caps.audioGen || caps.videoGen) && mode !== "agent") {
+    const mediaType = caps.imageGen ? "image" : caps.audioGen ? "audio" : "video";
+    if (!generationSupported(provider, mediaType)) {
+      const label =
+        mediaType === "image" ? "imagem" : mediaType === "audio" ? "áudio" : "vídeo";
+      return {
+        ok: false,
+        reason: "image-gen-not-implemented",
+        message: `"${model}" gera ${label}, mas o AXXA ainda não suporta isso neste provider. Escolha outro modelo.`,
+        suggestions: findCompatibleModels(provider, activeModels, "imageGen"),
+      };
+    }
   }
 
   return { ok: true, reason: null };
