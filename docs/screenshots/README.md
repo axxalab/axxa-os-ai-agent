@@ -17,6 +17,10 @@ no personal data, no visible API keys).
 | `agent-diff.png` | The agent's diff-approval confirmation dialog | Show the red/green diff preview before applying |
 | `usage-dashboard.png` | The Usage dashboard with the 30-day heatmap | Pick a vault with enough history to look populated |
 | `starter.png` | The starter screen (provider → model → mode → effort) | Shows the segmented controls + effort slider |
+| `sidebar-nav.png` | The side nav (sections + "show more") | Open via the avatar; shows Conversas/Mídia/Estatísticas + expand |
+| `image-gen.png` | In-chat image generation (modal + result) | `+` → Create image, or the agent calling generate_image |
+| `onboarding.png` | First-run onboarding (zero keys) | Fresh install / no API key set |
+| `plans.png` | Plans screen (Free vs Pro + license) | LockedScreen "See plans", or nav while free |
 
 ## Guidelines
 
