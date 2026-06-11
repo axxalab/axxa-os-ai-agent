@@ -1,0 +1,59 @@
+name: Release Obsidian plugin
+
+# Dispara ao empurrar uma tag de versão (ex: 0.1.176 — SEM prefixo "v", padrão
+# do Obsidian). Builda, valida e publica uma GitHub Release com os 3 arquivos
+# (main.js + manifest.json + styles.css) que o Obsidian precisa pra distribuir
+# o update automaticamente — sem re-review depois do plugin já estar listado.
+#
+# Fluxo de update: bump do manifest + commit, depois:
+#   git tag 0.1.176 && git push --tags
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Peer-deps do obsidian × codemirror conflitam → --legacy-peer-deps.
+      - name: Install deps
+        run: npm install --legacy-peer-deps
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Guarda contra o erro clássico: taggear sem bumpar o manifest.
+      - name: Check tag matches manifest version
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          ver=$(node -p "require('./manifest.json').version")
+          if [ "$tag" != "$ver" ]; then
+            echo "::error::Tag ($tag) != manifest.json ($ver). Bumpe o manifest antes de taggear."
+            exit 1
+          fi
+          echo "OK: $tag == $ver"
+
+      # Os assets saem em output/ (basename vira main.js/manifest.json/styles.css).
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release create "$tag" \
+            --title "$tag" \
+            --notes "AXXA OS — AI Agent $tag. Veja os commits para o changelog." \
+            output/main.js output/manifest.json output/styles.css
