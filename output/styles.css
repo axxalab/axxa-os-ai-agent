@@ -1108,6 +1108,93 @@ body.is-mobile
   height: 14px;
 }
 
+/* =====================================================
+ * Error message — bolha de erro ACIONÁVEL (v0.1.147)
+ * Card de alerta (ícone + texto) + ações: Tentar de novo / Abrir Config.
+ * Substitui o footer normal (copy/regen/like/PRO) que não cabe num erro.
+ * ===================================================== */
+.axxa-msg-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 100%;
+}
+.axxa-error-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-red, #e5534b) 12%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--color-red, #e5534b) 35%, transparent);
+  color: var(--text-normal);
+  max-width: 100%;
+}
+.axxa-error-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  margin-top: 1px;
+  color: var(--color-red, #e5534b);
+}
+.axxa-error-icon .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-error-text {
+  font-size: var(--font-ui-small);
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.axxa-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 2px;
+}
+.axxa-error-btn,
+.axxa-error-btn:focus,
+.axxa-error-btn:active {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border) !important;
+  background: var(--background-secondary) !important;
+  box-shadow: none !important;
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.axxa-error-btn .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+.axxa-error-btn:hover {
+  background: var(--background-modifier-hover) !important;
+  border-color: var(--interactive-accent) !important;
+}
+/* CTA primária (Abrir Configurações) — accent preenchido */
+.axxa-error-btn-primary,
+.axxa-error-btn-primary:focus,
+.axxa-error-btn-primary:active {
+  border-color: transparent !important;
+  background: var(--interactive-accent) !important;
+  color: var(--text-on-accent) !important;
+}
+.axxa-error-btn-primary:hover {
+  background: var(--interactive-accent-hover) !important;
+  border-color: transparent !important;
+  color: var(--text-on-accent) !important;
+}
+
 /* Navegação entre variantes de resposta (‹ N/M ›) no footer */
 .axxa-variant-nav {
   display: inline-flex;

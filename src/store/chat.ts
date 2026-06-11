@@ -8,6 +8,14 @@ import { create } from "zustand";
 
 export type MessageType = "user" | "ai-response" | "ai-comment" | "ai-options";
 
+/** Código de erro propagado do provider → UI (mesma união do ProviderError). */
+export type AIErrorCode =
+  | "no-key"
+  | "invalid-key"
+  | "rate-limit"
+  | "network"
+  | "unknown";
+
 interface BaseMessage {
   id: string;
   type: MessageType;
@@ -30,6 +38,9 @@ export interface AIResponseMessage extends BaseMessage {
    *   - NÃO são persistidas no .md (somem ao recarregar o chat)
    *  Renderizam normalmente na UI pro user ver o que aconteceu. */
   isError?: boolean;
+  /** Código do erro (quando isError). Permite à UI oferecer ação específica:
+   *  no-key/invalid-key → "Abrir Configurações"; os demais → só "Tentar de novo". */
+  errorCode?: AIErrorCode;
   /** True quando a resposta foi cortada no limite de tokens (output ≈ maxTokens).
    *  Mostra um botão "Continuar" no footer pra emendar de onde parou. */
   truncated?: boolean;

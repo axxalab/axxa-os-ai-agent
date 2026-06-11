@@ -276,6 +276,22 @@ export const PT_BR = {
     emptyResponse: "[Resposta vazia recebida]",
     errorPrefix: "[Erro]",
     unknownError: "Erro desconhecido.",
+    // Falha genérica do "Pensando..." (activity vira X). Curto.
+    failed: "Falhou",
+    interrupted: "Interrompido",
+    // Mensagens localizadas por código — substituem o texto PT-only que vinha
+    // cru dos providers, pra um user en-US ver inglês. v0.1.147
+    err: {
+      noKey: (provider: string) =>
+        `Sem API key pra ${provider}. Adicione sua chave nas Configurações pra começar.`,
+      invalidKey: (provider: string) =>
+        `A API key de ${provider} parece inválida ou expirada. Confira nas Configurações.`,
+      rateLimit: "Limite de requisições atingido. Aguarde alguns segundos e tente de novo.",
+      network: "Falha de conexão. Confira sua internet e tente de novo.",
+    },
+    // Ações da bolha de erro
+    retry: "Tentar de novo",
+    openSettings: "Abrir Configurações",
   },
 
   systemPrompt: {

@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useChatStore } from "../../store/chat";
-import { UserBubble, AIResponse, AIComment, AIOptions } from "./Messages";
+import { UserBubble, AIResponse, AIComment, AIOptions, ErrorMessage } from "./Messages";
 import { dayKey, formatDayLabel } from "../_shared/timestamps";
 import { Icon } from "../_shared/Icon";
 
@@ -104,7 +104,13 @@ export function ChatArea({
         items.push(<UserBubble key={m.id} msg={m} />);
         break;
       case "ai-response":
-        items.push(<AIResponse key={m.id} msg={m} />);
+        items.push(
+          m.isError ? (
+            <ErrorMessage key={m.id} msg={m} />
+          ) : (
+            <AIResponse key={m.id} msg={m} />
+          )
+        );
         break;
       case "ai-comment":
         items.push(<AIComment key={m.id} msg={m} />);

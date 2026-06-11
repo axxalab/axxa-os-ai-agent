@@ -19,6 +19,10 @@ export interface ChatActions {
   continueResponse: (aiMessageId: string) => void;
   /** Edita uma user-msg: trunca a conversa dali e re-envia o texto editado. */
   editMessage: (messageId: string, newContent: string) => void;
+  /** "Tentar de novo" numa bolha de erro: descarta o erro e re-dispara o turno. */
+  retryError: (errorMessageId: string) => void;
+  /** Abre a aba de Configurações do plugin (CTA de erro de API key). */
+  openSettings: () => void;
 }
 
 export const ChatActionsContext = createContext<ChatActions | null>(null);

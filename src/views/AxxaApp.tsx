@@ -58,7 +58,7 @@ import { TOOL_REGISTRY } from "../agent/tools";
 import { evaluatePermission } from "../agent/permissions";
 import { ConfirmationModal } from "../agent/ConfirmationModal";
 import type { PermissionLevel } from "../agent/types";
-import type { ChatMessage, UserMessage, AIResponseMessage } from "../store/chat";
+import type { ChatMessage, UserMessage, AIResponseMessage, AIErrorCode } from "../store/chat";
 
 interface AxxaAppProps {
   plugin: AxxaPlugin;
@@ -212,6 +212,44 @@ function placeholderForMode(
     default:
       return composer.placeholderChat;
   }
+}
+
+/**
+ * Traduz qualquer erro de stream/chat numa mensagem amigável + localizada e no
+ * código correspondente. Centraliza a tradução (os providers lançam texto
+ * PT-only cru; aqui ele vira PT ou EN conforme a UI) e dá à bolha de erro a
+ * info pra oferecer a ação certa ("Abrir Configurações" só p/ key inválida/
+ * ausente). v0.1.147.
+ */
+function describeProviderError(
+  err: unknown,
+  t: ReturnType<typeof getTranslations>,
+  providerName: string
+): { message: string; code: AIErrorCode } {
+  if (err instanceof ProviderError) {
+    switch (err.code) {
+      case "no-key":
+        return { message: t.ai.err.noKey(providerName), code: "no-key" };
+      case "invalid-key":
+        return { message: t.ai.err.invalidKey(providerName), code: "invalid-key" };
+      case "rate-limit":
+        return { message: t.ai.err.rateLimit, code: "rate-limit" };
+      case "network":
+        return { message: t.ai.err.network, code: "network" };
+      default:
+        // "unknown" carrega a msg detalhada do provider (única com info real).
+        return { message: err.message || t.ai.unknownError, code: "unknown" };
+    }
+  }
+  if (err instanceof Error) {
+    return { message: err.message || t.ai.unknownError, code: "unknown" };
+  }
+  return { message: t.ai.unknownError, code: "unknown" };
+}
+
+/** Providers que exigem API key (Ollama roda local via endpoint, dispensa). */
+function providerNeedsKey(providerId: string): boolean {
+  return providerId !== "ollama";
 }
 
 export function AxxaApp({ plugin }: AxxaAppProps) {
@@ -423,6 +461,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       endStreamTimer,
     } = useChatStore.getState();
 
+    // Pre-flight cold-start: sem API key não adianta nem mostrar "Pensando..." —
+    // emite direto a bolha de erro ACIONÁVEL (com "Abrir Configurações"). v0.1.147
+    if (
+      providerNeedsKey(activeProviderId) &&
+      !apiKeyFor(activeProviderId).trim()
+    ) {
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(activeProvider.name)}`,
+        isError: true,
+        errorCode: "no-key",
+      });
+      return;
+    }
+
     // Resolve config completo do effort atual (com overrides do usuário).
     // Centraliza todos os params escaláveis em um objeto só.
     const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
@@ -621,7 +674,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           updateActivity(commentId, {
             phase: "failed",
             iconFailed: "circle-stop",
-            failedText: "Interrompido",
+            failedText: t.ai.interrupted,
           });
         }
       } else {
@@ -629,19 +682,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           updateActivity(commentId, {
             phase: "failed",
             iconFailed: "x-circle",
-            failedText: "Falhou",
+            failedText: t.ai.failed,
           });
         }
-        const errorMsg =
-          err instanceof ProviderError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : t.ai.unknownError;
+        const { message, code } = describeProviderError(
+          err,
+          t,
+          activeProvider.name
+        );
         addMessage({
           type: "ai-response",
-          content: `${t.ai.errorPrefix} ${errorMsg}`,
+          content: `${t.ai.errorPrefix} ${message}`,
           isError: true,
+          errorCode: code,
         });
       }
     } finally {
@@ -685,6 +738,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       tickStreamTokens,
       endStreamTimer,
     } = useChatStore.getState();
+
+    // Pre-flight cold-start: sem API key, erro acionável direto. v0.1.147
+    if (
+      providerNeedsKey(activeProviderId) &&
+      !apiKeyFor(activeProviderId).trim()
+    ) {
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(activeProvider.name)}`,
+        isError: true,
+        errorCode: "no-key",
+      });
+      return;
+    }
 
     if (!activeProvider.supportsTools) {
       addMessage({
@@ -1105,29 +1172,29 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           updateActivity(commentId, {
             phase: "failed",
             iconFailed: "circle-stop",
-            failedText: "Interrompido",
+            failedText: t.ai.interrupted,
           });
         } else {
           updateActivity(commentId, {
             phase: "failed",
             iconFailed: "x-circle",
-            failedText: "Falhou",
+            failedText: t.ai.failed,
           });
         }
       }
       if (err instanceof DOMException && err.name === "AbortError") {
         // Abort silencioso — usuário clicou em parar
       } else {
-        const errorMsg =
-          err instanceof ProviderError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : t.ai.unknownError;
+        const { message, code } = describeProviderError(
+          err,
+          t,
+          activeProvider.name
+        );
         addMessage({
           type: "ai-response",
-          content: `${t.ai.errorPrefix} ${errorMsg}`,
+          content: `${t.ai.errorPrefix} ${message}`,
           isError: true,
+          errorCode: code,
         });
       }
     } finally {
@@ -1329,17 +1396,26 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         .join("\n\n");
       addMessage({ type: "ai-response", content: responseContent });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro desconhecido.";
+      const { message, code } = describeProviderError(
+        err,
+        t,
+        activeProvider.name
+      );
       updateActivity(
         activityId,
         {
           phase: "failed",
           iconFailed: "x-circle",
-          failedText: "Falha na geração",
+          failedText: t.ai.failed,
         },
-        msg
+        message
       );
-      addMessage({ type: "ai-response", content: `${t.ai.errorPrefix} ${msg}` });
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${message}`,
+        isError: true,
+        errorCode: code,
+      });
     } finally {
       setLoading(false);
     }
@@ -1423,9 +1499,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       syncVariant(aiMessageId);
       if (!(err instanceof DOMException && err.name === "AbortError")) {
         console.error("[axxa] regenerar falhou:", err);
-        new Notice(
-          `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`
-        );
+        const { message } = describeProviderError(err, t, activeProvider.name);
+        new Notice(`${t.ai.errorPrefix} ${message}`);
       }
     } finally {
       setLoading(false);
@@ -1522,9 +1597,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
         console.error("[axxa] continue falhou:", err);
-        new Notice(
-          `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`
-        );
+        const { message } = describeProviderError(err, t, activeProvider.name);
+        new Notice(`${t.ai.errorPrefix} ${message}`);
         // Deixa o botão disponível pra tentar de novo
         setTruncated(aiMessageId, true);
       }
@@ -1572,11 +1646,44 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     else await streamReply(text);
   };
 
+  // "Tentar de novo" da bolha de erro: diferente do regenerate (que ramifica a
+  // resposta), aqui DESCARTA a bolha de erro + o "Pensando..." que falhou e
+  // re-dispara o MESMO turno (chat / vault-qa / agent / generation) a partir da
+  // última user-msg. Resultado limpo, sem variante de erro pendurada. v0.1.147
+  const retryError = async (errorMessageId: string) => {
+    if (useChatStore.getState().isLoading) return;
+    const current = useChatStore.getState().messages;
+    const errIdx = current.findIndex(
+      (m) => m.id === errorMessageId && m.type === "ai-response"
+    );
+    if (errIdx < 0) return;
+    // Acha a última user-msg antes do erro.
+    let userIdx = -1;
+    for (let i = errIdx; i >= 0; i--) {
+      if (current[i].type === "user") {
+        userIdx = i;
+        break;
+      }
+    }
+    if (userIdx < 0) return;
+    const userText = (current[userIdx] as UserMessage).content;
+    // Volta o histórico pro estado logo após a user-msg (remove erro + comments).
+    useChatStore.getState().setMessages(current.slice(0, userIdx + 1));
+    const caps = getModelCapabilities(activeProviderId, activeModel);
+    if (isGenerationModel(caps)) await runGenerationTurn(userText, caps);
+    else if (activeMode === "agent") await runAgentTurn(userText);
+    else await streamReply(userText);
+  };
+
   const chatActions: ChatActions = {
     regenerate: handleRegenerate,
     deleteMessage: handleDeleteMessage,
     continueResponse: continueReply,
     editMessage: handleEditMessage,
+    retryError,
+    // Arrow defere o lookup pra DEPOIS de handleOpenSettings ser inicializado
+    // (ele é declarado mais abaixo — evita o temporal dead zone).
+    openSettings: () => handleOpenSettings(),
   };
 
   const handleStop = () => abortRef.current?.abort();

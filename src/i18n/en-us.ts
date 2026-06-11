@@ -274,6 +274,18 @@ export const EN_US: Translations = {
     emptyResponse: "[Empty response received]",
     errorPrefix: "[Error]",
     unknownError: "Unknown error.",
+    failed: "Failed",
+    interrupted: "Interrupted",
+    err: {
+      noKey: (provider: string) =>
+        `No API key for ${provider}. Add your key in Settings to get started.`,
+      invalidKey: (provider: string) =>
+        `Your ${provider} API key looks invalid or expired. Check it in Settings.`,
+      rateLimit: "Rate limit reached. Wait a few seconds and try again.",
+      network: "Connection failed. Check your internet and try again.",
+    },
+    retry: "Try again",
+    openSettings: "Open Settings",
   },
 
   systemPrompt: {

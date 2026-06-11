@@ -285,6 +285,55 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   );
 }
 
+/**
+ * ErrorMessage — bolha dedicada pra ai-response com isError. Em vez do footer
+ * de resposta normal (copiar/regen/like/PRO — que não faz sentido num erro),
+ * mostra um card de alerta + ações ACIONÁVEIS: "Tentar de novo" sempre, e
+ * "Abrir Configurações" quando o erro é de API key (no-key / invalid-key).
+ * É o que tira o cold-start do beco sem saída. v0.1.147
+ */
+export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
+  const actions = useChatActions();
+  const t = useT();
+  // Tira o prefixo "[Erro]" do texto — o card já comunica que é erro pelo ícone.
+  const text = msg.content.startsWith(t.ai.errorPrefix)
+    ? msg.content.slice(t.ai.errorPrefix.length).trim()
+    : msg.content;
+  const isKeyError =
+    msg.errorCode === "no-key" || msg.errorCode === "invalid-key";
+
+  return (
+    <div className="axxa-msg axxa-msg-error" data-msg-id={msg.id}>
+      <div className="axxa-error-card">
+        <span className="axxa-error-icon" aria-hidden="true">
+          <Icon name="alert-triangle" />
+        </span>
+        <span className="axxa-error-text">{text}</span>
+      </div>
+      <div className="axxa-error-actions">
+        {isKeyError && (
+          <button
+            type="button"
+            className="axxa-error-btn axxa-error-btn-primary"
+            onClick={actions.openSettings}
+          >
+            <Icon name="settings" />
+            {t.ai.openSettings}
+          </button>
+        )}
+        <button
+          type="button"
+          className="axxa-error-btn"
+          onClick={() => actions.retryError(msg.id)}
+        >
+          <Icon name="refresh-cw" />
+          {t.ai.retry}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AIComment({ msg }: { msg: AICommentMessage }) {
   // Quando ai-comment tem `activity`, vira ActivityComment (estilo Claude Code:
   // ícone pulsando enquanto pending, troca pra check/x quando termina, texto
