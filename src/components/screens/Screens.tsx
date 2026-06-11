@@ -4,7 +4,7 @@
 // uma será aprofundada depois. Cada tela é um painel full com header (voltar +
 // título). Padrão visual segue ConversationsList.
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { App } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { ThinkingGlyph } from "../_shared/ThinkingGlyph";
@@ -66,13 +66,25 @@ const IMG_EXT = ["png", "jpg", "jpeg", "webp", "gif", "svg", "avif"];
 const AUD_EXT = ["mp3", "wav", "ogg", "flac", "m4a", "aac"];
 const VID_EXT = ["mp4", "webm", "mov", "mkv"];
 
-export function MediaScreen({ app, onClose }: { app: App; onClose: () => void }) {
+export function MediaScreen({
+  app,
+  axxaPaths,
+  onClose,
+}: {
+  app: App;
+  /** Pastas do AXXA (gerações + gravações) — pro filtro "só AXXA". #6 */
+  axxaPaths: string[];
+  onClose: () => void;
+}) {
   const t = useT();
+  const [scope, setScope] = useState<"axxa" | "all">("axxa");
   const media = useMemo(() => {
+    const inAxxa = (p: string) => axxaPaths.some((base) => base && p.startsWith(base));
     const files = app.vault.getFiles();
     const imgs: { path: string; src: string }[] = [];
     const others: { path: string; ext: string; kind: "audio" | "video" }[] = [];
     for (const f of files) {
+      if (scope === "axxa" && !inAxxa(f.path)) continue;
       const ext = (f.extension || "").toLowerCase();
       if (IMG_EXT.includes(ext)) {
         imgs.push({ path: f.path, src: app.vault.getResourcePath(f) });
@@ -83,12 +95,28 @@ export function MediaScreen({ app, onClose }: { app: App; onClose: () => void })
       }
     }
     return { imgs: imgs.slice(0, 300), others: others.slice(0, 200) };
-  }, [app]);
+  }, [app, axxaPaths, scope]);
 
   const total = media.imgs.length + media.others.length;
 
   return (
     <ScreenShell title={t.nav.media} icon="image" onClose={onClose}>
+      <div className="axxa-media-scope">
+        <button
+          type="button"
+          className={"axxa-media-scope-btn" + (scope === "axxa" ? " is-on" : "")}
+          onClick={() => setScope("axxa")}
+        >
+          {t.screens.mediaScopeAxxa}
+        </button>
+        <button
+          type="button"
+          className={"axxa-media-scope-btn" + (scope === "all" ? " is-on" : "")}
+          onClick={() => setScope("all")}
+        >
+          {t.screens.mediaScopeAll}
+        </button>
+      </div>
       {total === 0 ? (
         <EmptyState icon="image-off" title={t.screens.mediaEmptyTitle} sub={t.screens.mediaEmptySub} />
       ) : (

@@ -353,8 +353,10 @@ export const PT_BR = {
     less: "Ver menos",
   },
   screens: {
-    mediaEmptyTitle: "Sem mídia no vault",
+    mediaEmptyTitle: "Sem mídia",
     mediaEmptySub: "Imagens, áudios e vídeos gerados ou anexados aparecem aqui.",
+    mediaScopeAxxa: "Só AXXA",
+    mediaScopeAll: "Todo o vault",
     statSpend: "Gasto",
     statChats: "Conversas",
     statTokens: "Tokens",

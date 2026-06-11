@@ -235,8 +235,8 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
       {...menuHandlers}
     >
       <Markdown content={msg.content} />
-      {/* Caret animado enquanto os tokens chegam — segura o olho no streaming. */}
-      {isStreaming && <ThinkingGlyph className="axxa-stream-caret" />}
+      {/* Caret de digitação (barra piscante) enquanto os tokens chegam. #10 */}
+      {isStreaming && <span className="axxa-typing-caret" aria-hidden="true" />}
       {msg.agentSteps && msg.agentSteps.length > 0 && !isStreaming && (
         <AgentSteps steps={msg.agentSteps} />
       )}

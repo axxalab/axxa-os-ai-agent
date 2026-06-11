@@ -315,6 +315,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const currentChatId = useChatStore((s) => s.currentChatId);
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
   const abortRef = useRef<AbortController | null>(null);
+  /** Rascunho atual do composer — pra prefill do modal de imagem. #9 */
+  const composerDraftRef = useRef("");
   /** "Aprovar todas" do diff-approval do agente — vale só pra rodada atual. */
   const agentApproveAllRef = useRef(false);
 
@@ -1693,7 +1695,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
     const modal = new ImageGenModal(plugin.app, {
       options: buildImageModelOptions(),
-      initialPrompt: "",
+      // Prefill com o que o user já digitou no composer (#9).
+      initialPrompt: composerDraftRef.current.trim(),
       hasInputImage: !!inputImage,
       strings: t.imageGen,
     });
@@ -2367,7 +2370,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           />
         ) : view === "media" ? (
           canAccess("media", tier) ? (
-            <MediaScreen app={plugin.app} onClose={() => setView("chat")} />
+            <MediaScreen
+              app={plugin.app}
+              axxaPaths={[
+                plugin.settings.generationPath,
+                plugin.settings.recordingsPath,
+              ]}
+              onClose={() => setView("chat")}
+            />
           ) : (
             <LockedScreen view="media" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
           )
@@ -2454,6 +2464,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onSend={handleSend}
             onStop={handleStop}
             onPlusClick={handlePlusClick}
+            onDraftChange={(text) => (composerDraftRef.current = text)}
             injectText={composerInject}
             streaming={isLoading}
             providerName={activeProvider.name}

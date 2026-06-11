@@ -341,8 +341,10 @@ export const EN_US: Translations = {
     less: "Show less",
   },
   screens: {
-    mediaEmptyTitle: "No media in the vault",
+    mediaEmptyTitle: "No media",
     mediaEmptySub: "Generated or attached images, audio and video show up here.",
+    mediaScopeAxxa: "AXXA only",
+    mediaScopeAll: "Whole vault",
     statSpend: "Spend",
     statChats: "Chats",
     statTokens: "Tokens",

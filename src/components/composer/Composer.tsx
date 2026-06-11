@@ -93,6 +93,8 @@ interface ComposerProps {
   placeholder?: string;
   /** Salva o áudio gravado no vault e devolve o path relativo (ou null se falhou). */
   onSaveAudio?: (blob: Blob, durationMs: number) => Promise<string | null>;
+  /** Avisa o rascunho atual (pra prefill do modal de imagem etc). #9 */
+  onDraftChange?: (text: string) => void;
   /** Lista de comandos /command disponíveis pro autocomplete do composer. */
   commands?: AxxaCommand[];
   /** IDs dos chips visíveis no status line. Cada chip renderiza só se seu
@@ -232,6 +234,7 @@ export function Composer({
   onPickNote,
   onAddAudio,
   injectText,
+  onDraftChange,
 }: ComposerProps) {
   const t = useT();
   const app = useApp();
@@ -265,6 +268,8 @@ export function Composer({
   onPickNoteRef.current = onPickNote;
   const onAddAudioRef = useRef(onAddAudio);
   onAddAudioRef.current = onAddAudio;
+  const onDraftChangeRef = useRef(onDraftChange);
+  onDraftChangeRef.current = onDraftChange;
 
   // Converte File/Blob em PendingImage via FileReader (data URL).
   const blobToPendingImage = (blob: Blob, name: string): Promise<PendingImage> =>
@@ -404,6 +409,7 @@ export function Composer({
           if (update.docChanged) {
             const text = update.state.doc.toString().trim();
             setIsEmpty(text.length === 0);
+            onDraftChangeRef.current?.(text);
           }
         }),
         // Paste handlers:
