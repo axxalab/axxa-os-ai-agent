@@ -77,4 +77,21 @@ describe("chat persistence round-trip", () => {
   it("frontmatter inválido lança erro claro", () => {
     expect(() => parseChatMarkdown("sem frontmatter aqui")).toThrow();
   });
+
+  // Audit do ecossistema de providers: model ids variam muito (slash, colon,
+  // :free, datado). Tudo tem que sobreviver ao YAML do frontmatter.
+  it.each([
+    ["openai", "gpt-4o"],
+    ["anthropic", "claude-fable-5"],
+    ["openrouter", "anthropic/claude-3.5-sonnet"],
+    ["openrouter", "meta-llama/llama-3.1-8b-instruct:free"],
+    ["nim", "nvidia/llama-3.3-nemotron-super-49b-v1.5"],
+    ["gemini", "gemini-2.5-flash-image"],
+    ["ollama", "qwen2.5:14b"],
+  ])("preserva provider=%s model=%s no round-trip", (provider, model) => {
+    const chat: ChatData = { ...baseChat, provider, model };
+    const r = parseChatMarkdown(renderChatMarkdown(chat));
+    expect(r.provider).toBe(provider);
+    expect(r.model).toBe(model);
+  });
 });

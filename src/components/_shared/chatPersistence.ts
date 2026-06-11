@@ -314,6 +314,27 @@ export async function loadChat(
   return parseChatMarkdown(content);
 }
 
+/** Monta um ChatSummary a partir do frontmatter (do cache OU parseado). */
+export function summaryFromFrontmatter(
+  fm: Record<string, unknown>,
+  fallbackMode: string,
+  filePath: string
+): ChatSummary {
+  return {
+    id: String(fm.id ?? ""),
+    title: String(fm.title ?? "Sem título"),
+    date: String(fm.date ?? ""),
+    mode: String(fm.mode ?? fallbackMode),
+    provider: String(fm.provider ?? ""),
+    model: String(fm.model ?? ""),
+    effort: String(fm.effort ?? ""),
+    tokensIn: Number(fm.tokens_in ?? 0),
+    tokensOut: Number(fm.tokens_out ?? 0),
+    messageCount: Number(fm.message_count ?? 0),
+    filePath,
+  };
+}
+
 export async function listChats(
   app: App,
   chatsPath: string,
@@ -326,24 +347,22 @@ export async function listChats(
   const summaries: ChatSummary[] = [];
   for (const file of listing.files) {
     if (!file.endsWith(".md")) continue;
+    // CACHE-FIRST (v0.1.159): o Obsidian já parseou o frontmatter no
+    // metadataCache → pega de lá sem LER o arquivo (antes lia o .md INTEIRO
+    // só pro frontmatter, pesado em vault com muitos chats). Cache frio
+    // (arquivo recém-criado) cai no fallback de leitura.
+    const cached = app.metadataCache.getCache(file)?.frontmatter as
+      | Record<string, unknown>
+      | undefined;
+    if (cached && cached.id) {
+      summaries.push(summaryFromFrontmatter(cached, mode, file));
+      continue;
+    }
     try {
       const content = await app.vault.adapter.read(file);
       const match = content.match(/^---\n([\s\S]*?)\n---/);
       if (!match) continue;
-      const fm = parseSimpleYaml(match[1]);
-      summaries.push({
-        id: String(fm.id ?? ""),
-        title: String(fm.title ?? "Sem título"),
-        date: String(fm.date ?? ""),
-        mode: String(fm.mode ?? mode),
-        provider: String(fm.provider ?? ""),
-        model: String(fm.model ?? ""),
-        effort: String(fm.effort ?? ""),
-        tokensIn: Number(fm.tokens_in ?? 0),
-        tokensOut: Number(fm.tokens_out ?? 0),
-        messageCount: Number(fm.message_count ?? 0),
-        filePath: file,
-      });
+      summaries.push(summaryFromFrontmatter(parseSimpleYaml(match[1]), mode, file));
     } catch {
       // skip arquivos quebrados
     }

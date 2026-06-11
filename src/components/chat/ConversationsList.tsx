@@ -11,6 +11,7 @@ import { InfoChip } from "../_shared/InfoChip";
 import { SegmentedRow } from "../_shared/SegmentedRow";
 import { useT, type Translations } from "../../i18n";
 import { formatTokens } from "../_shared/contextWindows";
+import { modelVendorLogoId } from "../_shared/modelLogo";
 import type { ChatSummary } from "../_shared/chatPersistence";
 
 interface ConversationsListProps {
@@ -281,7 +282,10 @@ export function ConversationsList({
                   </span>
                   <span className="axxa-composer-info axxa-recent-status">
                     {visibleChips.includes("model") && (
-                      <InfoChip icon="cpu" color={CHIP_COLORS.model}>
+                      <InfoChip
+                        icon={modelVendorLogoId(c.provider, c.model) ?? "cpu"}
+                        color={CHIP_COLORS.model}
+                      >
                         {c.model}
                       </InfoChip>
                     )}

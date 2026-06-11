@@ -11,6 +11,7 @@ import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
 import { useT, type Translations } from "../../i18n";
 import { formatTokens } from "../_shared/contextWindows";
+import { modelVendorLogoId } from "../_shared/modelLogo";
 import type { ChatSummary } from "../_shared/chatPersistence";
 
 interface SidebarProps {
@@ -217,7 +218,11 @@ export function Sidebar({
                       </span>
                     </span>
                     <span className="axxa-composer-info axxa-sidebar-item-status">
-                      <InfoChip icon="cpu" color={CHIP_MODEL} title={c.model}>
+                      <InfoChip
+                        icon={modelVendorLogoId(c.provider, c.model) ?? "cpu"}
+                        color={CHIP_MODEL}
+                        title={c.model}
+                      >
                         {c.model}
                       </InfoChip>
                       <InfoChip icon="sigma" color={CHIP_TOKENS}>
