@@ -6551,6 +6551,91 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   width: 13px;
   height: 13px;
 }
+/* Modalidade I/O — chips de código (TXT2IMG…) + legenda colapsável. v0.1.164 */
+.axxa-model-modality-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.axxa-model-modality-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-monospace);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+  white-space: nowrap;
+  cursor: default;
+}
+.axxa-modality-legend-wrap {
+  margin: 2px 0 8px;
+}
+.axxa-modality-legend-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 2px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.axxa-modality-legend-toggle:hover {
+  color: var(--text-normal);
+}
+.axxa-modality-legend-toggle .axxa-modality-legend-ico .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+.axxa-modality-legend-toggle.is-open .axxa-modality-legend-ico {
+  color: var(--interactive-accent);
+}
+.axxa-modality-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+.axxa-modality-legend-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.axxa-modality-legend-row .axxa-model-modality-chip {
+  flex: 0 0 auto;
+  min-width: 62px;
+  justify-content: center;
+}
+.axxa-modality-legend-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.axxa-modality-legend-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+.axxa-modality-legend-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.axxa-hidden {
+  display: none !important;
+}
 /* Switch on/off à direita */
 .axxa-model-toggle-switch {
   flex: 0 0 auto;

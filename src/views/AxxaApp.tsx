@@ -41,7 +41,12 @@ import {
 } from "../agent/loopDetection";
 import { checkCompatibility } from "../providers/compatibility";
 import { IncompatibleBanner } from "../components/composer/IncompatibleBanner";
-import { saveGeneration, type GenerationMediaType } from "../generation/save";
+import {
+  saveGeneration,
+  generationSupported,
+  generationSupportSummary,
+  type GenerationMediaType,
+} from "../generation/save";
 import {
   effortToMaxTokensSmart,
   effortToVaultLookup,
@@ -1299,6 +1304,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       : caps.audioGen
         ? "audio"
         : "video";
+
+    // Pre-flight HONESTO: o modelo tem a cap, mas o provider implementa de fato?
+    // (ex: Veo/Sora flagam videoGen, mas não há generateVideo). Avisa com clareza
+    // em vez de deixar estourar "Provider não implementa…". Auditoria v0.1.164.
+    if (!generationSupported(activeProviderId, mediaType)) {
+      setLoading(false);
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${t.ai.genUnsupported(mediaType, generationSupportSummary())}`,
+        isError: true,
+        errorCode: "unknown",
+      });
+      return;
+    }
 
     const activityId = addMessage({
       type: "ai-comment",

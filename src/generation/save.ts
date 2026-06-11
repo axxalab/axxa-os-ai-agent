@@ -55,6 +55,48 @@ const TYPE_TO_FOLDER: Record<GenerationMediaType, string> = {
   video: "video",
 };
 
+// ============================================================
+// Suporte REAL de geração (auditoria v0.1.164) — quais (provider × mídia) têm
+// generateImage/Audio/Video de fato implementado. Vários modelos têm a CAP
+// flagada (imageGen/audioGen/videoGen) mas o provider não wira o método → em
+// vez de um erro cru ("não implementa"), a UI usa isto pra avisar com clareza.
+// ============================================================
+const GENERATION_SUPPORT: Record<GenerationMediaType, string[]> = {
+  image: ["openai", "gemini", "nim"],
+  audio: ["openai"],
+  video: [],
+};
+
+/** O par (provider, mídia) é realmente gerável hoje? */
+export function generationSupported(
+  providerId: string,
+  type: GenerationMediaType
+): boolean {
+  return (GENERATION_SUPPORT[type] ?? []).includes(providerId);
+}
+
+/** Resumo legível do que dá pra gerar hoje — pra mensagens de erro/onboarding. */
+export function generationSupportSummary(): string {
+  const labels: Record<GenerationMediaType, string> = {
+    image: "imagem",
+    audio: "áudio",
+    video: "vídeo",
+  };
+  const names: Record<string, string> = {
+    openai: "OpenAI",
+    gemini: "Gemini",
+    nim: "NIM",
+  };
+  return (Object.keys(GENERATION_SUPPORT) as GenerationMediaType[])
+    .map((type) => {
+      const provs = GENERATION_SUPPORT[type];
+      if (provs.length === 0) return null;
+      return `${labels[type]} (${provs.map((p) => names[p] ?? p).join(" · ")})`;
+    })
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /** Slug pro nome de arquivo — pega ~5 palavras do prompt, kebab-case, sem accents. */
 function slugify(prompt: string, maxLen = 40): string {
   if (!prompt) return "untitled";

@@ -289,6 +289,10 @@ export const EN_US: Translations = {
     retry: "Try again",
     openSettings: "Open Settings",
     openBilling: "Enable billing in AI Studio",
+    genUnsupported: (type: "image" | "audio" | "video", suportado: string) => {
+      const tipo = type === "image" ? "Image" : type === "audio" ? "Audio" : "Video";
+      return `${tipo} generation isn't supported in AXXA yet with this provider/model. Available today: ${suportado}.`;
+    },
   },
 
   systemPrompt: {

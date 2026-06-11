@@ -61,6 +61,11 @@ import {
   getModelCapabilities,
   capabilityBadges,
 } from "../../providers/modelCapabilities";
+import {
+  modelModalities,
+  MODALITY_INFO,
+  ALL_MODALITIES,
+} from "../../providers/modelModality";
 import { getModelCard, CATEGORY_LABELS } from "../../providers/modelDescriptions";
 import {
   modelVendorLogoId,
@@ -903,6 +908,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       .setDesc(t.settings.activeModelsDesc(providerLabel));
 
     const filterRow = section.createDiv({ cls: "axxa-model-filter-row" });
+    this.renderModalityLegend(section);
     const listEl = section.createDiv({ cls: "axxa-model-toggle-list" });
 
     const allModels = (): string[] => {
@@ -1068,6 +1074,35 @@ export class AxxaSettingsTab extends PluginSettingTab {
    * ★ default + switch. ★ define o modelo padrão do provider (e ativa). Toggle
    * liga/desliga a visibilidade no seletor.
    */
+  /**
+   * Legenda colapsável da modalidade I/O — lista TODOS os tipos (TXT2TXT,
+   * TXT2IMG, IMG2IMG…) com a explicação de cada um. Fechada por padrão pra não
+   * poluir; o tooltip de cada chip já dá o resumo. v0.1.164
+   */
+  private renderModalityLegend(parent: HTMLElement) {
+    const wrap = parent.createDiv({ cls: "axxa-modality-legend-wrap" });
+    const toggle = wrap.createEl("button", {
+      cls: "axxa-modality-legend-toggle",
+      attr: { type: "button" },
+    });
+    setIcon(toggle.createSpan({ cls: "axxa-modality-legend-ico" }), "help-circle");
+    toggle.createSpan({ text: "Tipos de modelo (modalidade I/O)" });
+    const list = wrap.createDiv({ cls: "axxa-modality-legend axxa-hidden" });
+    for (const code of ALL_MODALITIES) {
+      const info = MODALITY_INFO[code];
+      const row = list.createDiv({ cls: "axxa-modality-legend-row" });
+      row.createSpan({ text: code, cls: "axxa-model-modality-chip" });
+      const txt = row.createSpan({ cls: "axxa-modality-legend-txt" });
+      txt.createSpan({ text: info.label, cls: "axxa-modality-legend-lbl" });
+      txt.createSpan({ text: info.description, cls: "axxa-modality-legend-desc" });
+    }
+    toggle.onclick = () => {
+      const open = list.hasClass("axxa-hidden");
+      list.toggleClass("axxa-hidden", !open);
+      toggle.toggleClass("is-open", open);
+    };
+  }
+
   private renderModelToggleRow(
     listEl: HTMLElement,
     t: Translations,
@@ -1133,7 +1168,30 @@ export class AxxaSettingsTab extends PluginSettingTab {
       });
     }
 
-    const badges = capabilityBadges(caps).filter((b) => b.id !== "free");
+    // Modalidade I/O (TXT2TXT, TXT2IMG, IMG2IMG…) — o "tipo" do modelo, com
+    // tooltip explicando. Substitui os ícones de vision/img-gen/etc (que já
+    // estão expressos no par I/O). v0.1.164
+    const mods = modelModalities(caps, model);
+    if (mods.length > 0) {
+      const modRow = main.createSpan({ cls: "axxa-model-modality-row" });
+      for (const code of mods) {
+        const info = MODALITY_INFO[code];
+        modRow.createSpan({
+          cls: "axxa-model-modality-chip",
+          text: code,
+          attr: {
+            title: `${info.label} — ${info.description}`,
+            "aria-label": info.label,
+          },
+        });
+      }
+    }
+
+    // Caps ORTOGONAIS à modalidade: tools + streaming (vision/gen já viraram
+    // modalidade; free vira o tag FREE/PAID). Ícones discretos.
+    const badges = capabilityBadges(caps).filter(
+      (b) => b.id === "tools" || b.id === "stream"
+    );
     if (badges.length > 0) {
       const badgeRow = main.createSpan({ cls: "axxa-model-toggle-badges" });
       for (const b of badges) {

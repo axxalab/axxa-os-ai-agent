@@ -297,6 +297,11 @@ export const PT_BR = {
     retry: "Tentar de novo",
     openSettings: "Abrir Configurações",
     openBilling: "Ativar billing no AI Studio",
+    // Geração não suportada (auditoria v0.1.164) — tipo + resumo do que dá hoje.
+    genUnsupported: (type: "image" | "audio" | "video", suportado: string) => {
+      const tipo = type === "image" ? "imagem" : type === "audio" ? "áudio" : "vídeo";
+      return `Geração de ${tipo} ainda não é suportada no AXXA com este provider/modelo. Hoje dá pra gerar: ${suportado}.`;
+    },
   },
 
   systemPrompt: {
