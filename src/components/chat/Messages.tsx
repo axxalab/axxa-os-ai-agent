@@ -24,6 +24,50 @@ import type {
   AICommentMessage,
   AIOptionsMessage,
 } from "../../store/chat";
+import type { AIToolStep } from "../../agent/types";
+
+/** Arg mais significativo de uma tool (path/from/query) pro chip. */
+function stepArg(step: AIToolStep): string {
+  const a = step.arguments ?? {};
+  return String(a.path ?? a.from ?? a.folder ?? a.query ?? "");
+}
+
+/**
+ * Bloco colapsável "🔧 N ações do agente" numa resposta do Agent. Mostra o que
+ * o agente fez (persistido) — e, junto com o replay no history, é o que dá
+ * continuidade: reabrir o chat e o agente lembra do que já executou. v0.1.160
+ */
+function AgentSteps({ steps }: { steps: AIToolStep[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={"axxa-agent-steps" + (open ? " is-open" : "")}>
+      <button
+        type="button"
+        className="axxa-agent-steps-head"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        <Icon name="wrench" />
+        <span>{steps.length} ações do agente</span>
+        <Icon name="chevron-right" className="axxa-agent-steps-chevron" />
+      </button>
+      {open && (
+        <ul className="axxa-agent-steps-list">
+          {steps.map((s, i) => (
+            <li
+              key={i}
+              className={"axxa-agent-step" + (s.ok ? "" : " is-fail")}
+            >
+              <Icon name={s.ok ? "check" : "x"} />
+              <code>{s.name}</code>
+              {stepArg(s) && <span className="axxa-agent-step-arg">{stepArg(s)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function Timestamp({ ts }: { ts: number }) {
   return <div className="axxa-msg-timestamp">{formatTime(ts)}</div>;
@@ -190,6 +234,9 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
       {...menuHandlers}
     >
       <Markdown content={msg.content} />
+      {msg.agentSteps && msg.agentSteps.length > 0 && !isStreaming && (
+        <AgentSteps steps={msg.agentSteps} />
+      )}
       {msg.truncated && !isStreaming && (
         <button
           type="button"

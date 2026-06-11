@@ -80,6 +80,34 @@ describe("chat persistence round-trip", () => {
 
   // Audit do ecossistema de providers: model ids variam muito (slash, colon,
   // :free, datado). Tudo tem que sobreviver ao YAML do frontmatter.
+  it("preserva agentSteps (result com '-->') + tools_used no frontmatter", () => {
+    const steps = [
+      {
+        id: "c1",
+        name: "vault_create",
+        arguments: { path: "notes/projeto.md", content: "x" },
+        result: "criado <!-- nota --> ok",
+        ok: true,
+      },
+      { id: "c2", name: "vault_search", arguments: { query: "arquitetura" }, result: "3 hits", ok: true },
+    ];
+    const chat: ChatData = {
+      ...baseChat,
+      messages: [
+        { type: "user", content: "cria o projeto", timestamp: 1 },
+        { type: "ai-response", content: "Pronto", timestamp: 2, agentSteps: steps },
+      ],
+    };
+    const md = renderChatMarkdown(chat);
+    // frontmatter legível pro RAG
+    expect(md).toContain("tools_used:");
+    expect(md).toContain("vault_create notes/projeto.md");
+    // round-trip exato (base64 protege o "-->" do result)
+    const r = parseChatMarkdown(md);
+    expect(r.messages[1].agentSteps).toEqual(steps);
+    expect(r.messages[1].content).toBe("Pronto"); // comentário sai do conteúdo
+  });
+
   it.each([
     ["openai", "gpt-4o"],
     ["anthropic", "claude-fable-5"],

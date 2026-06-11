@@ -423,6 +423,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           ...(m.type === "ai-response" && (m as AIResponseMessage).reaction
             ? { reaction: (m as AIResponseMessage).reaction }
             : {}),
+          // Persiste as ações do agent (continuidade de contexto). v0.1.160
+          ...(m.type === "ai-response" &&
+          (m as AIResponseMessage).agentSteps?.length
+            ? { agentSteps: (m as AIResponseMessage).agentSteps }
+            : {}),
         })),
       };
       saveChat(plugin.app, plugin.settings.chatsPath, chat).catch((err) =>
@@ -465,6 +470,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       updateActivity,
       setLoading,
       setStreamingMessageId,
+      setAgentSteps,
       addUsage,
       startStreamTimer,
       tickStreamTokens,
@@ -725,6 +731,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       updateActivity,
       setLoading,
       setStreamingMessageId,
+      setAgentSteps,
       addUsage,
       startStreamTimer,
       tickStreamTokens,
@@ -812,6 +819,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // injeta uma msg "tool" forçada pedindo pra mudar de estratégia.
     const loopWindow = effortCfg.loopDetectionWindow;
     const recentCallSignatures: string[] = [];
+    // Ações de tool do run inteiro — anexadas à resposta final p/ continuidade.
+    const runSteps: import("../agent/types").AIToolStep[] = [];
 
     let turn = 0;
     let firstTurn = true;
@@ -871,10 +880,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               updateActivity(commentId, { phase: "done" });
               firstTurn = false;
             }
-            addMessage({
+            responseId = addMessage({
               type: "ai-response",
               content: response.content || t.ai.emptyResponse,
             });
+          }
+          // Anexa as ações do run à resposta final → continuidade ao reabrir.
+          if (runSteps.length > 0 && responseId) {
+            setAgentSteps(responseId, runSteps);
           }
           return;
         }
@@ -1091,6 +1104,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             toolCallId: r.callId,
             content: r.content,
           });
+          // Acumula pra persistência (result truncado p/ não inchar o .md).
+          const call = response.toolCalls.find((c) => c.id === r.callId);
+          if (call) {
+            runSteps.push({
+              id: r.callId,
+              name: call.name,
+              arguments: call.arguments,
+              result: r.content.slice(0, 1200),
+              ok: r.ok,
+            });
+          }
         }
 
         // Se detectou loop, injeta nudge pro LLM e segue um turn — se ele
@@ -1121,10 +1145,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           recentCallSignatures.length = 0;
         }
       }
-      addMessage({
+      const maxId = addMessage({
         type: "ai-response",
         content: t.agent.maxTurnsReached(MAX_TURNS),
       });
+      if (runSteps.length > 0) setAgentSteps(maxId, runSteps);
     } catch (err) {
       if (firstTurn) {
         // Em caso de erro antes do primeiro token, marca o "Pensando..." como
@@ -1403,6 +1428,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       appendToMessage,
       setLoading,
       setStreamingMessageId,
+      setAgentSteps,
       addUsage,
       startStreamTimer,
       tickStreamTokens,
@@ -1488,6 +1514,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       setTruncated,
       setLoading,
       setStreamingMessageId,
+      setAgentSteps,
       addUsage,
       startStreamTimer,
       tickStreamTokens,
@@ -1878,6 +1905,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         // Restaura reaction salva quando ai-response
         ...(m.type === "ai-response" && m.reaction
           ? { reaction: m.reaction }
+          : {}),
+        // Restaura as ações do agent → o agent "lembra" o que fez ao continuar.
+        ...(m.type === "ai-response" && m.agentSteps
+          ? { agentSteps: m.agentSteps }
           : {}),
       })) as ChatMessage[];
 

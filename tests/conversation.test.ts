@@ -76,4 +76,29 @@ describe("storeMessagesToProvider", () => {
     const out = storeMessagesToProvider(msgs);
     expect(out.some((m) => "attachments" in m)).toBe(false);
   });
+
+  it("CONTINUIDADE: ai-response com agentSteps vira assistant(tool_calls)+tool(result)+assistant(texto)", () => {
+    const steps = [
+      { id: "c1", name: "vault_create", arguments: { path: "a.md" }, result: "criado", ok: true },
+      { id: "c2", name: "vault_search", arguments: { query: "x" }, result: "2 hits", ok: true },
+    ];
+    const out = storeMessagesToProvider([
+      { type: "user", content: "cria a.md" },
+      { type: "ai-response", content: "Feito!", agentSteps: steps },
+    ]);
+    expect(out).toEqual([
+      { role: "user", content: "cria a.md" },
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          { id: "c1", name: "vault_create", arguments: { path: "a.md" } },
+          { id: "c2", name: "vault_search", arguments: { query: "x" } },
+        ],
+      },
+      { role: "tool", toolCallId: "c1", content: "criado" },
+      { role: "tool", toolCallId: "c2", content: "2 hits" },
+      { role: "assistant", content: "Feito!" },
+    ]);
+  });
 });

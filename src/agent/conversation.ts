@@ -4,6 +4,7 @@
 // aqui, puro e testável.
 
 import type { ProviderMessage, MessageAttachment } from "../providers/base";
+import type { AIToolStep } from "./types";
 
 // ── System prompt ──────────────────────────────────────────
 
@@ -48,12 +49,17 @@ export interface StoreMessageLike {
   type: string;
   content?: string;
   isError?: boolean;
+  /** Ações do agent (Agent mode) — reconstruídas no history pra continuidade. */
+  agentSteps?: AIToolStep[];
 }
 
 /**
  * Converte mensagens do store em ProviderMessage[] mandadas ao LLM:
  *   - mantém só `user` e `ai-response` SEM erro (isError não polui o contexto)
  *   - a ÚLTIMA user-msg recebe os attachments multimodais (quando passados)
+ *   - ai-response COM agentSteps (Agent mode) é EXPANDIDA pro shape que o LLM
+ *     espera — assistant(tool_calls) + tool(results) + assistant(texto final) —
+ *     dando ao agent a memória do que já fez ao reabrir o chat. v0.1.160
  */
 export function storeMessagesToProvider(
   messages: StoreMessageLike[],
@@ -62,15 +68,35 @@ export function storeMessagesToProvider(
   const usable = messages.filter(
     (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
   );
-  return usable.map((m, idx) => {
+  const out: ProviderMessage[] = [];
+  usable.forEach((m, idx) => {
+    if (m.type === "ai-response" && m.agentSteps && m.agentSteps.length > 0) {
+      // assistant com as tool_calls + os tool results + a resposta final.
+      out.push({
+        role: "assistant",
+        content: "",
+        toolCalls: m.agentSteps.map((s) => ({
+          id: s.id,
+          name: s.name,
+          arguments: s.arguments,
+        })),
+      });
+      for (const s of m.agentSteps) {
+        out.push({ role: "tool", toolCallId: s.id, content: s.result });
+      }
+      if (m.content) out.push({ role: "assistant", content: m.content });
+      return;
+    }
     const base: ProviderMessage = {
       role: m.type === "user" ? "user" : "assistant",
       content: m.content ?? "",
     };
     const isLastUser = idx === usable.length - 1 && m.type === "user";
     if (isLastUser && lastUserAttachments && lastUserAttachments.length > 0) {
-      return { ...base, attachments: lastUserAttachments };
+      out.push({ ...base, attachments: lastUserAttachments });
+    } else {
+      out.push(base);
     }
-    return base;
   });
+  return out;
 }

@@ -12,6 +12,7 @@
 //   ensureFolder() — cria pasta recursiva
 
 import type { App, DataAdapter } from "obsidian";
+import type { AIToolStep } from "../../agent/types";
 
 export interface ChatMessageStored {
   type: "user" | "ai-response";
@@ -19,6 +20,16 @@ export interface ChatMessageStored {
   timestamp: number;
   /** Reaction do user no ai-response (persiste like/dislike entre reloads). */
   reaction?: "like" | "dislike" | null;
+  /** Ações de tool do agent (Agent mode) — persistidas pra continuidade de
+   *  contexto ao reabrir o chat. v0.1.160 */
+  agentSteps?: AIToolStep[];
+}
+
+/** Argumento mais significativo de uma tool (path/from/query) pro resumo. */
+function stepLabel(step: AIToolStep): string {
+  const a = step.arguments ?? {};
+  const key = (a.path ?? a.from ?? a.folder ?? a.query) as string | undefined;
+  return key ? `${step.name} ${key}` : step.name;
 }
 
 export interface ChatData {
@@ -95,10 +106,28 @@ function yamlString(s: string): string {
   return JSON.stringify(s);
 }
 
+// Base64 UTF-8-safe (funciona no plugin Electron E no node dos testes). Usado
+// pra embutir os agentSteps num comentário sem risco de "-->" no result quebrar.
+function b64encode(s: string): string {
+  return btoa(unescape(encodeURIComponent(s)));
+}
+function b64decode(s: string): string {
+  return decodeURIComponent(escape(atob(s)));
+}
+
 function renderFrontmatter(chat: ChatData): string {
   const tags = TAG_LIST.concat([`axxa-mode-${chat.mode}`])
     .map((t) => `  - ${t}`)
     .join("\n");
+  // tools_used: resumo legível das ações do agent (RAG indexa frontmatter →
+  // dá pra achar "qual chat criou notes/projeto.md"). v0.1.160
+  const allSteps = chat.messages.flatMap((m) => m.agentSteps ?? []);
+  const toolsBlock =
+    allSteps.length > 0
+      ? `tools_used:\n${allSteps
+          .map((s) => `  - ${yamlString(stepLabel(s))}`)
+          .join("\n")}\n`
+      : "";
   return `---
 id: ${yamlString(chat.id)}
 title: ${yamlString(chat.title)}
@@ -110,7 +139,7 @@ effort: ${yamlString(chat.effort)}
 ${chat.persona ? `persona: ${yamlString(chat.persona)}\n` : ""}tokens_in: ${chat.tokensIn}
 tokens_out: ${chat.tokensOut}
 message_count: ${chat.messages.length}
-tags:
+${toolsBlock}tags:
 ${tags}
 ---`;
 }
@@ -126,7 +155,13 @@ function renderBody(chat: ChatData): string {
       if (m.timestamp) meta.push(`ts=${m.timestamp}`);
       if (m.reaction) meta.push(`reaction=${m.reaction}`);
       const metaLine = meta.length > 0 ? `<!-- axxa: ${meta.join(" ")} -->\n` : "";
-      return `## ${label}\n\n${metaLine}${m.content.trim()}\n`;
+      // Ações do agent — base64 num comentário (precisão pro replay; invisível
+      // no preview). O resumo legível vai no frontmatter tools_used.
+      const stepsLine =
+        m.agentSteps && m.agentSteps.length > 0
+          ? `\n\n<!-- axxa-steps: ${b64encode(JSON.stringify(m.agentSteps))} -->`
+          : "";
+      return `## ${label}\n\n${metaLine}${m.content.trim()}${stepsLine}\n`;
     })
     .join("\n");
   return `${heading}\n${sections}`;
@@ -221,6 +256,21 @@ function parseSimpleYaml(text: string): Record<string, string | number | string[
   return result;
 }
 
+/** Extrai os agentSteps (comentário base64 no fim) e devolve o content limpo. */
+function extractAgentSteps(content: string): {
+  content: string;
+  agentSteps?: AIToolStep[];
+} {
+  const m = content.match(/\n*<!--\s*axxa-steps:\s*([A-Za-z0-9+/=]+)\s*-->\s*$/);
+  if (!m || m.index === undefined) return { content };
+  try {
+    const steps = JSON.parse(b64decode(m[1])) as AIToolStep[];
+    return { content: content.slice(0, m.index).trimEnd(), agentSteps: steps };
+  } catch {
+    return { content };
+  }
+}
+
 function parseBody(body: string): ChatMessageStored[] {
   // Pula até a primeira heading `## You` ou `## Assistant`
   // depois alterna entre elas até o final ou outra heading desconhecida.
@@ -254,12 +304,17 @@ function parseBody(body: string): ChatMessageStored[] {
     );
     // Extrai metadata (timestamp + reaction) da linha HTML comment
     const { cleanContent, timestamp, reaction } = parseMessageMeta(rawContent.trim());
+    // Extrai as ações do agent (comentário base64) e tira do conteúdo visível.
+    const { content: finalContent, agentSteps } = extractAgentSteps(
+      cleanContent.trim()
+    );
     messages.push({
       type: cur.type,
-      content: cleanContent.trim(),
+      content: finalContent,
       // Restaura timestamp original se salvo; fallback now()
       timestamp: timestamp ?? Date.now(),
       ...(reaction != null ? { reaction } : {}),
+      ...(agentSteps ? { agentSteps } : {}),
     });
   }
   return messages;

@@ -1108,6 +1108,80 @@ body.is-mobile
   height: 14px;
 }
 
+/* === Agent steps (v0.1.160): "🔧 N ações" colapsável na resposta do agent === */
+.axxa-agent-steps {
+  margin-top: 8px;
+}
+.axxa-agent-steps-head,
+.axxa-agent-steps-head:focus,
+.axxa-agent-steps-head:active {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid
+    color-mix(in srgb, var(--background-modifier-border) 55%, transparent) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.13s, background 0.13s;
+}
+.axxa-agent-steps-head:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover) !important;
+}
+.axxa-agent-steps-head .svg-icon {
+  width: 13px;
+  height: 13px;
+}
+.axxa-agent-steps-chevron {
+  transition: transform 0.15s ease;
+}
+.axxa-agent-steps.is-open .axxa-agent-steps-chevron {
+  transform: rotate(90deg);
+}
+.axxa-agent-steps-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0 0 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.axxa-agent-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.axxa-agent-step .svg-icon {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  color: var(--color-green, #06d6a0);
+}
+.axxa-agent-step.is-fail .svg-icon {
+  color: var(--color-red, #e5534b);
+}
+.axxa-agent-step code {
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+}
+.axxa-agent-step-arg {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
 /* =====================================================
  * Error message — bolha de erro ACIONÁVEL (v0.1.147)
  * Card de alerta (ícone + texto) + ações: Tentar de novo / Abrir Config.

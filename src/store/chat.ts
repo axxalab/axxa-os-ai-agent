@@ -5,6 +5,7 @@
 // renderizam o variant correto pra cada item.
 
 import { create } from "zustand";
+import type { AIToolStep } from "../agent/types";
 
 export type MessageType = "user" | "ai-response" | "ai-comment" | "ai-options";
 
@@ -41,6 +42,9 @@ export interface AIResponseMessage extends BaseMessage {
   /** Código do erro (quando isError). Permite à UI oferecer ação específica:
    *  no-key/invalid-key → "Abrir Configurações"; os demais → só "Tentar de novo". */
   errorCode?: AIErrorCode;
+  /** Ações de tool do agent que levaram a esta resposta (Agent mode). Persistidas
+   *  pra dar continuidade de contexto ao reabrir o chat. v0.1.160 */
+  agentSteps?: AIToolStep[];
   /** True quando a resposta foi cortada no limite de tokens (output ≈ maxTokens).
    *  Mostra um botão "Continuar" no footer pra emendar de onde parou. */
   truncated?: boolean;
@@ -146,6 +150,8 @@ interface ChatState {
   ) => void;
   /** Toggle/seta reaction num ai-response. null = neutro, "like"/"dislike". */
   setReaction: (id: string, reaction: "like" | "dislike" | null) => void;
+  /** Anexa as ações de tool do agent a uma ai-response (Agent mode). */
+  setAgentSteps: (id: string, steps: AIToolStep[]) => void;
   /** Marca/desmarca uma ai-response como truncada (cortada no limite de tokens). */
   setTruncated: (id: string, truncated: boolean) => void;
   /** Inicia uma nova variante: arquiva o content atual e abre uma vazia. */
@@ -251,6 +257,12 @@ export const useChatStore = create<ChatState>((set) => ({
         if (m.type !== "ai-response") return m;
         return { ...m, reaction };
       }),
+    })),
+  setAgentSteps: (id, steps) =>
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === id && m.type === "ai-response" ? { ...m, agentSteps: steps } : m
+      ),
     })),
   setTruncated: (id, truncated) =>
     set((state) => ({

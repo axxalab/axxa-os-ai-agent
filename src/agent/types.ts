@@ -10,6 +10,23 @@
 import type { App } from "obsidian";
 import type { VectorIndex } from "../rag/vectorIndex";
 
+/**
+ * Uma ação executada pelo agent (tool call + resultado). Persistida no chat pra
+ * dar CONTINUIDADE: ao reabrir o chat e mandar nova mensagem, o agent recebe de
+ * volta o que ele já fez (assistant tool_call + tool result reconstruídos no
+ * history) — cada chat mantém sua própria janela de contexto. v0.1.160
+ */
+export interface AIToolStep {
+  /** id da tool_call (conecta o result ao call). */
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  /** Resultado da tool (truncado pra não inchar o .md). */
+  result: string;
+  /** Falhou? (result carrega a mensagem de erro). */
+  ok: boolean;
+}
+
 /** Quanto controle o user dá ao agent.
  *  - ask: confirma cada ação NÃO destrutiva via modal antes de executar
  *  - vault: pula confirmação pra read/list/create/edit. Destrutivo (delete/move)
