@@ -325,6 +325,36 @@ export const PT_BR = {
     menuDesc: "Gera uma imagem na conversa atual — sem trocar de modelo.",
   },
 
+  // Navegação lateral (v0.1.174)
+  nav: {
+    conversations: "Conversas",
+    media: "Mídia",
+    statistics: "Estatísticas",
+    projects: "Projetos",
+    profile: "Perfil",
+    settings: "Configurações",
+    more: "Ver mais",
+    less: "Ver menos",
+  },
+  screens: {
+    mediaEmptyTitle: "Sem mídia no vault",
+    mediaEmptySub: "Imagens, áudios e vídeos gerados ou anexados aparecem aqui.",
+    statSpend: "Gasto",
+    statChats: "Conversas",
+    statTokens: "Tokens",
+    statTopModels: "Top modelos",
+    statEmptyTitle: "Sem dados ainda",
+    statEmptySub: "Use o chat pra começar a gerar estatísticas.",
+    statOpenUsage: "Ver detalhes em Configurações → Usage",
+    projectsEmptyTitle: "Projetos em breve",
+    projectsEmptySub: "Agrupe conversas, notas e mídias num projeto. Em construção.",
+    profileProviders: "Providers conectados",
+    profileChats: "Conversas",
+    lockedTitle: "Recurso do plano Pro",
+    lockedSub: "Essa tela faz parte do AXXA Pro. Faça upgrade pra desbloquear.",
+    lockedCta: "Ver planos",
+  },
+
   systemPrompt: {
     base:
       "Você é o AXXA Agent, um assistente integrado ao Obsidian. " +
@@ -648,6 +678,10 @@ export const PT_BR = {
     adminKeyName: "Admin key (opcional)",
     adminKeyDesc:
       "Só pra custos/saldo reais (Admin API). NÃO faz chat — a chave de projeto fica no campo acima.",
+    planOverrideName: "Plano (teste de admin)",
+    planOverrideDesc:
+      "Simula o plano pra testar as telas pagas. 'Auto' usa o plano real da conta; 'Free'/'Pro' forçam o comportamento. Não muda seu plano de verdade.",
+    planAuto: "Auto (plano real)",
     openaiProjectName: "Project ID (opcional)",
     openaiProjectDesc:
       "Atribui o custo real só a este projeto. Crie um projeto dedicado pro AXXA no painel da OpenAI e use uma chave desse projeto — aí o saldo/custo reflete só o plugin, não a org inteira.",

@@ -13,6 +13,13 @@ import { useT, type Translations } from "../../i18n";
 import { formatTokens } from "../_shared/contextWindows";
 import { modelVendorLogoId } from "../_shared/modelLogo";
 import type { ChatSummary } from "../_shared/chatPersistence";
+import {
+  NAV_ITEMS,
+  PRIMARY_COUNT,
+  viewRequiresPro,
+  type AppView,
+  type Tier,
+} from "../../entitlements";
 
 interface SidebarProps {
   open: boolean;
@@ -23,6 +30,10 @@ interface SidebarProps {
   /** "Ver todas" → tela cheia de conversas (com filtros/sort). */
   onOpenAll: () => void;
   onOpenSettings: () => void;
+  /** Navega pra uma tela (media/statistics/projects/profile/conversations). */
+  onNavigate: (view: AppView) => void;
+  /** Plano efetivo — gateia as telas pagas (cadeado no free). */
+  tier: Tier;
 }
 
 const MODE_COLOR: Record<string, string> = {
@@ -94,9 +105,16 @@ export function Sidebar({
   onNewChat,
   onOpenAll,
   onOpenSettings,
+  onNavigate,
+  tier,
 }: SidebarProps) {
   const t = useT();
   const [search, setSearch] = useState("");
+  // 3 itens sempre visíveis; o resto atrás do "Ver mais" (igual nos apps).
+  const [navOpen, setNavOpen] = useState(false);
+  const navLabel = (v: AppView): string =>
+    (t.nav as Record<string, string>)[v] ?? v;
+  const visibleNav = navOpen ? NAV_ITEMS : NAV_ITEMS.slice(0, PRIMARY_COUNT);
 
   const groups = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -160,6 +178,40 @@ export function Sidebar({
           <Icon name="message-square-plus" />
           {t.header.newChat}
         </button>
+
+        {/* Navegação das seções — 3 sempre, resto no "Ver mais". v0.1.174 */}
+        <nav className="axxa-sidebar-nav">
+          {visibleNav.map((item) => {
+            const locked = tier === "free" && viewRequiresPro(item.view);
+            return (
+              <button
+                key={item.view}
+                type="button"
+                className={"axxa-sidebar-nav-item" + (locked ? " is-locked" : "")}
+                onClick={() => {
+                  onNavigate(item.view);
+                  onClose();
+                }}
+              >
+                <Icon name={item.icon} />
+                <span className="axxa-sidebar-nav-label">{navLabel(item.view)}</span>
+                {locked && (
+                  <Icon name="lock" className="axxa-sidebar-nav-lock" />
+                )}
+              </button>
+            );
+          })}
+          {NAV_ITEMS.length > PRIMARY_COUNT && (
+            <button
+              type="button"
+              className="axxa-sidebar-nav-more"
+              onClick={() => setNavOpen((o) => !o)}
+            >
+              <Icon name={navOpen ? "chevron-up" : "chevron-down"} />
+              <span>{navOpen ? t.nav.less : t.nav.more}</span>
+            </button>
+          )}
+        </nav>
 
         <div className="axxa-sidebar-search">
           <Icon name="search" />

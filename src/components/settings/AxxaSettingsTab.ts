@@ -1536,6 +1536,22 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
+    // Plano (admin) — testar free vs pro sem mexer no entitlement real. v0.1.174
+    new Setting(parent)
+      .setName(t.settings.planOverrideName)
+      .setDesc(t.settings.planOverrideDesc)
+      .addDropdown((dd) =>
+        dd
+          .addOption("auto", t.settings.planAuto)
+          .addOption("pro", "Pro")
+          .addOption("free", "Free")
+          .setValue(this.plugin.settings.devTierOverride || "auto")
+          .onChange(async (value) => {
+            this.plugin.settings.devTierOverride = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
     parent.createEl("h3", { text: t.settings.comingSoon });
     const todo = parent.createEl("ul");
     t.settings.comingSoonItems.forEach((item) => {

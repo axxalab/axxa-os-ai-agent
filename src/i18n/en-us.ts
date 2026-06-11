@@ -315,6 +315,35 @@ export const EN_US: Translations = {
     menuDesc: "Generates an image in the current chat — no model switch.",
   },
 
+  nav: {
+    conversations: "Conversations",
+    media: "Media",
+    statistics: "Statistics",
+    projects: "Projects",
+    profile: "Profile",
+    settings: "Settings",
+    more: "Show more",
+    less: "Show less",
+  },
+  screens: {
+    mediaEmptyTitle: "No media in the vault",
+    mediaEmptySub: "Generated or attached images, audio and video show up here.",
+    statSpend: "Spend",
+    statChats: "Chats",
+    statTokens: "Tokens",
+    statTopModels: "Top models",
+    statEmptyTitle: "No data yet",
+    statEmptySub: "Use the chat to start generating stats.",
+    statOpenUsage: "See details in Settings → Usage",
+    projectsEmptyTitle: "Projects coming soon",
+    projectsEmptySub: "Group chats, notes and media into a project. Under construction.",
+    profileProviders: "Connected providers",
+    profileChats: "Chats",
+    lockedTitle: "Pro feature",
+    lockedSub: "This screen is part of AXXA Pro. Upgrade to unlock.",
+    lockedCta: "See plans",
+  },
+
   systemPrompt: {
     base:
       "You are AXXA Agent, an assistant integrated into Obsidian. " +
@@ -636,6 +665,10 @@ export const EN_US: Translations = {
     adminKeyName: "Admin key (optional)",
     adminKeyDesc:
       "Only for real costs/balance (Admin API). Can't do chat — your project key stays in the field above.",
+    planOverrideName: "Plan (admin test)",
+    planOverrideDesc:
+      "Simulates the plan to test paid screens. 'Auto' uses the account's real plan; 'Free'/'Pro' force the behavior. Doesn't change your real plan.",
+    planAuto: "Auto (real plan)",
     openaiProjectName: "Project ID (optional)",
     openaiProjectDesc:
       "Attributes the real cost to this project only. Create a dedicated AXXA project in the OpenAI dashboard and use a key from it — then balance/cost reflects only the plugin, not the whole org.",

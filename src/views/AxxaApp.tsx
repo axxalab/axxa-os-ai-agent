@@ -19,6 +19,18 @@ import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
 import { StarterScreen } from "../components/chat/StarterScreen";
 import { ConversationsList } from "../components/chat/ConversationsList";
+import {
+  MediaScreen,
+  StatisticsScreen,
+  ProjectsScreen,
+  ProfileScreen,
+  LockedScreen,
+} from "../components/screens/Screens";
+import {
+  getEffectiveTier,
+  canAccess,
+  type AppView,
+} from "../entitlements";
 import { AppContext } from "../components/_shared/AppContext";
 import {
   ChatActionsContext,
@@ -310,7 +322,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   useWakeLock(isLoading);
 
   // View state: chat (default) ou conversations (tela cheia de todas conversas)
-  const [view, setView] = useState<"chat" | "conversations">("chat");
+  const [view, setView] = useState<AppView>("chat");
+  // Plano efetivo (override de admin > entitlement real). Gateia telas pagas.
+  const tier = getEffectiveTier(plugin.settings);
+  const handleNavigate = (v: AppView) => setView(v);
   // Busca dentro da conversa atual (toggle no Header → campo acima da ChatArea)
   // Alvo de destaque da busca (msg escolhida no modal). n = nonce p/ re-disparar.
   const [searchTarget, setSearchTarget] = useState<{
@@ -2319,6 +2334,42 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onClose={() => setView("chat")}
             visibleChips={plugin.settings.listChips}
           />
+        ) : view === "media" ? (
+          canAccess("media", tier) ? (
+            <MediaScreen app={plugin.app} onClose={() => setView("chat")} />
+          ) : (
+            <LockedScreen view="media" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
+          )
+        ) : view === "statistics" ? (
+          canAccess("statistics", tier) ? (
+            <StatisticsScreen
+              summaries={allChats}
+              onOpenUsage={handleOpenSettings}
+              onClose={() => setView("chat")}
+            />
+          ) : (
+            <LockedScreen view="statistics" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
+          )
+        ) : view === "projects" ? (
+          canAccess("projects", tier) ? (
+            <ProjectsScreen onClose={() => setView("chat")} />
+          ) : (
+            <LockedScreen view="projects" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
+          )
+        ) : view === "profile" ? (
+          canAccess("profile", tier) ? (
+            <ProfileScreen
+              tier={tier}
+              email=""
+              connectedProviders={["openai", "anthropic", "gemini", "openrouter", "nim", "ollama"].filter(
+                (id) => id === "ollama" || apiKeyFor(id).trim().length > 0
+              )}
+              totalChats={allChats.length}
+              onClose={() => setView("chat")}
+            />
+          ) : (
+            <LockedScreen view="profile" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
+          )
         ) : isEmpty ? (
           <StarterScreen
             plugin={plugin}
@@ -2549,6 +2600,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onNewChat={handleNewChat}
             onOpenAll={handleOpenConversations}
             onOpenSettings={handleOpenSettings}
+            onNavigate={handleNavigate}
+            tier={tier}
           />
         </div>
         </ChatActionsContext.Provider>

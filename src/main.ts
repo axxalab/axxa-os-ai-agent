@@ -137,6 +137,11 @@ interface AxxaSettings {
   /** Âncora de saldo por provider (v0.1.171): { amount, date(ISO) }. O saldo é
    *  estimado/real = âncora − gasto desde a data. Crédito é separado por provider. */
   balanceAnchors: Record<string, { amount: number; date: string }>;
+  // ============ Plano / entitlements (v0.1.174) ============
+  /** Entitlement REAL da conta: "free" | "pro" (futuro: billing). Default pro. */
+  accountTier: string;
+  /** Override de ADMIN pra testar planos: "auto" | "free" | "pro". */
+  devTierOverride: string;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -224,6 +229,8 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   openaiProjectId: "",
   anthropicWorkspaceId: "",
   balanceAnchors: {},
+  accountTier: "pro",
+  devTierOverride: "auto",
 };
 
 export default class AxxaPlugin extends Plugin {
