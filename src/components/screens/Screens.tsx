@@ -16,7 +16,7 @@ import {
 import { formatUsd } from "../../usage/pricing";
 import { formatTokens } from "../_shared/contextWindows";
 import type { ChatSummary } from "../_shared/chatPersistence";
-import type { AppView, Tier } from "../../entitlements";
+import { isLicensePro, type AppView, type Tier } from "../../entitlements";
 
 // ── Shell comum ────────────────────────────────────────────
 function ScreenShell({
@@ -251,6 +251,91 @@ export function ProfileScreen({
           <span>{t.screens.profileChats}</span>
           <span className="axxa-profile-row-val">{totalChats}</span>
         </div>
+      </div>
+    </ScreenShell>
+  );
+}
+
+// ── Plans — Free vs Pro + license key (#8/#15) ─────────────
+export function PlansScreen({
+  tier,
+  license,
+  onSetLicense,
+  onClose,
+}: {
+  tier: Tier;
+  license: string;
+  onSetLicense: (key: string) => void;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const [key, setKey] = useState(license);
+  const valid = isLicensePro(key);
+  return (
+    <ScreenShell title={t.plans.title} icon="sparkles" onClose={onClose}>
+      <div className="axxa-plans-grid">
+        <div className={"axxa-plan" + (tier === "free" ? " is-current" : "")}>
+          <div className="axxa-plan-name">
+            Free
+            {tier === "free" && (
+              <span className="axxa-plan-badge">{t.plans.current}</span>
+            )}
+          </div>
+          <ul className="axxa-plan-feats">
+            {t.plans.freeFeats.map((f, i) => (
+              <li key={i}>{f}</li>
+            ))}
+          </ul>
+        </div>
+        <div
+          className={
+            "axxa-plan axxa-plan-pro" + (tier === "pro" ? " is-current" : "")
+          }
+        >
+          <div className="axxa-plan-name">
+            Pro
+            {tier === "pro" && (
+              <span className="axxa-plan-badge">{t.plans.current}</span>
+            )}
+          </div>
+          <ul className="axxa-plan-feats">
+            {t.plans.proFeats.map((f, i) => (
+              <li key={i}>{f}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="axxa-plans-license">
+        <div className="axxa-screen-section-head">{t.plans.licenseLabel}</div>
+        <div className="axxa-plans-license-row">
+          <input
+            type="text"
+            value={key}
+            placeholder="AXXA-PRO-XXXX-XXXX"
+            onChange={(e) => setKey(e.target.value)}
+          />
+          <button
+            type="button"
+            className="axxa-screen-cta"
+            disabled={key.trim() === license.trim()}
+            onClick={() => onSetLicense(key.trim())}
+          >
+            {t.plans.apply}
+          </button>
+        </div>
+        <p
+          className={
+            "axxa-plans-license-status" +
+            (key.length === 0 ? "" : valid ? " is-ok" : " is-bad")
+          }
+        >
+          {key.length === 0
+            ? t.plans.licenseHint
+            : valid
+              ? t.plans.licenseValid
+              : t.plans.licenseInvalid}
+        </p>
       </div>
     </ScreenShell>
   );

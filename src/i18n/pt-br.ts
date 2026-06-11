@@ -326,6 +326,31 @@ export const PT_BR = {
     menuDesc: "Gera uma imagem na conversa atual — sem trocar de modelo.",
   },
 
+  // Planos (#8) + license key (#15) — v0.1.180
+  plans: {
+    title: "Planos",
+    current: "atual",
+    freeFeats: [
+      "Chat com 6 providers (BYO key)",
+      "Vault Q&A + RAG local com citações",
+      "Agente com aprovação por diff",
+      "Geração de imagem na conversa",
+      "Personas, skills e modos",
+    ],
+    proFeats: [
+      "Tudo do Free",
+      "Mídia — galeria do vault",
+      "Estatísticas avançadas",
+      "Projetos (em breve)",
+      "Suporte prioritário",
+    ],
+    licenseLabel: "License key",
+    apply: "Aplicar",
+    licenseHint: "Cole sua license pra desbloquear o Pro. (teste: AXXA-PRO-TEST-2026)",
+    licenseValid: "✓ Chave válida — Pro ativo.",
+    licenseInvalid: "✗ Formato inválido. Use AXXA-PRO-XXXX-XXXX.",
+  },
+
   // Onboarding de 1º uso (#4) + discoverability (#7) — v0.1.178
   onboarding: {
     title: "Bem-vindo ao AXXA OS",

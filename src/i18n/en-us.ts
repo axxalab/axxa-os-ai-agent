@@ -316,6 +316,30 @@ export const EN_US: Translations = {
     menuDesc: "Generates an image in the current chat — no model switch.",
   },
 
+  plans: {
+    title: "Plans",
+    current: "current",
+    freeFeats: [
+      "Chat with 6 providers (BYO key)",
+      "Vault Q&A + local RAG with citations",
+      "Agent with diff approval",
+      "Image generation in the chat",
+      "Personas, skills and modes",
+    ],
+    proFeats: [
+      "Everything in Free",
+      "Media — vault gallery",
+      "Advanced statistics",
+      "Projects (coming soon)",
+      "Priority support",
+    ],
+    licenseLabel: "License key",
+    apply: "Apply",
+    licenseHint: "Paste your license to unlock Pro. (test: AXXA-PRO-TEST-2026)",
+    licenseValid: "✓ Valid key — Pro active.",
+    licenseInvalid: "✗ Invalid format. Use AXXA-PRO-XXXX-XXXX.",
+  },
+
   onboarding: {
     title: "Welcome to AXXA OS",
     sub: "Your AI workspace, native to Obsidian.",

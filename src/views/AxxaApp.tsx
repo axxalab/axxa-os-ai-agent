@@ -26,10 +26,12 @@ import {
   ProfileScreen,
   LockedScreen,
   OnboardingScreen,
+  PlansScreen,
 } from "../components/screens/Screens";
 import {
   getEffectiveTier,
   canAccess,
+  isLicensePro,
   type AppView,
 } from "../entitlements";
 import { AppContext } from "../components/_shared/AppContext";
@@ -343,6 +345,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     plugin.settings.onboardingDone = true;
     await plugin.saveSettings();
     if (openSettings) handleOpenSettings();
+  };
+  // License key (#15) — salva e re-renderiza (tier recomputa). Notice do estado.
+  const handleSetLicense = async (key: string) => {
+    plugin.settings.licenseKey = key;
+    await plugin.saveSettings();
+    new Notice(isLicensePro(key) ? t.plans.licenseValid : t.plans.licenseInvalid);
   };
   // Busca dentro da conversa atual (toggle no Header → campo acima da ChatArea)
   // Alvo de destaque da busca (msg escolhida no modal). n = nonce p/ re-disparar.
@@ -2379,7 +2387,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               onClose={() => setView("chat")}
             />
           ) : (
-            <LockedScreen view="media" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
+            <LockedScreen view="media" onClose={() => setView("chat")} onSeePlans={() => setView("plans")} />
           )
         ) : view === "statistics" ? (
           canAccess("statistics", tier) ? (
@@ -2389,28 +2397,31 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               onClose={() => setView("chat")}
             />
           ) : (
-            <LockedScreen view="statistics" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
+            <LockedScreen view="statistics" onClose={() => setView("chat")} onSeePlans={() => setView("plans")} />
           )
         ) : view === "projects" ? (
           canAccess("projects", tier) ? (
             <ProjectsScreen onClose={() => setView("chat")} />
           ) : (
-            <LockedScreen view="projects" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
+            <LockedScreen view="projects" onClose={() => setView("chat")} onSeePlans={() => setView("plans")} />
           )
         ) : view === "profile" ? (
-          canAccess("profile", tier) ? (
-            <ProfileScreen
-              tier={tier}
-              email=""
-              connectedProviders={["openai", "anthropic", "gemini", "openrouter", "nim", "ollama"].filter(
-                (id) => id === "ollama" || apiKeyFor(id).trim().length > 0
-              )}
-              totalChats={allChats.length}
-              onClose={() => setView("chat")}
-            />
-          ) : (
-            <LockedScreen view="profile" onClose={() => setView("chat")} onSeePlans={handleOpenSettings} />
-          )
+          <ProfileScreen
+            tier={tier}
+            email=""
+            connectedProviders={["openai", "anthropic", "gemini", "openrouter", "nim", "ollama"].filter(
+              (id) => id === "ollama" || apiKeyFor(id).trim().length > 0
+            )}
+            totalChats={allChats.length}
+            onClose={() => setView("chat")}
+          />
+        ) : view === "plans" ? (
+          <PlansScreen
+            tier={tier}
+            license={plugin.settings.licenseKey}
+            onSetLicense={handleSetLicense}
+            onClose={() => setView("chat")}
+          />
         ) : view === "chat" &&
           isEmpty &&
           !plugin.settings.onboardingDone &&

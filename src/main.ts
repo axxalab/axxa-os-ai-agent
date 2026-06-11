@@ -147,6 +147,8 @@ interface AxxaSettings {
   devTierOverride: string;
   /** Onboarding de 1º uso já foi visto/dispensado? (não mostra de novo). #4 */
   onboardingDone: boolean;
+  /** License key (scaffold #15) — válida → desbloqueia o Pro. */
+  licenseKey: string;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -237,6 +239,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   accountTier: "pro",
   devTierOverride: "auto",
   onboardingDone: false,
+  licenseKey: "",
 };
 
 export default class AxxaPlugin extends Plugin {

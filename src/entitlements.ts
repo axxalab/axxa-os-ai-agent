@@ -15,7 +15,8 @@ export type AppView =
   | "media"
   | "projects"
   | "statistics"
-  | "profile";
+  | "profile"
+  | "plans";
 
 /** Telas que exigem plano pago. Perfil é livre (info da conta); Projetos saiu da
  *  navegação até ter conteúdo (não vender vazio como pago). #5 */
@@ -24,12 +25,27 @@ export const PAID_VIEWS: AppView[] = ["media", "statistics"];
 export interface TierSettings {
   accountTier?: string;
   devTierOverride?: string;
+  licenseKey?: string;
 }
 
-/** Tier efetivo: override de admin tem prioridade; senão o entitlement real. */
+/**
+ * Valida uma license key (SCAFFOLD #15). Formato `AXXA-PRO-XXXX-XXXX`.
+ * Ex. de teste: `AXXA-PRO-TEST-2026`. Validação REAL (servidor/Gumroad) é o
+ * próximo passo — aqui é só o checa-formato pra fechar o fluxo de UI.
+ */
+export function isLicensePro(key: string | undefined): boolean {
+  const k = (key || "").trim().toUpperCase();
+  return /^AXXA-PRO-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(k);
+}
+
+/**
+ * Tier efetivo. Prioridade: override de admin > license válida > entitlement
+ * real (accountTier). Default "pro" enquanto o billing real não liga.
+ */
 export function getEffectiveTier(s: TierSettings): Tier {
   const ov = s.devTierOverride;
   if (ov === "free" || ov === "pro") return ov;
+  if (isLicensePro(s.licenseKey)) return "pro";
   return s.accountTier === "free" ? "free" : "pro";
 }
 
