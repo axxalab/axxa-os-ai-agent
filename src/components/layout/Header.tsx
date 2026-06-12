@@ -42,6 +42,8 @@ interface HeaderProps {
   onSelectModel: (model: string) => void;
   /** Sessão travada (após 1ª msg) — switcher mostra cadeado + dica. */
   modelLocked: boolean;
+  /** Abre o Modo Voz (conversa por voz). */
+  onOpenVoice: () => void;
 }
 
 export function Header({
@@ -61,6 +63,7 @@ export function Header({
   modelOptions,
   onSelectModel,
   modelLocked,
+  onOpenVoice,
 }: HeaderProps) {
   const t = useT();
   const [draft, setDraft] = useState(chatTitle);
@@ -195,6 +198,15 @@ export function Header({
             <Icon name="search" />
           </button>
         )}
+        <button
+          type="button"
+          className="axxa-header-gear"
+          onClick={onOpenVoice}
+          aria-label={t.voice.title}
+          title={t.voice.title}
+        >
+          <Icon name="audio-lines" />
+        </button>
         <button
           type="button"
           className="axxa-header-gear axxa-header-gear-primary"

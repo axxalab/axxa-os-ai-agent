@@ -2695,6 +2695,306 @@ body.is-mobile
   cursor: pointer;
 }
 
+/* =====================================================
+ * Modo Voz (refs: ChatGPT iOS 133/140, Grok iOS 63/66)
+ * ===================================================== */
+.axxa-voice {
+  position: fixed;
+  inset: 0;
+  z-index: 960;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+  animation: axxa-plus-fade 0.2s ease;
+}
+
+/* Intro */
+.axxa-voice-intro {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 24px max(28px, env(safe-area-inset-bottom)) 24px;
+  gap: 8px;
+}
+.axxa-voice-close-corner {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: 18px;
+}
+.axxa-voice-intro-title {
+  margin: 0 0 22px 0;
+  font-size: var(--font-ui-large);
+  font-weight: 700;
+}
+.axxa-voice-feats {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 340px;
+  text-align: left;
+  margin-bottom: 24px;
+}
+.axxa-voice-feat {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.axxa-voice-feat-icon {
+  flex: 0 0 auto;
+  color: var(--text-accent);
+  display: inline-flex;
+  margin-top: 1px;
+}
+.axxa-voice-feat-icon .svg-icon {
+  width: 22px;
+  height: 22px;
+}
+.axxa-voice-feat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.axxa-voice-feat-title {
+  font-weight: 600;
+}
+.axxa-voice-feat-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.axxa-voice-warn {
+  max-width: 320px;
+  margin: 0 0 14px 0;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-warning, var(--text-muted));
+  line-height: 1.4;
+}
+.axxa-voice-cta {
+  width: 100%;
+  max-width: 340px;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  cursor: pointer;
+}
+.axxa-voice-cta:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* Conversa */
+.axxa-voice-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(16px, env(safe-area-inset-top)) 18px 0 18px;
+}
+.axxa-voice-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-normal) 7%, transparent);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.axxa-voice-iconbtn:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-voice-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 16px;
+}
+.axxa-voice-orb {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.axxa-voice-orb-core {
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, var(--interactive-accent) 90%, white),
+    var(--interactive-accent) 70%
+  );
+  box-shadow: 0 0 40px -6px color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+  animation: axxa-orb-breathe 3.2s ease-in-out infinite;
+}
+.axxa-voice-orb-ring {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--interactive-accent) 40%, transparent);
+  opacity: 0;
+}
+/* Estados → animação do orb */
+.axxa-voice-state-listening .axxa-voice-orb-ring-1 {
+  animation: axxa-orb-ripple 1.6s ease-out infinite;
+}
+.axxa-voice-state-listening .axxa-voice-orb-ring-2 {
+  animation: axxa-orb-ripple 1.6s ease-out 0.8s infinite;
+}
+.axxa-voice-state-listening .axxa-voice-orb-core {
+  animation: axxa-orb-breathe 1.4s ease-in-out infinite;
+}
+.axxa-voice-state-speaking .axxa-voice-orb-core {
+  animation: axxa-orb-pulse 0.6s ease-in-out infinite;
+}
+.axxa-voice-state-thinking .axxa-voice-orb-core {
+  animation: axxa-orb-breathe 1s ease-in-out infinite;
+  opacity: 0.7;
+}
+.axxa-voice-status {
+  margin: 0;
+  max-width: 320px;
+  text-align: center;
+  font-size: var(--font-ui-medium);
+  color: var(--text-muted);
+  line-height: 1.45;
+  min-height: 1.4em;
+}
+.axxa-voice-controls {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px max(28px, env(safe-area-inset-bottom)) 16px;
+}
+.axxa-voice-mic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border: none;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  transition: transform 0.12s, background 0.15s, opacity 0.15s;
+}
+.axxa-voice-mic .svg-icon {
+  width: 26px;
+  height: 26px;
+}
+.axxa-voice-mic:active {
+  transform: scale(0.94);
+}
+.axxa-voice-mic-on {
+  background: var(--text-error, #e5484d);
+}
+.axxa-voice-mic:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Ajustes (voz + velocidade) */
+.axxa-voice-settings {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  background: var(--background-secondary);
+  border-top: 1px solid var(--background-modifier-border);
+  border-radius: 18px 18px 0 0;
+  padding: 14px 18px max(20px, env(safe-area-inset-bottom)) 18px;
+  box-shadow: 0 -8px 30px -8px rgba(0, 0, 0, 0.3);
+  animation: axxa-plus-slide 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.axxa-voice-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.axxa-voice-field-label {
+  display: block;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin: 10px 0 5px 0;
+}
+.axxa-voice-voiceselect {
+  width: 100%;
+}
+.axxa-voice-slider-wrap {
+  position: relative;
+  padding-top: 26px;
+}
+.axxa-voice-slider-bubble {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+}
+.axxa-voice-slider {
+  width: 100%;
+}
+.axxa-voice-test {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 9px 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+.axxa-voice-test:hover {
+  background: var(--background-modifier-hover);
+}
+
+@keyframes axxa-orb-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+@keyframes axxa-orb-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+@keyframes axxa-orb-ripple {
+  0% { transform: scale(0.8); opacity: 0.55; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .axxa-voice-orb-core,
+  .axxa-voice-orb-ring {
+    animation: none !important;
+  }
+}
+
 /* Disclaimer discreto abaixo do composer (a IA pode errar). v0.1.186 */
 .axxa-composer-disclaimer {
   text-align: center;

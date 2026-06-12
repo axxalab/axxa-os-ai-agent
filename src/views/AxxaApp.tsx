@@ -15,6 +15,7 @@ import { Sidebar } from "../components/layout/Sidebar";
 import { PersonaModal } from "../components/chat/PersonaModal";
 import { ChatSearchModal } from "../components/chat/ChatSearchModal";
 import { RenameChatModal } from "../components/chat/RenameChatModal";
+import { VoiceScreen } from "../components/chat/VoiceScreen";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
@@ -441,6 +442,29 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const persistProjects = async (next: Project[]) => {
     setProjects(next);
     plugin.settings.projects = next;
+    await plugin.saveSettings();
+  };
+
+  // Modo Voz (ref: ChatGPT iOS 133/140, Grok 63/66). v0.1.192
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceURI, setVoiceURI] = useState(plugin.settings.voiceURI);
+  const [voiceRate, setVoiceRate] = useState(plugin.settings.voiceRate);
+  const [voiceIntroDone, setVoiceIntroDone] = useState(
+    plugin.settings.voiceIntroDone
+  );
+  const handleChangeVoice = async (uri: string) => {
+    setVoiceURI(uri);
+    plugin.settings.voiceURI = uri;
+    await plugin.saveSettings();
+  };
+  const handleChangeVoiceRate = async (rate: number) => {
+    setVoiceRate(rate);
+    plugin.settings.voiceRate = rate;
+    await plugin.saveSettings();
+  };
+  const handleVoiceIntroDone = async () => {
+    setVoiceIntroDone(true);
+    plugin.settings.voiceIntroDone = true;
     await plugin.saveSettings();
   };
 
@@ -2624,6 +2648,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             modelOptions={activeModelsList}
             onSelectModel={handleHeaderModelSelect}
             modelLocked={isLocked}
+            onOpenVoice={() => setVoiceOpen(true)}
           />
         {view === "conversations" ? (
           <ConversationsList
@@ -2956,6 +2981,34 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               onClose={() => setProjectEditor(null)}
             />
           )}
+          {voiceOpen && (() => {
+            const aiResponses = messages.filter(
+              (m) => m.type === "ai-response"
+            );
+            const lastAiMsg = aiResponses[aiResponses.length - 1];
+            const lastAi = lastAiMsg
+              ? {
+                  id: lastAiMsg.id,
+                  content: (lastAiMsg as { content?: string }).content ?? "",
+                  done: !isLoading,
+                }
+              : null;
+            return (
+              <VoiceScreen
+                onSend={(text) => handleSend(text)}
+                onClose={() => setVoiceOpen(false)}
+                lastAi={lastAi}
+                isStreaming={isLoading}
+                lang={plugin.settings.language === "en-us" ? "en-US" : "pt-BR"}
+                voiceURI={voiceURI}
+                voiceRate={voiceRate}
+                onChangeVoice={handleChangeVoice}
+                onChangeRate={handleChangeVoiceRate}
+                introDone={voiceIntroDone}
+                onIntroDone={handleVoiceIntroDone}
+              />
+            );
+          })()}
           {/* Gaveta lateral de conversas (avatar do header). v0.1.145 */}
           <Sidebar
             open={sidebarOpen}

@@ -79,6 +79,10 @@ interface AxxaSettings {
   responseStyle: string;
   /** Projetos (agrupam conversas + fontes). Ref: ChatGPT iOS 182/187/189. */
   projects: Project[];
+  /** Modo Voz: voiceURI do TTS ("" = padrão), velocidade, intro vista. */
+  voiceURI: string;
+  voiceRate: number;
+  voiceIntroDone: boolean;
   /** Pasta no Vault onde mídias geradas por modelos (imagem/áudio/vídeo)
    *  são salvas. Cada saída gera 2 arquivos: mídia + sidecar .md com
    *  frontmatter (prompt, model, provider, timestamp, etc). */
@@ -225,6 +229,9 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   notesPath: "axxa-ai/notes",
   responseStyle: "normal",
   projects: [],
+  voiceURI: "",
+  voiceRate: 1,
+  voiceIntroDone: false,
   generationPath: "axxa-ai/generation",
   ragIndexPath: "axxa-ai/index",
   ragEmbeddingProvider: "openai",
