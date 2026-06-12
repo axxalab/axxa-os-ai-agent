@@ -10784,11 +10784,21 @@ body.is-mobile .axxa-wave-area {
   padding: 18px 16px 8px 18px;
 }
 .axxa-sidebar-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.axxa-sidebar-brand-name {
   font-weight: 700;
   font-size: 1.35rem;
   line-height: 1.2;
   color: var(--text-normal);
-  min-width: 0;
+}
+.axxa-sidebar-brand-ver {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  font-weight: 500;
 }
 
 /* "Nova conversa" — MESMA linha dos itens de nav (ícone + texto), só que em
@@ -10810,16 +10820,20 @@ body.is-mobile .axxa-wave-area {
   background: transparent !important;
   box-shadow: none !important;
   border-radius: 9px;
-  color: var(--text-accent);
+  /* !important: o <button> do Obsidian mobile força a cor do texto, matando o
+     accent. Forçamos o accent no texto E no ícone (svg usa currentColor). */
+  color: var(--text-accent) !important;
   font-weight: 600;
   font-size: var(--font-ui-small);
   text-align: left;
   cursor: pointer;
   transition: background 0.13s;
 }
-.axxa-sidebar-new svg {
+.axxa-sidebar-new svg,
+.axxa-sidebar-new .svg-icon {
   width: 18px;
   height: 18px;
+  color: var(--text-accent) !important;
 }
 .axxa-sidebar-new:hover {
   background: var(--background-modifier-hover) !important;
@@ -10846,13 +10860,22 @@ body.is-mobile .axxa-wave-area {
   padding: 0 8px 8px 8px;
 }
 .axxa-sidebar-recents-label {
-  padding: 0 10px 3px 10px;
+  padding: 0 10px 4px 10px;
   font-size: var(--font-ui-smaller);
   font-weight: 600;
   color: var(--text-faint);
 }
 
-/* Item PLANO bem compacto: título + hora à direita (sem dot/chips/cards). */
+/* Segmented control de filtro (pílula deslizante) — pequeno, dentro dos
+   recentes. Reaproveita o .axxa-seg da StarterScreen. v0.1.205 */
+.axxa-sidebar-seg {
+  padding: 0 10px 8px 10px;
+}
+.axxa-sidebar-seg .axxa-seg {
+  max-width: 100%;
+}
+
+/* Item PLANO: título + hora à direita (sem dot/chips/cards). */
 .axxa-sidebar-item,
 .axxa-sidebar-item:focus,
 .axxa-sidebar-item:active {
@@ -10862,7 +10885,7 @@ body.is-mobile .axxa-wave-area {
   align-items: baseline;
   gap: 10px;
   width: 100%;
-  padding: 2px 10px;
+  padding: 4px 10px;
   border-radius: 7px;
   border: none !important;
   background: transparent !important;
@@ -10879,7 +10902,7 @@ body.is-mobile .axxa-wave-area {
 .axxa-sidebar-item-title {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: var(--font-ui-small);
+  font-size: var(--font-ui-medium);
   font-weight: 400;
   white-space: nowrap;
   overflow: hidden;

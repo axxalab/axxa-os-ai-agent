@@ -12,9 +12,10 @@
 //
 // Sempre montado (toggle por classe) pra animar entrada E saída.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Menu } from "obsidian";
 import { Icon } from "../_shared/Icon";
+import { SegmentedRow } from "../_shared/SegmentedRow";
 import { useT, type Translations } from "../../i18n";
 import type { ChatSummary } from "../_shared/chatPersistence";
 import {
@@ -41,6 +42,8 @@ interface SidebarProps {
   onDeleteChat: (chatId: string, mode: string) => void;
   /** Tela atual — destaca o item de nav correspondente (pílula). */
   activeView?: AppView;
+  /** Versão do plugin (mostrada embaixo do brand). */
+  version?: string;
 }
 
 function relDate(iso: string, t: Translations): string {
@@ -74,15 +77,28 @@ export function Sidebar({
   tier,
   onDeleteChat,
   activeView,
+  version,
 }: SidebarProps) {
   const t = useT();
   const navLabel = (v: AppView): string =>
     (t.nav as Record<string, string>)[v] ?? v;
 
-  const recents = useMemo(
-    () => [...chats].sort((a, b) => b.date.localeCompare(a.date)),
-    [chats]
-  );
+  // Filtro de modo dos recentes — segmented control (pílula deslizante) igual
+  // ao da StarterScreen. v0.1.205
+  const [modeFilter, setModeFilter] = useState<string>("all");
+  const filterItems = [
+    { id: "all", icon: "layout-grid", label: t.conversations.filterAll },
+    { id: "chat", icon: "message-square", label: t.modes.chat },
+    { id: "vault-qa", icon: "library", label: t.modes.vaultQa },
+    { id: "agent", icon: "bot", label: t.modes.agent },
+  ];
+
+  const recents = useMemo(() => {
+    const arr = [...chats].sort((a, b) => b.date.localeCompare(a.date));
+    return modeFilter === "all"
+      ? arr
+      : arr.filter((c) => c.mode === modeFilter);
+  }, [chats, modeFilter]);
 
   // Deletar via menu nativo (long-press mobile / right-click desktop) — sem
   // poluir a linha com um botão de lixeira, igual à referência.
@@ -114,7 +130,12 @@ export function Sidebar({
         aria-hidden={!open}
       >
         <div className="axxa-sidebar-head">
-          <span className="axxa-sidebar-brand">AXXA OS</span>
+          <span className="axxa-sidebar-brand">
+            <span className="axxa-sidebar-brand-name">AXXA AI Agent</span>
+            {version && (
+              <span className="axxa-sidebar-brand-ver">v{version}</span>
+            )}
+          </span>
         </div>
 
         <button
@@ -162,6 +183,13 @@ export function Sidebar({
 
         <div className="axxa-sidebar-list">
           <div className="axxa-sidebar-recents-label">{t.header.recents}</div>
+          <div className="axxa-sidebar-seg">
+            <SegmentedRow
+              items={filterItems}
+              activeId={modeFilter}
+              onSelect={setModeFilter}
+            />
+          </div>
           {recents.length === 0 && (
             <div className="axxa-sidebar-empty">
               <p>{t.conversations.emptyAll}</p>
