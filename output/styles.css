@@ -11010,6 +11010,10 @@ body.is-mobile .axxa-wave-area {
      (sem depender da quantidade). v0.1.214 */
   min-height: 100%;
   box-sizing: border-box;
+  /* coluna: a faixa "Recentes" fica no topo, os itens crescem e o "fim da
+     lista" ancora no fundo do espaço livre. v0.1.215 */
+  display: flex;
+  flex-direction: column;
   padding: 0 8px 8px 8px;
 }
 /* [DS:motion] A lista "nasce" deslizando no MESMO sentido do switch de modo
@@ -11017,10 +11021,42 @@ body.is-mobile .axxa-wave-area {
    por key={modeFilter} no React → a animação re-dispara. Longhand de propósito
    (var() no shorthand animation invalida a regra — ver [DS:motion]). v0.1.213 */
 .axxa-sidebar-list-items {
+  /* cresce pra preencher a altura da lista → "fim" ancora no fundo, vazio
+     centraliza. v0.1.215 */
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   animation-name: axxa-list-slide-in;
   animation-duration: var(--axxa-motion-dur);
   animation-timing-function: var(--axxa-motion-ease);
   animation-fill-mode: both;
+}
+/* "fim da lista" — divisória faint com label, ancorada no fundo do espaço livre
+   (margin-top:auto). Pinta o vazio abaixo de listas curtas. v0.1.215 */
+.axxa-sidebar-end {
+  flex: 0 0 auto;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px 6px;
+  opacity: 0.7;
+}
+.axxa-sidebar-end-line {
+  flex: 1 1 auto;
+  height: 1px;
+  background: color-mix(
+    in srgb,
+    var(--background-modifier-border) 45%,
+    transparent
+  );
+}
+.axxa-sidebar-end-text {
+  flex: 0 0 auto;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
 }
 @keyframes axxa-list-slide-in {
   from {
@@ -11208,11 +11244,14 @@ body.is-mobile .axxa-wave-area {
 
 /* Vazio */
 .axxa-sidebar-empty {
+  /* ocupa o espaço livre e centraliza (vertical) — vazio elegante. v0.1.215 */
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 40px 16px;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 16px;
   color: var(--text-faint);
   text-align: center;
 }

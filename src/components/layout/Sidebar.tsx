@@ -87,14 +87,22 @@ export function Sidebar({
 }: SidebarProps) {
   const t = useT();
 
+  // Blindagem contra cache ruim: se o prop vier nulo/undefined/não-array (cache
+  // corrompido, formato antigo), tratamos como lista vazia em vez de quebrar.
+  // v0.1.215
+  const safeChats = useMemo(
+    () => (Array.isArray(chats) ? chats.filter(Boolean) : []),
+    [chats]
+  );
+
   // Stats básicas do user pro rodapé: chats iniciados + tokens totais.
   // num() blinda contra summaries "estrangeiros" (outro provedor, formato
   // diferente) cujos campos podem vir NaN/undefined → nunca quebra. v0.1.207
   const num = (v: unknown): number => (Number.isFinite(v) ? (v as number) : 0);
-  const totalChats = chats.length;
+  const totalChats = safeChats.length;
   const totalTokens = useMemo(
-    () => chats.reduce((s, c) => s + num(c.tokensIn) + num(c.tokensOut), 0),
-    [chats]
+    () => safeChats.reduce((s, c) => s + num(c.tokensIn) + num(c.tokensOut), 0),
+    [safeChats]
   );
   // Emblema: Founder > Premium (pro) > Free.
   const badgeKind = founder ? "founder" : tier === "pro" ? "premium" : "free";
@@ -139,7 +147,7 @@ export function Sidebar({
 
   const recents = useMemo(() => {
     // Sort blindado: summaries estrangeiros podem ter date vazia/ausente.
-    const arr = [...chats].sort((a, b) =>
+    const arr = [...safeChats].sort((a, b) =>
       String(b.date ?? "").localeCompare(String(a.date ?? ""))
     );
     // Chats de OUTRO provedor (modo desconhecido) só aparecem em "Todos" — os
@@ -148,7 +156,7 @@ export function Sidebar({
     return modeFilter === "all"
       ? arr
       : arr.filter((c) => c.mode === modeFilter);
-  }, [chats, modeFilter]);
+  }, [safeChats, modeFilter]);
 
   // Toda a gaveta rola junto (só o rodapé fica fixo). Ao TROCAR de modo,
   // rolamos a faixa "Recentes + filtro" pro topo do scroll — a brand/nav/new
@@ -291,36 +299,57 @@ export function Sidebar({
               key={modeFilter}
               style={{ ["--axxa-slide-dir" as string]: String(slideDir) }}
             >
-              {recents.length === 0 && (
+              {recents.length === 0 ? (
+                /* Vazio: distingue "sem nenhuma conversa" de "nada nesse filtro"
+                   (existem chats, só não nesse modo). v0.1.215 */
                 <div className="axxa-sidebar-empty">
-                  <p>{t.conversations.emptyAll}</p>
+                  <Icon name="inbox" />
+                  <p>
+                    {safeChats.length === 0
+                      ? t.conversations.emptyAll
+                      : t.conversations.emptyFilter}
+                  </p>
                 </div>
+              ) : (
+                <>
+                  {recents.map((c, i) => (
+                    <button
+                      key={c.filePath || c.id || `row-${i}`}
+                      type="button"
+                      className="axxa-sidebar-item"
+                      onClick={() => {
+                        onLoadChat(c.id, c.mode);
+                        onClose();
+                      }}
+                      onContextMenu={(e) => openItemMenu(e, c)}
+                    >
+                      <span className="axxa-sidebar-item-ico">
+                        <Icon
+                          name={
+                            modelVendorLogoId(c.provider, c.model) ??
+                            "message-square"
+                          }
+                        />
+                      </span>
+                      <span className="axxa-sidebar-item-title">
+                        {c.title?.trim() || t.conversations.untitled}
+                      </span>
+                      <span className="axxa-sidebar-item-date">
+                        {relDate(c.date, t)}
+                      </span>
+                    </button>
+                  ))}
+                  {/* "fim da lista" — pinta o vazio abaixo da lista curta com um
+                      estado sutil em vez de deixar liso. v0.1.215 */}
+                  <div className="axxa-sidebar-end" aria-hidden="true">
+                    <span className="axxa-sidebar-end-line" />
+                    <span className="axxa-sidebar-end-text">
+                      {t.conversations.endOfList}
+                    </span>
+                    <span className="axxa-sidebar-end-line" />
+                  </div>
+                </>
               )}
-              {recents.map((c) => (
-                <button
-                  key={c.filePath || c.id}
-                  type="button"
-                  className="axxa-sidebar-item"
-                  onClick={() => {
-                    onLoadChat(c.id, c.mode);
-                    onClose();
-                  }}
-                  onContextMenu={(e) => openItemMenu(e, c)}
-                >
-                  <span className="axxa-sidebar-item-ico">
-                    <Icon
-                      name={
-                        modelVendorLogoId(c.provider, c.model) ??
-                        "message-square"
-                      }
-                    />
-                  </span>
-                  <span className="axxa-sidebar-item-title">{c.title}</span>
-                  <span className="axxa-sidebar-item-date">
-                    {relDate(c.date, t)}
-                  </span>
-                </button>
-              ))}
             </div>
           </div>
         </div>

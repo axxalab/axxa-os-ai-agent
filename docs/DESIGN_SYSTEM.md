@@ -169,6 +169,12 @@ Espelha a estrutura de um drawer minimalista; só o tema é nosso.
   movimento da pílula do segmento.
 - **Filtro:** "Todos" é `iconOnly` (fica selecionado mas sem label, não cresce);
   um `dividerBefore` no Chat desenha o "|" que separa Todos dos 3 modos.
+- **Vazio / fim:** lista vazia distingue "sem nenhuma conversa" (`emptyAll`) de
+  "nada nesse filtro" (`emptyFilter`) — ícone `inbox` centrado no espaço livre.
+  Com itens curtos, o void abaixo é pintado com um "fim da lista"
+  (`.axxa-sidebar-end`, divisória faint + label) ancorado no fundo
+  (`margin-top:auto`). **Cache ruim:** `safeChats` blinda `chats` não-array,
+  filtra entradas falsy, título cai pra `untitled`, key cai pro índice.
 
 - **Brand (topo):** lockup em coluna — nome `AXXA AI Agent` (1.35rem, 700) +
   versão `vX.Y.Z` (faint). Sem avatar/box/X (o scrim fecha).
