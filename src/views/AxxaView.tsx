@@ -6,6 +6,7 @@
 import { ItemView, WorkspaceLeaf, Platform } from "obsidian";
 import { Root, createRoot } from "react-dom/client";
 import { AxxaApp } from "./AxxaApp";
+import { ErrorBoundary } from "../components/_shared/ErrorBoundary";
 import type AxxaPlugin from "../main";
 
 export const VIEW_TYPE_AXXA = "axxa-os-ai-agent";
@@ -36,7 +37,11 @@ export class AxxaView extends ItemView {
     // containerEl.children[1] é o "miolo" da view (o [0] é o header).
     const container = this.containerEl.children[1] as HTMLElement;
     this.root = createRoot(container);
-    this.root.render(<AxxaApp plugin={this.plugin} />);
+    this.root.render(
+      <ErrorBoundary>
+        <AxxaApp plugin={this.plugin} />
+      </ErrorBoundary>
+    );
 
     // v0.1.127: o preset/tema vive SÓ dentro da .axxa-root (pintada pela
     // própria classe axxa-bg-<preset> no AxxaApp). Não tintamos mais
