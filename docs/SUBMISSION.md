@@ -43,13 +43,16 @@ Abra um PR; o bot roda checagens automáticas e depois um humano revisa.
       `styles/main.css` → `output/styles.css`).
 - [x] **Fullscreen REMOVIDO** (v0.1.127) — não mexemos mais no chrome/layout do
       Obsidian (era um risco de review). Confirmar que nada manipula o DOM do app.
-- [ ] **API privada:** revisar usos de tipos/métodos não-documentados do
-      Obsidian (ex: `app.setting.open()`, `(app as any)...`). Justificar no PR
-      ou substituir por API pública onde der.
+- [x] **API privada:** auditado (v0.1.196). Único uso semi-privado é
+      `app.setting.open()`/`openTabById()` — agora com optional-chaining +
+      try/catch + comentário justificando; sem `innerHTML`; sem manipular o
+      chrome do app. Justificativa pronta em `SUBMISSION_PR.md`.
+- [x] **APIs de browser (mobile):** câmera usa `getUserMedia` no desktop e
+      `<input capture>` nativo no mobile (v0.1.196); voz usa Web Speech API com
+      feature-detection + degradação. Todas opt-in. Documentado no PR.
 - [ ] **`fundingUrl`** (opcional) no manifest se quiser link de apoio.
-- [ ] **Network disclosure:** o review pode pedir uma nota explícita de que o
-      plugin faz chamadas de rede (aos LLM providers). Já está no README, mas
-      reforçar na descrição do PR.
+- [x] **Network disclosure:** texto pronto em `SUBMISSION_PR.md` (sem telemetria;
+      só os providers que o user escolhe, com a chave dele).
 
 ## 4. Riscos conhecidos a checar antes do PR
 

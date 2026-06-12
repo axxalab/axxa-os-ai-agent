@@ -7,7 +7,7 @@
 //   4. Future: settings (max_tokens, system prompt override, etc)
 
 import { useEffect, useState } from "react";
-import { FuzzySuggestModal, Menu, Notice, TFile } from "obsidian";
+import { FuzzySuggestModal, Menu, Notice, Platform, TFile } from "obsidian";
 import type { App } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { CameraModal } from "./CameraModal";
@@ -109,7 +109,10 @@ export function PlusModal({
   // Inputs hidden — disparados pelos botões da row
   const [imageInput, setImageInput] = useState<HTMLInputElement | null>(null);
   const [pdfInput, setPdfInput] = useState<HTMLInputElement | null>(null);
-  // Câmera in-app (getUserMedia) — overlay full-screen sobre o sheet.
+  // No mobile, a câmera NATIVA do sistema (<input capture>) é mais confiável que
+  // o getUserMedia num WebView — e é a mesma câmera dos prints iOS. v0.1.196
+  const [cameraInput, setCameraInput] = useState<HTMLInputElement | null>(null);
+  // Câmera in-app (getUserMedia) — overlay full-screen sobre o sheet (desktop).
   const [cameraOpen, setCameraOpen] = useState(false);
 
   // Fecha com Escape
@@ -202,7 +205,28 @@ export function PlusModal({
       new Notice(t.composer.attachImageNoVision);
       return;
     }
-    setCameraOpen(true);
+    // Mobile → câmera nativa do sistema (confiável no WebView).
+    // Desktop → preview ao vivo via getUserMedia (webcam).
+    if (Platform.isMobile) {
+      cameraInput?.click();
+    } else {
+      setCameraOpen(true);
+    }
+  };
+
+  const handleCameraInputChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    try {
+      const dataUrl = await blobToDataUrl(file);
+      handleCameraCapture(dataUrl, file.type || "image/jpeg");
+    } catch (err) {
+      console.error("[axxa] foto da câmera falhou:", err);
+      new Notice(t.composer.attachImageFailed);
+    }
   };
 
   const handleCameraCapture = (dataUrl: string, mimeType: string) => {
@@ -290,6 +314,15 @@ export function PlusModal({
           accept="application/pdf,.pdf"
           style={{ display: "none" }}
           onChange={handlePdfChange}
+        />
+        {/* Câmera nativa (mobile): dispara a câmera do sistema. */}
+        <input
+          ref={setCameraInput}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: "none" }}
+          onChange={handleCameraInputChange}
         />
 
         <div className="axxa-plus-divider" />

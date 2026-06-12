@@ -538,8 +538,6 @@ export const EN_US: Translations = {
     statEmptyTitle: "No data yet",
     statEmptySub: "Use the chat to start generating stats.",
     statOpenUsage: "See details in Settings → Usage",
-    projectsEmptyTitle: "Projects coming soon",
-    projectsEmptySub: "Group chats, notes and media into a project. Under construction.",
     profileAccount: "Account",
     profilePlan: "Plan",
     profileSettings: "Settings",

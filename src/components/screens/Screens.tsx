@@ -204,15 +204,8 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
   );
 }
 
-// ── Projects — scaffold (em breve) ─────────────────────────
-export function ProjectsScreen({ onClose }: { onClose: () => void }) {
-  const t = useT();
-  return (
-    <ScreenShell title={t.nav.projects} icon="folder-kanban" onClose={onClose}>
-      <EmptyState icon="folder-kanban" title={t.screens.projectsEmptyTitle} sub={t.screens.projectsEmptySub} />
-    </ScreenShell>
-  );
-}
+// (ProjectsScreen scaffold removido v0.1.196 — substituído pela feature real
+//  em components/screens/Projects.tsx: lista + detalhe + picker de ícone/cor.)
 
 // ── Profile — conta (scaffold reusando o que temos) ────────
 export function ProfileScreen({

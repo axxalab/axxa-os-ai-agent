@@ -551,8 +551,6 @@ export const PT_BR = {
     statEmptyTitle: "Sem dados ainda",
     statEmptySub: "Use o chat pra começar a gerar estatísticas.",
     statOpenUsage: "Ver detalhes em Configurações → Usage",
-    projectsEmptyTitle: "Projetos em breve",
-    projectsEmptySub: "Agrupe conversas, notas e mídias num projeto. Em construção.",
     profileAccount: "Conta",
     profilePlan: "Plano",
     profileSettings: "Configurações",

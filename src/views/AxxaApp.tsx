@@ -2290,12 +2290,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
+  // Abre a aba de Settings do plugin. `app.setting` é API semi-privada do
+  // Obsidian (não tipada publicamente) mas estável e amplamente usada pela
+  // comunidade pra esse fim — não há equivalente público. Guard defensivo +
+  // fallback pro Notice caso a API mude num futuro update. v0.1.196
   const handleOpenSettings = () => {
     const app = plugin.app as unknown as {
-      setting: { open: () => void; openTabById: (id: string) => void };
+      setting?: { open?: () => void; openTabById?: (id: string) => void };
     };
-    app.setting.open();
-    app.setting.openTabById("axxa-os-ai-agent");
+    try {
+      app.setting?.open?.();
+      app.setting?.openTabById?.("axxa-os-ai-agent");
+    } catch (err) {
+      console.error("[axxa] abrir Settings falhou:", err);
+      new Notice(t.header.openSettings);
+    }
   };
 
   const handleNewChat = () => {
