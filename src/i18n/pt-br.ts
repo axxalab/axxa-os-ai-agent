@@ -181,7 +181,7 @@ export const PT_BR = {
   },
 
   header: {
-    newChat: "Nova conversa",
+    newChat: "Novo chat",
     openSettings: "Configurações",
     conversations: "Conversas",
     moreOptions: "Mais opções",

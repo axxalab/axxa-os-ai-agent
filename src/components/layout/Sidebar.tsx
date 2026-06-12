@@ -86,9 +86,12 @@ export function Sidebar({
   const t = useT();
 
   // Stats básicas do user pro rodapé: chats iniciados + tokens totais.
+  // num() blinda contra summaries "estrangeiros" (outro provedor, formato
+  // diferente) cujos campos podem vir NaN/undefined → nunca quebra. v0.1.207
+  const num = (v: unknown): number => (Number.isFinite(v) ? (v as number) : 0);
   const totalChats = chats.length;
   const totalTokens = useMemo(
-    () => chats.reduce((s, c) => s + c.tokensIn + c.tokensOut, 0),
+    () => chats.reduce((s, c) => s + num(c.tokensIn) + num(c.tokensOut), 0),
     [chats]
   );
   // Emblema: Founder > Premium (pro) > Free.
@@ -112,7 +115,13 @@ export function Sidebar({
   ];
 
   const recents = useMemo(() => {
-    const arr = [...chats].sort((a, b) => b.date.localeCompare(a.date));
+    // Sort blindado: summaries estrangeiros podem ter date vazia/ausente.
+    const arr = [...chats].sort((a, b) =>
+      String(b.date ?? "").localeCompare(String(a.date ?? ""))
+    );
+    // Chats de OUTRO provedor (modo desconhecido) só aparecem em "Todos" — os
+    // filtros específicos só batem com os modos nativos (chat/vault-qa/agent).
+    // Como o mode deles não casa com nenhum filtro, ficam naturalmente fora.
     return modeFilter === "all"
       ? arr
       : arr.filter((c) => c.mode === modeFilter);
@@ -215,7 +224,7 @@ export function Sidebar({
           )}
           {recents.map((c) => (
             <button
-              key={c.id}
+              key={c.filePath || c.id}
               type="button"
               className="axxa-sidebar-item"
               onClick={() => {

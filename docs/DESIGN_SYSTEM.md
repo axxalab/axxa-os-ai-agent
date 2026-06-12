@@ -46,6 +46,16 @@ sem `color-mix` cai pra `--background-modifier-hover`. O blur só fica visível
 sobre fundo variado (modo preset/glass) — em fundo sólido vira um realce sutil
 (degradação ok).
 
+### [DS:list-compact] — lista densa
+Lista de 1 linha por item, bem justa (recentes, etc). Tokens:
+```css
+--axxa-list-row-py: 2px;     /* padding vertical da linha */
+--axxa-list-row-radius: 7px;
+```
+Utilitário: `.axxa-list-compact-row` (flex baseline, título cresce + meta à
+direita, `line-height: 1.25`). A altura da linha vem só do `--axxa-list-row-py`
++ line-height → dá pra apertar/soltar a lista inteira mexendo num token.
+
 ---
 
 ## 3. Componentes

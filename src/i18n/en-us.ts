@@ -181,7 +181,7 @@ export const EN_US: Translations = {
   },
 
   header: {
-    newChat: "New conversation",
+    newChat: "New chat",
     openSettings: "Settings",
     conversations: "Conversations",
     moreOptions: "More options",
