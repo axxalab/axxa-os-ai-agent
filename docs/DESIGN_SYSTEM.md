@@ -110,6 +110,16 @@ var(--axxa-motion-amp))) scale(var(--axxa-motion-pop))` (mesmo pop do card de
 modelo). Custom properties funcionam DENTRO de `@keyframes` (resolvem no
 elemento). Primeiro cliente: o segmented "label no ativo" da gaveta.
 
+**Transição via inline-style em `useLayoutEffect` é frágil.** Um indicador
+deslizante MEDIDO (posição setada inline dentro de `useLayoutEffect`) **não
+dispara o `transition` CSS de forma confiável** em todo ambiente — o segmento da
+gaveta ficava "pulando" sem mola mesmo com o CSS certo. Quando a animação é
+dirigida por JS (inline-style medido), use a **Web Animations API**
+(`el.animate([from,to], {duration, easing})`) lendo `dur/ease` dos tokens via
+`getComputedStyle(root)`. WAAPI roda imperativo: ignora cascade, o timing de
+re-render e o `prefers-reduced-motion` → a mola SEMPRE roda. (Transições por
+toggle de CLASSE — ex.: a gaveta abrindo — continuam confiáveis no CSS puro.)
+
 **Reduzir movimento:** `.axxa-root.axxa-reduce-motion` (toggle do user no mobile,
 `settings.reducedMotionMobile`, aplicado via `Platform.isMobile`) **e** o
 `@media (prefers-reduced-motion: reduce)` do SO neutralizam os tokens
@@ -168,7 +178,16 @@ Espelha a estrutura de um drawer minimalista; só o tema é nosso.
   (`--axxa-slide-dir` = ±1), com a mola de **[DS:motion]**. Vai junto com o
   movimento da pílula do segmento.
 - **Filtro:** "Todos" é `iconOnly` (fica selecionado mas sem label, não cresce);
-  um `dividerBefore` no Chat desenha o "|" que separa Todos dos 3 modos.
+  um `dividerBefore` no Chat desenha o "|" que separa Todos dos 3 modos. O
+  slide+morph da pílula é **WAAPI** (ver [DS:motion]).
+- **Filtro sticky:** `.axxa-sidebar-recents-head` é `position:sticky; top:0` —
+  com muito chat, ao rolar a lista o filtro gruda no topo (mesmo lugar do
+  auto-scroll) e desce de volta ao subir. Em glass vira vidro fosco pra a lista
+  passar por baixo limpa.
+- **FAB "subir ao topo"** (`.axxa-sidebar-fab`): aparece quando o scroll passa de
+  ~160px (hysteresis pra não piscar), some perto do topo; clique rola a gaveta
+  pro topo. Accent, pop de entrada + squish ao apertar (`:active`), tudo via
+  [DS:motion].
 - **Vazio / fim:** lista vazia distingue "sem nenhuma conversa" (`emptyAll`) de
   "nada nesse filtro" (`emptyFilter`) — ícone `inbox` centrado no espaço livre.
   Com itens curtos, o void abaixo é pintado com um "fim da lista"

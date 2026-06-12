@@ -121,6 +121,8 @@ export function Sidebar({
   // Direção do último switch (-1 esq / +1 dir / 0 nenhum) — a lista desliza no
   // mesmo sentido do segmento. v0.1.213
   const [slideDir, setSlideDir] = useState<number>(0);
+  // FAB "subir ao topo" aparece quando a gaveta está rolada. v0.1.216
+  const [scrolled, setScrolled] = useState(false);
   const filterItems = [
     {
       id: "all",
@@ -222,7 +224,14 @@ export function Sidebar({
       >
         {/* Tudo rola junto (brand + new + nav + recentes); só o rodapé fica
             fixo. v0.1.212 */}
-        <div className="axxa-sidebar-scroll" ref={scrollRef}>
+        <div
+          className="axxa-sidebar-scroll"
+          ref={scrollRef}
+          onScroll={(e) => {
+            const top = e.currentTarget.scrollTop;
+            setScrolled((s) => (s ? top > 80 : top > 160));
+          }}
+        >
           <div className="axxa-sidebar-head">
             <span className="axxa-sidebar-brand">
               <span className="axxa-sidebar-brand-name">AXXA AI Agent</span>
@@ -353,6 +362,22 @@ export function Sidebar({
             </div>
           </div>
         </div>
+
+        {/* FAB "subir ao topo" — só aparece quando a gaveta está rolada. */}
+        <button
+          type="button"
+          className={"axxa-sidebar-fab" + (scrolled ? " is-visible" : "")}
+          onClick={() => {
+            hapticTick();
+            scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          aria-label={t.conversations.scrollTop}
+          title={t.conversations.scrollTop}
+          aria-hidden={!scrolled}
+          tabIndex={scrolled ? 0 : -1}
+        >
+          <Icon name="arrow-up" />
+        </button>
 
         {/* Rodapé: conta (avatar + nome + emblema) + stats + engrenagem. */}
         <div className="axxa-sidebar-foot">

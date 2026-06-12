@@ -11070,6 +11070,62 @@ body.is-mobile .axxa-wave-area {
     transform: none;
   }
 }
+/* Faixa "Recentes" + filtro: STICKY no topo do scroll. Com muito chat, ao rolar
+   a lista o filtro gruda no topo (no mesmo lugar do auto-scroll), e ao voltar
+   pra cima ele desce de novo. v0.1.216 */
+.axxa-sidebar-recents-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--background-primary);
+}
+/* Em modo preset (glass), a faixa vira vidro fosco pra a lista passar por baixo
+   sem "vazar" — combina com a gaveta translúcida. */
+.axxa-root:not(.axxa-bg-none) .axxa-sidebar-recents-head {
+  background: color-mix(in srgb, var(--background-primary) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+}
+
+/* FAB "subir ao topo" — aparece quando a gaveta está rolada (conteúdo > altura);
+   some no topo. Fica acima do rodapé, em accent, com pop de entrada (transition)
+   e squish ao apertar. Tudo via [DS:motion]. v0.1.216 */
+.axxa-sidebar-fab {
+  position: absolute;
+  right: 16px;
+  bottom: 78px;
+  z-index: 20;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  box-shadow: 0 6px 18px -4px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px) scale(0.8);
+  transition-property: opacity, transform, visibility;
+  transition-duration: var(--axxa-motion-dur, 0.34s);
+  transition-timing-function: var(--axxa-motion-ease, ease);
+}
+.axxa-sidebar-fab.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+.axxa-sidebar-fab.is-visible:active {
+  transform: scale(0.84);
+}
+.axxa-sidebar-fab .svg-icon {
+  width: 20px;
+  height: 20px;
+}
 .axxa-sidebar-recents-label {
   padding: 2px 10px 6px 10px;
   font-size: var(--font-ui-medium);
@@ -11148,13 +11204,10 @@ body.is-mobile .axxa-wave-area {
 }
 .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind {
   width: auto; /* a largura real vem inline (medida); evita o calc de slot-igual */
-  /* [DS:motion] slide + morph com a personalidade de motion escolhida.
-     LONGHAND de propósito: var() dentro do shorthand `transition` pode
-     invalidar a regra inteira (transition-property volta pra `all`) e o
-     indicador "pula" sem animar. Longhand resolve o var() com segurança. */
-  transition-property: transform, width;
-  transition-duration: var(--axxa-motion-dur);
-  transition-timing-function: var(--axxa-motion-ease);
+  /* [DS:motion] o SLIDE+MORPH é dirigido pela Web Animations API no
+     SegmentedRow (robusto — ver comentário lá). transition:none aqui pra o
+     inline-style de descanso não disparar uma 2ª animação por cima. v0.1.216 */
+  transition: none;
 }
 .axxa-sidebar-seg .axxa-seg-btn-label {
   font-size: var(--font-ui-smaller);

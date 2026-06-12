@@ -245,6 +245,7 @@ export const PT_BR = {
     emptySearch: "Nenhuma conversa encontrada pra essa busca.",
     endOfList: "fim da lista",
     untitled: "Sem título",
+    scrollTop: "Subir ao topo",
     sortDateDesc: "Mais recentes",
     sortDateAsc: "Mais antigas",
     sortTitleAsc: "Título A-Z",

@@ -245,6 +245,7 @@ export const EN_US: Translations = {
     emptySearch: "No conversations found for that search.",
     endOfList: "end of list",
     untitled: "Untitled",
+    scrollTop: "Scroll to top",
     sortDateDesc: "Newest first",
     sortDateAsc: "Oldest first",
     sortTitleAsc: "Title A-Z",
