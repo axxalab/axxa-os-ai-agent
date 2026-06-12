@@ -165,6 +165,8 @@ interface AxxaSettings {
   onboardingDone: boolean;
   /** License key (scaffold #15) — válida → desbloqueia o Pro. */
   licenseKey: string;
+  /** Emblema "Founder" no rodapé da gaveta (acima de Premium/Free). v0.1.206 */
+  founder: boolean;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -261,6 +263,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   balanceAnchors: {},
   accountTier: "pro",
   devTierOverride: "auto",
+  founder: false,
   onboardingDone: false,
   licenseKey: "",
 };

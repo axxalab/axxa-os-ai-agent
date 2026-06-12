@@ -197,6 +197,14 @@ export const PT_BR = {
     recents: "Recentes",
   },
 
+  account: {
+    badgeFree: "Free",
+    badgePremium: "Premium",
+    badgeFounder: "Founder",
+    stats: (chats: number, tokens: string) =>
+      `${chats} ${chats === 1 ? "conversa" : "conversas"} · ${tokens} tokens`,
+  },
+
   chat: {
     searchPlaceholder: "Buscar nesta conversa…",
     searchResults: (n: number) => `${n} resultado${n === 1 ? "" : "s"}`,

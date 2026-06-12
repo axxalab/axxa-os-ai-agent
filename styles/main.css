@@ -1221,6 +1221,40 @@ body.is-mobile
   }
 }
 
+/* ============================================================
+ * [DS] DESIGN SYSTEM — tokens + utilitários (v0.1.206). Todo CSS marcado com
+ * [DS:<id>] é MANTIDO e documentado em docs/DESIGN_SYSTEM.md. CSS sem a tag é
+ * candidato a limpeza (lixo/duplicata). Não remover blocos [DS] sem atualizar o
+ * doc.
+ * ============================================================ */
+
+/* [DS:pill] Realce de hover/seleção: PÍLULA com VIDRO FOSCO (blur). Padrão do
+   app — toda superfície selecionável (nav, listas, chips) usa esta superfície. */
+.axxa-root {
+  --axxa-pill-radius: 10px;
+  --axxa-pill-bg: color-mix(in srgb, var(--text-normal) 7%, transparent);
+  --axxa-pill-bg-strong: color-mix(in srgb, var(--text-normal) 13%, transparent);
+  --axxa-pill-blur: saturate(140%) blur(7px);
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-root {
+    --axxa-pill-bg: var(--background-modifier-hover);
+    --axxa-pill-bg-strong: var(--background-modifier-hover);
+  }
+}
+.axxa-pill {
+  background: var(--axxa-pill-bg) !important;
+  -webkit-backdrop-filter: var(--axxa-pill-blur);
+  backdrop-filter: var(--axxa-pill-blur);
+  border-radius: var(--axxa-pill-radius) !important;
+}
+.axxa-pill-strong {
+  background: var(--axxa-pill-bg-strong) !important;
+  -webkit-backdrop-filter: var(--axxa-pill-blur);
+  backdrop-filter: var(--axxa-pill-blur);
+  border-radius: var(--axxa-pill-radius) !important;
+}
+
 /* =====================================================
  * Navegação lateral (seções) + telas-base. v0.1.174
  * ===================================================== */
@@ -1253,8 +1287,11 @@ body.is-mobile
   text-align: left;
   cursor: pointer;
 }
+/* [DS:pill] hover = pílula com blur */
 .axxa-sidebar-nav-item:hover {
-  background: var(--background-modifier-hover) !important;
+  background: var(--axxa-pill-bg) !important;
+  -webkit-backdrop-filter: var(--axxa-pill-blur);
+  backdrop-filter: var(--axxa-pill-blur);
 }
 .axxa-sidebar-nav-item .svg-icon {
   width: 18px;
@@ -1264,16 +1301,13 @@ body.is-mobile
 .axxa-sidebar-nav-label {
   flex: 1 1 auto;
 }
-/* Tela ATIVA — pílula sutil (ref: item selecionado no drawer). !important pra
-   ganhar do transparent !important da base. */
+/* [DS:pill] Tela ATIVA — pílula (blur) mais forte. !important pra ganhar do
+   transparent !important da base. */
 .axxa-sidebar-nav-item.is-active {
-  background: color-mix(in srgb, var(--text-normal) 9%, transparent) !important;
+  background: var(--axxa-pill-bg-strong) !important;
+  -webkit-backdrop-filter: var(--axxa-pill-blur);
+  backdrop-filter: var(--axxa-pill-blur);
   font-weight: 600;
-}
-@supports not (color: color-mix(in srgb, red, blue)) {
-  .axxa-sidebar-nav-item.is-active {
-    background: var(--background-modifier-hover) !important;
-  }
 }
 .axxa-sidebar-nav-item.is-active .svg-icon {
   color: var(--text-normal);
@@ -10896,8 +10930,11 @@ body.is-mobile .axxa-wave-area {
   text-align: left;
   transition: background 0.13s;
 }
+/* [DS:pill] hover do item = pílula com blur */
 .axxa-sidebar-item:hover {
-  background: var(--background-modifier-hover) !important;
+  background: var(--axxa-pill-bg) !important;
+  -webkit-backdrop-filter: var(--axxa-pill-blur);
+  backdrop-filter: var(--axxa-pill-blur);
 }
 .axxa-sidebar-item-title {
   flex: 1 1 auto;
@@ -10982,14 +11019,71 @@ body.is-mobile .axxa-wave-area {
   font-weight: 700;
   letter-spacing: 0.02em;
 }
-.axxa-sidebar-account-name {
+.axxa-sidebar-account-main {
   flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.axxa-sidebar-account-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.axxa-sidebar-account-name {
   min-width: 0;
   font-size: var(--font-ui-small);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.axxa-sidebar-account-stats {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* [DS:badge] Emblema de plano — Free (neutro) / Premium (accent) / Founder
+   (dourado). Pílula pequena ao lado do nome. */
+.axxa-sidebar-badge {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.5;
+}
+.axxa-sidebar-badge-free {
+  background: color-mix(in srgb, var(--text-normal) 12%, transparent);
+  color: var(--text-muted);
+}
+.axxa-sidebar-badge-premium {
+  background: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  color: var(--text-accent);
+}
+.axxa-sidebar-badge-founder {
+  background: linear-gradient(
+    100deg,
+    #e0a93c,
+    #f6d365
+  );
+  color: #3a2a06;
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-sidebar-badge-free {
+    background: var(--background-modifier-hover);
+  }
+  .axxa-sidebar-badge-premium {
+    background: var(--background-modifier-hover);
+    color: var(--text-accent);
+  }
 }
 .axxa-sidebar-foot-gear,
 .axxa-sidebar-foot-gear:focus,

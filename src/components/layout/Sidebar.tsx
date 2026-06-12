@@ -17,6 +17,7 @@ import { Menu } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { SegmentedRow } from "../_shared/SegmentedRow";
 import { useT, type Translations } from "../../i18n";
+import { formatTokens } from "../_shared/contextWindows";
 import type { ChatSummary } from "../_shared/chatPersistence";
 import {
   NAV_ITEMS,
@@ -44,6 +45,8 @@ interface SidebarProps {
   activeView?: AppView;
   /** Versão do plugin (mostrada embaixo do brand). */
   version?: string;
+  /** Emblema "Founder" (acima de Premium/Free). */
+  founder?: boolean;
 }
 
 function relDate(iso: string, t: Translations): string {
@@ -78,8 +81,23 @@ export function Sidebar({
   onDeleteChat,
   activeView,
   version,
+  founder,
 }: SidebarProps) {
   const t = useT();
+
+  // Stats básicas do user pro rodapé: chats iniciados + tokens totais.
+  const totalChats = chats.length;
+  const totalTokens = useMemo(
+    () => chats.reduce((s, c) => s + c.tokensIn + c.tokensOut, 0),
+    [chats]
+  );
+  // Emblema: Founder > Premium (pro) > Free.
+  const badgeKind = founder ? "founder" : tier === "pro" ? "premium" : "free";
+  const badgeLabel = founder
+    ? t.account.badgeFounder
+    : tier === "pro"
+      ? t.account.badgePremium
+      : t.account.badgeFree;
   const navLabel = (v: AppView): string =>
     (t.nav as Record<string, string>)[v] ?? v;
 
@@ -212,7 +230,7 @@ export function Sidebar({
           ))}
         </div>
 
-        {/* Rodapé: conta (avatar + nome) + engrenagem (Settings). */}
+        {/* Rodapé: conta (avatar + nome + emblema) + stats + engrenagem. */}
         <div className="axxa-sidebar-foot">
           <button
             type="button"
@@ -222,8 +240,20 @@ export function Sidebar({
               onClose();
             }}
           >
-            <span className="axxa-sidebar-account-avatar">AX</span>
-            <span className="axxa-sidebar-account-name">AXXA OS</span>
+            <span className="axxa-sidebar-account-avatar">AL</span>
+            <span className="axxa-sidebar-account-main">
+              <span className="axxa-sidebar-account-top">
+                <span className="axxa-sidebar-account-name">Axxa Lab</span>
+                <span
+                  className={"axxa-sidebar-badge axxa-sidebar-badge-" + badgeKind}
+                >
+                  {badgeLabel}
+                </span>
+              </span>
+              <span className="axxa-sidebar-account-stats">
+                {t.account.stats(totalChats, formatTokens(totalTokens))}
+              </span>
+            </span>
           </button>
           <button
             type="button"

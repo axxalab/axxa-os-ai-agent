@@ -3110,6 +3110,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onDeleteChat={handleDeleteChat}
             activeView={view}
             version={plugin.manifest.version}
+            founder={plugin.settings.founder}
           />
         </div>
         </ChatActionsContext.Provider>

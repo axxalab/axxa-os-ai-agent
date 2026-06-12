@@ -197,6 +197,14 @@ export const EN_US: Translations = {
     recents: "Recents",
   },
 
+  account: {
+    badgeFree: "Free",
+    badgePremium: "Premium",
+    badgeFounder: "Founder",
+    stats: (chats: number, tokens: string) =>
+      `${chats} ${chats === 1 ? "chat" : "chats"} · ${tokens} tokens`,
+  },
+
   chat: {
     searchPlaceholder: "Search this conversation…",
     searchResults: (n: number) => `${n} result${n === 1 ? "" : "s"}`,
