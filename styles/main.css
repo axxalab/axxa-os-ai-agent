@@ -10990,11 +10990,20 @@ body.is-mobile .axxa-wave-area {
 }
 
 /* Lista rolável */
-.axxa-sidebar-list {
+/* TODA a gaveta rola junto (brand + new + nav + divider + recentes), só o
+   rodapé fica fixo. O scroll vive neste wrapper; a lista é conteúdo normal.
+   v0.1.212 */
+.axxa-sidebar-scroll {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.axxa-sidebar-list {
+  flex: 0 0 auto;
   padding: 0 8px 8px 8px;
 }
 .axxa-sidebar-recents-label {
@@ -11061,9 +11070,13 @@ body.is-mobile .axxa-wave-area {
 }
 .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind {
   width: auto; /* a largura real vem inline (medida); evita o calc de slot-igual */
-  /* [DS:motion] slide + morph com a personalidade de motion escolhida. */
-  transition: transform var(--axxa-motion-dur) var(--axxa-motion-ease),
-    width var(--axxa-motion-dur) var(--axxa-motion-ease);
+  /* [DS:motion] slide + morph com a personalidade de motion escolhida.
+     LONGHAND de propósito: var() dentro do shorthand `transition` pode
+     invalidar a regra inteira (transition-property volta pra `all`) e o
+     indicador "pula" sem animar. Longhand resolve o var() com segurança. */
+  transition-property: transform, width;
+  transition-duration: var(--axxa-motion-dur);
+  transition-timing-function: var(--axxa-motion-ease);
 }
 .axxa-sidebar-seg .axxa-seg-btn-label {
   font-size: var(--font-ui-smaller);
@@ -11073,13 +11086,17 @@ body.is-mobile .axxa-wave-area {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text-accent);
-  /* [DS:motion] o label "nasce" com a mola/overshoot do nível de motion. */
-  animation: axxa-seg-label-in var(--axxa-motion-dur) var(--axxa-motion-ease) both;
+  /* [DS:motion] o label "nasce" com a MESMA mola do card de modelo (pop =
+     translateY + scale). Longhand pelo mesmo motivo do indicador acima. */
+  animation-name: axxa-seg-label-in;
+  animation-duration: var(--axxa-motion-dur);
+  animation-timing-function: var(--axxa-motion-ease);
+  animation-fill-mode: both;
 }
 @keyframes axxa-seg-label-in {
   from {
     opacity: 0;
-    transform: translateX(calc(-6px * var(--axxa-motion-amp, 1)))
+    transform: translateY(calc(5px * var(--axxa-motion-amp, 1)))
       scale(var(--axxa-motion-pop, 0.92));
   }
   to {

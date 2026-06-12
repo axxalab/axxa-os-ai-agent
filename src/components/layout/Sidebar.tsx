@@ -12,7 +12,7 @@
 //
 // Sempre montado (toggle por classe) pra animar entrada E saída.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { SegmentedRow } from "../_shared/SegmentedRow";
@@ -129,6 +129,31 @@ export function Sidebar({
       : arr.filter((c) => c.mode === modeFilter);
   }, [chats, modeFilter]);
 
+  // Toda a gaveta rola junto (só o rodapé fica fixo). Ao TROCAR de modo,
+  // rolamos a faixa "Recentes + filtro" pro topo do scroll — a brand/nav/new
+  // somem por cima e a lista fica mais ampla. Scoped ao scroll da gaveta (não
+  // mexe no scroll do Obsidian). v0.1.212
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const recentsHeadRef = useRef<HTMLDivElement | null>(null);
+  const didMountRef = useRef(false);
+  // Roda DEPOIS do commit (lista nova já no DOM) pra o scrollTo clampar contra a
+  // altura final — evita "pulo" ao trocar pra um modo com menos itens. Pula o
+  // mount inicial (senão a brand/nav sumiriam de cara).
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    const sc = scrollRef.current;
+    const hd = recentsHeadRef.current;
+    if (!sc || !hd) return;
+    const top =
+      hd.getBoundingClientRect().top -
+      sc.getBoundingClientRect().top +
+      sc.scrollTop;
+    sc.scrollTo({ top, behavior: "smooth" });
+  }, [modeFilter]);
+
   // Deletar via menu nativo (long-press mobile / right-click desktop) — sem
   // poluir a linha com um botão de lixeira, igual à referência.
   const openItemMenu = (e: React.MouseEvent, c: ChatSummary) => {
@@ -158,94 +183,108 @@ export function Sidebar({
         aria-label={t.header.conversations}
         aria-hidden={!open}
       >
-        <div className="axxa-sidebar-head">
-          <span className="axxa-sidebar-brand">
-            <span className="axxa-sidebar-brand-name">AXXA AI Agent</span>
-            {version && (
-              <span className="axxa-sidebar-brand-ver">v{version}</span>
+        {/* Tudo rola junto (brand + new + nav + recentes); só o rodapé fica
+            fixo. v0.1.212 */}
+        <div className="axxa-sidebar-scroll" ref={scrollRef}>
+          <div className="axxa-sidebar-head">
+            <span className="axxa-sidebar-brand">
+              <span className="axxa-sidebar-brand-name">AXXA AI Agent</span>
+              {version && (
+                <span className="axxa-sidebar-brand-ver">v{version}</span>
+              )}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className="axxa-sidebar-new"
+            onClick={() => {
+              onNewChat();
+              onClose();
+            }}
+          >
+            <Icon name="circle-plus" />
+            <span>{t.header.newChat}</span>
+          </button>
+
+          {/* Navegação das seções — todas FLAT, a ativa com pílula sutil. */}
+          <nav className="axxa-sidebar-nav">
+            {NAV_ITEMS.map((item) => {
+              const locked = tier === "free" && viewRequiresPro(item.view);
+              const isActive = activeView === item.view;
+              return (
+                <button
+                  key={item.view}
+                  type="button"
+                  className={
+                    "axxa-sidebar-nav-item" +
+                    (isActive ? " is-active" : "") +
+                    (locked ? " is-locked" : "")
+                  }
+                  onClick={() => {
+                    onNavigate(item.view);
+                    onClose();
+                  }}
+                >
+                  <Icon name={item.icon} />
+                  <span className="axxa-sidebar-nav-label">
+                    {navLabel(item.view)}
+                  </span>
+                  {locked && (
+                    <Icon name="lock" className="axxa-sidebar-nav-lock" />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="axxa-sidebar-divider" />
+
+          <div className="axxa-sidebar-list">
+            <div className="axxa-sidebar-recents-head" ref={recentsHeadRef}>
+              <div className="axxa-sidebar-recents-label">{t.header.recents}</div>
+              <div className="axxa-sidebar-seg">
+                <SegmentedRow
+                  items={filterItems}
+                  activeId={modeFilter}
+                  showActiveLabel
+                  onSelect={(id) => {
+                    hapticTick();
+                    setModeFilter(id);
+                  }}
+                />
+              </div>
+            </div>
+            {recents.length === 0 && (
+              <div className="axxa-sidebar-empty">
+                <p>{t.conversations.emptyAll}</p>
+              </div>
             )}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          className="axxa-sidebar-new"
-          onClick={() => {
-            onNewChat();
-            onClose();
-          }}
-        >
-          <Icon name="circle-plus" />
-          <span>{t.header.newChat}</span>
-        </button>
-
-        {/* Navegação das seções — todas FLAT, a ativa com pílula sutil. */}
-        <nav className="axxa-sidebar-nav">
-          {NAV_ITEMS.map((item) => {
-            const locked = tier === "free" && viewRequiresPro(item.view);
-            const isActive = activeView === item.view;
-            return (
+            {recents.map((c) => (
               <button
-                key={item.view}
+                key={c.filePath || c.id}
                 type="button"
-                className={
-                  "axxa-sidebar-nav-item" +
-                  (isActive ? " is-active" : "") +
-                  (locked ? " is-locked" : "")
-                }
+                className="axxa-sidebar-item"
                 onClick={() => {
-                  onNavigate(item.view);
+                  onLoadChat(c.id, c.mode);
                   onClose();
                 }}
+                onContextMenu={(e) => openItemMenu(e, c)}
               >
-                <Icon name={item.icon} />
-                <span className="axxa-sidebar-nav-label">
-                  {navLabel(item.view)}
+                <span className="axxa-sidebar-item-ico">
+                  <Icon
+                    name={
+                      modelVendorLogoId(c.provider, c.model) ?? "message-square"
+                    }
+                  />
                 </span>
-                {locked && <Icon name="lock" className="axxa-sidebar-nav-lock" />}
+                <span className="axxa-sidebar-item-title">{c.title}</span>
+                <span className="axxa-sidebar-item-date">
+                  {relDate(c.date, t)}
+                </span>
               </button>
-            );
-          })}
-        </nav>
-
-        <div className="axxa-sidebar-divider" />
-
-        <div className="axxa-sidebar-list">
-          <div className="axxa-sidebar-recents-label">{t.header.recents}</div>
-          <div className="axxa-sidebar-seg">
-            <SegmentedRow
-              items={filterItems}
-              activeId={modeFilter}
-              showActiveLabel
-              onSelect={(id) => {
-                hapticTick();
-                setModeFilter(id);
-              }}
-            />
+            ))}
           </div>
-          {recents.length === 0 && (
-            <div className="axxa-sidebar-empty">
-              <p>{t.conversations.emptyAll}</p>
-            </div>
-          )}
-          {recents.map((c) => (
-            <button
-              key={c.filePath || c.id}
-              type="button"
-              className="axxa-sidebar-item"
-              onClick={() => {
-                onLoadChat(c.id, c.mode);
-                onClose();
-              }}
-              onContextMenu={(e) => openItemMenu(e, c)}
-            >
-              <span className="axxa-sidebar-item-ico">
-                <Icon name={modelVendorLogoId(c.provider, c.model) ?? "message-square"} />
-              </span>
-              <span className="axxa-sidebar-item-title">{c.title}</span>
-              <span className="axxa-sidebar-item-date">{relDate(c.date, t)}</span>
-            </button>
-          ))}
         </div>
 
         {/* Rodapé: conta (avatar + nome + emblema) + stats + engrenagem. */}

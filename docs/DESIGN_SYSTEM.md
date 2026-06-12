@@ -91,10 +91,24 @@ Interface**; vai pra `settings.motion` e vira `data-axxa-motion` na `.axxa-root`
 | `--axxa-motion-pop` | 0.97 | 0.92 | 0.85 | 0.74 |
 | `--axxa-motion-ease` | ease-out | spring leve | overshoot | anticipa+bounce |
 
-**Como consumir:** transições → `transition: transform var(--axxa-motion-dur)
-var(--axxa-motion-ease)`. "Pops" (entrada) → keyframe que lê os tokens:
-`transform: translateX(calc(-6px * var(--axxa-motion-amp))) scale(var(--axxa-motion-pop))`.
-Custom properties funcionam DENTRO de `@keyframes` (resolvem no elemento).
+**Como consumir — SEMPRE em longhand.** ⚠️ `var()` dentro do *shorthand*
+`transition`/`animation` pode invalidar a regra inteira (o `transition-property`
+volta pra `all`, o `animation-name` pra `none`) → a animação simplesmente **não
+roda** e o elemento "pula". Use as longhands:
+```css
+transition-property: transform, width;
+transition-duration: var(--axxa-motion-dur);
+transition-timing-function: var(--axxa-motion-ease);
+/* e pra "pops": */
+animation-name: meu-pop;
+animation-duration: var(--axxa-motion-dur);
+animation-timing-function: var(--axxa-motion-ease);
+animation-fill-mode: both;
+```
+"Pops" (entrada) → keyframe que lê os tokens: `transform: translateY(calc(5px *
+var(--axxa-motion-amp))) scale(var(--axxa-motion-pop))` (mesmo pop do card de
+modelo). Custom properties funcionam DENTRO de `@keyframes` (resolvem no
+elemento). Primeiro cliente: o segmented "label no ativo" da gaveta.
 
 **Reduzir movimento:** `.axxa-root.axxa-reduce-motion` (toggle do user no mobile,
 `settings.reducedMotionMobile`, aplicado via `Platform.isMobile`) **e** o
@@ -141,6 +155,12 @@ fallback `message-square` pra chats sem provider — ex: estrangeiros).
 
 ### Gaveta lateral (`.axxa-sidebar`)
 Espelha a estrutura de um drawer minimalista; só o tema é nosso.
+
+- **Scroll:** tudo (brand + new + nav + recentes) rola junto num
+  `.axxa-sidebar-scroll`; **só o rodapé fica fixo**. Ao TROCAR de modo no filtro,
+  a faixa "Recentes + segmented" (`.axxa-sidebar-recents-head`) rola pro topo do
+  scroll (via `useEffect` no `modeFilter`, escopado ao scroll da gaveta) — a
+  brand/nav somem por cima e a lista fica mais ampla.
 
 - **Brand (topo):** lockup em coluna — nome `AXXA AI Agent` (1.35rem, 700) +
   versão `vX.Y.Z` (faint). Sem avatar/box/X (o scrim fecha).
