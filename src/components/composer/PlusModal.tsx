@@ -583,7 +583,7 @@ class VaultNotePickerModal extends FuzzySuggestModal<TFile> {
   }
 }
 
-async function openVaultNotePicker(
+export async function openVaultNotePicker(
   app: App,
   t: ReturnType<typeof useT>
 ): Promise<string | null> {

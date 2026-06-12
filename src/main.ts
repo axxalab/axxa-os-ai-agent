@@ -27,6 +27,7 @@ import {
   type EnrichedModelInfo,
 } from "./providers/modelInfoStore";
 import { loadSkills, seedExampleSkills, type Skill } from "./skills/skills";
+import type { Project } from "./projects";
 import type {
   EffortConfig,
   EffortLevel,
@@ -76,6 +77,8 @@ interface AxxaSettings {
   /** Estilo de resposta global (normal/concise/explanatory/formal/friendly).
    *  Vira uma instrução anexada ao system prompt. Ref: Claude "Choose style". */
   responseStyle: string;
+  /** Projetos (agrupam conversas + fontes). Ref: ChatGPT iOS 182/187/189. */
+  projects: Project[];
   /** Pasta no Vault onde mídias geradas por modelos (imagem/áudio/vídeo)
    *  são salvas. Cada saída gera 2 arquivos: mídia + sidecar .md com
    *  frontmatter (prompt, model, provider, timestamp, etc). */
@@ -221,6 +224,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   recordingsPath: "axxa-ai/recordings",
   notesPath: "axxa-ai/notes",
   responseStyle: "normal",
+  projects: [],
   generationPath: "axxa-ai/generation",
   ragIndexPath: "axxa-ai/index",
   ragEmbeddingProvider: "openai",

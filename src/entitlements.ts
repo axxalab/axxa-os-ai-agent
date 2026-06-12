@@ -68,10 +68,10 @@ export interface NavItemMeta {
 // atrás do "Ver mais" (colapsado). Settings fica no rodapé (abre o nativo).
 export const NAV_ITEMS: NavItemMeta[] = [
   { view: "conversations", icon: "messages-square" },
+  { view: "projects", icon: "folder-kanban" },
   { view: "media", icon: "image" },
   { view: "statistics", icon: "bar-chart-3" },
   { view: "profile", icon: "user-round" },
-  // "projects" fica fora da nav até ter conteúdo (a tela existe, só não é exposta).
 ];
 
 export const PRIMARY_COUNT = 3;

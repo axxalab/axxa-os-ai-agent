@@ -23,12 +23,18 @@ import { ConversationsList } from "../components/chat/ConversationsList";
 import {
   MediaScreen,
   StatisticsScreen,
-  ProjectsScreen,
   ProfileScreen,
   LockedScreen,
   OnboardingScreen,
   PlansScreen,
 } from "../components/screens/Screens";
+import {
+  ProjectsListScreen,
+  ProjectDetailScreen,
+  ProjectEditor,
+} from "../components/screens/Projects";
+import { makeProjectId, type Project } from "../projects";
+import { openVaultNotePicker } from "../components/composer/PlusModal";
 import {
   getEffectiveTier,
   canAccess,
@@ -416,6 +422,114 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [responseStyle, setResponseStyle] = useState(
     plugin.settings.responseStyle
   );
+
+  // Projetos (ref: ChatGPT iOS 182/187/189). State espelha settings. v0.1.191
+  const [projects, setProjects] = useState<Project[]>(
+    plugin.settings.projects ?? []
+  );
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  );
+  // null = editor fechado; { project?: Project } = aberto (novo ou editando).
+  const [projectEditor, setProjectEditor] = useState<
+    null | { project?: Project }
+  >(null);
+  // Projeto pendente: ao começar "nova conversa neste projeto", a associação
+  // chat↔projeto acontece no 1º send (quando o chat id é criado).
+  const pendingProjectIdRef = useRef<string | null>(null);
+
+  const persistProjects = async (next: Project[]) => {
+    setProjects(next);
+    plugin.settings.projects = next;
+    await plugin.saveSettings();
+  };
+
+  const handleSaveProject = async (data: {
+    name: string;
+    icon: string;
+    color: string;
+  }) => {
+    const editing = projectEditor?.project;
+    if (editing) {
+      await persistProjects(
+        projects.map((p) =>
+          p.id === editing.id ? { ...p, ...data } : p
+        )
+      );
+    } else {
+      const proj: Project = {
+        id: makeProjectId(),
+        name: data.name,
+        icon: data.icon,
+        color: data.color,
+        sources: [],
+        chatIds: [],
+        createdAt: new Date().toISOString(),
+      };
+      await persistProjects([proj, ...projects]);
+      setSelectedProjectId(proj.id);
+      new Notice(t.projects.created(proj.name));
+    }
+    setProjectEditor(null);
+  };
+
+  const handleDeleteProject = async () => {
+    const editing = projectEditor?.project;
+    if (!editing) return;
+    await persistProjects(projects.filter((p) => p.id !== editing.id));
+    setProjectEditor(null);
+    setSelectedProjectId(null);
+    new Notice(t.projects.deleted);
+  };
+
+  const handleAddProjectSource = async (projectId: string) => {
+    const path = await openVaultNotePicker(plugin.app, t);
+    if (!path) return;
+    await persistProjects(
+      projects.map((p) =>
+        p.id === projectId && !p.sources.includes(path)
+          ? { ...p, sources: [...p.sources, path] }
+          : p
+      )
+    );
+    new Notice(t.projects.sourceAdded);
+  };
+
+  const handleRemoveProjectSource = async (
+    projectId: string,
+    path: string
+  ) => {
+    await persistProjects(
+      projects.map((p) =>
+        p.id === projectId
+          ? { ...p, sources: p.sources.filter((s) => s !== path) }
+          : p
+      )
+    );
+  };
+
+  const handleNewChatInProject = async (project: Project) => {
+    abortRef.current?.abort();
+    useChatStore.getState().newChat();
+    pendingProjectIdRef.current = project.id;
+    // Pré-anexa as fontes do projeto como notas de contexto.
+    const entries: PendingAttachmentEntry[] = [];
+    for (const src of project.sources) {
+      try {
+        const content = await plugin.app.vault.adapter.read(src);
+        entries.push({
+          id: makeAttachmentId(),
+          attachment: { type: "note", path: src, content },
+          name: src.split("/").pop() ?? src,
+        });
+      } catch {
+        /* fonte sumiu do vault — ignora */
+      }
+    }
+    setPendingAttachments(entries);
+    setSelectedProjectId(null);
+    setView("chat");
+  };
 
   // Estilo de resposta global (ref: Claude "Choose style") → instrução anexada
   // ao system prompt. "normal" não adiciona nada. v0.1.189
@@ -1387,6 +1501,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       setCurrentChatId(newId);
       setCurrentChatTitle(generateTitle(text));
       lockSession(activeProviderId, activeModel, activeMode);
+      // Associa o chat recém-criado ao projeto pendente (se houver). v0.1.191
+      if (pendingProjectIdRef.current) {
+        const pid = pendingProjectIdRef.current;
+        pendingProjectIdRef.current = null;
+        void persistProjects(
+          projects.map((p) =>
+            p.id === pid && !p.chatIds.includes(newId)
+              ? { ...p, chatIds: [newId, ...p.chatIds] }
+              : p
+          )
+        );
+      }
     }
 
     // Prepara attachments pra envio. Filtros aplicados em streamReply/runAgentTurn:
@@ -2533,11 +2659,42 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             <LockedScreen view="statistics" onClose={() => setView("chat")} onSeePlans={() => setView("plans")} />
           )
         ) : view === "projects" ? (
-          canAccess("projects", tier) ? (
-            <ProjectsScreen onClose={() => setView("chat")} />
-          ) : (
-            <LockedScreen view="projects" onClose={() => setView("chat")} onSeePlans={() => setView("plans")} />
-          )
+          (() => {
+            const selected = projects.find((p) => p.id === selectedProjectId);
+            if (selected) {
+              const projChats = allChats.filter((c) =>
+                selected.chatIds.includes(c.id)
+              );
+              return (
+                <ProjectDetailScreen
+                  project={selected}
+                  chats={projChats}
+                  onBack={() => setSelectedProjectId(null)}
+                  onEdit={() => setProjectEditor({ project: selected })}
+                  onNewChat={() => handleNewChatInProject(selected)}
+                  onOpenChat={(id) => handleLoadChatFromList(id)}
+                  onAddSource={() => handleAddProjectSource(selected.id)}
+                  onRemoveSource={(path) =>
+                    handleRemoveProjectSource(selected.id, path)
+                  }
+                  onOpenSource={(path) => {
+                    const file = plugin.app.vault.getAbstractFileByPath(path);
+                    if (file instanceof TFile) {
+                      void plugin.app.workspace.getLeaf(true).openFile(file);
+                    }
+                  }}
+                />
+              );
+            }
+            return (
+              <ProjectsListScreen
+                projects={projects}
+                onOpen={(id) => setSelectedProjectId(id)}
+                onCreate={() => setProjectEditor({})}
+                onClose={() => setView("chat")}
+              />
+            );
+          })()
         ) : view === "profile" ? (
           <ProfileScreen
             tier={tier}
@@ -2787,6 +2944,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 })();
                 setPendingAttachments((prev) => [...prev, entry]);
               }}
+            />
+          )}
+          {projectEditor && (
+            <ProjectEditor
+              initial={projectEditor.project}
+              onSave={handleSaveProject}
+              onDelete={
+                projectEditor.project ? handleDeleteProject : undefined
+              }
+              onClose={() => setProjectEditor(null)}
             />
           )}
           {/* Gaveta lateral de conversas (avatar do header). v0.1.145 */}
