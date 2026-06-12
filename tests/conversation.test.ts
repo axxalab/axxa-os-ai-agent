@@ -52,6 +52,14 @@ describe("buildChatSystemPrompt", () => {
     });
     expect(r).toBe("P\n\nS\n\nV:\nctx\n\nN");
   });
+  it("persona só com espaços cai pro base", () => {
+    expect(buildChatSystemPrompt({ persona: "   ", base: "BASE" })).toBe("BASE");
+  });
+  it("style aplica mesmo sem persona (head = base)", () => {
+    expect(
+      buildChatSystemPrompt({ base: "BASE", styleInstruction: "S" })
+    ).toBe("BASE\n\nS");
+  });
 });
 
 describe("buildAgentSystemPrompt", () => {
@@ -97,6 +105,60 @@ describe("storeMessagesToProvider", () => {
   it("sem attachments → nenhuma msg ganha o campo", () => {
     const out = storeMessagesToProvider(msgs);
     expect(out.some((m) => "attachments" in m)).toBe(false);
+  });
+
+  it("array vazio → []", () => {
+    expect(storeMessagesToProvider([])).toEqual([]);
+  });
+
+  it("só comentários/erros → [] (nada usável)", () => {
+    const out = storeMessagesToProvider([
+      { type: "ai-comment", content: "..." },
+      { type: "ai-response", content: "[Erro]", isError: true },
+    ]);
+    expect(out).toEqual([]);
+  });
+
+  it("attachments com array VAZIO não adiciona o campo", () => {
+    const out = storeMessagesToProvider(msgs, []);
+    expect(out.some((m) => "attachments" in m)).toBe(false);
+  });
+
+  it("se a última msg usável é assistant, attachments NÃO são aplicados", () => {
+    const out = storeMessagesToProvider(
+      [
+        { type: "user", content: "oi" },
+        { type: "ai-response", content: "resposta" },
+      ],
+      [{ type: "image" as const, dataUrl: "data:..." }]
+    );
+    expect(out.some((m) => "attachments" in m)).toBe(false);
+  });
+
+  it("content ausente vira string vazia", () => {
+    const out = storeMessagesToProvider([{ type: "user" }]);
+    expect(out).toEqual([{ role: "user", content: "" }]);
+  });
+
+  it("agentSteps VAZIO → assistant comum (sem bloco de memória)", () => {
+    const out = storeMessagesToProvider([
+      { type: "user", content: "oi" },
+      { type: "ai-response", content: "ok", agentSteps: [] },
+    ]);
+    expect(out[1]).toEqual({ role: "assistant", content: "ok" });
+  });
+
+  it("toolMode=true com content vazio → não emite assistant de texto final", () => {
+    const out = storeMessagesToProvider(
+      [{ type: "ai-response", content: "", agentSteps: [
+        { id: "c1", name: "vault_read", arguments: { path: "a.md" }, result: "x", ok: true },
+      ] }],
+      undefined,
+      true
+    );
+    // assistant(tool_calls) + tool(result) — sem assistant de texto no fim
+    expect(out.filter((m) => m.role === "assistant")).toHaveLength(1);
+    expect(out.some((m) => m.role === "tool")).toBe(true);
   });
 
   const stepsFixture = [
@@ -165,6 +227,12 @@ describe("flattenAgentResponse", () => {
     ]);
     expect(r.startsWith("〔memória do agente")).toBe(true);
     expect(r).toContain("vault_list(f) → ok — 3 itens");
+  });
+
+  it("steps vazios → bloco de memória sem linhas de ação", () => {
+    const r = flattenAgentResponse("ok", []);
+    expect(r.startsWith("ok\n\n")).toBe(true);
+    expect(r).toContain("memória do agente");
   });
 
   it("trunca args e results longos inline (sem quebrar linha)", () => {

@@ -124,6 +124,51 @@ describe("openai streamChat — parser SSE real", () => {
     expect(res.content).toBe("ok");
   });
 
+  it("reasoning INTERCALADO com content preserva ordem de cada canal", async () => {
+    mockFetch([
+      sse({ choices: [{ delta: { reasoning: "r1" } }] }),
+      sse({ choices: [{ delta: { content: "c1" } }] }),
+      sse({ choices: [{ delta: { reasoning: "r2" } }] }),
+      sse({ choices: [{ delta: { content: "c2" } }] }),
+      "data: [DONE]\n\n",
+    ]);
+    const tokens: string[] = [];
+    const reasoning: string[] = [];
+    const res = await openaiProvider.streamChat(
+      userReq("gpt-4o"), "key",
+      (t) => tokens.push(t), undefined, undefined, (r) => reasoning.push(r)
+    );
+    expect(reasoning).toEqual(["r1", "r2"]);
+    expect(tokens).toEqual(["c1", "c2"]);
+    expect(res.content).toBe("c1c2");
+  });
+
+  it("delta com reasoning E reasoning_content → reasoning vence (uma chamada)", async () => {
+    mockFetch([
+      sse({ choices: [{ delta: { reasoning: "A", reasoning_content: "B", content: "x" } }] }),
+      "data: [DONE]\n\n",
+    ]);
+    const reasoning: string[] = [];
+    const res = await openaiProvider.streamChat(
+      userReq("gpt-4o"), "key", () => {}, undefined, undefined, (r) => reasoning.push(r)
+    );
+    expect(reasoning).toEqual(["A"]);
+    expect(res.content).toBe("x");
+  });
+
+  it("reasoning string vazia é ignorada", async () => {
+    mockFetch([
+      sse({ choices: [{ delta: { reasoning: "" } }] }),
+      sse({ choices: [{ delta: { content: "ok" } }] }),
+      "data: [DONE]\n\n",
+    ]);
+    const reasoning: string[] = [];
+    await openaiProvider.streamChat(
+      userReq("gpt-4o"), "key", () => {}, undefined, undefined, (r) => reasoning.push(r)
+    );
+    expect(reasoning).toEqual([]);
+  });
+
   it("ignora chunk com JSON inválido sem abortar o stream", async () => {
     mockFetch([
       "data: isso-nao-e-json\n\n",
@@ -244,6 +289,33 @@ describe("anthropic streamChat — eventos tipados", () => {
     });
   });
 
+  it("múltiplos thinking_delta antes do texto → reasoning concatenado, content limpo — v0.1.195", async () => {
+    mockFetch([
+      sse({ type: "message_start", message: { usage: { input_tokens: 4 } } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "passo1 " } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "passo2" } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Resposta" } }),
+      sse({ type: "message_stop" }),
+    ]);
+    const reasoning: string[] = [];
+    const res = await anthropicProvider.streamChat(
+      userReq("claude-opus-4-8"), "key", () => {}, undefined, undefined, (r) => reasoning.push(r)
+    );
+    expect(reasoning.join("")).toBe("passo1 passo2");
+    expect(res.content).toBe("Resposta");
+  });
+
+  it("thinking_delta sem onReasoning não quebra (content intacto)", async () => {
+    mockFetch([
+      sse({ type: "message_start", message: { usage: { input_tokens: 1 } } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "x" } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "ok" } }),
+      sse({ type: "message_stop" }),
+    ]);
+    const res = await anthropicProvider.streamChat(userReq("claude-opus-4-8"), "key", () => {});
+    expect(res.content).toBe("ok");
+  });
+
   it("evento type:error no stream → ProviderError", async () => {
     mockFetch([
       sse({ type: "message_start", message: { usage: { input_tokens: 1 } } }),
@@ -282,6 +354,21 @@ describe("openrouter streamChat — formato OpenAI-compat via fetch", () => {
     await expect(
       openrouterProvider.streamChat(userReq("x"), "key", () => {})
     ).rejects.toMatchObject({ code: "invalid-key" });
+  });
+
+  it("reasoning do OpenRouter roteia pro onReasoning — v0.1.193", async () => {
+    mockFetch([
+      sse({ choices: [{ delta: { reasoning: "deep" } }] }),
+      sse({ choices: [{ delta: { content: "ans" } }] }),
+      "data: [DONE]\n\n",
+    ]);
+    const reasoning: string[] = [];
+    const res = await openrouterProvider.streamChat(
+      userReq("deepseek/deepseek-r1"), "key",
+      () => {}, undefined, undefined, (r) => reasoning.push(r)
+    );
+    expect(reasoning).toEqual(["deep"]);
+    expect(res.content).toBe("ans");
   });
 });
 

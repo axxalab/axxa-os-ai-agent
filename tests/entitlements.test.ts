@@ -29,6 +29,15 @@ describe("getEffectiveTier", () => {
       getEffectiveTier({ devTierOverride: "free", licenseKey: "AXXA-PRO-TEST-2026" })
     ).toBe("free");
   });
+  it("devTierOverride com valor desconhecido é ignorado (cai pro plano real)", () => {
+    expect(getEffectiveTier({ accountTier: "free", devTierOverride: "xyz" })).toBe("free");
+    expect(getEffectiveTier({ accountTier: "pro", devTierOverride: "" })).toBe("pro");
+  });
+  it("license inválida não promove (fica no accountTier)", () => {
+    expect(
+      getEffectiveTier({ accountTier: "free", licenseKey: "AXXA-PRO-XX" })
+    ).toBe("free");
+  });
 });
 
 describe("isLicensePro", () => {
@@ -58,12 +67,22 @@ describe("canAccess / viewRequiresPro", () => {
 });
 
 describe("estrutura da navegação", () => {
-  it("PAID_VIEWS = media/statistics (profile livre; projects fora da nav)", () => {
+  it("PAID_VIEWS = media/statistics (profile e projects são livres)", () => {
     expect([...PAID_VIEWS].sort()).toEqual(["media", "statistics"]);
+    expect(viewRequiresPro("projects")).toBe(false);
+    expect(viewRequiresPro("profile")).toBe(false);
+  });
+  it("projects está na nav agora (v0.1.191) e é acessível no free", () => {
+    expect(NAV_ITEMS.some((i) => i.view === "projects")).toBe(true);
+    expect(canAccess("projects", "free")).toBe(true);
   });
   it("3 itens primários e todos têm ícone", () => {
     expect(PRIMARY_COUNT).toBe(3);
     expect(NAV_ITEMS.length).toBeGreaterThanOrEqual(PRIMARY_COUNT);
     for (const i of NAV_ITEMS) expect(i.icon.length).toBeGreaterThan(0);
+  });
+  it("nenhum view duplicado na nav", () => {
+    const views = NAV_ITEMS.map((i) => i.view);
+    expect(new Set(views).size).toBe(views.length);
   });
 });
