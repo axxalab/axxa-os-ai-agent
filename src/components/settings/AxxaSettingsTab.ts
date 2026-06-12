@@ -339,7 +339,22 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
-    // Reduzir movimento no mobile — neutraliza os tokens de motion só em touch.
+    // Reduzir movimento GLOBAL — o user decide animado ou não (classe no body).
+    // Fonte única da verdade; não dependemos mais do prefers-reduced-motion do SO.
+    new Setting(parent)
+      .setName(t.settings.reduceMotion)
+      .setDesc(t.settings.reduceMotionDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.reduceMotion)
+          .onChange(async (value) => {
+            hapticTick();
+            this.plugin.settings.reduceMotion = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // Reduzir movimento SÓ no mobile — mesma classe, gateada por Platform.isMobile.
     new Setting(parent)
       .setName(t.settings.reducedMotionMobile)
       .setDesc(t.settings.reducedMotionMobileDesc)

@@ -77,8 +77,12 @@ interface AxxaSettings {
    *  animação do DS (--axxa-motion-*). Aplicado como data-axxa-motion na
    *  .axxa-root; governa toda animação nova daqui pra frente. v0.1.211 */
   motion: string;
-  /** Toggle de "reduzir movimento" no MOBILE — quando ligado, neutraliza os
-   *  tokens de motion (.axxa-reduce-motion na .axxa-root) só em telas touch. */
+  /** Toggle GLOBAL "reduzir movimento" — quando ligado, mata toda animação do
+   *  app (classe `axxa-reduce-motion` no <body>). O user decide animado ou não;
+   *  não depende mais do prefers-reduced-motion do SO. v0.1.218 */
+  reduceMotion: boolean;
+  /** Toggle de "reduzir movimento" só no MOBILE — mesma classe, gateada por
+   *  Platform.isMobile (conveniência pra bateria/enjoo em telas touch). */
   reducedMotionMobile: boolean;
   /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
   recordingsPath: string;
@@ -243,6 +247,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   background: "none",
   density: "normal",
   motion: "wave",
+  reduceMotion: false,
   reducedMotionMobile: false,
   recordingsPath: "axxa-ai/recordings",
   notesPath: "axxa-ai/notes",
@@ -548,6 +553,7 @@ export default class AxxaPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+    this.applyMotionPreference();
 
     // Registra os SVG marks dos providers (brand-openai/anthropic/etc).
     // Depois disso, setIcon(el, "brand-openai") funciona em qualquer lugar.
@@ -631,6 +637,18 @@ export default class AxxaPlugin extends Plugin {
   onunload() {
     // Limpa a variável CSS pra não vazar entre reloads
     document.documentElement.style.removeProperty("--axxa-status-bar-clearance");
+    document.body.classList.remove("axxa-reduce-motion");
+  }
+
+  /** Liga/desliga a classe `axxa-reduce-motion` no <body> conforme o TOGGLE do
+   *  user — global (settings.reduceMotion) OU só no mobile
+   *  (settings.reducedMotionMobile + Platform.isMobile). É a ÚNICA fonte da
+   *  verdade pra reduzir movimento (não usamos mais @media do SO). v0.1.218 */
+  applyMotionPreference() {
+    const reduce =
+      !!this.settings.reduceMotion ||
+      (Platform.isMobile && !!this.settings.reducedMotionMobile);
+    document.body.classList.toggle("axxa-reduce-motion", reduce);
   }
 
   /**
@@ -816,6 +834,8 @@ export default class AxxaPlugin extends Plugin {
       // Fallback (runtime sem SecretStorage): salva tudo no data.json.
       await this.saveData(this.settings);
     }
+    // Reaplica a preferência de movimento (toggle reduce-motion → classe no body)
+    this.applyMotionPreference();
     // Avisa quem tá escutando (ex.: AxxaApp pra re-renderizar com novo idioma)
     this.settingsListeners.forEach((cb) => {
       try {

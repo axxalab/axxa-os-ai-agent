@@ -777,6 +777,9 @@ export const PT_BR = {
     motionWave: "Wave",
     motionIntense: "Intense",
     motionChaotic: "Chaotic",
+    reduceMotion: "Reduzir movimento",
+    reduceMotionDesc:
+      "Desliga TODAS as animações do app — você decide animado ou não (não depende do sistema). Deixe desligado pra ver os efeitos.",
     reducedMotionMobile: "Reduzir movimento no mobile",
     reducedMotionMobileDesc:
       "No celular/tablet, desliga as animações de movimento (segura bateria e evita enjoo). Não afeta o desktop.",

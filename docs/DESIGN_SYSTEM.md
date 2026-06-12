@@ -120,12 +120,23 @@ dirigida por JS (inline-style medido), use a **Web Animations API**
 re-render e o `prefers-reduced-motion` → a mola SEMPRE roda. (Transições por
 toggle de CLASSE — ex.: a gaveta abrindo — continuam confiáveis no CSS puro.)
 
-**Reduzir movimento:** `.axxa-root.axxa-reduce-motion` (toggle do user no mobile,
-`settings.reducedMotionMobile`, aplicado via `Platform.isMobile`) **e** o
-`@media (prefers-reduced-motion: reduce)` do SO neutralizam os tokens
-(dur `0.01s`, amp `0`, pop `1`) → animações novas viram quase-instantâneas. Como
-tudo lê os tokens, **uma** chave cobre o DS inteiro. Animações legadas (modal,
-effort, etc) não estão tokenizadas — migram pra cá quando forem tocadas.
+**Reduzir movimento = TOGGLE do user, nunca o SO (v0.1.218).** O app **não usa
+mais** `@media (prefers-reduced-motion: reduce)` (era hardcoded — o user não
+conseguia escolher "animado" se o SO dizia "reduzir"). Agora a fonte única é a
+classe **`axxa-reduce-motion` no `<body>`**, ligada por `plugin.applyMotionPreference()`
+quando `settings.reduceMotion` (global) **ou** `settings.reducedMotionMobile`
+(+`Platform.isMobile`). Dois efeitos:
+1. **Neutraliza os tokens** (`body.axxa-reduce-motion .axxa-root`: dur `0.01s`,
+   amp `0`, pop `1`) → animações token-based E o WAAPI (que lê os tokens) viram
+   instantâneas.
+2. **Reset global** `body.axxa-reduce-motion *, ::before, ::after { animation/
+   transition-duration: 0.01ms !important; animation-iteration-count: 1 !important }`
+   → mata até as animações **infinitas hardcoded** (glow, shimmer, orb, bg) em
+   todo o `<body>` (app, settings, modais, overlays), sem precisar de regra
+   por-componente. O WAAPI do segmento também checa a classe e pula a animação.
+
+Toda animação nova: **não** escreva `@media (prefers-reduced-motion)` — o reset
+global já cobre. Só garanta que ela consome os tokens [DS:motion].
 
 ### [DS:pill] — superfície de hover/seleção (vidro fosco)
 **Regra:** toda superfície selecionável (item de nav, item de lista, chip,

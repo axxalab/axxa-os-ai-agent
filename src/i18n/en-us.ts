@@ -765,6 +765,9 @@ export const EN_US: Translations = {
     motionWave: "Wave",
     motionIntense: "Intense",
     motionChaotic: "Chaotic",
+    reduceMotion: "Reduce motion",
+    reduceMotionDesc:
+      "Turns off ALL app animations — you decide animated or not (independent of the OS). Leave off to see the effects.",
     reducedMotionMobile: "Reduce motion on mobile",
     reducedMotionMobileDesc:
       "On phone/tablet, turns off motion animations (saves battery, avoids motion sickness). Doesn't affect desktop.",

@@ -88,8 +88,12 @@ export function SegmentedRow({
       const prev = prevIndRef.current;
       setInd(next); // posição de descanso (inline)
       prevIndRef.current = next;
+      const reduce =
+        typeof document !== "undefined" &&
+        document.body.classList.contains("axxa-reduce-motion");
       if (
         animate &&
+        !reduce &&
         indEl &&
         prev &&
         typeof indEl.animate === "function" &&
