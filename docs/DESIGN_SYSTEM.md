@@ -214,9 +214,12 @@ Espelha a estrutura de um drawer minimalista; só o tema é nosso.
 
 - **Brand (topo):** lockup em coluna — nome `AXXA AI Agent` (1.35rem, 700) +
   versão `vX.Y.Z` (faint). Sem avatar/box/X (o scrim fecha).
-- **Nova conversa:** mesma linha dos itens de nav (ícone + texto), em
-  `--text-accent` **sempre** (`!important` no texto e no ícone — o `<button>`
-  do Obsidian mobile força a cor padrão). Sem fundo/borda.
+- **Nova conversa (3 módulos):** `.axxa-sidebar-new-group` empilha **New chat**,
+  **New Q&A** e **New Agent** — cada um abre uma conversa NOVA já no modo certo
+  (`onNewChatMode(mode)` → `handleNewChatWithMode`). Mesma linha dos itens de nav
+  (ícone + texto) em `--text-accent` **sempre** (`!important` no texto e no ícone
+  — o `<button>` do Obsidian mobile força a cor padrão). Sem fundo/borda.
+  Abrem a **base limpa** (NewChatScreen), não a StarterScreen.
 - **Nav:** linhas FLAT (`appearance:none` + `background:transparent !important`
   pra matar o fundo cinza padrão de `.theme-dark button`). Ativa = `[DS:pill]`
   forte. Item pago no free mostra cadeado.

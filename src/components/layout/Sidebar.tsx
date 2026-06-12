@@ -33,7 +33,8 @@ interface SidebarProps {
   onClose: () => void;
   chats: ChatSummary[];
   onLoadChat: (chatId: string, chatMode: string) => void;
-  onNewChat: () => void;
+  /** Abre uma conversa NOVA já num modo (chat | vault-qa | agent). v0.1.219 */
+  onNewChatMode: (mode: string) => void;
   /** "Ver todas" → tela cheia de conversas (com filtros/sort). */
   onOpenAll: () => void;
   onOpenSettings: () => void;
@@ -76,7 +77,7 @@ export function Sidebar({
   onClose,
   chats,
   onLoadChat,
-  onNewChat,
+  onNewChatMode,
   onOpenSettings,
   onNavigate,
   tier,
@@ -241,17 +242,29 @@ export function Sidebar({
             </span>
           </div>
 
-          <button
-            type="button"
-            className="axxa-sidebar-new"
-            onClick={() => {
-              onNewChat();
-              onClose();
-            }}
-          >
-            <Icon name="circle-plus" />
-            <span>{t.header.newChat}</span>
-          </button>
+          {/* Um "módulo" por modo: cada um abre uma conversa NOVA já no modo
+              certo (chat / vault-qa / agent). Mesma lógica, modo diferente. */}
+          <div className="axxa-sidebar-new-group">
+            {[
+              { mode: "chat", icon: "circle-plus", label: t.header.newChat },
+              { mode: "vault-qa", icon: "library", label: t.header.newQa },
+              { mode: "agent", icon: "bot", label: t.header.newAgent },
+            ].map((b) => (
+              <button
+                key={b.mode}
+                type="button"
+                className={"axxa-sidebar-new axxa-sidebar-new-" + b.mode}
+                onClick={() => {
+                  hapticTick();
+                  onNewChatMode(b.mode);
+                  onClose();
+                }}
+              >
+                <Icon name={b.icon} />
+                <span>{b.label}</span>
+              </button>
+            ))}
+          </div>
 
           {/* Navegação das seções — todas FLAT, a ativa com pílula sutil. */}
           <nav className="axxa-sidebar-nav">

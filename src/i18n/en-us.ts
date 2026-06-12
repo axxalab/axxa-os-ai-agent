@@ -182,6 +182,8 @@ export const EN_US: Translations = {
 
   header: {
     newChat: "New chat",
+    newQa: "New Q&A",
+    newAgent: "New Agent",
     openSettings: "Settings",
     conversations: "Conversations",
     moreOptions: "More options",
@@ -195,6 +197,16 @@ export const EN_US: Translations = {
     modelSwitcherLabel: "Switch model",
     modelLockedHint: "Choosing another model opens a new conversation.",
     recents: "Recents",
+  },
+
+  // Clean "new conversation" base screen (no starter screen) — per mode. v0.1.219
+  newChatScreen: {
+    chatTitle: "New chat",
+    chatSub: "Send the first message and we're off.",
+    vaultQaTitle: "New Q&A",
+    vaultQaSub: "Ask anything about your notes.",
+    agentTitle: "New Agent",
+    agentSub: "Tell me what to do — I read and edit your vault.",
   },
 
   account: {

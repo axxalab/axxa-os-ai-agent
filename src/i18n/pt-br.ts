@@ -182,6 +182,8 @@ export const PT_BR = {
 
   header: {
     newChat: "Novo chat",
+    newQa: "Novo Q&A",
+    newAgent: "Novo Agente",
     openSettings: "Configurações",
     conversations: "Conversas",
     moreOptions: "Mais opções",
@@ -195,6 +197,16 @@ export const PT_BR = {
     modelSwitcherLabel: "Trocar modelo",
     modelLockedHint: "Escolher outro modelo abre uma nova conversa.",
     recents: "Recentes",
+  },
+
+  // Tela base de "nova conversa" limpa (sem starter screen) — por modo. v0.1.219
+  newChatScreen: {
+    chatTitle: "Novo chat",
+    chatSub: "Manda a primeira mensagem e a gente começa.",
+    vaultQaTitle: "Novo Q&A",
+    vaultQaSub: "Pergunte qualquer coisa sobre as suas notas.",
+    agentTitle: "Novo Agente",
+    agentSub: "Diga o que fazer — eu leio e edito o seu vault.",
   },
 
   account: {

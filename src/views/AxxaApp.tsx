@@ -22,6 +22,7 @@ import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
 import { StarterScreen } from "../components/chat/StarterScreen";
+import { NewChatScreen } from "../components/chat/NewChatScreen";
 import { ConversationsList } from "../components/chat/ConversationsList";
 import {
   MediaScreen,
@@ -398,6 +399,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [mode, setMode] = useState(
     plugin.settings.defaultMode === "vault-qa" ? "vault-qa" : "chat"
   );
+  // Chat vazio aberto via "nova conversa" (gaveta/header) → base LIMPA
+  // (NewChatScreen) em vez da StarterScreen. A StarterScreen só aparece no open
+  // inicial do plugin. v0.1.219
+  const [cleanChat, setCleanChat] = useState(false);
   const [plusOpen, setPlusOpen] = useState(false);
   const [recentChats, setRecentChats] = useState<ChatSummary[]>([]);
   // Todos os summaries da última varredura (null = carregando) — alimenta os
@@ -2310,6 +2315,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const handleNewChat = () => {
     abortRef.current?.abort();
     useChatStore.getState().newChat();
+    setCleanChat(true);
+    setView("chat");
+  };
+
+  // Nova conversa JÁ num modo específico (botões New chat / New Q&A / New Agent
+  // da gaveta). Mesma lógica do handleNewChat + fixa o modo da sessão. v0.1.219
+  const handleNewChatWithMode = (newMode: string) => {
+    abortRef.current?.abort();
+    setMode(newMode);
+    useChatStore.getState().newChat();
+    setCleanChat(true);
     setView("chat");
   };
 
@@ -2803,6 +2819,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onOpenSettings={() => finishOnboarding(true)}
             onDismiss={() => finishOnboarding(false)}
           />
+        ) : isEmpty && cleanChat ? (
+          <NewChatScreen mode={activeMode} />
         ) : isEmpty ? (
           <StarterScreen
             plugin={plugin}
@@ -3104,7 +3122,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onClose={() => setSidebarOpen(false)}
             chats={allChats}
             onLoadChat={handleLoadChat}
-            onNewChat={handleNewChat}
+            onNewChatMode={handleNewChatWithMode}
             onOpenAll={handleOpenConversations}
             onOpenSettings={handleOpenSettings}
             onNavigate={handleNavigate}

@@ -10892,8 +10892,18 @@ body.is-mobile .axxa-wave-area {
 .axxa-sidebar-new:hover {
   background: var(--background-modifier-hover) !important;
 }
+/* Grupo dos 3 "módulos" de nova conversa (chat / Q&A / agente), empilhados. */
+.axxa-sidebar-new-group {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-stack-gap);
+  padding: 4px 0 2px;
+}
+.axxa-sidebar-new-group .axxa-sidebar-new {
+  margin: 0 10px;
+}
 
-/* Divisória entre a nav e os recentes. */
 /* Divisória entre a nav e os recentes (linha fina). */
 .axxa-sidebar-divider {
   flex: 0 0 auto;
@@ -11419,5 +11429,70 @@ body.is-mobile .axxa-wave-area {
 .axxa-sidebar-foot-gear:hover {
   background: var(--background-modifier-hover) !important;
   color: var(--text-normal);
+}
+
+/* ============================================================
+ * NewChatScreen — base LIMPA de nova conversa (v0.1.219).
+ * Respiro central por modo; o Composer fica embaixo (por fora).
+ * É minimalista de propósito — a base que vamos crescer.
+ * ============================================================ */
+.axxa-newchat {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+.axxa-newchat-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 340px;
+  /* [DS:motion] entrada suave */
+  animation-name: axxa-newchat-in;
+  animation-duration: var(--axxa-motion-dur, 0.34s);
+  animation-timing-function: var(--axxa-motion-ease, ease);
+  animation-fill-mode: both;
+}
+@keyframes axxa-newchat-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(8px * var(--axxa-motion-amp, 1)))
+      scale(var(--axxa-motion-pop, 0.96));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.axxa-newchat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+  color: var(--text-accent);
+  margin-bottom: 2px;
+}
+.axxa-newchat-icon .svg-icon {
+  width: 24px;
+  height: 24px;
+}
+.axxa-newchat-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+.axxa-newchat-sub {
+  margin: 0;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 
