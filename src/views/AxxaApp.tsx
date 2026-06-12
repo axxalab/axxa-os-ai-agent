@@ -16,6 +16,8 @@ import { PersonaModal } from "../components/chat/PersonaModal";
 import { ChatSearchModal } from "../components/chat/ChatSearchModal";
 import { RenameChatModal } from "../components/chat/RenameChatModal";
 import { VoiceScreen } from "../components/chat/VoiceScreen";
+import { SkillsScreen } from "../components/chat/SkillsScreen";
+import { Icon } from "../components/_shared/Icon";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
@@ -349,10 +351,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       plugin.settings.openrouterApiKey,
       plugin.settings.nimApiKey,
     ].some((k) => (k ?? "").trim().length > 0);
+  // Modo Voz / Skills / "tudo certo" overlays. v0.1.194
+  const [skillsOpen, setSkillsOpen] = useState(false);
+  const [showAllSet, setShowAllSet] = useState(false);
+
   const finishOnboarding = async (openSettings: boolean) => {
     plugin.settings.onboardingDone = true;
     await plugin.saveSettings();
-    if (openSettings) handleOpenSettings();
+    if (openSettings) {
+      handleOpenSettings();
+    } else {
+      // "Tudo certo!" (ref: ChatGPT iOS 20) — confirmação breve antes do chat.
+      setShowAllSet(true);
+      window.setTimeout(() => setShowAllSet(false), 1700);
+    }
   };
   // License key (#15) — salva e re-renderiza (tier recomputa). Notice do estado.
   const handleSetLicense = async (key: string) => {
@@ -2940,6 +2952,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               onCreateImage={handleCreateImage}
               responseStyle={responseStyle}
               onSelectStyle={handleSelectStyle}
+              onExploreSkills={() => {
+                setPlusOpen(false);
+                setSkillsOpen(true);
+              }}
               toggles={plusToggles}
               onToggle={(key, value) =>
                 setPlusToggles((prev) => ({ ...prev, [key]: value }))
@@ -3022,6 +3038,35 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               />
             );
           })()}
+          {skillsOpen && (
+            <SkillsScreen
+              skills={plugin.skills}
+              onClose={() => setSkillsOpen(false)}
+              onUse={(skill) => {
+                setSkillsOpen(false);
+                setView("chat");
+                if (skill.mode && skill.mode !== mode) {
+                  void handleStarterMode(skill.mode);
+                }
+                handlePromptStarter(skill.body);
+              }}
+              onOpenNote={(path) => {
+                const file = plugin.app.vault.getAbstractFileByPath(path);
+                if (file instanceof TFile) {
+                  void plugin.app.workspace.getLeaf(true).openFile(file);
+                }
+              }}
+            />
+          )}
+          {showAllSet && (
+            <div className="axxa-allset" role="status" aria-label={t.allSet.title}>
+              <div className="axxa-allset-check">
+                <Icon name="check" />
+              </div>
+              <p className="axxa-allset-title">{t.allSet.title}</p>
+              <p className="axxa-allset-sub">{t.allSet.sub}</p>
+            </div>
+          )}
           {/* Gaveta lateral de conversas (avatar do header). v0.1.145 */}
           <Sidebar
             open={sidebarOpen}

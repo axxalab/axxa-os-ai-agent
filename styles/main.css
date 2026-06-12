@@ -2696,6 +2696,178 @@ body.is-mobile
 }
 
 /* =====================================================
+ * Apps & Skills (refs: ChatGPT iOS 60 "Explore apps", 119, 285 empty)
+ * ===================================================== */
+.axxa-skills {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+  animation: axxa-plus-fade 0.18s ease;
+}
+.axxa-skills-sub {
+  margin: 0 0 14px 0;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.axxa-skills-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.axxa-skill-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--text-normal) 4%, transparent);
+  overflow: hidden;
+  transition: border-color 0.15s, background 0.15s;
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-skill-card {
+    background: var(--background-secondary);
+  }
+}
+.axxa-skill-card:hover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 40%, transparent);
+}
+.axxa-skill-card-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px 14px 8px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-normal);
+  text-align: left;
+  cursor: pointer;
+}
+.axxa-skill-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  color: var(--text-accent);
+}
+.axxa-skill-card-icon .svg-icon {
+  width: 18px;
+  height: 18px;
+}
+.axxa-skill-card-name {
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+  line-height: 1.25;
+}
+.axxa-skill-card-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.axxa-skill-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 12px 12px;
+  margin-top: auto;
+}
+.axxa-skill-card-use {
+  flex: 1 1 auto;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  cursor: pointer;
+}
+.axxa-skill-card-use:hover {
+  background: var(--interactive-accent-hover);
+}
+.axxa-skill-card-open {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.axxa-skill-card-open:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+.axxa-skills-404 {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+/* "Tudo certo!" (ref: ChatGPT iOS 20) */
+.axxa-allset {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  background: var(--background-primary);
+  animation: axxa-plus-fade 0.2s ease;
+}
+.axxa-allset-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  margin-bottom: 14px;
+  animation: axxa-allset-pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+.axxa-allset-check .svg-icon {
+  width: 30px;
+  height: 30px;
+  stroke-width: 2.4;
+}
+.axxa-allset-title {
+  margin: 0;
+  font-size: var(--font-ui-large);
+  font-weight: 700;
+}
+.axxa-allset-sub {
+  margin: 0;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+@keyframes axxa-allset-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* =====================================================
  * Modo Voz (refs: ChatGPT iOS 133/140, Grok iOS 63/66)
  * ===================================================== */
 .axxa-voice {

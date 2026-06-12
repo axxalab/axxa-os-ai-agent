@@ -47,6 +47,22 @@ export const EN_US: Translations = {
     fileName: (stamp: string) => `Photo ${stamp}.jpg`,
   },
 
+  skills: {
+    title: "Apps & Skills",
+    subtitle: "Templates from your vault — tap to use in the chat.",
+    close: "Back",
+    use: "Use",
+    openNote: "Open note",
+    emptyTitle: "No skills yet",
+    emptySub:
+      "Create .md notes in the skills folder (axxa-ai/skills) — each becomes an app here.",
+  },
+
+  allSet: {
+    title: "You're all set!",
+    sub: "You're ready to get started.",
+  },
+
   voice: {
     title: "Voice mode",
     introTitle: "Meet Voice mode",

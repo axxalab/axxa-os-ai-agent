@@ -56,6 +56,8 @@ interface PlusModalProps {
   responseStyle?: string;
   /** Callback quando user troca o estilo de resposta. */
   onSelectStyle?: (id: string) => void;
+  /** Abre a galeria de Apps/Skills (ref: ChatGPT "Explore apps"). */
+  onExploreSkills?: () => void;
 }
 
 export function PlusModal({
@@ -71,6 +73,7 @@ export function PlusModal({
   onCreateImage,
   responseStyle = "normal",
   onSelectStyle,
+  onExploreSkills,
 }: PlusModalProps) {
   void imageGenEnabled;
   const t = useT();
@@ -320,6 +323,18 @@ export function PlusModal({
               onClose();
             }}
           />
+          {onExploreSkills && (
+            <PlusActionRow
+              icon="layout-grid"
+              tone="purple"
+              label={t.skills.title}
+              desc={t.skills.subtitle}
+              onClick={() => {
+                onExploreSkills();
+                onClose();
+              }}
+            />
+          )}
           <PlusToggleRow
             icon="brain"
             tone="orange"

@@ -47,6 +47,22 @@ export const PT_BR = {
     fileName: (stamp: string) => `Foto ${stamp}.jpg`,
   },
 
+  skills: {
+    title: "Apps & Skills",
+    subtitle: "Templates do seu vault — toque pra usar na conversa.",
+    close: "Voltar",
+    use: "Usar",
+    openNote: "Abrir nota",
+    emptyTitle: "Nenhuma skill ainda",
+    emptySub:
+      "Crie notas .md na pasta de skills (axxa-ai/skills) — cada uma vira um app aqui.",
+  },
+
+  allSet: {
+    title: "Tudo certo!",
+    sub: "Você está pronto pra começar.",
+  },
+
   voice: {
     title: "Modo Voz",
     introTitle: "Conheça o Modo Voz",
