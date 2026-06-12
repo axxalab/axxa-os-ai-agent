@@ -176,6 +176,9 @@ export interface Provider {
     request: MediaGenerationRequest,
     apiKey: string
   ): Promise<MediaGenerationItem[]>;
+  /** Lista os modelos disponíveis no provider (catálogo /models). Usado pelo
+   *  "SCAN" do seletor de modelo e pela curadoria de activeModels. */
+  listModels?(apiKey: string): Promise<string[]>;
 }
 
 /**

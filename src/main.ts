@@ -3,6 +3,7 @@
 // É como o "componente raiz" no Figma — todo o resto é montado a partir daqui.
 
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
+import { getProvider } from "./providers";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 import { VectorIndex, loadIndex, RAG_SHARD_SIZE } from "./rag/vectorIndex";
@@ -456,6 +457,31 @@ export default class AxxaPlugin extends Plugin {
       ? arr.filter((k) => k !== key)
       : [...arr, key];
     await this.saveSettings();
+  }
+
+  /** Credencial (key/endpoint) do provider — pro SCAN do seletor de modelo. */
+  providerCredential(id: string): string {
+    const s = this.settings;
+    switch (id) {
+      case "anthropic":
+        return s.anthropicApiKey ?? "";
+      case "gemini":
+        return s.geminiApiKey ?? "";
+      case "openrouter":
+        return s.openrouterApiKey ?? "";
+      case "nim":
+        return s.nimApiKey ?? "";
+      case "ollama":
+        return s.ollamaEndpoint ?? "";
+      default:
+        return s.openaiApiKey ?? "";
+    }
+  }
+  /** "SCAN" — lista os modelos do catálogo do provider (pode lançar). v0.1.223 */
+  async scanModels(providerId: string): Promise<string[]> {
+    const p = getProvider(providerId);
+    if (!p.listModels) return [];
+    return p.listModels(this.providerCredential(providerId));
   }
 
   /** Inscreve um callback chamado a cada saveSettings. Retorna unsubscribe. */

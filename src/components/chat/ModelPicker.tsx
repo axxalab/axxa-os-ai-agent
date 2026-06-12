@@ -9,7 +9,6 @@
 //     selecionar E favoritar (ícone de salvar estilo Insta).
 
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { Icon } from "../_shared/Icon";
 import { SegmentedRow } from "../_shared/SegmentedRow";
 import { hapticTick } from "../_shared/haptics";
@@ -23,6 +22,7 @@ import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
 } from "../../providers/modelDescriptions";
+import { ModelArena } from "./ModelArena";
 
 const FAV = "__fav__";
 
@@ -81,89 +81,6 @@ function ModelRow({
   );
 }
 
-/** Modal "todos os modelos" — por categoria, com selecionar + favoritar. */
-function ModelPickerModal({
-  provider,
-  model,
-  cats,
-  groups,
-  plugin,
-  onPick,
-  onToggleFav,
-  onClose,
-}: {
-  provider: string;
-  model: string;
-  cats: string[];
-  groups: Map<string, string[]>;
-  plugin: AxxaPlugin;
-  onPick: (m: string) => void;
-  onToggleFav: (m: string) => void;
-  onClose: () => void;
-}) {
-  const t = useT();
-  const lang = plugin.settings.language;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      className="axxa-mc-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div className="axxa-mpick-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="axxa-mpick-modal-head">
-          <span className="axxa-mpick-modal-title">
-            <Icon name="layers" />
-            {t.modelPicker.title}
-          </span>
-          <button
-            type="button"
-            className="axxa-mc-modal-close"
-            onClick={onClose}
-            aria-label={t.modelPicker.close}
-          >
-            <Icon name="minimize-2" />
-          </button>
-        </div>
-        <div className="axxa-mpick-modal-body">
-          {cats.map((cat) => (
-            <div key={cat} className="axxa-mpick-group">
-              <div className="axxa-mpick-group-label">
-                <Icon name={categoryIcon(cat)} />
-                {CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]}
-              </div>
-              {(groups.get(cat) ?? []).map((m) => {
-                const info = getModelFullInfo(provider, m);
-                return (
-                  <ModelRow
-                    key={m}
-                    provider={provider}
-                    m={m}
-                    active={m === model}
-                    fav={plugin.isFavoriteModel(provider, m)}
-                    desc={localizedDescription(info, m, lang) || info.card.description}
-                    onPick={onPick}
-                    onToggleFav={onToggleFav}
-                    t={t}
-                  />
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
 
 export function ModelPicker({
   provider,
@@ -312,17 +229,15 @@ export function ModelPicker({
       </div>
 
       {modalOpen && (
-        <ModelPickerModal
+        <ModelArena
           provider={provider}
           model={model}
-          cats={cats}
-          groups={groups}
+          modelOptions={opts}
           plugin={plugin}
           onPick={(m) => {
             pick(m);
             setModalOpen(false);
           }}
-          onToggleFav={toggleFav}
           onClose={() => setModalOpen(false)}
         />
       )}

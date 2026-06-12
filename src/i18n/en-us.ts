@@ -220,6 +220,21 @@ export const EN_US: Translations = {
     empty: "No models in this category.",
   },
 
+  // "Mortal Kombat" model selector (ModelArena). v0.1.223
+  arena: {
+    scan: "Scan new",
+    scanning: "Scanning…",
+    scanNone: "No new models found.",
+    scanFound: (n: number) =>
+      `${n} new ${n === 1 ? "fighter" : "fighters"} on the roster!`,
+    scanErr: "Scan failed (check the provider API key).",
+    close: "Close",
+    prev: "Previous",
+    next: "Next",
+    choose: "Choose",
+    power: "Power",
+  },
+
   account: {
     badgeFree: "Free",
     badgePremium: "Premium",

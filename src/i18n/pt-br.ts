@@ -220,6 +220,21 @@ export const PT_BR = {
     empty: "Nenhum modelo nesta categoria.",
   },
 
+  // Seletor "Mortal Kombat" de modelo (ModelArena). v0.1.223
+  arena: {
+    scan: "Buscar novos",
+    scanning: "Buscando…",
+    scanNone: "Nenhum modelo novo encontrado.",
+    scanFound: (n: number) =>
+      `${n} ${n === 1 ? "modelo novo" : "modelos novos"} no roster!`,
+    scanErr: "Falha ao buscar (confira a API key do provider).",
+    close: "Fechar",
+    prev: "Anterior",
+    next: "Próximo",
+    choose: "Escolher",
+    power: "Poder",
+  },
+
   account: {
     badgeFree: "Free",
     badgePremium: "Premium",
