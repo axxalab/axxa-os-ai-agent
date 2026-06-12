@@ -2,7 +2,7 @@
 // Entry point do plugin. O Obsidian instancia AxxaPlugin ao carregar o plugin.
 // É como o "componente raiz" no Figma — todo o resto é montado a partir daqui.
 
-import { Plugin, WorkspaceLeaf, Platform, type TAbstractFile } from "obsidian";
+import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 import { VectorIndex, loadIndex } from "./rag/vectorIndex";
@@ -548,10 +548,26 @@ export default class AxxaPlugin extends Plugin {
 
     // Carrega índice RAG do disco se já existe. Falhas são silenciosas —
     // só significa que o user ainda não rodou "Indexar vault".
+    // No MOBILE, gateia por tamanho: um índice grande estoura o heap do WebView
+    // e derruba o Obsidian no parse (OOM). Acima do teto, pula → keyword. v0.1.198
     try {
+      const mobileGuard = Platform.isMobile
+        ? {
+            maxBytes: 16 * 1024 * 1024,
+            onSkip: (mb: number) => {
+              const en = this.settings.language === "en-us";
+              new Notice(
+                en
+                  ? `RAG index too large for mobile (${mb.toFixed(0)} MB) — semantic search is off here to avoid a crash. Use desktop or shrink the index.`
+                  : `Índice RAG grande demais pro mobile (${mb.toFixed(0)} MB) — busca semântica desligada aqui pra evitar crash. Use no desktop ou reduza o índice.`
+              );
+            },
+          }
+        : undefined;
       this.vectorIndex = await loadIndex(
         this.app.vault.adapter,
-        this.settings.ragIndexPath
+        this.settings.ragIndexPath,
+        mobileGuard
       );
     } catch (err) {
       console.error("[axxa] falha ao carregar índice RAG:", err);

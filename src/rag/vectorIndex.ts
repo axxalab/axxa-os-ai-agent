@@ -123,10 +123,30 @@ function indexFilePath(indexPath: string): string {
 /** Lê o índice do disco. Devolve null se não existe, corrompido, ou versão antiga. */
 export async function loadIndex(
   adapter: DataAdapter,
-  indexPath: string
+  indexPath: string,
+  opts?: { maxBytes?: number; onSkip?: (sizeMB: number) => void }
 ): Promise<VectorIndex | null> {
   const path = indexFilePath(indexPath);
   if (!(await adapter.exists(path))) return null;
+  // Guard de memória (v0.1.198): um índice grande estoura o heap do WebView no
+  // mobile e DERRUBA o Obsidian no read/JSON.parse — OOM não é um throw
+  // capturável pelo try/catch. Acima do teto, pula o load semântico; o RAG cai
+  // pro keyword (hybridSearch lida com index null normalmente).
+  if (opts?.maxBytes) {
+    try {
+      const st = await adapter.stat(path);
+      if (st && st.size > opts.maxBytes) {
+        const mb = st.size / (1024 * 1024);
+        console.warn(
+          `[axxa/rag] índice ${mb.toFixed(1)}MB > teto ${(opts.maxBytes / (1024 * 1024)).toFixed(0)}MB — pulando load semântico (RAG via keyword).`
+        );
+        opts.onSkip?.(mb);
+        return null;
+      }
+    } catch {
+      /* stat indisponível — segue pro load normal */
+    }
+  }
   try {
     const raw = await adapter.read(path);
     const parsed = JSON.parse(raw) as IndexFile;
