@@ -32,9 +32,52 @@ import {
 //   - mobile:  embeddings.mobile.json
 const INDEX_FILENAME_DESKTOP = "embeddings.json";
 const INDEX_FILENAME_MOBILE = "embeddings.mobile.json";
-/** Nome do arquivo de índice da plataforma ATUAL. */
+/** Nome do arquivo de índice (single-file) da plataforma ATUAL. */
 export function indexFileName(): string {
   return Platform.isMobile ? INDEX_FILENAME_MOBILE : INDEX_FILENAME_DESKTOP;
+}
+
+// ── Modo SHARDED (streamed) — v0.1.200 ─────────────────────
+// Em vez de um JSON único (que ocupa o índice INTEIRO na RAM), o índice vira:
+//   manifesto (pequeno: metadados + lista de shards) + N arquivos de shard.
+// A busca lê um shard por vez, pontua, funde no top-K e descarta → memória
+// limitada a UM shard. Por plataforma (desktop/mobile) igual ao single-file.
+const SHARDED_VERSION = 2;
+/** Máx. de entries por shard (teto secundário; o corte primário é por bytes). */
+export const RAG_SHARD_SIZE = 400;
+/** Orçamento de bytes por shard (~4MB) — corta o shard antes de crescer demais,
+ *  mesmo com trechos de texto longos. Limita o pico de memória da busca (ler+
+ *  parsear UM shard fica em ~3× isso no pior caso). */
+const SHARD_TARGET_BYTES = 4 * 1024 * 1024;
+/** Base do nome (sem extensão) por plataforma — pra derivar manifest/shards. */
+function indexBaseName(): string {
+  return Platform.isMobile ? "embeddings.mobile" : "embeddings";
+}
+function manifestFileName(): string {
+  return `${indexBaseName()}.manifest.json`;
+}
+export function manifestFilePath(indexPath: string): string {
+  return `${indexPath}/${manifestFileName()}`;
+}
+function shardFileName(gen: string, i: number): string {
+  return `${indexBaseName()}.${gen}.shard${i}.json`;
+}
+
+interface ShardManifest {
+  version: number;
+  sharded: true;
+  provider: string;
+  model: string;
+  dim: number;
+  precision: QuantPrecision;
+  profile: string;
+  lastIndexedAt: string;
+  fileCount: number;
+  totalEntries: number;
+  shardCount: number;
+  shardSize: number;
+  /** Nomes dos arquivos de shard (relativos ao indexPath). */
+  shards: string[];
 }
 // v2: formato binário (base64 typed arrays) + precision/profile. Índices v1
 // (number[] float64) são descartados no load → user reindexa.
@@ -52,6 +95,17 @@ export class VectorIndex {
   profile: string;
   entries: VectorEntry[];
   lastIndexedAt: string;
+
+  // ── Modo streamed (sharded) — no LOAD e na BUSCA, entries NÃO ficam na RAM:
+  //    ficam nos shards do disco e são lidos sob demanda (um por vez). Nota: a
+  //    INDEXAÇÃO/save ainda monta o entries[] completo na RAM (a economia é em
+  //    runtime, não na geração). v0.1.200 ──
+  streamed = false;
+  private _adapter: DataAdapter | null = null;
+  private _indexPath = "";
+  private _shards: string[] = [];
+  private _streamedSize = 0;
+  private _streamedFileCount = 0;
 
   constructor(opts: {
     provider: string;
@@ -71,11 +125,22 @@ export class VectorIndex {
     this.lastIndexedAt = opts.lastIndexedAt ?? "";
   }
 
+  /** Configura este índice como streamed (sharded) — sem entries na RAM. */
+  setStreamed(adapter: DataAdapter, indexPath: string, manifest: ShardManifest) {
+    this.streamed = true;
+    this._adapter = adapter;
+    this._indexPath = indexPath;
+    this._shards = manifest.shards;
+    this._streamedSize = manifest.totalEntries;
+    this._streamedFileCount = manifest.fileCount;
+  }
+
   get size(): number {
-    return this.entries.length;
+    return this.streamed ? this._streamedSize : this.entries.length;
   }
 
   get fileCount(): number {
+    if (this.streamed) return this._streamedFileCount;
     return new Set(this.entries.map((e) => e.path)).size;
   }
 
@@ -120,6 +185,60 @@ export class VectorIndex {
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, topK);
   }
+
+  /**
+   * Busca STREAMED (modo sharded): lê um shard por vez do disco, pontua, funde
+   * no top-K e DESCARTA o shard → pico de memória = um shard, não o índice
+   * inteiro. Mesmos resultados da busca in-memory (recall 100% — varre tudo).
+   * v0.1.200
+   */
+  async searchStreamed(
+    queryRaw: number[],
+    topK = 5,
+    minScore = 0.3
+  ): Promise<SearchResult[]> {
+    if (!this._adapter) return [];
+    const q = quantizeEmbedding(queryRaw, this.precision);
+    let top: SearchResult[] = [];
+    for (const shardName of this._shards) {
+      let parsed: { entries: StoredEntry[] };
+      try {
+        const raw = await this._adapter.read(`${this._indexPath}/${shardName}`);
+        parsed = JSON.parse(raw) as { entries: StoredEntry[] };
+      } catch (err) {
+        // Shard ausente/corrompido — pula (não derruba a busca), mas AVISA:
+        // os resultados ficam incompletos. (loadIndex já valida no load, mas
+        // um shard pode sumir entre o load e a busca.)
+        console.warn(`[axxa/rag] shard ilegível, pulando: ${shardName}`, err);
+        continue;
+      }
+      for (const s of parsed.entries) {
+        const embedding = base64ToTypedArray(s.emb, this.precision);
+        const score = scoreVectors(q, embedding, this.precision);
+        if (score >= minScore) {
+          top.push({
+            entry: {
+              path: s.path,
+              hash: s.hash,
+              chunkIndex: s.chunkIndex,
+              chunkCount: s.chunkCount,
+              text: s.text,
+              kind: s.kind,
+              embedding,
+            },
+            score,
+          });
+        }
+      }
+      // Mantém só o top-K após cada shard → memória limitada (descarta o resto).
+      if (top.length > topK) {
+        top.sort((a, b) => b.score - a.score);
+        top = top.slice(0, topK);
+      }
+    }
+    top.sort((a, b) => b.score - a.score);
+    return top.slice(0, topK);
+  }
 }
 
 // ============================================================
@@ -137,6 +256,42 @@ export async function loadIndex(
   indexPath: string,
   opts?: { maxBytes?: number; onSkip?: (sizeMB: number) => void }
 ): Promise<VectorIndex | null> {
+  // Modo SHARDED (v0.1.200): se há manifesto, carrega SÓ os metadados — os
+  // vetores ficam nos shards do disco e são lidos sob demanda na busca. Sem
+  // materializar o índice na RAM → sem OOM, independente do tamanho.
+  const manifestPath = manifestFilePath(indexPath);
+  if (await adapter.exists(manifestPath)) {
+    try {
+      const manifest = JSON.parse(
+        await adapter.read(manifestPath)
+      ) as ShardManifest;
+      // Valida que TODOS os shards do manifesto existem — pega um índice
+      // incompleto (ex: save interrompido) no LOAD em vez de degradar calado
+      // na busca. Faltando algum → null (cai pro keyword; user reindexa).
+      for (const s of manifest.shards ?? []) {
+        if (!(await adapter.exists(`${indexPath}/${s}`))) {
+          console.warn(
+            `[axxa/rag] índice sharded incompleto — shard ausente: ${s}. Reindexe.`
+          );
+          return null;
+        }
+      }
+      const idx = new VectorIndex({
+        provider: manifest.provider,
+        model: manifest.model,
+        dim: manifest.dim,
+        precision: manifest.precision,
+        profile: manifest.profile,
+        lastIndexedAt: manifest.lastIndexedAt,
+      });
+      idx.setStreamed(adapter, indexPath, manifest);
+      return idx;
+    } catch (err) {
+      console.error("[axxa/rag] manifesto sharded inválido:", err);
+      return null;
+    }
+  }
+
   const path = indexFilePath(indexPath);
   if (!(await adapter.exists(path))) return null;
   // Guard de memória (v0.1.198): um índice grande estoura o heap do WebView no
@@ -193,14 +348,8 @@ export async function loadIndex(
 }
 
 /** Salva o índice no disco (embeddings como base64 do typed array). */
-export async function saveIndex(
-  app: App,
-  indexPath: string,
-  index: VectorIndex
-): Promise<void> {
-  await ensureFolder(app.vault.adapter, indexPath);
-  const path = indexFilePath(indexPath);
-  const entries: StoredEntry[] = index.entries.map((e) => ({
+function toStored(e: VectorEntry): StoredEntry {
+  return {
     path: e.path,
     hash: e.hash,
     chunkIndex: e.chunkIndex,
@@ -208,7 +357,116 @@ export async function saveIndex(
     text: e.text,
     kind: e.kind,
     emb: typedArrayToBase64(e.embedding),
-  }));
+  };
+}
+
+/**
+ * Salva o índice. `opts.shardSize > 0` → modo SHARDED (manifesto + N shards;
+ * cada write é pequeno → não estoura o WebView no mobile, e a busca depois
+ * streama). Sem shardSize → single-file (comportamento legado). v0.1.200
+ */
+export async function saveIndex(
+  app: App,
+  indexPath: string,
+  index: VectorIndex,
+  opts?: { shardSize?: number }
+): Promise<void> {
+  const adapter = app.vault.adapter;
+  await ensureFolder(adapter, indexPath);
+  const shardSize = opts?.shardSize ?? 0;
+
+  if (shardSize > 0) {
+    // Lê os shards do índice ANTERIOR pra limpar DEPOIS do commit (não antes —
+    // assim um crash no meio do save NÃO destrói o índice válido que já existe).
+    const manifestPath = manifestFilePath(indexPath);
+    let oldShards: string[] = [];
+    try {
+      if (await adapter.exists(manifestPath)) {
+        oldShards =
+          (JSON.parse(await adapter.read(manifestPath)) as ShardManifest)
+            .shards ?? [];
+      }
+    } catch {
+      /* manifesto velho corrompido — segue */
+    }
+
+    // Nomes ÚNICOS por save (gen) → nunca sobrescrevem shards antigos in-place
+    // (evita corromper o índice válido se crashar no meio). v0.1.200
+    const gen = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
+    const shards: string[] = [];
+    let cur: StoredEntry[] = [];
+    let curBytes = 0;
+    const flush = async () => {
+      if (cur.length === 0) return;
+      const name = shardFileName(gen, shards.length);
+      await adapter.write(
+        `${indexPath}/${name}`,
+        JSON.stringify({ entries: cur })
+      );
+      shards.push(name);
+      cur = [];
+      curBytes = 0;
+    };
+    // Shard por ORÇAMENTO DE BYTES (não só por contagem): garante que cada
+    // shard seja pequeno mesmo com trechos de texto longos → o pico de memória
+    // da busca (ler+parsear UM shard) fica limitado. v0.1.200
+    for (const e of index.entries) {
+      const s = toStored(e);
+      const sz = s.emb.length + s.text.length + 96; // bytes aprox do entry
+      if (
+        cur.length > 0 &&
+        (curBytes + sz > SHARD_TARGET_BYTES || cur.length >= shardSize)
+      ) {
+        await flush();
+      }
+      cur.push(s);
+      curBytes += sz;
+    }
+    await flush();
+
+    const manifest: ShardManifest = {
+      version: SHARDED_VERSION,
+      sharded: true,
+      provider: index.provider,
+      model: index.model,
+      dim: index.dim,
+      precision: index.precision,
+      profile: index.profile,
+      lastIndexedAt: index.lastIndexedAt,
+      fileCount: index.fileCount,
+      totalEntries: index.entries.length,
+      shardCount: shards.length,
+      shardSize,
+      shards,
+    };
+    // COMMIT: escrever o manifesto (1 arquivo) valida o índice novo de forma
+    // atômica — antes disso, o índice antigo ainda é o válido.
+    await adapter.write(manifestPath, JSON.stringify(manifest));
+
+    // Cleanup PÓS-commit: remove shards antigos (não reaproveitados) + o
+    // single-file. Preciso (só toca arquivos do manifesto antigo, da plataforma
+    // atual) → não mexe no índice da outra plataforma.
+    const keep = new Set(shards);
+    for (const old of oldShards) {
+      if (keep.has(old)) continue;
+      const p = `${indexPath}/${old}`;
+      try {
+        if (await adapter.exists(p)) await adapter.remove(p);
+      } catch {
+        /* segue */
+      }
+    }
+    const single = indexFilePath(indexPath);
+    try {
+      if (await adapter.exists(single)) await adapter.remove(single);
+    } catch {
+      /* segue */
+    }
+    return;
+  }
+
+  // Single-file (legado). Limpa shards antigos se trocou de modo.
+  await removeShardedFiles(adapter, indexPath);
   const payload: IndexFile = {
     version: INDEX_VERSION,
     provider: index.provider,
@@ -218,12 +476,31 @@ export async function saveIndex(
     profile: index.profile,
     lastIndexedAt: index.lastIndexedAt,
     fileCount: index.fileCount,
-    entries,
+    entries: index.entries.map(toStored),
   };
-  await app.vault.adapter.write(path, JSON.stringify(payload));
+  await adapter.write(indexFilePath(indexPath), JSON.stringify(payload));
 }
 
-/** Deleta o índice do disco (usado em "Limpar índice"). */
+/** Remove o manifesto + todos os shards (se existirem). */
+async function removeShardedFiles(
+  adapter: DataAdapter,
+  indexPath: string
+): Promise<void> {
+  const manifestPath = manifestFilePath(indexPath);
+  if (!(await adapter.exists(manifestPath))) return;
+  try {
+    const manifest = JSON.parse(await adapter.read(manifestPath)) as ShardManifest;
+    for (const s of manifest.shards ?? []) {
+      const p = `${indexPath}/${s}`;
+      if (await adapter.exists(p)) await adapter.remove(p);
+    }
+  } catch {
+    /* manifesto corrompido — segue removendo o que der */
+  }
+  if (await adapter.exists(manifestPath)) await adapter.remove(manifestPath);
+}
+
+/** Deleta o índice do disco (single-file E sharded). Usado em "Limpar índice". */
 export async function deleteIndex(
   adapter: DataAdapter,
   indexPath: string
@@ -232,4 +509,5 @@ export async function deleteIndex(
   if (await adapter.exists(path)) {
     await adapter.remove(path);
   }
+  await removeShardedFiles(adapter, indexPath);
 }

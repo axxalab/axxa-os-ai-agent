@@ -824,11 +824,21 @@ export const PT_BR = {
     ragStatsEmpty: "Índice vazio. Clique em 'Indexar vault' pra começar.",
     ragStatsMismatch:
       "⚠️ Modelo configurado é diferente do índice salvo. Reindexe pra usar o novo modelo.",
+    ragStatsFormat: (fmt: string) => `Formato no disco: ${fmt}`,
+    ragFormatStreamed: "em pedaços (stream)",
+    ragFormatSingle: "arquivo único",
+    ragStatsFormatMismatch:
+      "⚠️ O formato no disco é diferente do configurado. Reindexe pra aplicar.",
     ragProfileLabel: "Perfil do índice (quantização)",
     ragProfileRecommend: (count: number, name: string) =>
       `Seu vault: ${count} notas → recomendado: ${name}`,
     ragProfileNoDim:
       "Este modelo não suporta dim reduzida — usando dim cheia com int8.",
+    ragStreamShardsLabel: "Índice em pedaços (stream)",
+    ragStreamShardsDesc:
+      "Salva o índice em vários pedaços e lê UM por vez na busca, em vez de carregar tudo na memória. Memória limitada (recomendado pra vaults grandes ou mobile); cada busca lê do disco — um tico mais lento. Precisa reindexar pra aplicar; nesse modo a reindexação é sempre do zero (sem incremental).",
+    ragStreamShardsHint: (n: number) =>
+      `Ativo: ~${n} trechos por pedaço. O índice não fica inteiro na RAM — a busca varre os pedaços e mantém só os melhores. Reindexe pra (re)gerar nesse formato.`,
     ragAutoReindexLabel: "Reindexar automaticamente",
     ragAutoReindexDesc:
       "Re-embeda notas modificadas em background (4s após editar). Só roda com índice já criado. Cada re-embed consome tokens.",

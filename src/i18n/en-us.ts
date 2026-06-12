@@ -812,11 +812,21 @@ export const EN_US: Translations = {
     ragStatsEmpty: "Empty index. Click 'Index vault' to start.",
     ragStatsMismatch:
       "⚠️ Configured model differs from saved index. Reindex to use the new model.",
+    ragStatsFormat: (fmt: string) => `On-disk format: ${fmt}`,
+    ragFormatStreamed: "streamed (shards)",
+    ragFormatSingle: "single file",
+    ragStatsFormatMismatch:
+      "⚠️ On-disk format differs from the setting. Reindex to apply.",
     ragProfileLabel: "Index profile (quantization)",
     ragProfileRecommend: (count: number, name: string) =>
       `Your vault: ${count} notes → recommended: ${name}`,
     ragProfileNoDim:
       "This model doesn't support reduced dim — using full dim with int8.",
+    ragStreamShardsLabel: "Streamed index (shards)",
+    ragStreamShardsDesc:
+      "Saves the index in several pieces and reads ONE at a time during search, instead of loading it all into memory. Bounded memory (recommended for large vaults or mobile); each search reads from disk — slightly slower. Requires reindexing to apply; in this mode reindex is always full (no incremental).",
+    ragStreamShardsHint: (n: number) =>
+      `On: ~${n} chunks per shard. The index never sits fully in RAM — search scans the shards and keeps only the best. Reindex to (re)build in this format.`,
     ragAutoReindexLabel: "Auto-reindex",
     ragAutoReindexDesc:
       "Re-embeds modified notes in the background (4s after editing). Only runs with an existing index. Each re-embed consumes tokens.",

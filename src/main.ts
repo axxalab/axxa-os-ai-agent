@@ -5,7 +5,7 @@
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
-import { VectorIndex, loadIndex } from "./rag/vectorIndex";
+import { VectorIndex, loadIndex, RAG_SHARD_SIZE } from "./rag/vectorIndex";
 import { indexVault } from "./rag/indexer";
 import {
   inferEmbeddingSpec,
@@ -97,6 +97,10 @@ interface AxxaSettings {
   /** Perfil de quantização do índice RAG (precision/balanced/light/minimal) —
    *  precisão (float32/int8) + dim alvo. Estilo Effort. v0.1.80. */
   ragQuantProfile: string;
+  /** Índice em pedaços (stream): salva em shards e lê um por vez na busca, em
+   *  vez de tudo na RAM. Memória limitada (bom pra vaults grandes / mobile),
+   *  cada busca lê do disco. Requer reindexar pra aplicar. v0.1.200 */
+  ragStreamShards: boolean;
   /** Reindexa o RAG automaticamente quando notas mudam (debounced). Opt-in
    *  porque cada re-embed custa tokens/$. Só roda se já houver índice. v0.1.82. */
   ragAutoReindex: boolean;
@@ -237,6 +241,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",
   ragQuantProfile: "balanced",
+  ragStreamShards: false,
   ragAutoReindex: false,
   codeWrap: false,
   agentPermissionLevel: "ask",
@@ -693,6 +698,7 @@ export default class AxxaPlugin extends Plugin {
           this.settings.chatsPath,
           this.settings.recordingsPath,
         ],
+        shardSize: this.settings.ragStreamShards ? RAG_SHARD_SIZE : 0,
         signal: this.autoReindexController.signal,
       });
     } catch (err) {

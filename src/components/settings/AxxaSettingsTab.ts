@@ -37,7 +37,7 @@ import {
   type EffortLevel,
 } from "../_shared/effort";
 import { indexVault, type IndexProgress } from "../../rag/indexer";
-import { deleteIndex } from "../../rag/vectorIndex";
+import { deleteIndex, RAG_SHARD_SIZE } from "../../rag/vectorIndex";
 import {
   EMBEDDING_MODELS,
   getEmbeddingSpec,
@@ -1983,6 +1983,26 @@ export class AxxaSettingsTab extends PluginSettingTab {
         this.attachFolderAutocomplete(text.inputEl);
       });
 
+    // ---- Índice em pedaços (stream) — bound de memória pra vaults grandes ----
+    new Setting(section)
+      .setName(t.settings.ragStreamShardsLabel)
+      .setDesc(t.settings.ragStreamShardsDesc)
+      .addToggle((tg) =>
+        tg
+          .setValue(this.plugin.settings.ragStreamShards)
+          .onChange(async (value) => {
+            this.plugin.settings.ragStreamShards = value;
+            await this.plugin.saveSettings();
+            this.display();
+          })
+      );
+    if (this.plugin.settings.ragStreamShards) {
+      section.createDiv({
+        cls: "axxa-rag-profile-desc",
+        text: t.settings.ragStreamShardsHint(RAG_SHARD_SIZE),
+      });
+    }
+
     // ---- Auto-reindex (opt-in) ----
     new Setting(section)
       .setName(t.settings.ragAutoReindexLabel)
@@ -2068,6 +2088,24 @@ export class AxxaSettingsTab extends PluginSettingTab {
       el.createEl("br");
       el.createSpan({
         text: t.settings.ragStatsMismatch,
+        cls: "axxa-rag-stats-warning",
+      });
+    }
+    // Formato do índice no disco (streamed/single) + aviso se ≠ do toggle —
+    // o toggle só vale após REINDEXAR. v0.1.200
+    const onDisk = idx.streamed;
+    const wanted = this.plugin.settings.ragStreamShards;
+    el.createEl("br");
+    el.createSpan({
+      text: t.settings.ragStatsFormat(
+        onDisk ? t.settings.ragFormatStreamed : t.settings.ragFormatSingle
+      ),
+      cls: "axxa-rag-stats-line",
+    });
+    if (onDisk !== wanted) {
+      el.createEl("br");
+      el.createSpan({
+        text: t.settings.ragStatsFormatMismatch,
         cls: "axxa-rag-stats-warning",
       });
     }
@@ -2173,6 +2211,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
           this.plugin.settings.chatsPath,
           this.plugin.settings.recordingsPath,
         ],
+        shardSize: this.plugin.settings.ragStreamShards ? RAG_SHARD_SIZE : 0,
         onProgress: handleProgress,
         signal: this.indexAbortController.signal,
       });

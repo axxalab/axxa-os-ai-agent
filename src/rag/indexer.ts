@@ -66,6 +66,10 @@ export interface IndexerOptions {
   onProgress?: (p: IndexProgress) => void;
   /** Sinal pra cancelar a indexação. */
   signal?: AbortSignal;
+  /** > 0 → salva SHARDED (manifesto + shards de N entries; busca depois streama,
+   *  memória limitada). 0/ausente → single-file. Sharded = rebuild completo
+   *  (sem incremental). v0.1.200 */
+  shardSize?: number;
 }
 
 /** Extensões de áudio que detectamos pra avisar/pular. */
@@ -162,9 +166,14 @@ export async function indexVault(
     prof.targetDim > 0 && spec.supportsDimensions ? prof.targetDim : spec.dim;
   const embedDims = spec.supportsDimensions ? effectiveDim : undefined;
 
+  // Modo sharded → SEMPRE rebuild completo (o índice anterior é streamed, sem
+  // entries na RAM pra incremental; e queremos um índice limpo pra reshard).
+  const sharded = (opts.shardSize ?? 0) > 0;
   // Recomeça do zero se modelo, dim OU precisão mudaram desde o índice anterior.
   const startFresh =
+    sharded ||
     !prev ||
+    prev.streamed ||
     prev.model !== model ||
     prev.dim !== effectiveDim ||
     prev.precision !== prof.precision;
@@ -271,7 +280,7 @@ export async function indexVault(
 
   if (toEmbed.length === 0) {
     index.lastIndexedAt = new Date().toISOString();
-    await saveIndex(app, indexPath, index);
+    await saveIndex(app, indexPath, index, { shardSize: opts.shardSize });
     onProgress?.({
       phase: "done",
       filesScanned: filesTotal,
@@ -367,8 +376,10 @@ export async function indexVault(
       filesEmbedded++;
       filesSinceLastSave++;
 
-      // Save periódico — controla o I/O em vez de salvar cada batch
-      if (filesSinceLastSave >= SAVE_EVERY_N_FILES) {
+      // Save periódico — controla o I/O em vez de salvar cada batch. No modo
+      // sharded pulamos (re-escrever todos os shards a cada N seria custoso);
+      // salva só no fim. v0.1.200
+      if (filesSinceLastSave >= SAVE_EVERY_N_FILES && !sharded) {
         await saveIndex(app, indexPath, index);
         filesSinceLastSave = 0;
       }
@@ -401,7 +412,7 @@ export async function indexVault(
 
   // Save final — garante que tudo que rolou tá no disco
   index.lastIndexedAt = new Date().toISOString();
-  await saveIndex(app, indexPath, index);
+  await saveIndex(app, indexPath, index, { shardSize: opts.shardSize });
 
   // Log final de arquivos que falharam (pra user inspeccionar no DevTools)
   if (failedFiles.length > 0) {

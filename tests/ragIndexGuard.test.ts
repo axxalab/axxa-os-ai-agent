@@ -26,7 +26,8 @@ const emptyIndexJson = JSON.stringify({
 function mockAdapter(size: number): { adapter: DataAdapter; read: ReturnType<typeof vi.fn> } {
   const read = vi.fn(async () => emptyIndexJson);
   const adapter = {
-    exists: vi.fn(async () => true),
+    // Só o single-file existe (sem manifesto sharded) → testa o caminho legado.
+    exists: vi.fn(async (p: string) => p === FILE),
     stat: vi.fn(async () => ({ type: "file", ctime: 0, mtime: 0, size })),
     read,
   } as unknown as DataAdapter;

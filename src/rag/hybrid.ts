@@ -55,7 +55,11 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
   if (index && index.size > 0) {
     try {
       const vec = await embedQuery(query, creds, index.model, index.dim);
-      const sem = index.search(vec, topK * 3, 0.3);
+      // Sharded → busca streamed (lê shards do disco, memória limitada);
+      // single-file → busca in-memory. Mesmos resultados. v0.1.200
+      const sem = index.streamed
+        ? await index.searchStreamed(vec, topK * 3, 0.3)
+        : index.search(vec, topK * 3, 0.3);
       // Dedup por path — fica o melhor chunk (lista já vem ordenada por score)
       const seen = new Set<string>();
       let rank = 0;
