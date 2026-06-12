@@ -85,9 +85,13 @@ describe("edge cases: empty + mode switching + backward compat", () => {
 
     await saveIndex(app, PATH, idx, { shardSize: 1 });
 
-    // Corrupt shard1 (middle)
-    const files = (adapter as any).files;
-    files.set(`${PATH}/embeddings.shard1.json`, "not valid json");
+    // Corrompe o shard do MEIO de verdade (nome real vem do manifesto — os
+    // shards têm prefixo único por save, então hardcodar o nome não corromperia
+    // nada). O arquivo ainda EXISTE (loadIndex valida existência), mas o JSON é
+    // inválido → searchStreamed pula na leitura.
+    const files = adapter.files;
+    const manifest = JSON.parse(files.get(manifestFilePath(PATH))!);
+    files.set(`${PATH}/${manifest.shards[1]}`, "not valid json");
 
     const loaded = await loadIndex(adapter as unknown as DataAdapter, PATH);
     expect(loaded).not.toBeNull();
