@@ -86,7 +86,8 @@ export class OpenAIProvider implements Provider {
     apiKey: string,
     onToken: TokenHandler,
     onUsage?: UsageHandler,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onReasoning?: (delta: string) => void
   ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
@@ -121,7 +122,7 @@ export class OpenAIProvider implements Provider {
     await ensureOkStream(res, { label: "OpenAI" });
     if (!res.body) throw new ProviderError("Stream vazio da OpenAI.", "unknown");
 
-    return parseOpenAICompatSSE(res.body, onToken, onUsage, "openai_call");
+    return parseOpenAICompatSSE(res.body, onToken, onUsage, "openai_call", onReasoning);
   }
 
   /**

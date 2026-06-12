@@ -3032,6 +3032,60 @@ body.is-mobile
 }
 
 /* === Agent steps (v0.1.160): "🔧 N ações" colapsável na resposta do agent === */
+/* Painel de raciocínio (reasoning trace) — refs: ChatGPT iOS 91, Grok iOS 26 */
+.axxa-reasoning {
+  margin: 0 0 10px 0;
+  border-left: 2px solid color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  padding-left: 10px;
+}
+.axxa-reasoning-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 2px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  cursor: pointer;
+}
+.axxa-reasoning-head:hover {
+  color: var(--text-normal);
+}
+.axxa-reasoning-head .axxa-icon:first-child .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+.axxa-reasoning-label {
+  flex: 1 1 auto;
+  text-align: left;
+}
+.axxa-reasoning-live .axxa-reasoning-label {
+  animation: axxa-text-shimmer 1.6s linear infinite;
+}
+.axxa-reasoning-chevron {
+  transition: transform 0.18s ease;
+}
+.axxa-reasoning-chevron.is-open {
+  transform: rotate(90deg);
+}
+.axxa-reasoning-chevron .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.axxa-reasoning-body {
+  margin-top: 4px;
+  font-size: var(--font-ui-smaller);
+  line-height: 1.5;
+  color: var(--text-faint);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
 .axxa-agent-steps {
   margin-top: 8px;
 }

@@ -71,6 +71,40 @@ function AgentSteps({ steps }: { steps: AIToolStep[] }) {
   );
 }
 
+/**
+ * Painel colapsável de RACIOCÍNIO (ref: ChatGPT iOS 91, Grok iOS 26).
+ * Mostra o chain-of-thought dos modelos reasoning (DeepSeek R1 etc) num bloco
+ * "Raciocínio ›" que expande. Enquanto `live`, fica aberto e pulsa. v0.1.193
+ */
+function ReasoningPanel({ text, live }: { text: string; live: boolean }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  // Expande automaticamente enquanto está pensando ao vivo.
+  const expanded = open || live;
+  return (
+    <div className={"axxa-reasoning" + (live ? " axxa-reasoning-live" : "")}>
+      <button
+        type="button"
+        className="axxa-reasoning-head"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={expanded}
+      >
+        <Icon name="brain" />
+        <span className="axxa-reasoning-label">
+          {live ? t.chat.reasoningLive : t.chat.reasoningDone}
+        </span>
+        <Icon
+          name="chevron-right"
+          className={
+            "axxa-reasoning-chevron" + (expanded ? " is-open" : "")
+          }
+        />
+      </button>
+      {expanded && <div className="axxa-reasoning-body">{text}</div>}
+    </div>
+  );
+}
+
 function Timestamp({ ts }: { ts: number }) {
   return <div className="axxa-msg-timestamp">{formatTime(ts)}</div>;
 }
@@ -277,6 +311,9 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
       data-msg-id={msg.id}
       {...menuHandlers}
     >
+      {msg.reasoning && msg.reasoning.trim().length > 0 && (
+        <ReasoningPanel text={msg.reasoning} live={isStreaming} />
+      )}
       <Markdown content={msg.content} />
       {/* Caret de digitação (barra piscante) enquanto os tokens chegam. #10 */}
       {isStreaming && <span className="axxa-typing-caret" aria-hidden="true" />}

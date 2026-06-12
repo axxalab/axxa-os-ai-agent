@@ -49,6 +49,9 @@ export interface AIResponseMessage extends BaseMessage {
   /** True quando a resposta foi cortada no limite de tokens (output ≈ maxTokens).
    *  Mostra um botão "Continuar" no footer pra emendar de onde parou. */
   truncated?: boolean;
+  /** Raciocínio (reasoning/thinking) acumulado do stream — só modelos que
+   *  expõem (ex: DeepSeek R1). Renderizado num painel colapsável. v0.1.193 */
+  reasoning?: string;
   /** Versões geradas ao regenerar (branching). content = variants[variantIndex].
    *  Ausente/≤1 = sem ramificação. Permite navegar ‹ 1/N › entre respostas. */
   variants?: string[];
@@ -143,6 +146,7 @@ interface ChatState {
   addMessage: (msg: NewMessageInput) => string;
   removeMessage: (id: string) => void;
   appendToMessage: (id: string, text: string) => void;
+  appendReasoning: (id: string, text: string) => void;
   /** Atualiza meta `activity` de um ai-comment existente (transição
    *  pending → done / failed). No-op se a msg não for ai-comment.
    *  contentPatch opcional substitui o `content` na mesma operação (usado
@@ -238,6 +242,15 @@ export const useChatStore = create<ChatState>((set) => ({
         if (m.type === "ai-options") return m;
         return { ...m, content: m.content + text };
       }),
+    })),
+  // Acumula raciocínio (reasoning/thinking) numa ai-response. v0.1.193
+  appendReasoning: (id, text) =>
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === id && m.type === "ai-response"
+          ? { ...m, reasoning: (m.reasoning ?? "") + text }
+          : m
+      ),
     })),
   // Patch atômico de campos do activity meta. Usado pelo agent loop pra
   // mudar phase=pending → done/failed mantendo iconPending/pendingText.

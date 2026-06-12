@@ -139,7 +139,8 @@ export class GeminiProvider implements Provider {
     apiKey: string,
     onToken: TokenHandler,
     onUsage?: UsageHandler,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onReasoning?: (delta: string) => void
   ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
@@ -185,7 +186,7 @@ export class GeminiProvider implements Provider {
     await ensureOkStream(res, { label: "Gemini", authStatuses: [401, 403] });
     if (!res.body) throw new ProviderError("Stream vazio do Gemini.", "unknown");
 
-    return parseOpenAICompatSSE(res.body, onToken, onUsage, "gemini_call");
+    return parseOpenAICompatSSE(res.body, onToken, onUsage, "gemini_call", onReasoning);
   }
 
   /**

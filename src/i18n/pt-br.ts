@@ -207,6 +207,8 @@ export const PT_BR = {
     actionReadAloud: "Ler em voz alta",
     actionStopReading: "Parar leitura",
     actionSaveNote: "Salvar como nota",
+    reasoningLive: "Pensando…",
+    reasoningDone: "Raciocínio",
   },
 
   conversations: {

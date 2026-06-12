@@ -207,6 +207,8 @@ export const EN_US: Translations = {
     actionReadAloud: "Read aloud",
     actionStopReading: "Stop reading",
     actionSaveNote: "Save as note",
+    reasoningLive: "Thinking…",
+    reasoningDone: "Reasoning",
   },
 
   conversations: {

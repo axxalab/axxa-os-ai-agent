@@ -91,6 +91,10 @@ export interface ProviderResponse {
 /** Callback que recebe cada delta de token vindo do streaming. */
 export type TokenHandler = (token: string) => void;
 
+/** Callback que recebe cada delta de RACIOCÍNIO (reasoning/thinking) do stream.
+ *  Só providers/modelos que expõem reasoning chamam (ex: DeepSeek R1). */
+export type ReasoningHandler = (delta: string) => void;
+
 /** Usage tokens (prompt+completion) — vem no final do stream / no response. */
 export interface Usage {
   input: number;
@@ -152,7 +156,8 @@ export interface Provider {
     apiKey: string,
     onToken: TokenHandler,
     onUsage?: UsageHandler,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onReasoning?: ReasoningHandler
   ): Promise<ProviderResponse>;
   /**
    * Gera mídia (imagem/áudio/vídeo) conforme suportado pelo modelo.

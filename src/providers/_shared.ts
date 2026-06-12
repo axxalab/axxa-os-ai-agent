@@ -249,7 +249,8 @@ export async function parseOpenAICompatSSE(
   body: ReadableStream<Uint8Array>,
   onToken: TokenHandler,
   onUsage: UsageHandler | undefined,
-  idPrefix: string
+  idPrefix: string,
+  onReasoning?: (delta: string) => void
 ): Promise<ProviderResponse> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -283,6 +284,16 @@ export async function parseOpenAICompatSSE(
           if (typeof token === "string" && token.length > 0) {
             accumulatedText += token;
             onToken(token);
+          }
+          // Reasoning/thinking exposto por alguns modelos (DeepSeek R1 via
+          // reasoning_content; OpenRouter via reasoning). Roteado à parte.
+          if (onReasoning) {
+            const r =
+              (typeof delta.reasoning === "string" && delta.reasoning) ||
+              (typeof delta.reasoning_content === "string" &&
+                delta.reasoning_content) ||
+              "";
+            if (r) onReasoning(r);
           }
           if (Array.isArray(delta.tool_calls)) {
             for (const tc of delta.tool_calls) {

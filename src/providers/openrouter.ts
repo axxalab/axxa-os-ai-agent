@@ -81,7 +81,8 @@ export class OpenRouterProvider implements Provider {
     apiKey: string,
     onToken: TokenHandler,
     onUsage?: UsageHandler,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onReasoning?: (delta: string) => void
   ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError("API key OpenRouter não configurada.", "no-key");
@@ -112,7 +113,7 @@ export class OpenRouterProvider implements Provider {
     await ensureOkStream(res, { label: "OpenRouter" });
     if (!res.body) throw new ProviderError("Stream vazio.", "unknown");
 
-    return parseOpenAICompatSSE(res.body, onToken, onUsage, "openrouter_call");
+    return parseOpenAICompatSSE(res.body, onToken, onUsage, "openrouter_call", onReasoning);
   }
 
   /** Lista modelos modernos do OpenRouter (sem free/auto/etc) */

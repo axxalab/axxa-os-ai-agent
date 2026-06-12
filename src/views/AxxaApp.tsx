@@ -810,6 +810,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     abortRef.current = controller;
 
     let responseId: string | null = null;
+    let reasoningBuf = "";
 
     try {
       // Inlina notes anexadas no system prompt — não vão pro wire visual,
@@ -868,6 +869,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             updateActivity(commentId, { phase: "done" });
             responseId = addMessage({ type: "ai-response", content: token });
             setStreamingMessageId(responseId);
+            // Flush do raciocínio bufferizado antes do 1º token de conteúdo.
+            if (reasoningBuf) {
+              useChatStore.getState().appendReasoning(responseId, reasoningBuf);
+            }
           } else {
             appendToMessage(responseId, token);
           }
@@ -877,7 +882,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           lastOutputTokens = usage.output;
           addUsage(usage.input, usage.output);
         },
-        controller.signal
+        controller.signal,
+        (reasoningDelta) => {
+          // Reasoning costuma vir ANTES do conteúdo (R1). Buffera até a
+          // ai-response existir; depois acumula direto na mensagem.
+          reasoningBuf += reasoningDelta;
+          if (responseId !== null) {
+            useChatStore.getState().appendReasoning(responseId, reasoningDelta);
+          }
+        }
       );
       endStreamTimer();
 
