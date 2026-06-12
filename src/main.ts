@@ -70,6 +70,9 @@ interface AxxaSettings {
    *  ember/spectrum/lagoon). Aplicado como classe `axxa-bg-<id>` na .axxa-root.
    *  Presets antigos salvos caem graciosamente em "sem fundo". */
   background: string;
+  /** Densidade global da UI (large/normal/compact) — dirige os tokens do DS
+   *  (--axxa-density-*). Aplicada como data-axxa-density na .axxa-root. v0.1.209 */
+  density: string;
   /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
   recordingsPath: string;
   /** Pasta no Vault onde respostas da IA salvas como nota (footer) vão. */
@@ -231,6 +234,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   skillsPath: "axxa-ai/skills",
   language: "pt-br",
   background: "none",
+  density: "normal",
   recordingsPath: "axxa-ai/recordings",
   notesPath: "axxa-ai/notes",
   responseStyle: "normal",

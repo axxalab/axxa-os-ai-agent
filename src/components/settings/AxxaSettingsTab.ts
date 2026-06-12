@@ -302,6 +302,24 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
   /** Appearance → Interface: toggles de exibição (code wrap). */
   private renderAppearanceUI(parent: HTMLElement, t: Translations) {
+    // Densidade global — reescala todo o DS (listas, pílulas, segmento, cantos)
+    // via data-axxa-density na .axxa-root. saveSettings() re-renderiza a view. */
+    new Setting(parent)
+      .setName(t.settings.density)
+      .setDesc(t.settings.densityDesc)
+      .addDropdown((dd) =>
+        dd
+          .addOption("large", t.settings.densityLarge)
+          .addOption("normal", t.settings.densityNormal)
+          .addOption("compact", t.settings.densityCompact)
+          .setValue(this.plugin.settings.density || "normal")
+          .onChange(async (v) => {
+            hapticTick();
+            this.plugin.settings.density = v;
+            await this.plugin.saveSettings();
+          })
+      );
+
     new Setting(parent)
       .setName(t.settings.codeWrap)
       .setDesc(t.settings.codeWrapDesc)

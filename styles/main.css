@@ -1231,13 +1231,33 @@ body.is-mobile
 /* [DS:pill] Realce de hover/seleção: PÍLULA com VIDRO FOSCO (blur). Padrão do
    app — toda superfície selecionável (nav, listas, chips) usa esta superfície. */
 .axxa-root {
-  --axxa-pill-radius: 10px;
+  /* não-densidade */
   --axxa-pill-bg: color-mix(in srgb, var(--text-normal) 7%, transparent);
   --axxa-pill-bg-strong: color-mix(in srgb, var(--text-normal) 13%, transparent);
   --axxa-pill-blur: saturate(140%) blur(7px);
-  /* [DS:list-compact] Densidade da lista compacta (1 linha/item, bem justa). */
-  --axxa-list-row-py: 2px;
+  /* tokens de DENSIDADE — defaults = NORMAL; [data-axxa-density] sobrescreve. */
+  --axxa-list-row-py: 6px;
+  --axxa-list-row-radius: 9px;
+  --axxa-pill-radius: 10px;
+  --axxa-seg-btn-py: 5px;
+  --axxa-row-gap: 10px;
+}
+/* [DS:density] Densidade global da UI — 3 modos que reescalam os tokens de
+   spacing do DS (linha, pílula, segmented, gaps). Aplicado via
+   data-axxa-density na .axxa-root. "normal" = defaults acima. */
+.axxa-root[data-axxa-density="compact"] {
+  --axxa-list-row-py: 3px;
   --axxa-list-row-radius: 7px;
+  --axxa-pill-radius: 8px;
+  --axxa-seg-btn-py: 3px;
+  --axxa-row-gap: 8px;
+}
+.axxa-root[data-axxa-density="large"] {
+  --axxa-list-row-py: 9px;
+  --axxa-list-row-radius: 12px;
+  --axxa-pill-radius: 12px;
+  --axxa-seg-btn-py: 8px;
+  --axxa-row-gap: 12px;
 }
 /* [DS:list-compact] Linha de lista densa: 1 linha (título cresce + meta à
    direita). Reuso em qualquer lista (recentes, etc). */
@@ -1295,7 +1315,8 @@ body.is-mobile
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  border-radius: 9px;
+  /* [DS:density] raio do realce segue a densidade global. */
+  border-radius: var(--axxa-pill-radius);
   color: var(--text-normal);
   font-size: var(--font-ui-small);
   text-align: left;
@@ -8413,6 +8434,10 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   z-index: 1;
   flex: 1 1 0;
   min-width: 0;
+  /* [DS:density] mata o alvo de toque de 44px do Obsidian mobile (.mobile-tap)
+     que estourava a altura do segmented — agora a altura = padding real. */
+  min-height: 0 !important;
+  height: auto !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10925,7 +10950,8 @@ body.is-mobile .axxa-wave-area {
   padding: 2px;
 }
 .axxa-sidebar-seg .axxa-seg-btn {
-  padding: 3px 0;
+  /* [DS:density] altura do segmented dirigida pela densidade global. */
+  padding: var(--axxa-seg-btn-py) 0;
 }
 .axxa-sidebar-seg .axxa-seg-btn .svg-icon {
   width: 14px;

@@ -2682,6 +2682,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             (plugin.settings.codeWrap ? " axxa-code-wrap" : "") +
             (isLoading ? " axxa-bg-active" : "")
           }
+          data-axxa-density={plugin.settings.density || "normal"}
         >
           <Header
             version={plugin.manifest.version}

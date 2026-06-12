@@ -748,6 +748,12 @@ export const EN_US: Translations = {
     codeWrap: "Wrap lines in code blocks",
     codeWrapDesc:
       "When enabled, long code blocks wrap instead of scrolling horizontally. Useful on narrow screens (mobile).",
+    density: "Interface density",
+    densityDesc:
+      "Scales spacing across the whole app — lists, pills, segments and corners. Compact tightens everything; Large gives more room.",
+    densityLarge: "Large",
+    densityNormal: "Normal",
+    densityCompact: "Compact",
     appearance: "Appearance",
     appearanceDesc:
       "Pick a background for AXXA's interface. Colors and gradients (linear + radial).",

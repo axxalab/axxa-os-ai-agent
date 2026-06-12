@@ -760,6 +760,12 @@ export const PT_BR = {
     codeWrap: "Quebrar linhas em code blocks",
     codeWrapDesc:
       "Quando ativo, code blocks longos quebram em vez de scrollar horizontalmente. Útil em telas estreitas (mobile).",
+    density: "Densidade da interface",
+    densityDesc:
+      "Escala o espaçamento de todo o app — listas, pílulas, segmentos e cantos. Compact espreme tudo; Large dá mais respiro.",
+    densityLarge: "Large",
+    densityNormal: "Normal",
+    densityCompact: "Compact",
     appearance: "Aparência",
     appearanceDesc:
       "Escolha um fundo pra interface do AXXA. Cores e gradientes (lineares + radiais).",
