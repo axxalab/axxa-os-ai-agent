@@ -23,7 +23,8 @@ Pra varrer o que ainda é legado (sem tag), procure blocos `.axxa-*` em
 `styles/main.css` que **não** têm `[DS:` perto. A limpeza acontece aos poucos —
 não apagamos nada que não tenha certeza.
 
-Index de tags ativas: `pill`, `badge`. (cresce conforme criamos.)
+Index de tags ativas: `pill`, `badge`, `list-compact`, `seg-accent`. (cresce
+conforme criamos.)
 
 ---
 
@@ -52,9 +53,16 @@ Lista de 1 linha por item, bem justa (recentes, etc). Tokens:
 --axxa-list-row-py: 2px;     /* padding vertical da linha */
 --axxa-list-row-radius: 7px;
 ```
-Utilitário: `.axxa-list-compact-row` (flex baseline, título cresce + meta à
-direita, `line-height: 1.25`). A altura da linha vem só do `--axxa-list-row-py`
-+ line-height → dá pra apertar/soltar a lista inteira mexendo num token.
+Utilitário: `.axxa-list-compact-row`. **Linha ≤ 24px.** Estrutura:
+`[ícone do modelo 14px] título(cresce) [hora]`, `align-items: center`,
+`line-height: 1.2`.
+
+⚠️ **No mobile, sempre** `min-height: 0 !important; height: auto !important` nos
+`<button>` de lista — o Obsidian força um alvo de toque de **44px** via
+`.mobile-tap` que estoura a altura. Sem isso a linha fica gigante.
+
+O ícone do modelo vem de `modelVendorLogoId(provider, model)` (logo do vendor;
+fallback `message-square` pra chats sem provider — ex: estrangeiros).
 
 ---
 
@@ -71,9 +79,13 @@ Espelha a estrutura de um drawer minimalista; só o tema é nosso.
 - **Nav:** linhas FLAT (`appearance:none` + `background:transparent !important`
   pra matar o fundo cinza padrão de `.theme-dark button`). Ativa = `[DS:pill]`
   forte. Item pago no free mostra cadeado.
-- **Recentes:** label "Recentes" + **segmented control** (`SegmentedRow`, pílula
-  deslizante animada) filtrando por modo (Todos/Chat/Q&A/Agente) + lista PLANA
-  (título 16px + hora). Deletar via long-press/right-click (menu nativo).
+- **Recentes:** label "Recentes" (16px/700) + **segmented control**
+  (`SegmentedRow`, pílula deslizante animada, fino) filtrando por modo
+  (Todos/Chat/Q&A/Agente). Chats de outro provedor (modo desconhecido) só
+  aparecem em "Todos". Deletar via long-press/right-click (menu nativo).
+  - **[DS:seg-accent]** — botão ATIVO em accent (pílula tingida + ícone
+    `--text-accent`).
+  - **Haptics** — `hapticTick()` no `onSelect` (feedback ao trocar de modo).
 - **Rodapé (conta):** avatar (iniciais) + **nome** + **[DS:badge]** + stats
   básicas (`N conversas · T tokens`) + engrenagem (Settings).
 

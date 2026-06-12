@@ -18,6 +18,8 @@ import { Icon } from "../_shared/Icon";
 import { SegmentedRow } from "../_shared/SegmentedRow";
 import { useT, type Translations } from "../../i18n";
 import { formatTokens } from "../_shared/contextWindows";
+import { modelVendorLogoId } from "../_shared/modelLogo";
+import { hapticTick } from "../_shared/haptics";
 import type { ChatSummary } from "../_shared/chatPersistence";
 import {
   NAV_ITEMS,
@@ -214,7 +216,10 @@ export function Sidebar({
             <SegmentedRow
               items={filterItems}
               activeId={modeFilter}
-              onSelect={setModeFilter}
+              onSelect={(id) => {
+                hapticTick();
+                setModeFilter(id);
+              }}
             />
           </div>
           {recents.length === 0 && (
@@ -233,6 +238,9 @@ export function Sidebar({
               }}
               onContextMenu={(e) => openItemMenu(e, c)}
             >
+              <span className="axxa-sidebar-item-ico">
+                <Icon name={modelVendorLogoId(c.provider, c.model) ?? "message-square"} />
+              </span>
               <span className="axxa-sidebar-item-title">{c.title}</span>
               <span className="axxa-sidebar-item-date">{relDate(c.date, t)}</span>
             </button>

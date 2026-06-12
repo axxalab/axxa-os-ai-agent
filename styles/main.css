@@ -10925,39 +10925,65 @@ body.is-mobile .axxa-wave-area {
   padding: 2px;
 }
 .axxa-sidebar-seg .axxa-seg-btn {
-  padding: 4px 0;
+  padding: 3px 0;
 }
 .axxa-sidebar-seg .axxa-seg-btn .svg-icon {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
+/* [DS:seg-accent] Botão ATIVO em accent: pílula tingida + ícone em accent. */
 .axxa-sidebar-seg .axxa-seg-ind {
   top: 2px;
   bottom: 2px;
   left: 2px;
   width: calc((100% - 4px) / var(--seg-n, 4));
+  background: color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+}
+.axxa-sidebar-seg .axxa-seg-btn-active .svg-icon {
+  color: var(--text-accent);
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-sidebar-seg .axxa-seg-ind {
+    background: var(--background-modifier-hover);
+  }
 }
 
-/* [DS:list-compact] Item PLANO denso: título + hora (sem dot/chips/cards). */
+/* [DS:list-compact] Item PLANO denso: ícone do modelo + título + hora.
+   min-height/height !important MATAM o alvo de toque de 44px que o Obsidian
+   mobile força via .mobile-tap — sem isso a linha fica gigante. v0.1.208 */
 .axxa-sidebar-item,
 .axxa-sidebar-item:focus,
 .axxa-sidebar-item:active {
   appearance: none;
   -webkit-appearance: none;
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   width: 100%;
+  min-height: 0 !important;
+  height: auto !important;
   padding: var(--axxa-list-row-py) 10px;
   border-radius: var(--axxa-list-row-radius);
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
   color: var(--text-normal);
-  line-height: 1.25;
+  line-height: 1.2;
   cursor: pointer;
   text-align: left;
   transition: background 0.13s;
+}
+/* Ícone pequeno do modelo/provider antes do título. */
+.axxa-sidebar-item-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+}
+.axxa-sidebar-item-ico .svg-icon {
+  width: 14px;
+  height: 14px;
 }
 /* [DS:pill] hover do item = pílula com blur */
 .axxa-sidebar-item:hover {
