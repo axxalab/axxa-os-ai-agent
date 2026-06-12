@@ -158,8 +158,10 @@ export function Sidebar({
   const recentsHeadRef = useRef<HTMLDivElement | null>(null);
   const didMountRef = useRef(false);
 
-  // Rola a faixa "Recentes + filtro" pro topo do scroll da gaveta → a lista
-  // ocupa o máximo. Scoped ao scroll da gaveta (não mexe no Obsidian).
+  // Rola a faixa "Recentes + filtro" pro topo do scroll da gaveta. O
+  // .axxa-sidebar-list tem min-height:100% (CSS) garantindo que SEMPRE há espaço
+  // pra a faixa chegar ao topo — então o movimento é idêntico com 1 ou 10000
+  // chats. Scoped ao scroll da gaveta (não mexe no Obsidian). v0.1.214
   const scrollRecentsToTop = () => {
     const sc = scrollRef.current;
     const hd = recentsHeadRef.current;
@@ -170,18 +172,9 @@ export function Sidebar({
       sc.scrollTop;
     sc.scrollTo({ top, behavior: "smooth" });
   };
-  const collapseList = () => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  // "Abrir a lista" (drag pra cima no divisor): solta o teclado + maximiza a
-  // lista, SEM trocar de modo. v0.1.213
-  const expandList = () => {
-    (document.activeElement as HTMLElement | null)?.blur?.();
-    scrollRecentsToTop();
-  };
 
   // Ao trocar de modo: roda DEPOIS do commit (lista nova já no DOM) pro scrollTo
-  // clampar na altura final (sem "pulo"). Pula o mount inicial.
+  // clampar na altura final. Pula o mount inicial.
   useEffect(() => {
     if (!didMountRef.current) {
       didMountRef.current = true;
@@ -189,29 +182,6 @@ export function Sidebar({
     }
     scrollRecentsToTop();
   }, [modeFilter]);
-
-  // Divisor antes de "Recentes" = alça de drag. Subir → expande (abre a lista +
-  // solta teclado); descer → recolhe. Gesto por limiar (dispara 1× por drag).
-  const dragRef = useRef<{ y: number; active: boolean }>({ y: 0, active: false });
-  const onDividerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    dragRef.current = { y: e.clientY, active: true };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-  const onDividerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current.active) return;
-    const dy = e.clientY - dragRef.current.y;
-    if (dy <= -24) {
-      dragRef.current.active = false;
-      expandList();
-    } else if (dy >= 24) {
-      dragRef.current.active = false;
-      collapseList();
-    }
-  };
-  const onDividerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    dragRef.current.active = false;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-  };
 
   // Deletar via menu nativo (long-press mobile / right-click desktop) — sem
   // poluir a linha com um botão de lixeira, igual à referência.
@@ -297,19 +267,7 @@ export function Sidebar({
             })}
           </nav>
 
-          {/* Divisor = alça de drag: subir abre a lista (solta teclado +
-              maximiza), descer recolhe. v0.1.213 */}
-          <div
-            className="axxa-sidebar-divider"
-            role="separator"
-            aria-label={t.header.recents}
-            onPointerDown={onDividerDown}
-            onPointerMove={onDividerMove}
-            onPointerUp={onDividerUp}
-            onPointerCancel={onDividerUp}
-          >
-            <span className="axxa-sidebar-divider-grip" aria-hidden="true" />
-          </div>
+          <div className="axxa-sidebar-divider" />
 
           <div className="axxa-sidebar-list">
             <div className="axxa-sidebar-recents-head" ref={recentsHeadRef}>

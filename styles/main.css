@@ -10977,51 +10977,17 @@ body.is-mobile .axxa-wave-area {
 }
 
 /* Divisória entre a nav e os recentes. */
-/* Divisor antes de "Recentes" = ALÇA DE DRAG. Linha fina (::before) + alça
-   visível (grip) centrada. Hit area generosa; subir abre a lista, descer
-   recolhe. touch-action:none → o drag não rola a gaveta. v0.1.213 */
+/* Divisória entre a nav e os recentes (linha fina). */
 .axxa-sidebar-divider {
   flex: 0 0 auto;
-  position: relative;
-  height: 16px;
-  /* [DS:density] respiro vertical segue a densidade (hit area maior que a linha). */
-  margin: calc(var(--axxa-row-py) - 6px) 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-.axxa-sidebar-divider:active {
-  cursor: grabbing;
-}
-.axxa-sidebar-divider::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  top: 50%;
   height: 1px;
+  /* [DS:density] respiro vertical segue a densidade. */
+  margin: var(--axxa-row-py) 16px;
   background: color-mix(
     in srgb,
     var(--background-modifier-border) 60%,
     transparent
   );
-}
-.axxa-sidebar-divider-grip {
-  position: relative;
-  z-index: 1;
-  width: 34px;
-  height: 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text-normal) 16%, transparent);
-  transition: background 0.15s ease;
-}
-.axxa-sidebar-divider:hover .axxa-sidebar-divider-grip,
-.axxa-sidebar-divider:active .axxa-sidebar-divider-grip {
-  background: color-mix(in srgb, var(--text-normal) 30%, transparent);
 }
 
 /* Lista rolável */
@@ -11039,6 +11005,11 @@ body.is-mobile .axxa-wave-area {
 }
 .axxa-sidebar-list {
   flex: 0 0 auto;
+  /* min-height:100% garante SEMPRE espaço pra faixa "Recentes" chegar ao topo
+     no scroll — o movimento ao trocar de modo é idêntico com 1 ou 10000 chats
+     (sem depender da quantidade). v0.1.214 */
+  min-height: 100%;
+  box-sizing: border-box;
   padding: 0 8px 8px 8px;
 }
 /* [DS:motion] A lista "nasce" deslizando no MESMO sentido do switch de modo

@@ -160,11 +160,9 @@ Espelha a estrutura de um drawer minimalista; só o tema é nosso.
   `.axxa-sidebar-scroll`; **só o rodapé fica fixo**. Ao TROCAR de modo no filtro,
   a faixa "Recentes + segmented" (`.axxa-sidebar-recents-head`) rola pro topo do
   scroll (via `useEffect` no `modeFilter`, escopado ao scroll da gaveta) — a
-  brand/nav somem por cima e a lista fica mais ampla.
-- **Divisor = alça de drag** (`.axxa-sidebar-divider`, antes de "Recentes"):
-  linha fina (`::before`) + grip visível. Gesto por limiar (pointer events,
-  `touch-action:none`): **subir** = abre a lista (solta o teclado via
-  `activeElement.blur()` + maximiza, SEM trocar de modo); **descer** = recolhe.
+  brand/nav somem por cima e a lista fica mais ampla. `.axxa-sidebar-list` tem
+  `min-height:100%` pra **sempre** haver espaço da faixa chegar ao topo: o
+  movimento é idêntico com 1 ou 10000 chats (não depende da quantidade).
 - **Slide da lista:** ao trocar de modo, `.axxa-sidebar-list-items` remonta
   (`key={modeFilter}`) e "nasce" deslizando no MESMO sentido do switch
   (`--axxa-slide-dir` = ±1), com a mola de **[DS:motion]**. Vai junto com o
