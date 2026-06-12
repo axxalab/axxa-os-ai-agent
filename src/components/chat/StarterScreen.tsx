@@ -245,7 +245,7 @@ function ModelSpecs({ info }: { info: ModelFullInfo }) {
  *   • verso (flip ao tocar): specs técnicas + botão "Fetch info" (OpenRouter);
  *   • ícone de EXPAND no canto superior direito → modal completo (com collapse).
  */
-function ModelInfoCard({
+export function ModelInfoCard({
   provider,
   model,
   modelOptions,
@@ -626,7 +626,7 @@ function modeChipIcon(mode: string): string {
   }
 }
 
-const PROVIDERS = [
+export const PROVIDERS = [
   { id: "openai", name: "OpenAI", icon: "logo-openai" },
   { id: "anthropic", name: "Anthropic", icon: "logo-anthropic" },
   { id: "gemini", name: "Gemini", icon: "logo-gemini" },
@@ -711,7 +711,7 @@ function greetingFor(hour: number, t: Translations): string {
 }
 
 /** Provider tem credencial configurada? (ollama não tem key — checa endpoint) */
-function providerConfigured(plugin: AxxaPlugin, id: string): boolean {
+export function providerConfigured(plugin: AxxaPlugin, id: string): boolean {
   const s = plugin.settings;
   switch (id) {
     case "anthropic": return !!s.anthropicApiKey?.trim();

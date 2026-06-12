@@ -2820,7 +2820,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onDismiss={() => finishOnboarding(false)}
           />
         ) : isEmpty && cleanChat ? (
-          <NewChatScreen mode={activeMode} />
+          <NewChatScreen
+            mode={activeMode}
+            plugin={plugin}
+            provider={providerSel}
+            model={starterModel}
+            activeModels={plugin.settings.activeModels}
+            onProviderChange={handleStarterProvider}
+            onModelChange={handleStarterModel}
+            onOpenSettings={handleOpenSettings}
+          />
         ) : isEmpty ? (
           <StarterScreen
             plugin={plugin}
