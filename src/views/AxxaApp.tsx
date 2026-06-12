@@ -2545,6 +2545,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await setModelForProvider(providerSel, m);
   };
 
+  // Arena: confirma provider + modelo JUNTOS (a arena navega entre providers).
+  // v0.1.224
+  const handleArenaConfirm = async (p: string, m: string) => {
+    setProviderSel(p);
+    plugin.settings.defaultProvider = p;
+    await setModelForProvider(p, m); // já faz saveSettings
+  };
+
   // Switcher do header (ref: Claude iOS 16). Troca o modelo. Se a sessão já
   // está locked (continuidade), abrir outro modelo inicia uma NOVA conversa
   // nele — preservando a sessão atual intacta.
@@ -2831,6 +2839,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             activeModels={plugin.settings.activeModels}
             onProviderChange={handleStarterProvider}
             onModelChange={handleStarterModel}
+            onArenaConfirm={handleArenaConfirm}
             onOpenSettings={handleOpenSettings}
           />
         ) : isEmpty ? (

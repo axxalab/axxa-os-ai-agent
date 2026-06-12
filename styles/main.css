@@ -12251,3 +12251,255 @@ body.is-mobile .axxa-wave-area {
     transform: scale(1.15);
   }
 }
+
+/* ── ModelArena v2 (v0.1.224): provider nav, dupla-ID, famílias, tiers, anim ── */
+.axxa-arena-provnav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.axxa-arena-provnav-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff;
+  border: none !important;
+  cursor: pointer;
+}
+.axxa-arena-provnav-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+.axxa-arena-provnav-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.axxa-arena-provnav-btn .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+/* Fighter SAI/ENTRA na troca (key remonta o bloco) — direção-aware. */
+.axxa-arena-fighter {
+  animation: axxa-arena-enter 0.34s cubic-bezier(0.34, 1.1, 0.4, 1) both;
+}
+.axxa-arena-fighter[data-dir="1"] {
+  animation-name: axxa-arena-enter-r;
+}
+.axxa-arena-fighter[data-dir="-1"] {
+  animation-name: axxa-arena-enter-l;
+}
+@keyframes axxa-arena-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes axxa-arena-enter-r {
+  from {
+    opacity: 0;
+    transform: translateX(46px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes axxa-arena-enter-l {
+  from {
+    opacity: 0;
+    transform: translateX(-46px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Portrait — glow/borda pela cor da FAMÍLIA. */
+.axxa-arena-portrait {
+  box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.06),
+    0 0 38px -4px var(--axxa-fam, #7c5cff) !important;
+  border-color: color-mix(in srgb, var(--axxa-fam, #7c5cff) 55%, rgba(255, 255, 255, 0.18)) !important;
+}
+.axxa-arena-fam-emblem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--axxa-fam, #7c5cff) 22%, transparent);
+  color: var(--axxa-fam, #7c5cff);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--axxa-fam, #7c5cff) 35%, transparent);
+}
+.axxa-arena-fam-emblem .svg-icon {
+  width: 40px;
+  height: 40px;
+}
+.axxa-arena-id-prov,
+.axxa-arena-id-vendor {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 8, 12, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+.axxa-arena-id-prov {
+  top: -9px;
+  left: -9px;
+}
+.axxa-arena-id-vendor {
+  bottom: -9px;
+  right: -9px;
+}
+.axxa-arena-id-prov .svg-icon,
+.axxa-arena-id-prov svg,
+.axxa-arena-id-vendor .svg-icon,
+.axxa-arena-id-vendor svg {
+  width: 18px;
+  height: 18px;
+}
+.axxa-arena-id-vendor .axxa-logo-ph {
+  font-size: 7px;
+  padding: 2px;
+  line-height: 1;
+}
+.axxa-arena-hot {
+  top: -10px !important;
+  right: -10px !important;
+  left: auto !important;
+}
+.axxa-arena-rank {
+  top: auto !important;
+  bottom: -8px !important;
+  left: -8px !important;
+  right: auto !important;
+}
+.axxa-arena-fam-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--axxa-fam, #7c5cff) 22%, transparent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  border: 1px solid color-mix(in srgb, var(--axxa-fam, #7c5cff) 60%, transparent);
+}
+.axxa-arena-fam-tag .svg-icon {
+  width: 13px;
+  height: 13px;
+  color: color-mix(in srgb, var(--axxa-fam, #7c5cff) 70%, #fff);
+}
+.axxa-arena-meta .axxa-arena-fav {
+  position: static;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.axxa-arena-meta .axxa-arena-fav.is-fav {
+  color: #ffd24a;
+}
+.axxa-arena-meta .axxa-arena-fav .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+/* Roster em TIERS (Hall / Creators / Soldiers). */
+.axxa-arena-roster {
+  display: flex !important;
+  flex-direction: column;
+  gap: 10px;
+  grid-template-columns: none !important;
+  max-height: 184px;
+}
+.axxa-arena-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.axxa-arena-tier-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.axxa-arena-tier-label .svg-icon {
+  width: 12px;
+  height: 12px;
+}
+.axxa-arena-tier-n {
+  margin-left: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 9px;
+}
+.axxa-arena-tier[data-tier="hall"] .axxa-arena-tier-label {
+  color: #ffd24a;
+}
+.axxa-arena-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
+}
+.axxa-arena-cell {
+  border-color: color-mix(in srgb, var(--axxa-fam, #888) 35%, rgba(255, 255, 255, 0.1)) !important;
+}
+.axxa-arena-cell.is-active {
+  border-color: var(--axxa-fam, #7c5cff) !important;
+  box-shadow: 0 0 0 2px var(--axxa-fam, #7c5cff), 0 0 16px -2px var(--axxa-fam, #7c5cff) !important;
+}
+.axxa-arena-cell-fam {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--axxa-fam, #888);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.axxa-arena-cell-fam .svg-icon {
+  width: 9px;
+  height: 9px;
+}
+.axxa-arena-cell-new {
+  left: auto !important;
+  right: -5px !important;
+  bottom: auto !important;
+  top: -5px !important;
+  transform: none !important;
+}

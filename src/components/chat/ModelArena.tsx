@@ -1,13 +1,13 @@
 // src/components/chat/ModelArena.tsx
-// Seletor de modelo "Mortal Kombat" (v0.1.223) — o modal que abre do card.
-//   • STAGE com a ARENA de cada provider de fundo (gradiente temático).
-//   • FIGHTER em destaque: retrato gigante do vendor + nome + ficha de STATUS
-//     (Coding/Thinking/Tooling/Research/Speed/Vision) em barras de game.
-//   • Ranking "HOT" por poder (benchmark) — chama de #rank + chama de fogo no
-//     top 3. ◄ ► navegam pelo roster; favoritar (bookmark).
-//   • ROSTER em grid de quadradinhos (um por modelo); o cursor marca o ativo.
-//   • SCAN → busca o catálogo do provider e revela os modelos NOVOS (badge NEW).
-//   • CHOOSE confirma a seleção.
+// Seletor "Mortal Kombat" de modelo (v0.1.223, turbinado v0.1.224).
+//   • < PROVIDER > no topo: navega entre providers (a arena re-tematiza).
+//   • FIGHTER com DUPLA ID: provider (host) no canto sup-esq + dono/vendor do
+//     modelo no inf-dir; o brasão da FAMÍLIA (cor própria) no centro.
+//   • Ficha de STATUS (6 barras) + ranking "HOT" por poder (benchmark).
+//   • Troca de modelo = animação SAI/ENTRA (direção-aware).
+//   • ROSTER em 3 tiers: Hall of Fame (favoritos) · Creators (ativos) ·
+//     Soldiers (descobertos no SCAN). Células tingidas pela cor da família.
+//   • SCAN busca o catálogo do provider e revela os NOVOS. CHOOSE confirma.
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -16,17 +16,22 @@ import { Icon } from "../_shared/Icon";
 import { hapticTick } from "../_shared/haptics";
 import { useT } from "../../i18n";
 import type AxxaPlugin from "../../main";
-import { ModelVendorLogo, categoryIcon } from "./StarterScreen";
+import {
+  ModelVendorLogo,
+  categoryIcon,
+  PROVIDERS,
+  providerConfigured,
+} from "./StarterScreen";
 import {
   getModelFullInfo,
   localizedDescription,
   CATEGORY_LABELS,
 } from "../../providers/modelDescriptions";
 import { getModelStats, STAT_KEYS, STAT_META } from "../../providers/modelStats";
+import { getModelFamily } from "../../providers/modelFamily";
 import { formatTokens } from "../_shared/contextWindows";
 import { formatUsd } from "../../usage/pricing";
 
-/** Nome de flavor da arena por provider (estilo "stage" de luta). */
 const ARENA_NAME: Record<string, string> = {
   openai: "THE LAB",
   anthropic: "THE FOUNDRY",
@@ -36,13 +41,14 @@ const ARENA_NAME: Record<string, string> = {
   ollama: "THE BASEMENT",
 };
 
-function StatBar({
-  k,
-  value,
-}: {
-  k: (typeof STAT_KEYS)[number];
-  value: number;
-}) {
+function providerLogoId(id: string): string {
+  return PROVIDERS.find((p) => p.id === id)?.icon ?? "logo-openai";
+}
+function providerName(id: string): string {
+  return PROVIDERS.find((p) => p.id === id)?.name ?? id;
+}
+
+function StatBar({ k, value }: { k: (typeof STAT_KEYS)[number]; value: number }) {
   const meta = STAT_META[k];
   const lvl = value >= 85 ? "s" : value >= 70 ? "a" : value >= 50 ? "b" : "c";
   return (
@@ -59,74 +65,147 @@ function StatBar({
   );
 }
 
+/** Uma célula do roster (quadradinho), tingida pela família. */
+function RosterCell({
+  prov,
+  m,
+  active,
+  isNew,
+  rank,
+  onPick,
+}: {
+  prov: string;
+  m: string;
+  active: boolean;
+  isNew: boolean;
+  rank?: number;
+  onPick: (m: string) => void;
+}) {
+  const fam = getModelFamily(m);
+  return (
+    <button
+      type="button"
+      className={"axxa-arena-cell" + (active ? " is-active" : "")}
+      title={m}
+      aria-label={m}
+      style={{ ["--axxa-fam" as string]: fam.color }}
+      onClick={() => {
+        hapticTick();
+        onPick(m);
+      }}
+    >
+      <ModelVendorLogo provider={prov} model={m} />
+      <span className="axxa-arena-cell-fam">
+        <Icon name={fam.icon} />
+      </span>
+      {rank != null && <span className="axxa-arena-cell-rank">{rank}</span>}
+      {isNew && <span className="axxa-arena-cell-new">NEW</span>}
+    </button>
+  );
+}
+
 export function ModelArena({
   provider,
   model,
-  modelOptions,
-  onPick,
+  onConfirm,
   onClose,
   plugin,
 }: {
   provider: string;
   model: string;
-  modelOptions: string[];
-  onPick: (model: string) => void;
+  onConfirm: (provider: string, model: string) => void;
   onClose: () => void;
   plugin: AxxaPlugin;
 }) {
   const t = useT();
   const lang = plugin.settings.language;
-  const [cursor, setCursor] = useState(model);
-  const [discovered, setDiscovered] = useState<string[]>([]);
-  const [scanning, setScanning] = useState(false);
   const [, bump] = useState(0);
+  const [prov, setProv] = useState(provider);
+  const [cursor, setCursor] = useState(model);
+  const [navDir, setNavDir] = useState(0); // -1 / 0 / 1 (anim direção)
+  const [discovered, setDiscovered] = useState<Record<string, string[]>>({});
+  const [scanning, setScanning] = useState(false);
 
-  // Roster = activeModels + descobertos (sem dup), RANQUEADO por poder (hot).
-  const roster = useMemo(() => {
-    const all = [...modelOptions];
-    for (const m of discovered) if (!all.includes(m)) all.push(m);
-    if (!all.includes(model)) all.unshift(model);
-    return all
-      .map((m) => ({
-        m,
-        power: getModelStats(provider, m, getModelFullInfo(provider, m)).power,
-      }))
-      .sort((a, b) => b.power - a.power)
-      .map((x) => x.m);
+  const statsOf = (p: string, m: string) =>
+    getModelStats(p, m, getModelFullInfo(p, m)).power;
+  const sortPower = (p: string, list: string[]) =>
+    [...new Set(list)].sort((a, b) => statsOf(p, b) - statsOf(p, a));
+
+  // Providers configurados (+ garante o atual) — pra navegação < >.
+  const provList = useMemo(() => {
+    const cfg = PROVIDERS.filter((p) => providerConfigured(plugin, p.id)).map(
+      (p) => p.id
+    );
+    return cfg.includes(provider) ? cfg : [provider, ...cfg];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider, modelOptions.join(","), discovered.join(","), model]);
+  }, [provider]);
 
-  // Garante cursor válido.
-  const cur = roster.includes(cursor) ? cursor : roster[0] ?? model;
-  const curIdx = Math.max(0, roster.indexOf(cur));
-  const rank = curIdx + 1;
-  const isHot = rank <= 3 && roster.length > 3;
+  // ── Roster do provider atual, em 3 tiers.
+  const active = plugin.settings.activeModels[prov] ?? [];
+  const disc = discovered[prov] ?? [];
+  const favKeys = plugin.settings.favoriteModels ?? [];
+  const favModels = favKeys
+    .filter((k) => k.startsWith(prov + "::"))
+    .map((k) => k.slice(prov.length + 2));
+  const favSet = new Set(favModels);
+  const activeSet = new Set(active);
 
-  const info = getModelFullInfo(provider, cur);
-  const stats = getModelStats(provider, cur, info);
+  const hall = sortPower(prov, favModels);
+  const creators = sortPower(
+    prov,
+    active.filter((m) => !favSet.has(m))
+  );
+  const soldiers = sortPower(
+    prov,
+    disc.filter((m) => !favSet.has(m) && !activeSet.has(m))
+  );
+  const flat = [...new Set([...hall, ...creators, ...soldiers])];
+  if (flat.length === 0) flat.push(cursor);
+
+  const cur = flat.includes(cursor) ? cursor : flat[0];
+  const powerSorted = sortPower(prov, flat);
+  const rank = powerSorted.indexOf(cur) + 1;
+  const isHot = rank <= 3 && flat.length > 3;
+
+  const info = getModelFullInfo(prov, cur);
+  const fam = getModelFamily(cur);
+  const stats = getModelStats(prov, cur, info);
   const desc = localizedDescription(info, cur, lang);
   const tier = info.enriched?.tier ?? info.pricing.tier ?? "unknown";
   const ctx = info.enriched?.contextWindow ?? info.card.contextWindow;
   const inP = info.enriched?.inputPerMillion ?? info.pricing.inputPerMillion;
   const outP = info.enriched?.outputPerMillion ?? info.pricing.outputPerMillion;
-  const fav = plugin.isFavoriteModel(provider, cur);
+  const fav = plugin.isFavoriteModel(prov, cur);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowRight") move(1);
-      else if (e.key === "ArrowLeft") move(-1);
+      else if (e.key === "ArrowRight") moveModel(1);
+      else if (e.key === "ArrowLeft") moveModel(-1);
+      else if (e.key === "ArrowUp") moveProvider(-1);
+      else if (e.key === "ArrowDown") moveProvider(1);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roster, cur]);
+  });
 
-  const move = (dir: number) => {
-    if (roster.length === 0) return;
+  const moveModel = (dir: number) => {
+    if (flat.length < 2) return;
     hapticTick();
-    const next = (curIdx + dir + roster.length) % roster.length;
-    setCursor(roster[next]);
+    setNavDir(dir);
+    const i = flat.indexOf(cur);
+    setCursor(flat[(i + dir + flat.length) % flat.length]);
+  };
+  const moveProvider = (dir: number) => {
+    if (provList.length < 2) return;
+    hapticTick();
+    setNavDir(dir);
+    const i = provList.indexOf(prov);
+    const np = provList[(i + dir + provList.length) % provList.length];
+    setProv(np);
+    const opts = plugin.settings.activeModels[np] ?? [];
+    setCursor(sortPower(np, opts)[0] ?? opts[0] ?? cur);
   };
 
   const doScan = async () => {
@@ -134,14 +213,12 @@ export function ModelArena({
     setScanning(true);
     hapticTick();
     try {
-      const all = await plugin.scanModels(provider);
-      const news = all.filter(
-        (m) => !modelOptions.includes(m) && !discovered.includes(m)
-      );
-      if (news.length === 0) {
-        new Notice(t.arena.scanNone);
-      } else {
-        setDiscovered((d) => [...d, ...news]);
+      const all = await plugin.scanModels(prov);
+      const known = new Set([...active, ...(discovered[prov] ?? [])]);
+      const news = all.filter((m) => !known.has(m));
+      if (news.length === 0) new Notice(t.arena.scanNone);
+      else {
+        setDiscovered((d) => ({ ...d, [prov]: [...(d[prov] ?? []), ...news] }));
         new Notice(t.arena.scanFound(news.length));
       }
     } catch {
@@ -153,13 +230,20 @@ export function ModelArena({
 
   const choose = () => {
     hapticTick();
-    onPick(cur);
+    onConfirm(prov, cur);
     onClose();
   };
   const toggleFav = () => {
     hapticTick();
-    void plugin.toggleFavoriteModel(provider, cur).then(() => bump((n) => n + 1));
+    void plugin.toggleFavoriteModel(prov, cur).then(() => bump((n) => n + 1));
   };
+
+  const tiers: { key: string; label: string; icon: string; models: string[] }[] =
+    [
+      { key: "hall", label: t.arena.hall, icon: "trophy", models: hall },
+      { key: "creators", label: t.arena.creators, icon: "star", models: creators },
+      { key: "soldiers", label: t.arena.soldiers, icon: "shield", models: soldiers },
+    ];
 
   return createPortal(
     <div
@@ -170,15 +254,36 @@ export function ModelArena({
     >
       <div
         className="axxa-arena"
-        data-provider={provider}
+        data-provider={prov}
+        style={{ ["--axxa-fam" as string]: fam.color }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="axxa-arena-scan" aria-hidden="true" />
 
-        {/* Topo: arena + SCAN + fechar */}
+        {/* Topo: < PROVIDER > + SCAN + fechar */}
         <div className="axxa-arena-head">
-          <span className="axxa-arena-stage-name">
-            {ARENA_NAME[provider] ?? provider.toUpperCase()}
+          <span className="axxa-arena-provnav">
+            <button
+              type="button"
+              className="axxa-arena-provnav-btn"
+              onClick={() => moveProvider(-1)}
+              aria-label={t.arena.prevProvider}
+              disabled={provList.length < 2}
+            >
+              <Icon name="chevron-left" />
+            </button>
+            <span className="axxa-arena-stage-name">
+              {ARENA_NAME[prov] ?? prov.toUpperCase()}
+            </span>
+            <button
+              type="button"
+              className="axxa-arena-provnav-btn"
+              onClick={() => moveProvider(1)}
+              aria-label={t.arena.nextProvider}
+              disabled={provList.length < 2}
+            >
+              <Icon name="chevron-right" />
+            </button>
           </span>
           <span className="axxa-arena-head-right">
             <button
@@ -201,27 +306,50 @@ export function ModelArena({
           </span>
         </div>
 
-        {/* Lutador em destaque */}
+        {/* Lutador (re-monta na troca → animação sai/entra) */}
         <div className="axxa-arena-main">
           <button
             type="button"
             className="axxa-arena-nav axxa-arena-nav-prev"
-            onClick={() => move(-1)}
+            onClick={() => moveModel(-1)}
             aria-label={t.arena.prev}
           >
             <Icon name="chevron-left" />
           </button>
 
-          <div className="axxa-arena-fighter">
+          <div
+            key={prov + "|" + cur}
+            className="axxa-arena-fighter"
+            data-dir={navDir}
+          >
             <div className="axxa-arena-portrait">
+              {/* sup-esq = PROVIDER (host) */}
+              <span className="axxa-arena-id-prov" title={providerName(prov)}>
+                <Icon name={providerLogoId(prov)} />
+              </span>
+              {/* sup-dir = HOT (top 3) */}
               {isHot && (
                 <span className="axxa-arena-hot">
                   <Icon name="flame" />
                 </span>
               )}
+              {/* inf-esq = rank de poder */}
               <span className="axxa-arena-rank">#{rank}</span>
-              <span className="axxa-arena-logo">
-                <ModelVendorLogo provider={provider} model={cur} />
+              {/* Centro = brasão da FAMÍLIA (visual ID) */}
+              <span className="axxa-arena-fam-emblem">
+                <Icon name={fam.icon} />
+              </span>
+              {/* inf-dir = DONO/vendor do modelo */}
+              <span className="axxa-arena-id-vendor" title={cur}>
+                <ModelVendorLogo provider={prov} model={cur} />
+              </span>
+            </div>
+
+            <h3 className="axxa-arena-name">{cur}</h3>
+            <div className="axxa-arena-meta">
+              <span className="axxa-arena-fam-tag">
+                <Icon name={fam.icon} />
+                {fam.label}
               </span>
               <button
                 type="button"
@@ -232,10 +360,6 @@ export function ModelArena({
               >
                 <Icon name={fav ? "bookmark-check" : "bookmark"} />
               </button>
-            </div>
-
-            <h3 className="axxa-arena-name">{cur}</h3>
-            <div className="axxa-arena-meta">
               <span className="axxa-arena-cat">
                 <Icon name={categoryIcon(info.card.category)} />
                 {CATEGORY_LABELS[info.card.category]}
@@ -249,14 +373,12 @@ export function ModelArena({
               </span>
             </div>
 
-            {/* Ficha de status */}
             <div className="axxa-arena-stats">
               {STAT_KEYS.map((k) => (
                 <StatBar key={k} k={k} value={stats[k]} />
               ))}
             </div>
 
-            {/* Specs essenciais */}
             <div className="axxa-arena-specs">
               {ctx != null && (
                 <span className="axxa-arena-spec">
@@ -284,45 +406,47 @@ export function ModelArena({
           <button
             type="button"
             className="axxa-arena-nav axxa-arena-nav-next"
-            onClick={() => move(1)}
+            onClick={() => moveModel(1)}
             aria-label={t.arena.next}
           >
             <Icon name="chevron-right" />
           </button>
         </div>
 
-        {/* Roster — grid de quadradinhos */}
+        {/* Roster em 3 tiers */}
         <div className="axxa-arena-roster">
-          {roster.map((m, i) => {
-            const isNew = discovered.includes(m);
-            const active = m === cur;
-            return (
-              <button
-                key={m}
-                type="button"
-                className={
-                  "axxa-arena-cell" +
-                  (active ? " is-active" : "") +
-                  (isNew ? " is-new" : "")
-                }
-                title={m}
-                aria-label={m}
-                onClick={() => {
-                  hapticTick();
-                  setCursor(m);
-                }}
-              >
-                <ModelVendorLogo provider={provider} model={m} />
-                {i < 3 && roster.length > 3 && (
-                  <span className="axxa-arena-cell-rank">{i + 1}</span>
-                )}
-                {isNew && <span className="axxa-arena-cell-new">NEW</span>}
-              </button>
-            );
-          })}
+          {tiers
+            .filter((tr) => tr.models.length > 0)
+            .map((tr) => (
+              <div key={tr.key} className="axxa-arena-tier" data-tier={tr.key}>
+                <div className="axxa-arena-tier-label">
+                  <Icon name={tr.icon} />
+                  {tr.label}
+                  <span className="axxa-arena-tier-n">{tr.models.length}</span>
+                </div>
+                <div className="axxa-arena-grid">
+                  {tr.models.map((m) => {
+                    const pr = powerSorted.indexOf(m) + 1;
+                    return (
+                      <RosterCell
+                        key={m}
+                        prov={prov}
+                        m={m}
+                        active={m === cur}
+                        isNew={disc.includes(m)}
+                        rank={pr <= 3 && flat.length > 3 ? pr : undefined}
+                        onPick={(mm) => {
+                          setNavDir(0);
+                          setCursor(mm);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
         </div>
 
-        {/* Confirmar */}
         <div className="axxa-arena-actions">
           <button type="button" className="axxa-arena-choose" onClick={choose}>
             <Icon name="swords" />

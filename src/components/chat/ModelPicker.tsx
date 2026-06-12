@@ -87,12 +87,15 @@ export function ModelPicker({
   model,
   modelOptions,
   onModelChange,
+  onArenaConfirm,
   plugin,
 }: {
   provider: string;
   model: string;
   modelOptions: string[];
   onModelChange: (model: string) => void;
+  /** Arena confirma provider + modelo (navega entre providers). */
+  onArenaConfirm: (provider: string, model: string) => void;
   plugin: AxxaPlugin;
 }) {
   const t = useT();
@@ -232,10 +235,9 @@ export function ModelPicker({
         <ModelArena
           provider={provider}
           model={model}
-          modelOptions={opts}
           plugin={plugin}
-          onPick={(m) => {
-            pick(m);
+          onConfirm={(p, m) => {
+            onArenaConfirm(p, m);
             setModalOpen(false);
           }}
           onClose={() => setModalOpen(false)}

@@ -46,6 +46,8 @@ interface NewChatScreenProps {
   activeModels: Record<string, string[]>;
   onProviderChange: (provider: string) => void;
   onModelChange: (model: string) => void;
+  /** Confirma provider + modelo juntos (a arena navega entre providers). */
+  onArenaConfirm: (provider: string, model: string) => void;
   /** "+" no provider / abrir Settings. */
   onOpenSettings: () => void;
 }
@@ -60,6 +62,7 @@ export function NewChatScreen({
   activeModels,
   onProviderChange,
   onModelChange,
+  onArenaConfirm,
   onOpenSettings,
 }: NewChatScreenProps) {
   const t = useT();
@@ -118,6 +121,7 @@ export function NewChatScreen({
             model={model}
             modelOptions={modelOptions}
             onModelChange={onModelChange}
+            onArenaConfirm={onArenaConfirm}
             plugin={plugin}
           />
         </div>

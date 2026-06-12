@@ -231,8 +231,13 @@ export const EN_US: Translations = {
     close: "Close",
     prev: "Previous",
     next: "Next",
+    prevProvider: "Previous provider",
+    nextProvider: "Next provider",
     choose: "Choose",
     power: "Power",
+    hall: "Hall of Fame",
+    creators: "Creators",
+    soldiers: "Soldiers",
   },
 
   account: {

@@ -231,8 +231,13 @@ export const PT_BR = {
     close: "Fechar",
     prev: "Anterior",
     next: "Próximo",
+    prevProvider: "Provider anterior",
+    nextProvider: "Próximo provider",
     choose: "Escolher",
     power: "Poder",
+    hall: "Hall da Fama",
+    creators: "Creators",
+    soldiers: "Soldados",
   },
 
   account: {
