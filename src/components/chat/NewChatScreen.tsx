@@ -10,11 +10,8 @@ import { SegmentedRow } from "../_shared/SegmentedRow";
 import { hapticTick } from "../_shared/haptics";
 import { useT } from "../../i18n";
 import type AxxaPlugin from "../../main";
-import {
-  ModelInfoCard,
-  PROVIDERS,
-  providerConfigured,
-} from "./StarterScreen";
+import { PROVIDERS, providerConfigured } from "./StarterScreen";
+import { ModelPicker } from "./ModelPicker";
 
 /** Ícone + textos por modo. chat | vault-qa | agent. */
 function modeBits(mode: string, t: ReturnType<typeof useT>) {
@@ -113,10 +110,10 @@ export function NewChatScreen({
           />
         </div>
 
-        {/* Modelo — o MESMO ModelInfoCard da StarterScreen (card + dropdown). */}
+        {/* Modelo — seletor redesenhado (tabs por categoria + modal + favoritos). */}
         <div className="axxa-newchat-model">
           <label className="axxa-starter-label">{t.starter.modelLabel}</label>
-          <ModelInfoCard
+          <ModelPicker
             provider={provider}
             model={model}
             modelOptions={modelOptions}

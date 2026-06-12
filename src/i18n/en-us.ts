@@ -209,6 +209,17 @@ export const EN_US: Translations = {
     agentSub: "Tell me what to do — I read and edit your vault.",
   },
 
+  // Redesigned model selector (category tabs + modal + favorites). v0.1.222
+  modelPicker: {
+    title: "All models",
+    expand: "See all models",
+    close: "Close",
+    favorites: "Favorites",
+    fav: "Add to favorites",
+    unfav: "Remove from favorites",
+    empty: "No models in this category.",
+  },
+
   account: {
     badgeFree: "Free",
     badgePremium: "Premium",

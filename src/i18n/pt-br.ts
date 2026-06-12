@@ -209,6 +209,17 @@ export const PT_BR = {
     agentSub: "Diga o que fazer — eu leio e edito o seu vault.",
   },
 
+  // Seletor de modelo redesenhado (tabs por categoria + modal + favoritos). v0.1.222
+  modelPicker: {
+    title: "Todos os modelos",
+    expand: "Ver todos os modelos",
+    close: "Fechar",
+    favorites: "Favoritos",
+    fav: "Favoritar",
+    unfav: "Remover dos favoritos",
+    empty: "Nenhum modelo nesta categoria.",
+  },
+
   account: {
     badgeFree: "Free",
     badgePremium: "Premium",

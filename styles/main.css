@@ -11066,31 +11066,31 @@ body.is-mobile .axxa-wave-area {
 .axxa-sidebar-seg {
   padding: 0 10px 8px 10px;
 }
-.axxa-sidebar-seg .axxa-seg {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg {
   max-width: 100%;
   padding: 2px;
 }
-.axxa-sidebar-seg .axxa-seg-btn {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-btn {
   /* [DS:density] altura do segmented dirigida pela densidade global. */
   padding: var(--axxa-seg-btn-py) 0;
 }
-.axxa-sidebar-seg .axxa-seg-btn .svg-icon {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-btn .svg-icon {
   width: 14px;
   height: 14px;
 }
 /* [DS:seg-accent] Botão ATIVO em accent: pílula tingida + ícone em accent. */
-.axxa-sidebar-seg .axxa-seg-ind {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-ind {
   top: 2px;
   bottom: 2px;
   left: 2px;
   width: calc((100% - 4px) / var(--seg-n, 4));
   background: color-mix(in srgb, var(--interactive-accent) 30%, transparent);
 }
-.axxa-sidebar-seg .axxa-seg-btn-active .svg-icon {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-btn-active .svg-icon {
   color: var(--text-accent);
 }
 @supports not (color: color-mix(in srgb, red, blue)) {
-  .axxa-sidebar-seg .axxa-seg-ind {
+  :is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-ind {
     background: var(--background-modifier-hover);
   }
 }
@@ -11101,22 +11101,22 @@ body.is-mobile .axxa-wave-area {
    leva ~2.4×. A ALTURA não muda (label é menor que o ícone). Os slots não são
    iguais → o indicador é MEDIDO em JS (left/width inline). O slide+morph e o
    "pop" do label herdam o motion do app via [DS:motion]. v0.1.211 */
-.axxa-sidebar-seg .axxa-seg-labeled {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-labeled {
   width: 100%;
   max-width: 100%;
 }
-.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-btn {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-labeled .axxa-seg-btn {
   flex: 1 1 0;
   min-width: 0;
   gap: 6px;
   padding: var(--axxa-seg-btn-py) 6px;
 }
-.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-btn-active {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-labeled .axxa-seg-btn-active {
   flex: 2.4 1 0;
   padding-right: 8px;
 }
 /* "Todos" (iconOnly): fica selecionado (pílula) mas NÃO cresce nem mostra label. */
-.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-btn-active.axxa-seg-btn-icononly {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-labeled .axxa-seg-btn-active.axxa-seg-btn-icononly {
   flex: 1 1 0;
   padding-right: 6px;
 }
@@ -11129,7 +11129,7 @@ body.is-mobile .axxa-wave-area {
   margin: 0 4px;
   background: color-mix(in srgb, var(--text-normal) 22%, transparent);
 }
-.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-labeled .axxa-seg-ind {
   width: auto; /* a largura real vem inline (medida); evita o calc de slot-igual */
   /* [DS:motion] o SLIDE+MORPH é dirigido pela Web Animations API no
      SegmentedRow (robusto — ver comentário lá). transition:none aqui pra o
@@ -11142,7 +11142,7 @@ body.is-mobile .axxa-wave-area {
    (.axxa-mc-modal): glow cônico girando na borda (::before, anel mascarado,
    @property --axxa-glow) + shimmer varrendo (::after). O pop de entrada é a mola
    do WAAPI (scale no keyframe). v0.1.217 */
-.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind::before {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-labeled .axxa-seg-ind::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -11162,7 +11162,7 @@ body.is-mobile .axxa-wave-area {
   pointer-events: none;
   animation: axxa-border-glow 3.2s linear infinite;
 }
-.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind::after {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-labeled .axxa-seg-ind::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -11177,7 +11177,7 @@ body.is-mobile .axxa-wave-area {
   transform: translateX(-90%);
   animation: axxa-eff-shimmer 3.4s ease-in-out infinite;
 }
-.axxa-sidebar-seg .axxa-seg-btn-label {
+:is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg-btn-label {
   font-size: var(--font-ui-smaller);
   font-weight: 600;
   line-height: 1;
@@ -11520,5 +11520,230 @@ body.is-mobile .axxa-wave-area {
   font-size: var(--font-ui-small);
   color: var(--text-muted);
   line-height: 1.45;
+}
+
+/* ============================================================
+ * ModelPicker (v0.1.222) — seletor de modelo: card + tabs por
+ * categoria (estilo gaveta) + lista + favoritos + modal "todos".
+ * ============================================================ */
+.axxa-mpick {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+.axxa-mpick-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 30px; /* espaço pro botão de expand */
+}
+.axxa-mpick-expand {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.axxa-mpick-expand:hover {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal);
+}
+.axxa-mpick-expand .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-mpick-tabs {
+  margin-top: 2px;
+}
+.axxa-mpick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 230px;
+  overflow-y: auto;
+}
+/* Linha de modelo: selecionar (cresce) + favoritar (direita). Reuso no modal. */
+.axxa-mpick-opt {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  border-radius: 9px;
+}
+.axxa-mpick-opt.is-active {
+  background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+}
+.axxa-mpick-opt-main,
+.axxa-mpick-opt-main:focus,
+.axxa-mpick-opt-main:active {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 9px;
+  color: var(--text-normal);
+  text-align: left;
+  cursor: pointer;
+}
+.axxa-mpick-opt-main:hover {
+  background: var(--background-modifier-hover) !important;
+}
+.axxa-mpick-opt-logo {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+.axxa-mpick-opt-logo .svg-icon,
+.axxa-mpick-opt-logo svg {
+  width: 18px;
+  height: 18px;
+}
+.axxa-mpick-opt-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.axxa-mpick-opt-name {
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-mpick-opt-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-mpick-opt-check {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-accent);
+}
+.axxa-mpick-opt-check .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+/* Favoritar — ícone de salvar (estilo Insta): contorno → cheio em accent. */
+.axxa-mpick-fav,
+.axxa-mpick-fav:focus,
+.axxa-mpick-fav:active {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 9px;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color 0.13s, transform 0.12s;
+}
+.axxa-mpick-fav:hover {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-muted);
+}
+.axxa-mpick-fav:active {
+  transform: scale(0.86);
+}
+.axxa-mpick-fav.is-fav {
+  color: var(--text-accent);
+}
+.axxa-mpick-fav .svg-icon {
+  width: 18px;
+  height: 18px;
+}
+.axxa-mpick-empty {
+  padding: 14px 10px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: var(--font-ui-small);
+}
+
+/* Modal "todos os modelos" — reusa o overlay (.axxa-mc-modal-overlay) e o close
+   (.axxa-mc-modal-close) do card de modelo. */
+.axxa-mpick-modal {
+  width: min(520px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  animation-name: axxa-mc-pop;
+  animation-duration: var(--axxa-motion-dur, 0.34s);
+  animation-timing-function: var(--axxa-motion-ease, ease);
+  animation-fill-mode: both;
+}
+.axxa-mpick-modal-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.axxa-mpick-modal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+.axxa-mpick-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+}
+.axxa-mpick-group {
+  margin-bottom: 8px;
+}
+.axxa-mpick-group-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
 }
 

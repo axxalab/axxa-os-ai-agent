@@ -57,6 +57,9 @@ interface AxxaSettings {
    *  Curado pelo user nas Settings (manual + fetch da API). Permite incluir
    *  modelos legacy que não aparecem no /v1/models moderno. */
   activeModels: Record<string, string[]>;
+  /** Modelos favoritados pelo user (ícone de salvar) — chaves "provider::model".
+   *  Aparecem numa aba "favoritos" do seletor de modelo. v0.1.222 */
+  favoriteModels: string[];
   /** Modelos de embedding descobertos via fetch da API, por provider. Alimentam
    *  o seletor de embedding do RAG com info inferida. v0.1.151 */
   discoveredEmbeddings: Record<string, string[]>;
@@ -238,6 +241,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
     ],
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },
+  favoriteModels: [],
   discoveredEmbeddings: {},
   defaultMode: "chat",
   defaultEffort: "med",
@@ -434,6 +438,24 @@ export default class AxxaPlugin extends Plugin {
     this.chatSummaries = this.chatSummaries.filter((c) => c.id !== id);
     this.notifyChats();
     this.scheduleChatIndexWrite();
+  }
+
+  // ---- Favoritos de modelo (ícone de salvar) — chave "provider::model". v0.1.222
+  favoriteModelKey(provider: string, model: string): string {
+    return provider + "::" + model;
+  }
+  isFavoriteModel(provider: string, model: string): boolean {
+    return (this.settings.favoriteModels ?? []).includes(
+      this.favoriteModelKey(provider, model)
+    );
+  }
+  async toggleFavoriteModel(provider: string, model: string): Promise<void> {
+    const key = this.favoriteModelKey(provider, model);
+    const arr = this.settings.favoriteModels ?? [];
+    this.settings.favoriteModels = arr.includes(key)
+      ? arr.filter((k) => k !== key)
+      : [...arr, key];
+    await this.saveSettings();
   }
 
   /** Inscreve um callback chamado a cada saveSettings. Retorna unsubscribe. */

@@ -108,7 +108,7 @@ function buildCostLine(pricing: ReturnType<typeof getModelFullInfo>["pricing"]):
 }
 
 /** Ícone Lucide por categoria do modelo. */
-function categoryIcon(cat: string): string {
+export function categoryIcon(cat: string): string {
   switch (cat) {
     case "flagship": return "crown";
     case "balanced": return "scale";
@@ -127,7 +127,7 @@ function categoryIcon(cat: string): string {
  * OpenAI, não OpenRouter). Se a gente ainda NÃO tem o logo do vendor, cai num
  * placeholder de TEXTO em roxo vivo (pro dev ver e saber qual logo criar). v0.1.130
  */
-function ModelVendorLogo({
+export function ModelVendorLogo({
   provider,
   model,
 }: {
@@ -159,7 +159,7 @@ const PILL_META: Record<string, { label: string; icon: string; color: string }> 
 };
 
 /** Lista de pills (ids) a partir das caps + pricing + specs enriquecidas. */
-function cardPills(info: ModelFullInfo): string[] {
+export function cardPills(info: ModelFullInfo): string[] {
   const { caps, pricing, enriched } = info;
   const ids: string[] = [];
   if (caps.imageGen) ids.push("img-gen");
@@ -177,7 +177,7 @@ function cardPills(info: ModelFullInfo): string[] {
   return ids;
 }
 
-function Pills({ ids }: { ids: string[] }) {
+export function Pills({ ids }: { ids: string[] }) {
   if (ids.length === 0) return null;
   return (
     <div className="axxa-model-caps">
