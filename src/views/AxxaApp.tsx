@@ -3108,6 +3108,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onNavigate={handleNavigate}
             tier={tier}
             onDeleteChat={handleDeleteChat}
+            activeView={view}
           />
         </div>
         </ChatActionsContext.Provider>

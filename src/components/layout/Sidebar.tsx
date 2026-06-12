@@ -1,21 +1,24 @@
 // src/components/layout/Sidebar.tsx
-// Gaveta lateral ESQUERDA estilo Claude (v0.1.145) — abre pelo avatar no header.
-// Scrim + painel que desliza da esquerda. Topo: brand + "Nova conversa" + busca.
-// Lista de conversas agrupada por dia (Hoje/Ontem/data), itens minimalistas
-// (dot do modo + título + data relativa). Rodapé: "Ver todas" + Settings.
+// Gaveta lateral ESQUERDA — redesenhada pra espelhar EXATAMENTE a referência do
+// Claude (v0.1.201): minimalista, leve, com respiro. Estrutura:
+//   • brand em texto puro (sem avatar/box)
+//   • "Nova conversa" = ícone + texto em accent (sem card)
+//   • nav em linhas FLAT (ícone + label), a tela ativa ganha uma pílula sutil
+//   • divisória
+//   • "Recentes" = lista PLANA (título + hora à direita), sem chips/dots/cards
+//     (deletar via long-press / right-click → menu nativo)
+//   • rodapé: avatar + nome + engrenagem (Settings)
+// Só o TEMA (cores) é nosso; a distribuição é a da referência.
 //
-// Sempre montado (toggle por classe) pra animar a entrada E a saída.
+// Sempre montado (toggle por classe) pra animar entrada E saída.
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { Menu } from "obsidian";
 import { Icon } from "../_shared/Icon";
-import { InfoChip } from "../_shared/InfoChip";
 import { useT, type Translations } from "../../i18n";
-import { formatTokens } from "../_shared/contextWindows";
-import { modelVendorLogoId } from "../_shared/modelLogo";
 import type { ChatSummary } from "../_shared/chatPersistence";
 import {
   NAV_ITEMS,
-  PRIMARY_COUNT,
   viewRequiresPro,
   type AppView,
   type Tier,
@@ -36,47 +39,8 @@ interface SidebarProps {
   tier: Tier;
   /** Deleta uma conversa (vai pra lixeira). #3 */
   onDeleteChat: (chatId: string, mode: string) => void;
-}
-
-const MODE_COLOR: Record<string, string> = {
-  chat: "var(--text-muted)",
-  "vault-qa": "var(--color-cyan, #4cc9f0)",
-  agent: "var(--color-purple, #a370f7)",
-};
-function modeColor(mode: string): string {
-  return MODE_COLOR[mode] ?? "var(--text-muted)";
-}
-
-// Cores semânticas dos chips de status (mesma paleta do status line do
-// Composer / ConversationsList) — model = roxo, tokens = verde.
-const CHIP_MODEL = "var(--color-purple, #a370f7)";
-const CHIP_TOKENS = "var(--color-green, #06d6a0)";
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function groupLabel(iso: string, t: Translations): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    const now = new Date();
-    if (isSameDay(d, now)) return t.conversations.today;
-    const y = new Date(now);
-    y.setDate(now.getDate() - 1);
-    if (isSameDay(d, y)) return t.conversations.yesterday;
-    return d.toLocaleDateString(t.dashboard.dateLocale, {
-      day: "2-digit",
-      month: "short",
-      year: d.getFullYear() === now.getFullYear() ? undefined : "numeric",
-    });
-  } catch {
-    return iso.slice(0, 10);
-  }
+  /** Tela atual — destaca o item de nav correspondente (pílula). */
+  activeView?: AppView;
 }
 
 function relDate(iso: string, t: Translations): string {
@@ -105,39 +69,35 @@ export function Sidebar({
   chats,
   onLoadChat,
   onNewChat,
-  onOpenAll,
   onOpenSettings,
   onNavigate,
   tier,
   onDeleteChat,
+  activeView,
 }: SidebarProps) {
   const t = useT();
-  const [search, setSearch] = useState("");
-  // 3 itens sempre visíveis; o resto atrás do "Ver mais" (igual nos apps).
-  const [navOpen, setNavOpen] = useState(false);
   const navLabel = (v: AppView): string =>
     (t.nav as Record<string, string>)[v] ?? v;
-  const visibleNav = navOpen ? NAV_ITEMS : NAV_ITEMS.slice(0, PRIMARY_COUNT);
 
-  const groups = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    const arr = [...chats].sort((a, b) => b.date.localeCompare(a.date));
-    const filtered = q
-      ? arr.filter(
-          (c) =>
-            c.title.toLowerCase().includes(q) ||
-            c.model.toLowerCase().includes(q) ||
-            c.mode.toLowerCase().includes(q)
-        )
-      : arr;
-    const map = new Map<string, ChatSummary[]>();
-    for (const c of filtered) {
-      const k = groupLabel(c.date, t);
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(c);
-    }
-    return Array.from(map.entries());
-  }, [chats, search, t]);
+  const recents = useMemo(
+    () => [...chats].sort((a, b) => b.date.localeCompare(a.date)),
+    [chats]
+  );
+
+  // Deletar via menu nativo (long-press mobile / right-click desktop) — sem
+  // poluir a linha com um botão de lixeira, igual à referência.
+  const openItemMenu = (e: React.MouseEvent, c: ChatSummary) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const menu = new Menu();
+    menu.addItem((i) =>
+      i
+        .setTitle(t.menu.delete)
+        .setIcon("trash-2")
+        .onClick(() => onDeleteChat(c.id, c.mode))
+    );
+    menu.showAtMouseEvent(e.nativeEvent);
+  };
 
   return (
     <>
@@ -154,20 +114,7 @@ export function Sidebar({
         aria-hidden={!open}
       >
         <div className="axxa-sidebar-head">
-          <span className="axxa-sidebar-brand">
-            <span className="axxa-sidebar-avatar">
-              <Icon name="user-round" />
-            </span>
-            AXXA OS
-          </span>
-          <button
-            type="button"
-            className="axxa-sidebar-close"
-            onClick={onClose}
-            aria-label={t.conversations.back}
-          >
-            <Icon name="x" />
-          </button>
+          <span className="axxa-sidebar-brand">AXXA OS</span>
         </div>
 
         <button
@@ -178,153 +125,91 @@ export function Sidebar({
             onClose();
           }}
         >
-          <Icon name="message-square-plus" />
-          {t.header.newChat}
+          <Icon name="circle-plus" />
+          <span>{t.header.newChat}</span>
         </button>
 
-        {/* Navegação das seções — 3 sempre, resto no "Ver mais". v0.1.174 */}
+        {/* Navegação das seções — todas FLAT, a ativa com pílula sutil. */}
         <nav className="axxa-sidebar-nav">
-          {visibleNav.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const locked = tier === "free" && viewRequiresPro(item.view);
+            const isActive = activeView === item.view;
             return (
               <button
                 key={item.view}
                 type="button"
-                className={"axxa-sidebar-nav-item" + (locked ? " is-locked" : "")}
+                className={
+                  "axxa-sidebar-nav-item" +
+                  (isActive ? " is-active" : "") +
+                  (locked ? " is-locked" : "")
+                }
                 onClick={() => {
                   onNavigate(item.view);
                   onClose();
                 }}
               >
                 <Icon name={item.icon} />
-                <span className="axxa-sidebar-nav-label">{navLabel(item.view)}</span>
-                {locked && (
-                  <Icon name="lock" className="axxa-sidebar-nav-lock" />
-                )}
+                <span className="axxa-sidebar-nav-label">
+                  {navLabel(item.view)}
+                </span>
+                {locked && <Icon name="lock" className="axxa-sidebar-nav-lock" />}
               </button>
             );
           })}
-          {NAV_ITEMS.length > PRIMARY_COUNT && (
-            <button
-              type="button"
-              className="axxa-sidebar-nav-more"
-              onClick={() => setNavOpen((o) => !o)}
-            >
-              <Icon name={navOpen ? "chevron-up" : "chevron-down"} />
-              <span>{navOpen ? t.nav.less : t.nav.more}</span>
-            </button>
-          )}
         </nav>
 
-        <div className="axxa-sidebar-search">
-          <Icon name="search" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t.conversations.searchPlaceholder}
-          />
-          {search && (
-            <button
-              type="button"
-              className="axxa-sidebar-search-clear"
-              onClick={() => setSearch("")}
-              aria-label={t.conversations.back}
-            >
-              <Icon name="x" />
-            </button>
-          )}
-        </div>
+        <div className="axxa-sidebar-divider" />
 
         <div className="axxa-sidebar-list">
-          {groups.length === 0 && (
+          <div className="axxa-sidebar-recents-label">
+            {t.starter.recentChatsLabel}
+          </div>
+          {recents.length === 0 && (
             <div className="axxa-sidebar-empty">
-              <Icon name="inbox" />
-              <p>
-                {search ? t.conversations.emptySearch : t.conversations.emptyAll}
-              </p>
+              <p>{t.conversations.emptyAll}</p>
             </div>
           )}
-          {groups.map(([label, items]) => (
-            <div key={label} className="axxa-sidebar-group">
-              <div className="axxa-sidebar-group-head">{label}</div>
-              {items.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className="axxa-sidebar-item"
-                  data-mode={c.mode}
-                  onClick={() => {
-                    onLoadChat(c.id, c.mode);
-                    onClose();
-                  }}
-                >
-                  <span
-                    className="axxa-sidebar-item-dot"
-                    style={{ background: modeColor(c.mode) }}
-                  />
-                  {/* Sempre 2 linhas: título em cima, status (model · tokens)
-                      embaixo — mesmo padrão de status do Composer. */}
-                  <span className="axxa-sidebar-item-main">
-                    <span className="axxa-sidebar-item-top">
-                      <span className="axxa-sidebar-item-title">{c.title}</span>
-                      <span className="axxa-sidebar-item-date">
-                        {relDate(c.date, t)}
-                      </span>
-                    </span>
-                    <span className="axxa-composer-info axxa-sidebar-item-status">
-                      <InfoChip
-                        icon={modelVendorLogoId(c.provider, c.model) ?? "cpu"}
-                        color={CHIP_MODEL}
-                        title={c.model}
-                      >
-                        {c.model}
-                      </InfoChip>
-                      <InfoChip icon="sigma" color={CHIP_TOKENS}>
-                        {formatTokens(c.tokensIn + c.tokensOut)}
-                      </InfoChip>
-                    </span>
-                  </span>
-                  <span
-                    className="axxa-sidebar-item-del"
-                    role="button"
-                    aria-label={t.menu.delete}
-                    title={t.menu.delete}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteChat(c.id, c.mode);
-                    }}
-                  >
-                    <Icon name="trash-2" />
-                  </span>
-                </button>
-              ))}
-            </div>
+          {recents.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className="axxa-sidebar-item"
+              onClick={() => {
+                onLoadChat(c.id, c.mode);
+                onClose();
+              }}
+              onContextMenu={(e) => openItemMenu(e, c)}
+            >
+              <span className="axxa-sidebar-item-title">{c.title}</span>
+              <span className="axxa-sidebar-item-date">{relDate(c.date, t)}</span>
+            </button>
           ))}
         </div>
 
+        {/* Rodapé: conta (avatar + nome) + engrenagem (Settings). */}
         <div className="axxa-sidebar-foot">
           <button
             type="button"
-            className="axxa-sidebar-foot-btn"
+            className="axxa-sidebar-account"
             onClick={() => {
-              onOpenAll();
+              onNavigate("profile");
               onClose();
             }}
           >
-            <Icon name="layout-list" />
-            {t.dashboard.viewAll}
+            <span className="axxa-sidebar-account-avatar">AX</span>
+            <span className="axxa-sidebar-account-name">AXXA OS</span>
           </button>
           <button
             type="button"
-            className="axxa-sidebar-foot-btn"
+            className="axxa-sidebar-foot-gear"
             onClick={() => {
               onOpenSettings();
               onClose();
             }}
+            aria-label={t.header.openSettings}
+            title={t.header.openSettings}
           >
             <Icon name="settings" />
-            {t.header.openSettings}
           </button>
         </div>
       </aside>

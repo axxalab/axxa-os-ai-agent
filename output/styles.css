@@ -1249,12 +1249,25 @@ body.is-mobile
   background: var(--background-modifier-hover);
 }
 .axxa-sidebar-nav-item .svg-icon {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   color: var(--text-muted);
 }
 .axxa-sidebar-nav-label {
   flex: 1 1 auto;
+}
+/* Tela ATIVA — pílula sutil (ref: item selecionado no drawer do Claude). */
+.axxa-sidebar-nav-item.is-active {
+  background: color-mix(in srgb, var(--text-normal) 9%, transparent);
+  font-weight: 600;
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .axxa-sidebar-nav-item.is-active {
+    background: var(--background-modifier-hover);
+  }
+}
+.axxa-sidebar-nav-item.is-active .svg-icon {
+  color: var(--text-normal);
 }
 .axxa-sidebar-nav-item.is-locked {
   color: var(--text-muted);
@@ -1263,60 +1276,6 @@ body.is-mobile
   width: 13px;
   height: 13px;
   color: var(--text-faint);
-}
-.axxa-sidebar-nav-more {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-  cursor: pointer;
-  border-radius: 9px;
-}
-.axxa-sidebar-nav-more:hover {
-  background: var(--background-modifier-hover);
-}
-.axxa-sidebar-nav-more .svg-icon {
-  width: 15px;
-  height: 15px;
-}
-/* Botão de deletar conversa (aparece no hover; semi-visível no toque). #3 */
-.axxa-sidebar-item {
-  position: relative;
-}
-.axxa-sidebar-item-del {
-  position: absolute;
-  right: 6px;
-  top: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: var(--background-secondary);
-  color: var(--text-faint);
-  opacity: 0;
-  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
-}
-.axxa-sidebar-item:hover .axxa-sidebar-item-del {
-  opacity: 1;
-}
-.axxa-sidebar-item-del:hover {
-  background: var(--background-modifier-hover);
-  color: var(--color-red, #e5534b);
-}
-.axxa-sidebar-item-del .svg-icon {
-  width: 15px;
-  height: 15px;
-}
-@media (hover: none) {
-  .axxa-sidebar-item-del {
-    opacity: 0.55;
-  }
 }
 
 /* Telas-base (full panel) */
@@ -10808,67 +10767,21 @@ body.is-mobile .axxa-wave-area {
   }
 }
 
-/* Cabeçalho: brand (avatar + nome) + fechar */
+/* Cabeçalho: brand em texto puro (ref: "Claude" no topo do drawer). */
 .axxa-sidebar-head {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 16px 14px 10px 16px;
+  padding: 18px 16px 8px 18px;
 }
 .axxa-sidebar-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 600;
-  font-size: var(--font-ui-medium);
+  font-weight: 700;
+  font-size: var(--font-ui-large);
   color: var(--text-normal);
   min-width: 0;
 }
-.axxa-sidebar-avatar {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  border: 1px solid
-    color-mix(in srgb, var(--interactive-accent) 30%, transparent);
-  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
-  color: var(--text-accent);
-}
-.axxa-sidebar-avatar svg {
-  width: 17px;
-  height: 17px;
-}
-.axxa-sidebar-close,
-.axxa-sidebar-close:focus,
-.axxa-sidebar-close:active {
-  appearance: none;
-  -webkit-appearance: none;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border-radius: 999px;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-.axxa-sidebar-close:hover {
-  color: var(--text-normal);
-  background: var(--background-modifier-hover) !important;
-}
 
-/* "Nova conversa" — botão accent suave, largura cheia */
+/* "Nova conversa" — ícone + texto em accent, SEM card (ref: "New chat"). */
 .axxa-sidebar-new,
 .axxa-sidebar-new:focus,
 .axxa-sidebar-new:active {
@@ -10877,104 +10790,37 @@ body.is-mobile .axxa-wave-area {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 2px 12px 8px 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid
-    color-mix(in srgb, var(--interactive-accent) 28%, transparent) !important;
-  background: color-mix(
-    in srgb,
-    var(--interactive-accent) 12%,
-    transparent
-  ) !important;
+  gap: 12px;
+  margin: 6px 8px 2px 8px;
+  padding: 9px 10px;
+  border: none !important;
+  background: transparent !important;
   box-shadow: none !important;
+  border-radius: 10px;
   color: var(--text-accent);
   font-weight: 600;
   font-size: var(--font-ui-small);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.13s;
 }
 .axxa-sidebar-new svg {
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
 }
 .axxa-sidebar-new:hover {
-  background: color-mix(
-    in srgb,
-    var(--interactive-accent) 20%,
-    transparent
-  ) !important;
-  border-color: color-mix(
-    in srgb,
-    var(--interactive-accent) 46%,
-    transparent
-  ) !important;
+  background: var(--background-modifier-hover) !important;
 }
 
-/* Busca */
-.axxa-sidebar-search {
+/* Divisória entre a nav e os recentes. */
+.axxa-sidebar-divider {
   flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 12px 10px 12px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: var(--background-modifier-form-field);
-  border: 1px solid
-    color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
-}
-.axxa-sidebar-search svg {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  color: var(--text-faint);
-}
-.axxa-sidebar-search input,
-.axxa-sidebar-search input:focus,
-.axxa-sidebar-search input:hover {
-  flex: 1 1 auto;
-  min-width: 0;
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  height: auto !important;
-  color: var(--text-normal);
-  font-size: var(--font-ui-small);
-  font-family: var(--font-text);
-}
-.axxa-sidebar-search input::placeholder {
-  color: var(--text-faint);
-}
-.axxa-sidebar-search-clear,
-.axxa-sidebar-search-clear:focus,
-.axxa-sidebar-search-clear:active {
-  appearance: none;
-  -webkit-appearance: none;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--text-faint);
-  cursor: pointer;
-}
-.axxa-sidebar-search-clear svg {
-  width: 14px;
-  height: 14px;
-}
-.axxa-sidebar-search-clear:hover {
-  color: var(--text-normal);
+  height: 1px;
+  margin: 8px 16px;
+  background: color-mix(
+    in srgb,
+    var(--background-modifier-border) 60%,
+    transparent
+  );
 }
 
 /* Lista rolável */
@@ -10983,33 +10829,27 @@ body.is-mobile .axxa-wave-area {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 2px 8px 8px 8px;
+  padding: 0 8px 8px 8px;
 }
-
-.axxa-sidebar-group {
-  margin-bottom: 6px;
-}
-.axxa-sidebar-group-head {
-  padding: 10px 8px 4px 8px;
+.axxa-sidebar-recents-label {
+  padding: 4px 10px 8px 10px;
   font-size: var(--font-ui-smaller);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   color: var(--text-faint);
 }
 
-/* Item SEMPRE 2 linhas: dot (alinhado ao topo) + coluna (título / status). */
+/* Item PLANO: título + hora à direita (sem dot/chips/cards — ref minimalista). */
 .axxa-sidebar-item,
 .axxa-sidebar-item:focus,
 .axxa-sidebar-item:active {
   appearance: none;
   -webkit-appearance: none;
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   gap: 10px;
   width: 100%;
-  padding: 9px 10px;
-  border-radius: 10px;
+  padding: 8px 10px;
+  border-radius: 9px;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -11021,33 +10861,11 @@ body.is-mobile .axxa-wave-area {
 .axxa-sidebar-item:hover {
   background: var(--background-modifier-hover) !important;
 }
-.axxa-sidebar-item-dot {
-  flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  /* desce pra alinhar com a baseline da 1ª linha (título) */
-  margin-top: 6px;
-}
-.axxa-sidebar-item-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-/* Linha 1 — título (cresce) + data relativa (direita) */
-.axxa-sidebar-item-top {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-}
 .axxa-sidebar-item-title {
   flex: 1 1 auto;
   min-width: 0;
   font-size: var(--font-ui-small);
-  font-weight: 500;
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -11056,34 +10874,6 @@ body.is-mobile .axxa-wave-area {
   flex: 0 0 auto;
   font-size: var(--font-ui-smaller);
   color: var(--text-faint);
-}
-/* Linha 2 — status (model · tokens), herda o .axxa-composer-info mas sem o
-   glass/blur/border dele: aqui é só a linha de chips colorida e compacta. */
-.axxa-sidebar-item-status.axxa-composer-info {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  width: 100%;
-  padding: 0 !important;
-  margin: 0 !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  border-radius: 0 !important;
-  font-size: var(--font-ui-smaller);
-  overflow: hidden;
-}
-/* O 1º chip (model) pode truncar; o de tokens fica fixo à direita. */
-.axxa-sidebar-item-status .axxa-info-chip:first-child {
-  min-width: 0;
-  flex: 0 1 auto;
-}
-.axxa-sidebar-item-status .axxa-info-chip:last-child {
-  flex: 0 0 auto;
 }
 
 /* Vazio */
@@ -11106,41 +10896,86 @@ body.is-mobile .axxa-wave-area {
   font-size: var(--font-ui-small);
 }
 
-/* Rodapé: Ver todas + Settings */
+/* Rodapé: conta (avatar + nome) + engrenagem (ref: avatar + nome + gear). */
 .axxa-sidebar-foot {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
   border-top: 1px solid
     color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
 }
-.axxa-sidebar-foot-btn,
-.axxa-sidebar-foot-btn:focus,
-.axxa-sidebar-foot-btn:active {
+.axxa-sidebar-account,
+.axxa-sidebar-account:focus,
+.axxa-sidebar-account:active {
   appearance: none;
   -webkit-appearance: none;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 6px;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: var(--text-muted);
+  border-radius: 10px;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.13s;
+}
+.axxa-sidebar-account:hover {
+  background: var(--background-modifier-hover) !important;
+}
+.axxa-sidebar-account-avatar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-smaller);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.axxa-sidebar-account-name {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: var(--font-ui-small);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-sidebar-foot-gear,
+.axxa-sidebar-foot-gear:focus,
+.axxa-sidebar-foot-gear:active {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 999px;
+  color: var(--text-muted);
   cursor: pointer;
   transition: background 0.13s, color 0.13s;
 }
-.axxa-sidebar-foot-btn svg {
-  flex: 0 0 auto;
-  width: 17px;
-  height: 17px;
+.axxa-sidebar-foot-gear svg {
+  width: 18px;
+  height: 18px;
 }
-.axxa-sidebar-foot-btn:hover {
+.axxa-sidebar-foot-gear:hover {
   background: var(--background-modifier-hover) !important;
   color: var(--text-normal);
 }
