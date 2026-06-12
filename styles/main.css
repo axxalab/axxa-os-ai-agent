@@ -7376,6 +7376,88 @@ body.theme-dark .axxa-bg-lagoon {
   color: var(--text-muted);
 }
 
+/* Card de info do modelo de embedding (espelha os cards de chat). v0.1.199 */
+.axxa-emb-card {
+  margin: 4px 0 14px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: var(--background-secondary);
+}
+.axxa-emb-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.axxa-emb-card-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+}
+.axxa-emb-card-logo .svg-icon {
+  width: 20px;
+  height: 20px;
+}
+.axxa-emb-card-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.axxa-emb-card-name {
+  font-weight: 600;
+  color: var(--text-normal);
+  word-break: break-word;
+}
+.axxa-emb-card-prov {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+.axxa-emb-card-specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 6px 14px;
+  margin-top: 12px;
+}
+.axxa-emb-spec {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--font-ui-smaller);
+}
+.axxa-emb-spec-ico {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--text-accent);
+}
+.axxa-emb-spec-ico .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.axxa-emb-spec-label {
+  color: var(--text-muted);
+}
+.axxa-emb-spec-val {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+}
+.axxa-emb-card-note {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 .axxa-rag-stats-line {
   color: var(--text-normal);
   font-family: var(--font-monospace);

@@ -804,6 +804,15 @@ export const PT_BR = {
     ragModel: "Modelo de embedding",
     ragModelDesc:
       "Badges: [FREE] sem custo, [🖼️] aceita imagens. Áudio não é suportado por nenhum modelo VL — pra áudio precisaria Whisper API (sprint próprio).",
+    ragEmbDim: "Dimensão",
+    ragEmbImage: "Imagens",
+    ragEmbYes: "Sim",
+    ragEmbNo: "Não",
+    ragEmbCost: "Custo",
+    ragEmbCtx: "Contexto",
+    ragEmbPerChunk: "Por trecho",
+    ragEmbMobileNote:
+      "Mais dimensão = mais preciso, porém índice maior. No mobile o índice é separado (gera e usa o do mobile) com teto de 16 MB — acima disso vira keyword. Dica: perfil Leve/Mínimo (int8 + dim reduzida) encolhe ~4–8×.",
     ragIndexPath: "Pasta do índice",
     ragIndexPathDesc:
       "Onde o arquivo de embeddings (.json) é salvo no Vault.",

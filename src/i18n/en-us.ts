@@ -792,6 +792,15 @@ export const EN_US: Translations = {
     ragModel: "Embedding model",
     ragModelDesc:
       "Badges: [FREE] no cost, [🖼️] accepts images. Audio is not supported by any VL model — for audio you'd need Whisper API (own sprint).",
+    ragEmbDim: "Dimension",
+    ragEmbImage: "Images",
+    ragEmbYes: "Yes",
+    ragEmbNo: "No",
+    ragEmbCost: "Cost",
+    ragEmbCtx: "Context",
+    ragEmbPerChunk: "Per chunk",
+    ragEmbMobileNote:
+      "More dimensions = more accurate, but a bigger index. On mobile the index is separate (mobile builds and uses its own) with a 16 MB cap — above that it falls back to keyword. Tip: the Light/Minimal profile (int8 + reduced dim) shrinks it ~4–8×.",
     ragIndexPath: "Index folder",
     ragIndexPathDesc:
       "Where the embeddings file (.json) is saved in the Vault.",

@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { loadIndex } from "../src/rag/vectorIndex";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { loadIndex, indexFilePath, indexFileName } from "../src/rag/vectorIndex";
+import { Platform } from "obsidian";
 import type { DataAdapter } from "obsidian";
 
 // Guard de memória do índice RAG (v0.1.198): no mobile, índice acima do teto
@@ -76,5 +77,35 @@ describe("loadIndex — guard de tamanho (mobile)", () => {
     const idx = await loadIndex(adapter, INDEX_PATH, { maxBytes: 1 });
     expect(idx).toBeNull();
     expect(read).not.toHaveBeenCalled();
+  });
+});
+
+// Índices SEPARADOS por plataforma (v0.1.199) — desktop e mobile usam arquivos
+// diferentes; um nunca toca o índice do outro.
+describe("indexFilePath — separação desktop/mobile", () => {
+  afterEach(() => {
+    (Platform as { isMobile: boolean }).isMobile = false;
+  });
+
+  it("desktop → embeddings.json (nome legado, sem reindex forçado)", () => {
+    (Platform as { isMobile: boolean }).isMobile = false;
+    expect(indexFileName()).toBe("embeddings.json");
+    expect(indexFilePath("axxa-ai/index")).toBe("axxa-ai/index/embeddings.json");
+  });
+
+  it("mobile → embeddings.mobile.json (arquivo próprio)", () => {
+    (Platform as { isMobile: boolean }).isMobile = true;
+    expect(indexFileName()).toBe("embeddings.mobile.json");
+    expect(indexFilePath("axxa-ai/index")).toBe(
+      "axxa-ai/index/embeddings.mobile.json"
+    );
+  });
+
+  it("os dois caminhos são distintos (isolamento garantido)", () => {
+    (Platform as { isMobile: boolean }).isMobile = false;
+    const desk = indexFilePath("p");
+    (Platform as { isMobile: boolean }).isMobile = true;
+    const mob = indexFilePath("p");
+    expect(desk).not.toBe(mob);
   });
 });

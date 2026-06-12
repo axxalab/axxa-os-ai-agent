@@ -1868,6 +1868,64 @@ export class AxxaSettingsTab extends PluginSettingTab {
         );
       });
 
+    // ---- Card de info do modelo de embedding (espelha os cards de chat):
+    //      logo + dimensão + imagem + custo + contexto + tamanho/trecho. Amarra
+    //      a escolha ao impacto no índice (e no teto do mobile). v0.1.199 ----
+    {
+      const spec = getEmbeddingSpec(this.plugin.settings.ragEmbeddingModel);
+      const prof = getQuantProfile(this.plugin.settings.ragQuantProfile);
+      const bytesPerComp = prof.precision === "int8" ? 1 : 4;
+      const effDim =
+        prof.targetDim > 0 && spec.supportsDimensions ? prof.targetDim : spec.dim;
+      const bytesPerChunk = effDim * bytesPerComp;
+
+      const card = section.createDiv({ cls: "axxa-emb-card" });
+      const head = card.createDiv({ cls: "axxa-emb-card-head" });
+      setIcon(
+        head.createSpan({ cls: "axxa-emb-card-logo" }),
+        modelVendorLogoId(spec.provider, spec.model) ?? "box"
+      );
+      const titles = head.createDiv({ cls: "axxa-emb-card-titles" });
+      titles.createSpan({ cls: "axxa-emb-card-name", text: spec.model });
+      titles.createSpan({ cls: "axxa-emb-card-prov", text: spec.provider });
+
+      const specs = card.createDiv({ cls: "axxa-emb-card-specs" });
+      const specRow = (icon: string, label: string, value: string) => {
+        const r = specs.createDiv({ cls: "axxa-emb-spec" });
+        setIcon(r.createSpan({ cls: "axxa-emb-spec-ico" }), icon);
+        r.createSpan({ cls: "axxa-emb-spec-label", text: label });
+        r.createSpan({ cls: "axxa-emb-spec-val", text: value });
+      };
+      specRow("ruler", t.settings.ragEmbDim, `${spec.dim}d`);
+      specRow(
+        "image",
+        t.settings.ragEmbImage,
+        spec.supportsImage ? t.settings.ragEmbYes : t.settings.ragEmbNo
+      );
+      specRow(
+        "circle-dollar-sign",
+        t.settings.ragEmbCost,
+        spec.free || spec.pricePerMillion === 0
+          ? "FREE"
+          : `$${spec.pricePerMillion}/M`
+      );
+      specRow(
+        "file-text",
+        t.settings.ragEmbCtx,
+        `${spec.maxInputTokens.toLocaleString()} tok`
+      );
+      specRow(
+        "hard-drive",
+        t.settings.ragEmbPerChunk,
+        `~${bytesPerChunk} B (${effDim}d ${prof.precision})`
+      );
+
+      card.createDiv({
+        cls: "axxa-emb-card-note",
+        text: t.settings.ragEmbMobileNote,
+      });
+    }
+
     // ---- Perfil de quantização (estilo Effort): recomenda pelo tamanho do vault ----
     const noteCount = this.plugin.app.vault.getMarkdownFiles().length;
     const recommended = recommendProfile(noteCount);

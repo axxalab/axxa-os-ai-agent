@@ -9,7 +9,7 @@
 // Busca: cosine ≈ dot product (vetores já unit-normalizados). Linear O(n×dim) —
 // suficiente até dezenas de milhares de chunks com int8 + dim reduzida.
 
-import type { App, DataAdapter } from "obsidian";
+import { Platform, type App, type DataAdapter } from "obsidian";
 import { ensureFolder } from "../components/_shared/chatPersistence";
 import type {
   IndexFile,
@@ -25,7 +25,17 @@ import {
   type QuantPrecision,
 } from "./quant";
 
-const INDEX_FILENAME = "embeddings.json";
+// Índices SEPARADOS por plataforma (v0.1.199): o índice do desktop costuma ser
+// grande e estourava o WebView do mobile. Agora cada plataforma gera e usa o
+// SEU próprio arquivo — desktop nunca toca no índice do mobile e vice-versa.
+//   - desktop: embeddings.json        (mantém o nome legado → não força reindex)
+//   - mobile:  embeddings.mobile.json
+const INDEX_FILENAME_DESKTOP = "embeddings.json";
+const INDEX_FILENAME_MOBILE = "embeddings.mobile.json";
+/** Nome do arquivo de índice da plataforma ATUAL. */
+export function indexFileName(): string {
+  return Platform.isMobile ? INDEX_FILENAME_MOBILE : INDEX_FILENAME_DESKTOP;
+}
 // v2: formato binário (base64 typed arrays) + precision/profile. Índices v1
 // (number[] float64) são descartados no load → user reindexa.
 const INDEX_VERSION = 2;
@@ -116,8 +126,9 @@ export class VectorIndex {
 // Persistência — load/save no vault
 // ============================================================
 
-function indexFilePath(indexPath: string): string {
-  return `${indexPath}/${INDEX_FILENAME}`;
+/** Caminho do arquivo de índice da plataforma atual (desktop ou mobile). */
+export function indexFilePath(indexPath: string): string {
+  return `${indexPath}/${indexFileName()}`;
 }
 
 /** Lê o índice do disco. Devolve null se não existe, corrompido, ou versão antiga. */
