@@ -13,6 +13,7 @@
 
 import {
   type CSSProperties,
+  Fragment,
   useLayoutEffect,
   useRef,
   useState,
@@ -28,6 +29,10 @@ export interface SegmentedItem {
   title?: string;
   /** Mock visual (não selecionável ainda) — caller trata no onSelect. */
   soon?: boolean;
+  /** Nunca mostra label, mesmo ativo (ex.: "Todos" — fica só ícone). */
+  iconOnly?: boolean;
+  /** Renderiza um divisor "|" ANTES deste item (separa grupos de modos). */
+  dividerBefore?: boolean;
 }
 
 export function SegmentedRow({
@@ -93,26 +98,32 @@ export function SegmentedRow({
       {items.map((it, i) => {
         const active = it.id === activeId;
         return (
-          <button
-            key={it.id}
-            ref={(el) => {
-              btnRefs.current[i] = el;
-            }}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            aria-label={it.label}
-            title={it.title ?? it.label}
-            className={
-              "axxa-seg-btn" + (active ? " axxa-seg-btn-active" : "")
-            }
-            onClick={() => onSelect(it.id)}
-          >
-            <Icon name={it.icon} />
-            {showActiveLabel && active && (
-              <span className="axxa-seg-btn-label">{it.label}</span>
+          <Fragment key={it.id}>
+            {it.dividerBefore && (
+              <span className="axxa-seg-div" aria-hidden="true" />
             )}
-          </button>
+            <button
+              ref={(el) => {
+                btnRefs.current[i] = el;
+              }}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-label={it.label}
+              title={it.title ?? it.label}
+              className={
+                "axxa-seg-btn" +
+                (active ? " axxa-seg-btn-active" : "") +
+                (it.iconOnly ? " axxa-seg-btn-icononly" : "")
+              }
+              onClick={() => onSelect(it.id)}
+            >
+              <Icon name={it.icon} />
+              {showActiveLabel && active && !it.iconOnly && (
+                <span className="axxa-seg-btn-label">{it.label}</span>
+              )}
+            </button>
+          </Fragment>
         );
       })}
     </div>

@@ -107,14 +107,35 @@ export function Sidebar({
     (t.nav as Record<string, string>)[v] ?? v;
 
   // Filtro de modo dos recentes — segmented control (pílula deslizante) igual
-  // ao da StarterScreen. v0.1.205
+  // ao da StarterScreen. v0.1.205. "Todos" fica só ícone (iconOnly) e um "|"
+  // separa ele dos 3 modos (dividerBefore no chat). v0.1.213
   const [modeFilter, setModeFilter] = useState<string>("all");
+  // Direção do último switch (-1 esq / +1 dir / 0 nenhum) — a lista desliza no
+  // mesmo sentido do segmento. v0.1.213
+  const [slideDir, setSlideDir] = useState<number>(0);
   const filterItems = [
-    { id: "all", icon: "layout-grid", label: t.conversations.filterAll },
-    { id: "chat", icon: "message-square", label: t.modes.chat },
+    {
+      id: "all",
+      icon: "layout-grid",
+      label: t.conversations.filterAll,
+      iconOnly: true,
+    },
+    {
+      id: "chat",
+      icon: "message-square",
+      label: t.modes.chat,
+      dividerBefore: true,
+    },
     { id: "vault-qa", icon: "library", label: t.modes.vaultQa },
     { id: "agent", icon: "bot", label: t.modes.agent },
   ];
+  const selectMode = (id: string) => {
+    const order = filterItems.map((f) => f.id);
+    const from = order.indexOf(modeFilter);
+    const to = order.indexOf(id);
+    setSlideDir(to === from ? 0 : to > from ? 1 : -1);
+    setModeFilter(id);
+  };
 
   const recents = useMemo(() => {
     // Sort blindado: summaries estrangeiros podem ter date vazia/ausente.
@@ -136,14 +157,10 @@ export function Sidebar({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const recentsHeadRef = useRef<HTMLDivElement | null>(null);
   const didMountRef = useRef(false);
-  // Roda DEPOIS do commit (lista nova já no DOM) pra o scrollTo clampar contra a
-  // altura final — evita "pulo" ao trocar pra um modo com menos itens. Pula o
-  // mount inicial (senão a brand/nav sumiriam de cara).
-  useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
+
+  // Rola a faixa "Recentes + filtro" pro topo do scroll da gaveta → a lista
+  // ocupa o máximo. Scoped ao scroll da gaveta (não mexe no Obsidian).
+  const scrollRecentsToTop = () => {
     const sc = scrollRef.current;
     const hd = recentsHeadRef.current;
     if (!sc || !hd) return;
@@ -152,7 +169,49 @@ export function Sidebar({
       sc.getBoundingClientRect().top +
       sc.scrollTop;
     sc.scrollTo({ top, behavior: "smooth" });
+  };
+  const collapseList = () => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  // "Abrir a lista" (drag pra cima no divisor): solta o teclado + maximiza a
+  // lista, SEM trocar de modo. v0.1.213
+  const expandList = () => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    scrollRecentsToTop();
+  };
+
+  // Ao trocar de modo: roda DEPOIS do commit (lista nova já no DOM) pro scrollTo
+  // clampar na altura final (sem "pulo"). Pula o mount inicial.
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    scrollRecentsToTop();
   }, [modeFilter]);
+
+  // Divisor antes de "Recentes" = alça de drag. Subir → expande (abre a lista +
+  // solta teclado); descer → recolhe. Gesto por limiar (dispara 1× por drag).
+  const dragRef = useRef<{ y: number; active: boolean }>({ y: 0, active: false });
+  const onDividerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragRef.current = { y: e.clientY, active: true };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onDividerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current.active) return;
+    const dy = e.clientY - dragRef.current.y;
+    if (dy <= -24) {
+      dragRef.current.active = false;
+      expandList();
+    } else if (dy >= 24) {
+      dragRef.current.active = false;
+      collapseList();
+    }
+  };
+  const onDividerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragRef.current.active = false;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+  };
 
   // Deletar via menu nativo (long-press mobile / right-click desktop) — sem
   // poluir a linha com um botão de lixeira, igual à referência.
@@ -238,7 +297,19 @@ export function Sidebar({
             })}
           </nav>
 
-          <div className="axxa-sidebar-divider" />
+          {/* Divisor = alça de drag: subir abre a lista (solta teclado +
+              maximiza), descer recolhe. v0.1.213 */}
+          <div
+            className="axxa-sidebar-divider"
+            role="separator"
+            aria-label={t.header.recents}
+            onPointerDown={onDividerDown}
+            onPointerMove={onDividerMove}
+            onPointerUp={onDividerUp}
+            onPointerCancel={onDividerUp}
+          >
+            <span className="axxa-sidebar-divider-grip" aria-hidden="true" />
+          </div>
 
           <div className="axxa-sidebar-list">
             <div className="axxa-sidebar-recents-head" ref={recentsHeadRef}>
@@ -250,40 +321,49 @@ export function Sidebar({
                   showActiveLabel
                   onSelect={(id) => {
                     hapticTick();
-                    setModeFilter(id);
+                    selectMode(id);
                   }}
                 />
               </div>
             </div>
-            {recents.length === 0 && (
-              <div className="axxa-sidebar-empty">
-                <p>{t.conversations.emptyAll}</p>
-              </div>
-            )}
-            {recents.map((c) => (
-              <button
-                key={c.filePath || c.id}
-                type="button"
-                className="axxa-sidebar-item"
-                onClick={() => {
-                  onLoadChat(c.id, c.mode);
-                  onClose();
-                }}
-                onContextMenu={(e) => openItemMenu(e, c)}
-              >
-                <span className="axxa-sidebar-item-ico">
-                  <Icon
-                    name={
-                      modelVendorLogoId(c.provider, c.model) ?? "message-square"
-                    }
-                  />
-                </span>
-                <span className="axxa-sidebar-item-title">{c.title}</span>
-                <span className="axxa-sidebar-item-date">
-                  {relDate(c.date, t)}
-                </span>
-              </button>
-            ))}
+            {/* key={modeFilter} força remount → a lista "nasce" deslizando no
+                sentido do switch (--axxa-slide-dir). v0.1.213 */}
+            <div
+              className="axxa-sidebar-list-items"
+              key={modeFilter}
+              style={{ ["--axxa-slide-dir" as string]: String(slideDir) }}
+            >
+              {recents.length === 0 && (
+                <div className="axxa-sidebar-empty">
+                  <p>{t.conversations.emptyAll}</p>
+                </div>
+              )}
+              {recents.map((c) => (
+                <button
+                  key={c.filePath || c.id}
+                  type="button"
+                  className="axxa-sidebar-item"
+                  onClick={() => {
+                    onLoadChat(c.id, c.mode);
+                    onClose();
+                  }}
+                  onContextMenu={(e) => openItemMenu(e, c)}
+                >
+                  <span className="axxa-sidebar-item-ico">
+                    <Icon
+                      name={
+                        modelVendorLogoId(c.provider, c.model) ??
+                        "message-square"
+                      }
+                    />
+                  </span>
+                  <span className="axxa-sidebar-item-title">{c.title}</span>
+                  <span className="axxa-sidebar-item-date">
+                    {relDate(c.date, t)}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

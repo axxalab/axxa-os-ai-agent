@@ -10977,16 +10977,51 @@ body.is-mobile .axxa-wave-area {
 }
 
 /* Divisória entre a nav e os recentes. */
+/* Divisor antes de "Recentes" = ALÇA DE DRAG. Linha fina (::before) + alça
+   visível (grip) centrada. Hit area generosa; subir abre a lista, descer
+   recolhe. touch-action:none → o drag não rola a gaveta. v0.1.213 */
 .axxa-sidebar-divider {
   flex: 0 0 auto;
+  position: relative;
+  height: 16px;
+  /* [DS:density] respiro vertical segue a densidade (hit area maior que a linha). */
+  margin: calc(var(--axxa-row-py) - 6px) 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.axxa-sidebar-divider:active {
+  cursor: grabbing;
+}
+.axxa-sidebar-divider::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 50%;
   height: 1px;
-  /* [DS:density] respiro vertical segue a densidade. */
-  margin: var(--axxa-row-py) 16px;
   background: color-mix(
     in srgb,
     var(--background-modifier-border) 60%,
     transparent
   );
+}
+.axxa-sidebar-divider-grip {
+  position: relative;
+  z-index: 1;
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-normal) 16%, transparent);
+  transition: background 0.15s ease;
+}
+.axxa-sidebar-divider:hover .axxa-sidebar-divider-grip,
+.axxa-sidebar-divider:active .axxa-sidebar-divider-grip {
+  background: color-mix(in srgb, var(--text-normal) 30%, transparent);
 }
 
 /* Lista rolável */
@@ -11005,6 +11040,28 @@ body.is-mobile .axxa-wave-area {
 .axxa-sidebar-list {
   flex: 0 0 auto;
   padding: 0 8px 8px 8px;
+}
+/* [DS:motion] A lista "nasce" deslizando no MESMO sentido do switch de modo
+   (--axxa-slide-dir: -1 esq / +1 dir), com a mesma mola do segmento. Remonta
+   por key={modeFilter} no React → a animação re-dispara. Longhand de propósito
+   (var() no shorthand animation invalida a regra — ver [DS:motion]). v0.1.213 */
+.axxa-sidebar-list-items {
+  animation-name: axxa-list-slide-in;
+  animation-duration: var(--axxa-motion-dur);
+  animation-timing-function: var(--axxa-motion-ease);
+  animation-fill-mode: both;
+}
+@keyframes axxa-list-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(
+      calc(var(--axxa-slide-dir, 0) * 18px * var(--axxa-motion-amp, 1))
+    );
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .axxa-sidebar-recents-label {
   padding: 2px 10px 6px 10px;
@@ -11067,6 +11124,20 @@ body.is-mobile .axxa-wave-area {
 .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-btn-active {
   flex: 2.4 1 0;
   padding-right: 8px;
+}
+/* "Todos" (iconOnly): fica selecionado (pílula) mas NÃO cresce nem mostra label. */
+.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-btn-active.axxa-seg-btn-icononly {
+  flex: 1 1 0;
+  padding-right: 6px;
+}
+/* "|" separando "Todos" dos 3 modos. Fica atrás da pílula (z-index 0). */
+.axxa-seg-div {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 1px;
+  height: 14px;
+  margin: 0 4px;
+  background: color-mix(in srgb, var(--text-normal) 22%, transparent);
 }
 .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind {
   width: auto; /* a largura real vem inline (medida); evita o calc de slot-igual */
