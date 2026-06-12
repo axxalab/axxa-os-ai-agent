@@ -320,6 +320,39 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })
       );
 
+    // Motion global — personalidade das animações (soft/wave/intense/chaotic)
+    // via data-axxa-motion na .axxa-root. Governa todo motion novo do DS.
+    new Setting(parent)
+      .setName(t.settings.motion)
+      .setDesc(t.settings.motionDesc)
+      .addDropdown((dd) =>
+        dd
+          .addOption("soft", t.settings.motionSoft)
+          .addOption("wave", t.settings.motionWave)
+          .addOption("intense", t.settings.motionIntense)
+          .addOption("chaotic", t.settings.motionChaotic)
+          .setValue(this.plugin.settings.motion || "wave")
+          .onChange(async (v) => {
+            hapticTick();
+            this.plugin.settings.motion = v;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // Reduzir movimento no mobile — neutraliza os tokens de motion só em touch.
+    new Setting(parent)
+      .setName(t.settings.reducedMotionMobile)
+      .setDesc(t.settings.reducedMotionMobileDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.reducedMotionMobile)
+          .onChange(async (value) => {
+            hapticTick();
+            this.plugin.settings.reducedMotionMobile = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
     new Setting(parent)
       .setName(t.settings.codeWrap)
       .setDesc(t.settings.codeWrapDesc)

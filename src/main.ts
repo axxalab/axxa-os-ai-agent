@@ -73,6 +73,13 @@ interface AxxaSettings {
   /** Densidade global da UI (large/normal/compact) — dirige os tokens do DS
    *  (--axxa-density-*). Aplicada como data-axxa-density na .axxa-root. v0.1.209 */
   density: string;
+  /** Nível de motion global (soft/wave/intense/chaotic) — dirige os tokens de
+   *  animação do DS (--axxa-motion-*). Aplicado como data-axxa-motion na
+   *  .axxa-root; governa toda animação nova daqui pra frente. v0.1.211 */
+  motion: string;
+  /** Toggle de "reduzir movimento" no MOBILE — quando ligado, neutraliza os
+   *  tokens de motion (.axxa-reduce-motion na .axxa-root) só em telas touch. */
+  reducedMotionMobile: boolean;
   /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
   recordingsPath: string;
   /** Pasta no Vault onde respostas da IA salvas como nota (footer) vão. */
@@ -235,6 +242,8 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   language: "pt-br",
   background: "none",
   density: "normal",
+  motion: "wave",
+  reducedMotionMobile: false,
   recordingsPath: "axxa-ai/recordings",
   notesPath: "axxa-ai/notes",
   responseStyle: "normal",

@@ -766,6 +766,16 @@ export const PT_BR = {
     densityLarge: "Large",
     densityNormal: "Normal",
     densityCompact: "Compact",
+    motion: "Movimento",
+    motionDesc:
+      "A personalidade das animações do app — vale pra tudo que animamos daqui pra frente. Soft é discreto; Chaotic é mola pura.",
+    motionSoft: "Soft",
+    motionWave: "Wave",
+    motionIntense: "Intense",
+    motionChaotic: "Chaotic",
+    reducedMotionMobile: "Reduzir movimento no mobile",
+    reducedMotionMobileDesc:
+      "No celular/tablet, desliga as animações de movimento (segura bateria e evita enjoo). Não afeta o desktop.",
     appearance: "Aparência",
     appearanceDesc:
       "Escolha um fundo pra interface do AXXA. Cores e gradientes (lineares + radiais).",
