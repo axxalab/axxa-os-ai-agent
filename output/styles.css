@@ -1265,6 +1265,62 @@ body.is-mobile
   --axxa-row-py: 12px;
   --axxa-stack-gap: 4px;
 }
+
+/* [DS:motion] Nível de animação GLOBAL — 4 personalidades que reescalam o motion
+   de tudo que fizermos daqui pra frente. Aplicado via data-axxa-motion na
+   .axxa-root. Default = "wave" (a mola-assinatura do app, mesma do modal/effort:
+   cubic-bezier(0.34,1.25,0.4,1)). Tokens:
+     --axxa-motion-dur   duração base
+     --axxa-motion-ease  curva (quanto overshoot/bounce)
+     --axxa-motion-amp   amplitude (multiplica deslocamentos/translate)
+     --axxa-motion-pop   escala inicial dos "pops" (quão pequeno nasce) */
+.axxa-root {
+  --axxa-motion-dur: 0.34s;
+  --axxa-motion-ease: cubic-bezier(0.34, 1.25, 0.4, 1);
+  --axxa-motion-amp: 1;
+  --axxa-motion-pop: 0.92;
+}
+.axxa-root[data-axxa-motion="soft"] {
+  --axxa-motion-dur: 0.2s;
+  --axxa-motion-ease: cubic-bezier(0.33, 0, 0.2, 1);
+  --axxa-motion-amp: 0.5;
+  --axxa-motion-pop: 0.97;
+}
+.axxa-root[data-axxa-motion="wave"] {
+  --axxa-motion-dur: 0.34s;
+  --axxa-motion-ease: cubic-bezier(0.34, 1.25, 0.4, 1);
+  --axxa-motion-amp: 1;
+  --axxa-motion-pop: 0.92;
+}
+.axxa-root[data-axxa-motion="intense"] {
+  --axxa-motion-dur: 0.44s;
+  --axxa-motion-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --axxa-motion-amp: 1.5;
+  --axxa-motion-pop: 0.85;
+}
+.axxa-root[data-axxa-motion="chaotic"] {
+  --axxa-motion-dur: 0.6s;
+  --axxa-motion-ease: cubic-bezier(0.6, -0.5, 0.3, 1.7);
+  --axxa-motion-amp: 2.3;
+  --axxa-motion-pop: 0.74;
+}
+/* Reduzir movimento — toggle do user (mobile, .axxa-reduce-motion) OU preferência
+   do SO. Neutraliza os tokens → animações novas viram quase-instantâneas. */
+.axxa-root.axxa-reduce-motion {
+  --axxa-motion-dur: 0.01s;
+  --axxa-motion-ease: linear;
+  --axxa-motion-amp: 0;
+  --axxa-motion-pop: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .axxa-root {
+    --axxa-motion-dur: 0.01s;
+    --axxa-motion-ease: linear;
+    --axxa-motion-amp: 0;
+    --axxa-motion-pop: 1;
+  }
+}
+
 /* [DS:list-compact] Linha de lista densa: 1 linha (título cresce + meta à
    direita). Reuso em qualquer lista (recentes, etc). */
 .axxa-list-compact-row {
@@ -10984,52 +11040,51 @@ body.is-mobile .axxa-wave-area {
 }
 
 /* [DS:seg-accent] Variante "label no ativo" (recentes): o slot ATIVO mostra o
-   texto do modo e cresce na horizontal pra caber; inativos ficam só ícone.
-   Largura do trilho por conteúdo; a ALTURA não muda (label é menor que o
-   ícone). Os slots deixam de ser iguais → o indicador é MEDIDO em JS
-   (left/width inline); aqui só ligamos a transição de width + o morph. v0.1.210 */
+   texto do modo e cresce na horizontal pra caber; inativos ficam só ícone. O
+   trilho preenche a sidebar inteira (X) — inativos dividem o espaço, o ativo
+   leva ~2.4×. A ALTURA não muda (label é menor que o ícone). Os slots não são
+   iguais → o indicador é MEDIDO em JS (left/width inline). O slide+morph e o
+   "pop" do label herdam o motion do app via [DS:motion]. v0.1.211 */
 .axxa-sidebar-seg .axxa-seg-labeled {
-  width: -moz-fit-content;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
 }
 .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-btn {
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: 0;
   gap: 6px;
-  padding: var(--axxa-seg-btn-py) 9px;
+  padding: var(--axxa-seg-btn-py) 6px;
 }
 .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-btn-active {
-  padding-right: 11px;
+  flex: 2.4 1 0;
+  padding-right: 8px;
 }
 .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind {
   width: auto; /* a largura real vem inline (medida); evita o calc de slot-igual */
-  transition: transform 0.34s cubic-bezier(0.4, 0, 0.2, 1),
-    width 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+  /* [DS:motion] slide + morph com a personalidade de motion escolhida. */
+  transition: transform var(--axxa-motion-dur) var(--axxa-motion-ease),
+    width var(--axxa-motion-dur) var(--axxa-motion-ease);
 }
 .axxa-sidebar-seg .axxa-seg-btn-label {
   font-size: var(--font-ui-smaller);
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--text-accent);
-  animation: axxa-seg-label-in 0.22s ease both;
+  /* [DS:motion] o label "nasce" com a mola/overshoot do nível de motion. */
+  animation: axxa-seg-label-in var(--axxa-motion-dur) var(--axxa-motion-ease) both;
 }
 @keyframes axxa-seg-label-in {
   from {
     opacity: 0;
-    transform: translateX(-3px);
+    transform: translateX(calc(-6px * var(--axxa-motion-amp, 1)))
+      scale(var(--axxa-motion-pop, 0.92));
   }
   to {
     opacity: 1;
     transform: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .axxa-sidebar-seg .axxa-seg-btn-label {
-    animation: none;
-  }
-  .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind {
-    transition: none;
   }
 }
 

@@ -754,6 +754,16 @@ export const EN_US: Translations = {
     densityLarge: "Large",
     densityNormal: "Normal",
     densityCompact: "Compact",
+    motion: "Motion",
+    motionDesc:
+      "The personality of the app's animations — applies to everything we animate from here on. Soft is subtle; Chaotic is pure spring.",
+    motionSoft: "Soft",
+    motionWave: "Wave",
+    motionIntense: "Intense",
+    motionChaotic: "Chaotic",
+    reducedMotionMobile: "Reduce motion on mobile",
+    reducedMotionMobileDesc:
+      "On phone/tablet, turns off motion animations (saves battery, avoids motion sickness). Doesn't affect desktop.",
     appearance: "Appearance",
     appearanceDesc:
       "Pick a background for AXXA's interface. Colors and gradients (linear + radial).",

@@ -23,8 +23,8 @@ Pra varrer o que ainda é legado (sem tag), procure blocos `.axxa-*` em
 `styles/main.css` que **não** têm `[DS:` perto. A limpeza acontece aos poucos —
 não apagamos nada que não tenha certeza.
 
-Index de tags ativas: `pill`, `badge`, `list-compact`, `seg-accent`, `density`.
-(cresce conforme criamos.)
+Index de tags ativas: `pill`, `badge`, `list-compact`, `seg-accent`, `density`,
+`motion`. (cresce conforme criamos.)
 
 ---
 
@@ -68,6 +68,40 @@ inteira de uma vez.
 ⚠️ O `.axxa-seg-btn` leva `min-height:0 !important; height:auto !important` —
 sem isso o `.mobile-tap` do Obsidian força 44px e o segmented fica gigante no
 mobile (mesma armadilha do [DS:list-compact]).
+
+### [DS:motion] — personalidade global das animações (soft / wave / intense / chaotic)
+**Regra:** **toda animação nova** consome os tokens de motion em vez de
+hard-codar duração/easing. O usuário escolhe o nível em **Settings → Aparência →
+Interface**; vai pra `settings.motion` e vira `data-axxa-motion` na `.axxa-root`.
+**"wave" é o default** — a mola-assinatura do app (a mesma do modal/effort:
+`cubic-bezier(0.34,1.25,0.4,1)`).
+
+```css
+/* defaults = wave, na .axxa-root */
+--axxa-motion-dur: 0.34s;                        /* duração base          */
+--axxa-motion-ease: cubic-bezier(0.34,1.25,0.4,1); /* curva (overshoot)   */
+--axxa-motion-amp: 1;                            /* amplitude (translate) */
+--axxa-motion-pop: 0.92;                         /* escala inicial do pop */
+```
+
+| token | soft | wave | intense | chaotic |
+|-------|:----:|:----:|:-------:|:-------:|
+| `--axxa-motion-dur` | 0.2s | 0.34s | 0.44s | 0.6s |
+| `--axxa-motion-amp` | 0.5 | 1 | 1.5 | 2.3 |
+| `--axxa-motion-pop` | 0.97 | 0.92 | 0.85 | 0.74 |
+| `--axxa-motion-ease` | ease-out | spring leve | overshoot | anticipa+bounce |
+
+**Como consumir:** transições → `transition: transform var(--axxa-motion-dur)
+var(--axxa-motion-ease)`. "Pops" (entrada) → keyframe que lê os tokens:
+`transform: translateX(calc(-6px * var(--axxa-motion-amp))) scale(var(--axxa-motion-pop))`.
+Custom properties funcionam DENTRO de `@keyframes` (resolvem no elemento).
+
+**Reduzir movimento:** `.axxa-root.axxa-reduce-motion` (toggle do user no mobile,
+`settings.reducedMotionMobile`, aplicado via `Platform.isMobile`) **e** o
+`@media (prefers-reduced-motion: reduce)` do SO neutralizam os tokens
+(dur `0.01s`, amp `0`, pop `1`) → animações novas viram quase-instantâneas. Como
+tudo lê os tokens, **uma** chave cobre o DS inteiro. Animações legadas (modal,
+effort, etc) não estão tokenizadas — migram pra cá quando forem tocadas.
 
 ### [DS:pill] — superfície de hover/seleção (vidro fosco)
 **Regra:** toda superfície selecionável (item de nav, item de lista, chip,
@@ -123,12 +157,13 @@ Espelha a estrutura de um drawer minimalista; só o tema é nosso.
   - **[DS:seg-accent]** — botão ATIVO em accent (pílula tingida + ícone
     `--text-accent`).
   - **Label no ativo** (`showActiveLabel`) — só o slot selecionado mostra o
-    texto do modo e cresce na horizontal; inativos ficam só ícone. A **altura
-    não muda** (o label é menor que o ícone). Como os slots deixam de ser
-    iguais, o indicador é **medido em JS** (`offsetLeft/Width` do botão ativo,
-    via `useLayoutEffect` + `ResizeObserver`) e posicionado inline — desliza E
-    faz morph de largura. Quem não passa a prop continua no modo slot-igual
-    (StarterScreen etc).
+    texto do modo e cresce (~2.4×); inativos ficam só ícone. O trilho **preenche
+    a sidebar inteira** (X) — inativos dividem o resto. A **altura não muda** (o
+    label é menor que o ícone). Como os slots deixam de ser iguais, o indicador
+    é **medido em JS** (`offsetLeft/Width` do botão ativo, via `useLayoutEffect`
+    + `ResizeObserver`) e posicionado inline — desliza E faz morph de largura. O
+    slide e o "pop" do label herdam **[DS:motion]** (mola do app). Quem não passa
+    a prop continua no modo slot-igual (StarterScreen etc).
   - **Haptics** — `hapticTick()` no `onSelect` (feedback ao trocar de modo).
 - **Rodapé (conta):** avatar (iniciais) + **nome** + **[DS:badge]** + stats
   básicas (`N conversas · T tokens`) + engrenagem (Settings).

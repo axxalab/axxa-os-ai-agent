@@ -94,7 +94,7 @@ import {
   type ChatData,
   type ChatSummary,
 } from "../components/_shared/chatPersistence";
-import { Notice, TFile } from "obsidian";
+import { Notice, TFile, Platform } from "obsidian";
 import { ensureFolder } from "../components/_shared/chatPersistence";
 import { hybridSearch } from "../rag/hybrid";
 import type { AxxaCommand } from "../components/composer/completions";
@@ -2680,9 +2680,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             "axxa-root axxa-bg-" +
             (plugin.settings.background || "none") +
             (plugin.settings.codeWrap ? " axxa-code-wrap" : "") +
-            (isLoading ? " axxa-bg-active" : "")
+            (isLoading ? " axxa-bg-active" : "") +
+            (Platform.isMobile && plugin.settings.reducedMotionMobile
+              ? " axxa-reduce-motion"
+              : "")
           }
           data-axxa-density={plugin.settings.density || "normal"}
+          data-axxa-motion={plugin.settings.motion || "wave"}
         >
           <Header
             version={plugin.manifest.version}
