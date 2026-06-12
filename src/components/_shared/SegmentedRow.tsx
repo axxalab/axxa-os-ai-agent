@@ -96,10 +96,18 @@ export function SegmentedRow({
         (prev.left !== next.left || prev.width !== next.width)
       ) {
         const { ms, ease } = readMotion(indEl);
+        // Slide+morph + POP de escala (igual à entrada do modal do card de
+        // modelo): a mola do ease leva o scale 0.94→1 com overshoot. v0.1.217
         indEl.animate(
           [
-            { transform: `translateX(${prev.left}px)`, width: `${prev.width}px` },
-            { transform: `translateX(${next.left}px)`, width: `${next.width}px` },
+            {
+              transform: `translateX(${prev.left}px) scale(0.94)`,
+              width: `${prev.width}px`,
+            },
+            {
+              transform: `translateX(${next.left}px) scale(1)`,
+              width: `${next.width}px`,
+            },
           ],
           { duration: ms, easing: ease, fill: "none" }
         );

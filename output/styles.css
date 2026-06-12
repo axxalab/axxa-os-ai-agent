@@ -11208,6 +11208,53 @@ body.is-mobile .axxa-wave-area {
      SegmentedRow (robusto — ver comentário lá). transition:none aqui pra o
      inline-style de descanso não disparar uma 2ª animação por cima. v0.1.216 */
   transition: none;
+  /* contém o shimmer no formato da pílula. v0.1.217 */
+  overflow: hidden;
+}
+/* [DS:motion] "Efeito de modal" no pill SELECIONADO — igual ao card de modelo
+   (.axxa-mc-modal): glow cônico girando na borda (::before, anel mascarado,
+   @property --axxa-glow) + shimmer varrendo (::after). O pop de entrada é a mola
+   do WAAPI (scale no keyframe). v0.1.217 */
+.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--axxa-glow),
+    transparent 0deg,
+    color-mix(in srgb, var(--interactive-accent) 92%, #ffffff) 38deg,
+    transparent 96deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: axxa-border-glow 3.2s linear infinite;
+}
+.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 36%,
+    color-mix(in srgb, #ffffff 16%, transparent) 50%,
+    transparent 64%
+  );
+  transform: translateX(-90%);
+  animation: axxa-eff-shimmer 3.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind::before,
+  .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind::after {
+    animation: none;
+  }
 }
 .axxa-sidebar-seg .axxa-seg-btn-label {
   font-size: var(--font-ui-smaller);

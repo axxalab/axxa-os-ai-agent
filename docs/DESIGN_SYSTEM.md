@@ -179,7 +179,13 @@ Espelha a estrutura de um drawer minimalista; só o tema é nosso.
   movimento da pílula do segmento.
 - **Filtro:** "Todos" é `iconOnly` (fica selecionado mas sem label, não cresce);
   um `dividerBefore` no Chat desenha o "|" que separa Todos dos 3 modos. O
-  slide+morph da pílula é **WAAPI** (ver [DS:motion]).
+  slide+morph da pílula é **WAAPI** (ver [DS:motion]), com **pop de escala
+  0.94→1** (mola) na troca — igual à entrada do modal do card.
+- **Efeito de modal no pill selecionado** (v0.1.217): o `.axxa-seg-ind` ativo
+  reusa o visual do `.axxa-mc-modal` — **glow cônico girando na borda** (`::before`
+  anel mascarado + `@property --axxa-glow`) + **shimmer** varrendo (`::after`).
+  `overflow:hidden` contém o shimmer no formato da pílula. Gated por
+  `prefers-reduced-motion` (igual ao modal).
 - **Filtro sticky:** `.axxa-sidebar-recents-head` é `position:sticky; top:0` —
   com muito chat, ao rolar a lista o filtro gruda no topo (mesmo lugar do
   auto-scroll) e desce de volta ao subir. Em glass vira vidro fosco pra a lista
