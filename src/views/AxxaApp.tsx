@@ -355,6 +355,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [showAllSet, setShowAllSet] = useState(false);
 
+  // "Tudo certo!" auto-dispensa em 1.7s — timer com cleanup (evita update em
+  // componente desmontado / timers acumulados). v0.1.195
+  useEffect(() => {
+    if (!showAllSet) return;
+    const id = window.setTimeout(() => setShowAllSet(false), 1700);
+    return () => window.clearTimeout(id);
+  }, [showAllSet]);
+
   const finishOnboarding = async (openSettings: boolean) => {
     plugin.settings.onboardingDone = true;
     await plugin.saveSettings();
@@ -363,7 +371,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     } else {
       // "Tudo certo!" (ref: ChatGPT iOS 20) — confirmação breve antes do chat.
       setShowAllSet(true);
-      window.setTimeout(() => setShowAllSet(false), 1700);
     }
   };
   // License key (#15) — salva e re-renderiza (tier recomputa). Notice do estado.
@@ -451,9 +458,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // chat↔projeto acontece no 1º send (quando o chat id é criado).
   const pendingProjectIdRef = useRef<string | null>(null);
 
-  const persistProjects = async (next: Project[]) => {
-    setProjects(next);
+  // Updater funcional: lê a fonte da verdade (settings.projects, atualizada
+  // sincronamente) em vez do estado React do closure — evita que duas operações
+  // concorrentes (ex: add-source durante um await + rename) percam dados. v0.1.195
+  const persistProjects = async (
+    update: (prev: Project[]) => Project[]
+  ) => {
+    const next = update(plugin.settings.projects ?? []);
     plugin.settings.projects = next;
+    setProjects(next);
     await plugin.saveSettings();
   };
 
@@ -487,10 +500,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   }) => {
     const editing = projectEditor?.project;
     if (editing) {
-      await persistProjects(
-        projects.map((p) =>
-          p.id === editing.id ? { ...p, ...data } : p
-        )
+      await persistProjects((prev) =>
+        prev.map((p) => (p.id === editing.id ? { ...p, ...data } : p))
       );
     } else {
       const proj: Project = {
@@ -502,7 +513,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         chatIds: [],
         createdAt: new Date().toISOString(),
       };
-      await persistProjects([proj, ...projects]);
+      await persistProjects((prev) => [proj, ...prev]);
       setSelectedProjectId(proj.id);
       new Notice(t.projects.created(proj.name));
     }
@@ -512,7 +523,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const handleDeleteProject = async () => {
     const editing = projectEditor?.project;
     if (!editing) return;
-    await persistProjects(projects.filter((p) => p.id !== editing.id));
+    await persistProjects((prev) => prev.filter((p) => p.id !== editing.id));
     setProjectEditor(null);
     setSelectedProjectId(null);
     new Notice(t.projects.deleted);
@@ -521,8 +532,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const handleAddProjectSource = async (projectId: string) => {
     const path = await openVaultNotePicker(plugin.app, t);
     if (!path) return;
-    await persistProjects(
-      projects.map((p) =>
+    await persistProjects((prev) =>
+      prev.map((p) =>
         p.id === projectId && !p.sources.includes(path)
           ? { ...p, sources: [...p.sources, path] }
           : p
@@ -535,8 +546,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     projectId: string,
     path: string
   ) => {
-    await persistProjects(
-      projects.map((p) =>
+    await persistProjects((prev) =>
+      prev.map((p) =>
         p.id === projectId
           ? { ...p, sources: p.sources.filter((s) => s !== path) }
           : p
@@ -882,8 +893,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             responseId = addMessage({ type: "ai-response", content: token });
             setStreamingMessageId(responseId);
             // Flush do raciocínio bufferizado antes do 1º token de conteúdo.
+            // Limpa o buffer: a partir daqui os deltas vão direto pra mensagem.
             if (reasoningBuf) {
               useChatStore.getState().appendReasoning(responseId, reasoningBuf);
+              reasoningBuf = "";
             }
           } else {
             appendToMessage(responseId, token);
@@ -1554,8 +1567,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       if (pendingProjectIdRef.current) {
         const pid = pendingProjectIdRef.current;
         pendingProjectIdRef.current = null;
-        void persistProjects(
-          projects.map((p) =>
+        void persistProjects((prev) =>
+          prev.map((p) =>
             p.id === pid && !p.chatIds.includes(newId)
               ? { ...p, chatIds: [newId, ...p.chatIds] }
               : p
@@ -2257,7 +2270,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         path = `${folder}/${safeTitle} ${n}.md`;
         n += 1;
       }
-      await plugin.app.vault.create(path, content);
+      // vault.create pode falhar se o índice da pasta ainda não sincronizou
+      // (ensureFolder escreve via adapter). Fallback pro adapter.write, igual
+      // ao padrão de generation/save.ts. v0.1.195
+      try {
+        await plugin.app.vault.create(path, content);
+      } catch {
+        await plugin.app.vault.adapter.write(path, content);
+      }
       new Notice(t.chat.savedAsNote(path));
       // Abre a nota recém-criada numa nova aba (lazy — não bloqueia se falhar).
       const file = plugin.app.vault.getAbstractFileByPath(path);

@@ -31,6 +31,27 @@ describe("buildChatSystemPrompt", () => {
       "BASE\n\n[notas]"
     );
   });
+  it("styleInstruction entra após o head (antes do vault) — v0.1.189", () => {
+    expect(
+      buildChatSystemPrompt({ base: "BASE", styleInstruction: "Seja conciso." })
+    ).toBe("BASE\n\nSeja conciso.");
+  });
+  it("styleInstruction vazio/espacos não muda nada", () => {
+    expect(buildChatSystemPrompt({ base: "BASE", styleInstruction: "   " })).toBe(
+      "BASE"
+    );
+  });
+  it("ordem completa: persona + style + vault + notes", () => {
+    const r = buildChatSystemPrompt({
+      persona: "P",
+      base: "BASE",
+      styleInstruction: "S",
+      vaultSuffix: "\n\nV:\n",
+      vaultBlock: "ctx",
+      noteBlock: "\n\nN",
+    });
+    expect(r).toBe("P\n\nS\n\nV:\nctx\n\nN");
+  });
 });
 
 describe("buildAgentSystemPrompt", () => {

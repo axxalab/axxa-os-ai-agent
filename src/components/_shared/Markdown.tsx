@@ -36,6 +36,7 @@ export function Markdown({ content }: MarkdownProps) {
 
     el.empty();
     let cancelled = false;
+    let disposeLinks: (() => void) | null = null;
 
     // MarkdownRenderer.render retorna Promise — espera o highlight async
     // antes de scan dos <pre>. Promise.resolve() lida com APIs antigas
@@ -46,7 +47,7 @@ export function Markdown({ content }: MarkdownProps) {
       if (cancelled) return;
       enhanceCodeBlocks(el);
       enhanceInternalLinks(el, app);
-      wireExternalLinkSafety(el, app, {
+      disposeLinks = wireExternalLinkSafety(el, app, {
         title: t.linkSafety.title,
         desc: t.linkSafety.desc,
         open: t.linkSafety.open,
@@ -59,6 +60,7 @@ export function Markdown({ content }: MarkdownProps) {
 
     return () => {
       cancelled = true;
+      disposeLinks?.();
       component.unload();
     };
   }, [app, content, t]);

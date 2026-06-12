@@ -27,6 +27,7 @@ import {
   ProviderToolCall,
   TokenHandler,
   UsageHandler,
+  ReasoningHandler,
 } from "./base";
 import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
 import { ensureOkRequest, ensureOkStream } from "./_shared";
@@ -312,7 +313,8 @@ export class AnthropicProvider implements Provider {
     apiKey: string,
     onToken: TokenHandler,
     onUsage?: UsageHandler,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onReasoning?: ReasoningHandler
   ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
@@ -385,6 +387,12 @@ export class AnthropicProvider implements Provider {
               if (typeof token === "string" && token.length > 0) {
                 accumulatedText += token;
                 onToken(token);
+              }
+            } else if (json.delta?.type === "thinking_delta") {
+              // Extended thinking do Claude → canal de reasoning. v0.1.195
+              const th = json.delta.thinking;
+              if (onReasoning && typeof th === "string" && th.length > 0) {
+                onReasoning(th);
               }
             } else if (json.delta?.type === "input_json_delta") {
               const idx = json.index;

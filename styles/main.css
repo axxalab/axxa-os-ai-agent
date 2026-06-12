@@ -2519,6 +2519,12 @@ body.is-mobile
 .axxa-inspire-back:hover {
   background: var(--background-modifier-hover);
 }
+.axxa-inspire-titles {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .axxa-inspire-title {
   margin: 0;
   font-size: var(--font-ui-large);

@@ -27,6 +27,7 @@ import {
   ProviderToolCall,
   TokenHandler,
   UsageHandler,
+  ReasoningHandler,
   MediaGenerationRequest,
   MediaGenerationItem,
 } from "./base";
@@ -156,9 +157,12 @@ export class NimProvider implements Provider {
     apiKey: string,
     onToken: TokenHandler,
     onUsage?: UsageHandler,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _onReasoning?: ReasoningHandler
   ): Promise<ProviderResponse> {
     // Reusa a chat() que já vai por requestUrl e funciona em prod.
+    // (pseudo-stream — sem deltas de reasoning a rotear)
     if (signal?.aborted) {
       throw new DOMException("Aborted", "AbortError");
     }

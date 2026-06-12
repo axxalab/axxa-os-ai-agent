@@ -92,6 +92,38 @@ describe("openai streamChat — parser SSE real", () => {
     });
   });
 
+  it("roteia reasoning/reasoning_content via onReasoning sem poluir o content — v0.1.193", async () => {
+    mockFetch([
+      sse({ choices: [{ delta: { reasoning: "pensando" } }] }),
+      sse({ choices: [{ delta: { reasoning_content: " mais" } }] }),
+      sse({ choices: [{ delta: { content: "Resposta" } }] }),
+      "data: [DONE]\n\n",
+    ]);
+    const tokens: string[] = [];
+    const reasoning: string[] = [];
+    const res = await openaiProvider.streamChat(
+      userReq("gpt-4o"),
+      "key",
+      (t) => tokens.push(t),
+      undefined,
+      undefined,
+      (r) => reasoning.push(r)
+    );
+    expect(reasoning).toEqual(["pensando", " mais"]);
+    expect(tokens).toEqual(["Resposta"]);
+    expect(res.content).toBe("Resposta");
+  });
+
+  it("sem onReasoning: deltas de reasoning não quebram o stream nem entram no content", async () => {
+    mockFetch([
+      sse({ choices: [{ delta: { reasoning: "oculto" } }] }),
+      sse({ choices: [{ delta: { content: "ok" } }] }),
+      "data: [DONE]\n\n",
+    ]);
+    const res = await openaiProvider.streamChat(userReq("gpt-4o"), "key", () => {});
+    expect(res.content).toBe("ok");
+  });
+
   it("ignora chunk com JSON inválido sem abortar o stream", async () => {
     mockFetch([
       "data: isso-nao-e-json\n\n",
@@ -161,6 +193,29 @@ describe("anthropic streamChat — eventos tipados", () => {
     expect(tokens).toEqual(["Hi", " there"]);
     expect(res.content).toBe("Hi there");
     expect(usage).toEqual({ input: 12, output: 7 });
+  });
+
+  it("thinking_delta roteia pro onReasoning sem entrar no content — v0.1.195", async () => {
+    mockFetch([
+      sse({ type: "message_start", message: { usage: { input_tokens: 4 } } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "hmm" } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Oi" } }),
+      sse({ type: "message_delta", usage: { output_tokens: 2 } }),
+      sse({ type: "message_stop" }),
+    ]);
+    const tokens: string[] = [];
+    const reasoning: string[] = [];
+    const res = await anthropicProvider.streamChat(
+      userReq("claude-opus-4-8"),
+      "key",
+      (t) => tokens.push(t),
+      undefined,
+      undefined,
+      (r) => reasoning.push(r)
+    );
+    expect(reasoning).toEqual(["hmm"]);
+    expect(tokens).toEqual(["Oi"]);
+    expect(res.content).toBe("Oi");
   });
 
   it("tool_use: content_block_start + input_json_delta concatenado → toolCall parseado", async () => {

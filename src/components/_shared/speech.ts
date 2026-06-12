@@ -30,6 +30,24 @@ export function cancelSpeech(): void {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 
+// ── Exclusividade de fala ──────────────────────────────────
+// speechSynthesis é GLOBAL: só uma fala toca por vez. Quando um novo speak()
+// começa, o anterior é cancelado pelo browser — mas o componente que o disparou
+// não sabe (UI fica travada em "falando"). Este registry avisa o "dono" anterior
+// pra resetar o estado. v0.1.195
+let activeSpeaker: (() => void) | null = null;
+
+/** Registra o reset do falante atual; reseta o anterior (cuja fala foi cortada). */
+export function claimSpeaker(reset: () => void): void {
+  if (activeSpeaker && activeSpeaker !== reset) activeSpeaker();
+  activeSpeaker = reset;
+}
+
+/** Libera o slot se `reset` ainda for o dono (fala terminou/parou). */
+export function releaseSpeaker(reset: () => void): void {
+  if (activeSpeaker === reset) activeSpeaker = null;
+}
+
 /** Fala o texto. Devolve true se conseguiu iniciar. */
 export function speak(text: string, opts: SpeakOpts = {}): boolean {
   if (!("speechSynthesis" in window)) {

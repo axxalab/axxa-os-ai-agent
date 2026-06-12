@@ -118,12 +118,13 @@ export function wireExternalLinkSafety(
   root: HTMLElement,
   app: App,
   labels: LinkSafetyLabels
-): void {
+): () => void {
+  const wired: Array<{ el: HTMLAnchorElement; handler: (e: MouseEvent) => void }> = [];
   const links = root.querySelectorAll<HTMLAnchorElement>("a.external-link");
   links.forEach((a) => {
     if (a.dataset.axxaSafeWired) return;
     a.dataset.axxaSafeWired = "1";
-    a.addEventListener("click", (e) => {
+    const handler = (e: MouseEvent) => {
       const href = a.getAttribute("href") || a.getAttribute("data-href") || "";
       if (!href || !/^https?:\/\//i.test(href)) return; // só http(s)
       e.preventDefault();
@@ -133,6 +134,12 @@ export function wireExternalLinkSafety(
         return;
       }
       new LinkSafetyModal(app, href, labels).open();
-    });
+    };
+    a.addEventListener("click", handler);
+    wired.push({ el: a, handler });
   });
+  // Disposer: remove os listeners (chamado no cleanup do efeito do Markdown).
+  return () => {
+    for (const { el, handler } of wired) el.removeEventListener("click", handler);
+  };
 }

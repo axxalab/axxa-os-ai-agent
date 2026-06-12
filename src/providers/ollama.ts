@@ -28,6 +28,7 @@ import {
   ProviderToolCall,
   TokenHandler,
   UsageHandler,
+  ReasoningHandler,
 } from "./base";
 import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
 import {
@@ -157,7 +158,9 @@ export class OllamaProvider implements Provider {
     apiKey: string,
     onToken: TokenHandler,
     onUsage?: UsageHandler,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _onReasoning?: ReasoningHandler
   ): Promise<ProviderResponse> {
     const endpoint = this.getEndpoint(apiKey);
 

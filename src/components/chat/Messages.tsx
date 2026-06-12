@@ -9,9 +9,16 @@
 // (desktop) ou long-press 500ms (mobile) — ações: Copiar, Regenerar (só AI),
 // Deletar. Regen e Delete vêm do ChatActionsContext (lógica no AxxaApp).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
+import {
+  speak,
+  cancelSpeech,
+  plainForSpeech,
+  claimSpeaker,
+  releaseSpeaker,
+} from "../_shared/speech";
 import { ThinkingGlyph } from "../_shared/ThinkingGlyph";
 import { hapticTick } from "../_shared/haptics";
 import { Markdown } from "../_shared/Markdown";
@@ -239,41 +246,50 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   };
 
   // Read-aloud via Web Speech API (local, sem custo). Toggle: fala / para.
+  // Usa o helper compartilhado speak() + registry de exclusividade: como
+  // speechSynthesis é global, iniciar a leitura de OUTRA mensagem reseta o
+  // estado "falando" desta (cuja fala foi cortada). v0.1.195
   const [speaking, setSpeaking] = useState(false);
+  const resetSpeakingRef = useRef(() => setSpeaking(false));
   const handleReadAloud = () => {
-    const synth = window.speechSynthesis;
-    if (!synth) {
+    if (!("speechSynthesis" in window)) {
       new Notice(t.chat.saveAsNoteFailed);
       return;
     }
     if (speaking) {
-      synth.cancel();
+      cancelSpeech();
+      releaseSpeaker(resetSpeakingRef.current);
       setSpeaking(false);
       return;
     }
-    // Tira a sintaxe markdown mais ruidosa antes de falar.
-    const plain = msg.content
-      .replace(/```[\s\S]*?```/g, " ")
-      .replace(/`([^`]+)`/g, "$1")
-      .replace(/[#*_>~|]/g, "")
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-      .replace(/\n{2,}/g, ". ")
-      .trim();
+    const plain = plainForSpeech(msg.content);
     if (!plain) return;
-    const utter = new SpeechSynthesisUtterance(plain);
-    utter.onend = () => setSpeaking(false);
-    utter.onerror = () => setSpeaking(false);
-    synth.cancel();
-    synth.speak(utter);
-    setSpeaking(true);
+    claimSpeaker(resetSpeakingRef.current); // reseta o falante anterior, se houver
+    const ok = speak(plain, {
+      onEnd: () => {
+        setSpeaking(false);
+        releaseSpeaker(resetSpeakingRef.current);
+      },
+      onError: () => {
+        setSpeaking(false);
+        releaseSpeaker(resetSpeakingRef.current);
+      },
+    });
+    if (ok) setSpeaking(true);
   };
 
-  // Para a leitura se a mensagem desmontar (troca de chat, delete, etc).
+  // Para a leitura SÓ desta mensagem se ela desmontar (troca de chat, delete).
+  // Dep [] = só no unmount; usa o ref pra ler o estado atual sem re-registrar.
+  const speakingRef = useRef(speaking);
+  speakingRef.current = speaking;
   useEffect(() => {
     return () => {
-      if (speaking) window.speechSynthesis?.cancel();
+      if (speakingRef.current) {
+        cancelSpeech();
+        releaseSpeaker(resetSpeakingRef.current);
+      }
     };
-  }, [speaking]);
+  }, []);
 
   const handleDelete = () => {
     actions.deleteMessage(msg.id);

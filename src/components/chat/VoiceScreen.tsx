@@ -17,6 +17,8 @@ import {
   listVoices,
   isSpeechRecognitionAvailable,
   startDictation,
+  claimSpeaker,
+  releaseSpeaker,
   type DictationHandle,
 } from "../_shared/speech";
 
@@ -60,9 +62,16 @@ export function VoiceScreen({
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(listVoices());
 
   const dictationRef = useRef<DictationHandle | null>(null);
-  const spokenIdRef = useRef<string | null>(null);
+  // Inicia "já falado" como a última msg EXISTENTE — evita ler em voz a última
+  // resposta do chat ao só ENTRAR no modo voz; só novas respostas são lidas.
+  const spokenIdRef = useRef<string | null>(lastAi?.id ?? null);
   const stateRef = useRef<ConvoState>("idle");
   stateRef.current = state;
+  // onSend muda de identidade a cada render do pai (arrow inline). Ref viva
+  // evita closure obsoleta nos handlers de ditado sem re-rodar efeitos.
+  const onSendRef = useRef(onSend);
+  onSendRef.current = onSend;
+  const voiceResetRef = useRef(() => setState("idle"));
 
   // Voices podem carregar async (onvoiceschanged).
   useEffect(() => {
@@ -89,7 +98,7 @@ export function VoiceScreen({
         stopListening();
         setInterim("");
         setState("thinking");
-        onSend(text);
+        onSendRef.current(text);
       },
       onError: () => setState("idle"),
       onEnd: () => {
@@ -120,14 +129,19 @@ export function VoiceScreen({
       return;
     }
     setState("speaking");
+    claimSpeaker(voiceResetRef.current); // corta/reseta um read-aloud de mensagem
     speak(text, {
       voiceURI,
       rate: voiceRate,
       onEnd: () => {
+        releaseSpeaker(voiceResetRef.current);
         setState("idle");
         if (sttOk) startListening();
       },
-      onError: () => setState("idle"),
+      onError: () => {
+        releaseSpeaker(voiceResetRef.current);
+        setState("idle");
+      },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastAi?.id, lastAi?.done]);
@@ -172,7 +186,7 @@ export function VoiceScreen({
       <div className="axxa-voice axxa-voice-intro" role="dialog" aria-label={t.voice.introTitle}>
         <button
           type="button"
-          className="axxa-voice-close axxa-voice-close-corner"
+          className="axxa-voice-iconbtn axxa-voice-close-corner"
           onClick={handleClose}
           aria-label={t.voice.close}
         >
