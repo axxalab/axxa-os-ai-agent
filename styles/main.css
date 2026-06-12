@@ -10776,12 +10776,14 @@ body.is-mobile .axxa-wave-area {
 }
 .axxa-sidebar-brand {
   font-weight: 700;
-  font-size: var(--font-ui-large);
+  font-size: 1.35rem;
+  line-height: 1.2;
   color: var(--text-normal);
   min-width: 0;
 }
 
-/* "Nova conversa" — ícone + texto em accent, SEM card (ref: "New chat"). */
+/* "Nova conversa" — MESMA linha dos itens de nav (ícone + texto), só que em
+   accent. Sem fundo nem borda. */
 .axxa-sidebar-new,
 .axxa-sidebar-new:focus,
 .axxa-sidebar-new:active {
@@ -10790,13 +10792,13 @@ body.is-mobile .axxa-wave-area {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 6px 8px 2px 8px;
+  gap: 10px;
+  margin: 4px 10px 2px 10px;
   padding: 9px 10px;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  border-radius: 10px;
+  border-radius: 9px;
   color: var(--text-accent);
   font-weight: 600;
   font-size: var(--font-ui-small);
@@ -10804,8 +10806,8 @@ body.is-mobile .axxa-wave-area {
   transition: background 0.13s;
 }
 .axxa-sidebar-new svg {
-  width: 19px;
-  height: 19px;
+  width: 18px;
+  height: 18px;
 }
 .axxa-sidebar-new:hover {
   background: var(--background-modifier-hover) !important;
@@ -10832,13 +10834,13 @@ body.is-mobile .axxa-wave-area {
   padding: 0 8px 8px 8px;
 }
 .axxa-sidebar-recents-label {
-  padding: 4px 10px 8px 10px;
+  padding: 2px 10px 4px 10px;
   font-size: var(--font-ui-smaller);
   font-weight: 600;
   color: var(--text-faint);
 }
 
-/* Item PLANO: título + hora à direita (sem dot/chips/cards — ref minimalista). */
+/* Item PLANO compacto: título + hora à direita (sem dot/chips/cards). */
 .axxa-sidebar-item,
 .axxa-sidebar-item:focus,
 .axxa-sidebar-item:active {
@@ -10848,8 +10850,8 @@ body.is-mobile .axxa-wave-area {
   align-items: baseline;
   gap: 10px;
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 9px;
+  padding: 4px 10px;
+  border-radius: 8px;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
