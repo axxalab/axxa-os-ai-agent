@@ -11470,6 +11470,19 @@ body.is-mobile .axxa-wave-area {
   flex-direction: column;
   gap: 6px;
 }
+/* Ajustes da base (print 6:58 PM): provider segmented mais alto. v0.1.221 */
+.axxa-newchat .axxa-seg-block .axxa-seg {
+  height: 48px;
+}
+/* Composer LIMPO na base de nova conversa (escopado por .axxa-newchat-active na
+   .axxa-root): sem status line, sem disclaimer, send maior. v0.1.221 */
+.axxa-newchat-active .axxa-composer-info,
+.axxa-newchat-active .axxa-composer-disclaimer {
+  display: none;
+}
+.axxa-newchat-active .axxa-composer-send {
+  padding: 24px;
+}
 @keyframes axxa-newchat-in {
   from {
     opacity: 0;

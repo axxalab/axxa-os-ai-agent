@@ -2696,7 +2696,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             "axxa-root axxa-bg-" +
             (plugin.settings.background || "none") +
             (plugin.settings.codeWrap ? " axxa-code-wrap" : "") +
-            (isLoading ? " axxa-bg-active" : "")
+            (isLoading ? " axxa-bg-active" : "") +
+            (view === "chat" && isEmpty && cleanChat
+              ? " axxa-newchat-active"
+              : "")
           }
           data-axxa-density={plugin.settings.density || "normal"}
           data-axxa-motion={plugin.settings.motion || "wave"}
