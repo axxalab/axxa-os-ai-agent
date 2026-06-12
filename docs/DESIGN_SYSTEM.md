@@ -38,11 +38,13 @@ pra `settings.density` e vira o atributo `data-axxa-density` na `.axxa-root`.
 
 ```css
 /* defaults = normal, na .axxa-root */
---axxa-list-row-py: 6px;     /* padding vertical da linha de lista       */
+--axxa-list-row-py: 6px;     /* padding vertical da linha de lista densa  */
 --axxa-list-row-radius: 9px; /* raio da linha de lista                    */
 --axxa-pill-radius: 10px;    /* raio de pílulas/nav/realce                */
 --axxa-seg-btn-py: 5px;      /* padding vertical do botão do segmented    */
---axxa-row-gap: 10px;        /* respiro entre blocos                      */
+--axxa-row-gap: 10px;        /* gap INTERNO da linha (ícone → texto)      */
+--axxa-row-py: 9px;          /* padding vertical de linha confortável     */
+--axxa-stack-gap: 2px;       /* gap ENTRE linhas empilhadas / divisórias  */
 ```
 
 | token              | compact | normal | large |
@@ -52,11 +54,16 @@ pra `settings.density` e vira o atributo `data-axxa-density` na `.axxa-root`.
 | `--axxa-pill-radius`     | 8px | 10px| 12px |
 | `--axxa-seg-btn-py`      | 3px | 5px | 8px  |
 | `--axxa-row-gap`         | 8px | 10px| 12px |
+| `--axxa-row-py`          | 6px | 9px | 12px |
+| `--axxa-stack-gap`       | 1px | 2px | 4px  |
 
-Quem quiser participar da densidade só consome os tokens (ex.: `padding:
-var(--axxa-list-row-py) 10px`) em vez de hard-codar px. Já consomem:
-`.axxa-sidebar-item`, `.axxa-sidebar-nav-item` (raio), `.axxa-sidebar-seg
-.axxa-seg-btn` (padding).
+**Lei do DS:** nenhum componente novo hard-coda spacing/raio — consome estes
+tokens (ex.: `padding: var(--axxa-row-py) 10px`). A gaveta lateral é a
+referência: **todos** os componentes dela estão ligados — `-new`, `-nav`,
+`-nav-item`, `-divider`, `-item` (recentes), `-seg`, `-foot`, `-account` usam
+`--axxa-row-py` / `--axxa-row-gap` / `--axxa-stack-gap` / `--axxa-pill-radius` /
+`--axxa-list-row-*` / `--axxa-seg-btn-py`. Trocar a densidade reescala a gaveta
+inteira de uma vez.
 
 ⚠️ O `.axxa-seg-btn` leva `min-height:0 !important; height:auto !important` —
 sem isso o `.mobile-tap` do Obsidian força 44px e o segmented fica gigante no
@@ -115,6 +122,13 @@ Espelha a estrutura de um drawer minimalista; só o tema é nosso.
   aparecem em "Todos". Deletar via long-press/right-click (menu nativo).
   - **[DS:seg-accent]** — botão ATIVO em accent (pílula tingida + ícone
     `--text-accent`).
+  - **Label no ativo** (`showActiveLabel`) — só o slot selecionado mostra o
+    texto do modo e cresce na horizontal; inativos ficam só ícone. A **altura
+    não muda** (o label é menor que o ícone). Como os slots deixam de ser
+    iguais, o indicador é **medido em JS** (`offsetLeft/Width` do botão ativo,
+    via `useLayoutEffect` + `ResizeObserver`) e posicionado inline — desliza E
+    faz morph de largura. Quem não passa a prop continua no modo slot-igual
+    (StarterScreen etc).
   - **Haptics** — `hapticTick()` no `onSelect` (feedback ao trocar de modo).
 - **Rodapé (conta):** avatar (iniciais) + **nome** + **[DS:badge]** + stats
   básicas (`N conversas · T tokens`) + engrenagem (Settings).

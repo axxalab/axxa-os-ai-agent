@@ -216,6 +216,7 @@ export function Sidebar({
             <SegmentedRow
               items={filterItems}
               activeId={modeFilter}
+              showActiveLabel
               onSelect={(id) => {
                 hapticTick();
                 setModeFilter(id);

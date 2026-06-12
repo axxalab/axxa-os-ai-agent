@@ -1241,6 +1241,8 @@ body.is-mobile
   --axxa-pill-radius: 10px;
   --axxa-seg-btn-py: 5px;
   --axxa-row-gap: 10px;
+  --axxa-row-py: 9px;
+  --axxa-stack-gap: 2px;
 }
 /* [DS:density] Densidade global da UI — 3 modos que reescalam os tokens de
    spacing do DS (linha, pílula, segmented, gaps). Aplicado via
@@ -1251,6 +1253,8 @@ body.is-mobile
   --axxa-pill-radius: 8px;
   --axxa-seg-btn-py: 3px;
   --axxa-row-gap: 8px;
+  --axxa-row-py: 6px;
+  --axxa-stack-gap: 1px;
 }
 .axxa-root[data-axxa-density="large"] {
   --axxa-list-row-py: 9px;
@@ -1258,6 +1262,8 @@ body.is-mobile
   --axxa-pill-radius: 12px;
   --axxa-seg-btn-py: 8px;
   --axxa-row-gap: 12px;
+  --axxa-row-py: 12px;
+  --axxa-stack-gap: 4px;
 }
 /* [DS:list-compact] Linha de lista densa: 1 linha (título cresce + meta à
    direita). Reuso em qualquer lista (recentes, etc). */
@@ -1295,7 +1301,8 @@ body.is-mobile
 .axxa-sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  /* [DS:density] respiro entre linhas segue a densidade. */
+  gap: var(--axxa-stack-gap);
   padding: 0 10px;
   margin-bottom: 6px;
 }
@@ -1309,13 +1316,13 @@ body.is-mobile
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  /* [DS:density] gap/padding/raio seguem a densidade global. */
+  gap: var(--axxa-row-gap);
   width: 100%;
-  padding: 9px 10px;
+  padding: var(--axxa-row-py) 10px;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  /* [DS:density] raio do realce segue a densidade global. */
   border-radius: var(--axxa-pill-radius);
   color: var(--text-normal);
   font-size: var(--font-ui-small);
@@ -10885,14 +10892,15 @@ body.is-mobile .axxa-wave-area {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  /* [DS:density] gap/padding/raio seguem a densidade global. */
+  gap: var(--axxa-row-gap);
   width: auto;
   margin: 4px 10px 2px 10px;
-  padding: 9px 10px;
+  padding: var(--axxa-row-py) 10px;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  border-radius: 9px;
+  border-radius: var(--axxa-pill-radius);
   /* !important: o <button> do Obsidian mobile força a cor do texto, matando o
      accent. Forçamos o accent no texto E no ícone (svg usa currentColor). */
   color: var(--text-accent) !important;
@@ -10916,7 +10924,8 @@ body.is-mobile .axxa-wave-area {
 .axxa-sidebar-divider {
   flex: 0 0 auto;
   height: 1px;
-  margin: 8px 16px;
+  /* [DS:density] respiro vertical segue a densidade. */
+  margin: var(--axxa-row-py) 16px;
   background: color-mix(
     in srgb,
     var(--background-modifier-border) 60%,
@@ -10974,6 +10983,56 @@ body.is-mobile .axxa-wave-area {
   }
 }
 
+/* [DS:seg-accent] Variante "label no ativo" (recentes): o slot ATIVO mostra o
+   texto do modo e cresce na horizontal pra caber; inativos ficam só ícone.
+   Largura do trilho por conteúdo; a ALTURA não muda (label é menor que o
+   ícone). Os slots deixam de ser iguais → o indicador é MEDIDO em JS
+   (left/width inline); aqui só ligamos a transição de width + o morph. v0.1.210 */
+.axxa-sidebar-seg .axxa-seg-labeled {
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: 100%;
+}
+.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-btn {
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: var(--axxa-seg-btn-py) 9px;
+}
+.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-btn-active {
+  padding-right: 11px;
+}
+.axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind {
+  width: auto; /* a largura real vem inline (medida); evita o calc de slot-igual */
+  transition: transform 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.axxa-sidebar-seg .axxa-seg-btn-label {
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text-accent);
+  animation: axxa-seg-label-in 0.22s ease both;
+}
+@keyframes axxa-seg-label-in {
+  from {
+    opacity: 0;
+    transform: translateX(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .axxa-sidebar-seg .axxa-seg-btn-label {
+    animation: none;
+  }
+  .axxa-sidebar-seg .axxa-seg-labeled .axxa-seg-ind {
+    transition: none;
+  }
+}
+
 /* [DS:list-compact] Item PLANO denso: ícone do modelo + título + hora.
    min-height/height !important MATAM o alvo de toque de 44px que o Obsidian
    mobile força via .mobile-tap — sem isso a linha fica gigante. v0.1.208 */
@@ -10984,7 +11043,8 @@ body.is-mobile .axxa-wave-area {
   -webkit-appearance: none;
   display: flex;
   align-items: center;
-  gap: 8px;
+  /* [DS:density] gap ícone→título segue a densidade. */
+  gap: var(--axxa-row-gap);
   width: 100%;
   min-height: 0 !important;
   height: auto !important;
@@ -11057,8 +11117,9 @@ body.is-mobile .axxa-wave-area {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  /* [DS:density] gap/padding seguem a densidade global. */
+  gap: var(--axxa-row-gap);
+  padding: var(--axxa-row-py) 12px;
   border-top: 1px solid
     color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
 }
@@ -11072,12 +11133,13 @@ body.is-mobile .axxa-wave-area {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  /* [DS:density] gap/raio seguem a densidade global. */
+  gap: var(--axxa-row-gap);
   padding: 6px;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  border-radius: 10px;
+  border-radius: var(--axxa-pill-radius);
   color: var(--text-normal);
   text-align: left;
   cursor: pointer;
