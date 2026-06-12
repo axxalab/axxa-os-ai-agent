@@ -161,9 +161,7 @@ export function Sidebar({
         <div className="axxa-sidebar-divider" />
 
         <div className="axxa-sidebar-list">
-          <div className="axxa-sidebar-recents-label">
-            {t.starter.recentChatsLabel}
-          </div>
+          <div className="axxa-sidebar-recents-label">{t.header.recents}</div>
           {recents.length === 0 && (
             <div className="axxa-sidebar-empty">
               <p>{t.conversations.emptyAll}</p>

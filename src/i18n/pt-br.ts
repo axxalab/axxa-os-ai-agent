@@ -194,6 +194,7 @@ export const PT_BR = {
     personaActive: "Persona do chat (ativa)",
     modelSwitcherLabel: "Trocar modelo",
     modelLockedHint: "Escolher outro modelo abre uma nova conversa.",
+    recents: "Recentes",
   },
 
   chat: {

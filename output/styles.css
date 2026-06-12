@@ -1231,14 +1231,22 @@ body.is-mobile
   padding: 0 10px;
   margin-bottom: 6px;
 }
-.axxa-sidebar-nav-item {
+/* appearance:none + !important = mata o fundo cinza padrão de <button> do
+   Obsidian (.theme-dark button), que sobrescrevia o transparent. */
+.axxa-sidebar-nav-item,
+.axxa-sidebar-nav-item:focus,
+.axxa-sidebar-nav-item:active {
+  appearance: none;
+  -webkit-appearance: none;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
   width: 100%;
   padding: 9px 10px;
-  border: none;
-  background: transparent;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
   border-radius: 9px;
   color: var(--text-normal);
   font-size: var(--font-ui-small);
@@ -1246,7 +1254,7 @@ body.is-mobile
   cursor: pointer;
 }
 .axxa-sidebar-nav-item:hover {
-  background: var(--background-modifier-hover);
+  background: var(--background-modifier-hover) !important;
 }
 .axxa-sidebar-nav-item .svg-icon {
   width: 18px;
@@ -1256,14 +1264,15 @@ body.is-mobile
 .axxa-sidebar-nav-label {
   flex: 1 1 auto;
 }
-/* Tela ATIVA — pílula sutil (ref: item selecionado no drawer do Claude). */
+/* Tela ATIVA — pílula sutil (ref: item selecionado no drawer). !important pra
+   ganhar do transparent !important da base. */
 .axxa-sidebar-nav-item.is-active {
-  background: color-mix(in srgb, var(--text-normal) 9%, transparent);
+  background: color-mix(in srgb, var(--text-normal) 9%, transparent) !important;
   font-weight: 600;
 }
 @supports not (color: color-mix(in srgb, red, blue)) {
   .axxa-sidebar-nav-item.is-active {
-    background: var(--background-modifier-hover);
+    background: var(--background-modifier-hover) !important;
   }
 }
 .axxa-sidebar-nav-item.is-active .svg-icon {
@@ -10792,7 +10801,9 @@ body.is-mobile .axxa-wave-area {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
+  width: auto;
   margin: 4px 10px 2px 10px;
   padding: 9px 10px;
   border: none !important;
@@ -10802,6 +10813,7 @@ body.is-mobile .axxa-wave-area {
   color: var(--text-accent);
   font-weight: 600;
   font-size: var(--font-ui-small);
+  text-align: left;
   cursor: pointer;
   transition: background 0.13s;
 }
@@ -10917,6 +10929,7 @@ body.is-mobile .axxa-wave-area {
   min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
   padding: 6px;
   border: none !important;
@@ -10924,6 +10937,7 @@ body.is-mobile .axxa-wave-area {
   box-shadow: none !important;
   border-radius: 10px;
   color: var(--text-normal);
+  text-align: left;
   cursor: pointer;
   transition: background 0.13s;
 }

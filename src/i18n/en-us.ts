@@ -194,6 +194,7 @@ export const EN_US: Translations = {
     personaActive: "Chat persona (active)",
     modelSwitcherLabel: "Switch model",
     modelLockedHint: "Choosing another model opens a new conversation.",
+    recents: "Recents",
   },
 
   chat: {
