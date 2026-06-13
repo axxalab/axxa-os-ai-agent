@@ -9,6 +9,7 @@
 // especificidade. Quando o modelo não bate em nenhum prefixo, retorna
 // fallback conservador (apenas streaming).
 
+import { Platform } from "obsidian";
 import { getEnrichedInfo } from "./modelInfoStore";
 
 export interface ModelCapabilities {
@@ -159,7 +160,9 @@ const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
   ],
 
   // ─────────────────────────── Nvidia NIM ──────────────────────────
-  // NIM streaming é "fake" (requestUrl bypass CORS) — streaming:false marca isso.
+  // streaming:false aqui = verdade do MOBILE (pseudo-stream via requestUrl).
+  // No DESKTOP o getModelCapabilities vira true (SSE real via Node https,
+  // v0.1.226) pra chat models — ver override no fim da função.
   nim: [
     // ===== Image generation (NIM Visual GenAI) =====
     { prefix: "stabilityai/stable-diffusion", caps: { vision: false, tools: false, streaming: false, imageGen: true, free: true } },
@@ -264,6 +267,18 @@ export function getModelCapabilities(
 
   // Sufixo :free no OpenRouter — marca free sem mudar outras caps.
   if (provider === "openrouter" && lower.endsWith(":free")) caps.free = true;
+
+  // NIM: streaming REAL no DESKTOP (Node https fura o CORS — v0.1.226); o
+  // pseudo-stream agora é só mobile. A tabela estática mantém false (verdade
+  // do mobile); aqui vira true em chat models quando há Node.
+  if (
+    provider === "nim" &&
+    !Platform.isMobile &&
+    !caps.streaming &&
+    !(caps.imageGen || caps.audioGen || caps.videoGen)
+  ) {
+    caps.streaming = true;
+  }
 
   return caps;
 }

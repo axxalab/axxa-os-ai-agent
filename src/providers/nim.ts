@@ -18,7 +18,7 @@
 // Modelos pequenos (Phi-4 mini, Llama 3.2 8b, Nemotron Nano) ignoram
 // silenciosamente — o agent vai falhar com "não chamei tool".
 
-import { requestUrl } from "obsidian";
+import { requestUrl, Platform } from "obsidian";
 import {
   Provider,
   ProviderError,
@@ -32,7 +32,121 @@ import {
   MediaGenerationItem,
 } from "./base";
 import { isEmbeddingModelId } from "../rag/types";
-import { buildChatBody, parseOpenAIChatMessage, usageFrom } from "./_shared";
+import {
+  buildChatBody,
+  parseOpenAIChatMessage,
+  usageFrom,
+  parseOpenAICompatSSE,
+} from "./_shared";
+
+// ============================================================
+// SSE REAL no desktop via Node `https` (v0.1.226).
+// O bloqueio do NIM nunca foi o servidor (stream:true SSE funciona) — era o
+// CORS do `fetch` do renderer. No Obsidian DESKTOP (Electron com Node), o
+// módulo `https` faz a request FORA do contexto de browser → sem CORS → SSE
+// de verdade. No mobile (webview, sem Node) cai no pseudo-stream de sempre.
+// ============================================================
+
+// Tipos mínimos do Node (sem @types/node — não bundlamos, só usamos em runtime).
+interface NodeIncomingLike {
+  statusCode?: number;
+  on(ev: "data", cb: (chunk: Uint8Array) => void): void;
+  on(ev: "end" | "close", cb: () => void): void;
+  on(ev: "error", cb: (err: Error) => void): void;
+}
+interface NodeRequestLike {
+  on(ev: "error", cb: (err: Error) => void): void;
+  write(body: string): void;
+  end(): void;
+  destroy(err?: Error): void;
+}
+interface NodeHttpsLike {
+  request(
+    opts: {
+      protocol: string;
+      hostname: string;
+      port: number;
+      path: string;
+      method: string;
+      headers: Record<string, string>;
+    },
+    cb: (res: NodeIncomingLike) => void
+  ): NodeRequestLike;
+}
+
+/** `require("https")` do Electron, ou null (mobile / runtime sem Node). */
+function getNodeHttps(): NodeHttpsLike | null {
+  try {
+    const req = (globalThis as { require?: (m: string) => unknown }).require;
+    return req ? (req("https") as NodeHttpsLike) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** IncomingMessage do Node → ReadableStream web (pro parser SSE compartilhado). */
+export function nodeBodyToWebStream(res: NodeIncomingLike): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      res.on("data", (chunk) => controller.enqueue(new Uint8Array(chunk)));
+      res.on("end", () => {
+        try {
+          controller.close();
+        } catch {
+          /* já fechado */
+        }
+      });
+      res.on("error", (err) => controller.error(err));
+    },
+  });
+}
+
+/** POST com resposta STREAMADA via Node https. Aborta via signal (req.destroy). */
+function nodeStreamRequest(
+  https: NodeHttpsLike,
+  urlStr: string,
+  headers: Record<string, string>,
+  body: string,
+  signal?: AbortSignal
+): Promise<{ status: number; body: ReadableStream<Uint8Array> }> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(urlStr);
+    const req = https.request(
+      {
+        protocol: u.protocol,
+        hostname: u.hostname,
+        port: u.port ? Number(u.port) : 443,
+        path: u.pathname + u.search,
+        method: "POST",
+        headers: { ...headers, "Content-Length": String(new TextEncoder().encode(body).length) },
+      },
+      (res) => {
+        resolve({ status: res.statusCode ?? 0, body: nodeBodyToWebStream(res) });
+      }
+    );
+    const onAbort = () => req.destroy(new Error("aborted"));
+    signal?.addEventListener("abort", onAbort, { once: true });
+    req.on("error", (err) => {
+      signal?.removeEventListener("abort", onAbort);
+      reject(err);
+    });
+    req.write(body);
+    req.end();
+  });
+}
+
+/** Lê um ReadableStream inteiro como texto (pro corpo de erro do stream). */
+async function readAllText(stream: ReadableStream<Uint8Array>): Promise<string> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let out = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    out += decoder.decode(value, { stream: true });
+  }
+  return out;
+}
 
 const NIM_ENDPOINT =
   "https://integrate.api.nvidia.com/v1/chat/completions";
@@ -48,6 +162,48 @@ export class NimProvider implements Provider {
   // Llama 3.3+, Qwen3+, DeepSeek v4, Phi-4 full). Modelos pequenos ignoram
   // silenciosamente — documentar no UI.
   supportsTools = true;
+
+  /** Mapeia status HTTP do NIM → ProviderError (compartilhado chat + stream). */
+  private nimError(
+    status: number,
+    json: { detail?: string; error?: { message?: string }; message?: string } | undefined,
+    text: string | undefined,
+    model: string
+  ): ProviderError {
+    if (status === 401 || status === 403) {
+      // 403 também pode significar "Public API Endpoints" permission falta.
+      const hint =
+        status === 403
+          ? " (Verifique também se sua conta tem 'Public API Endpoints' habilitado em build.nvidia.com → Organization Settings.)"
+          : "";
+      return new ProviderError(
+        `API key Nvidia NIM inválida ou sem permissão.${hint}`,
+        "invalid-key"
+      );
+    }
+    if (status === 404) {
+      // 404 = modelo não existe no catálogo OU deprecado/não-hospedado.
+      const apiMsg = json?.detail ?? json?.error?.message ?? "";
+      return new ProviderError(
+        `NIM: modelo "${model}" não encontrado ou não hospedado. ${apiMsg}\n` +
+          `Em Settings → Providers → Nvidia NIM, clique "Buscar da API" pra ver os modelos atualmente disponíveis.`,
+        "unknown"
+      );
+    }
+    if (status === 429) {
+      return new ProviderError(
+        "Rate limit Nvidia NIM. Aguarde alguns segundos.",
+        "rate-limit"
+      );
+    }
+    const detail =
+      json?.error?.message ??
+      json?.detail ??
+      json?.message ??
+      (typeof text === "string" ? text.slice(0, 240) : null) ??
+      `HTTP ${status}`;
+    return new ProviderError(`NIM (${status}): ${detail}`, "unknown");
+  }
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
@@ -91,45 +247,7 @@ export class NimProvider implements Provider {
         res.status,
         errBody
       );
-    }
-
-    if (res.status === 401 || res.status === 403) {
-      // 403 também pode significar "Public API Endpoints" permission falta.
-      // Adicionei dica explícita pra esse caso (causa comum reportada nas docs NVIDIA).
-      const hint =
-        res.status === 403
-          ? " (Verifique também se sua conta tem 'Public API Endpoints' habilitado em build.nvidia.com → Organization Settings.)"
-          : "";
-      throw new ProviderError(
-        `API key Nvidia NIM inválida ou sem permissão.${hint}`,
-        "invalid-key"
-      );
-    }
-    if (res.status === 404) {
-      // NIM retorna 404 quando o ID do modelo não existe no catálogo OU
-      // quando o modelo está deprecado/não-hospedado.
-      const apiMsg = res.json?.detail ?? res.json?.error?.message ?? "";
-      throw new ProviderError(
-        `NIM: modelo "${req.model}" não encontrado ou não hospedado. ${apiMsg}\n` +
-          `Em Settings → Providers → Nvidia NIM, clique "Buscar da API" pra ver os modelos atualmente disponíveis.`,
-        "unknown"
-      );
-    }
-    if (res.status === 429) {
-      throw new ProviderError(
-        "Rate limit Nvidia NIM. Aguarde alguns segundos.",
-        "rate-limit"
-      );
-    }
-    if (res.status < 200 || res.status >= 300) {
-      // 400/422/500: inclui detalhes do body pra facilitar diagnóstico
-      const detail =
-        res.json?.error?.message ??
-        res.json?.detail ??
-        res.json?.message ??
-        (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
-        `HTTP ${res.status}`;
-      throw new ProviderError(`NIM (${res.status}): ${detail}`, "unknown");
+      throw this.nimError(res.status, res.json, res.text, req.model);
     }
 
     const message = res.json?.choices?.[0]?.message;
@@ -142,15 +260,13 @@ export class NimProvider implements Provider {
   }
 
   /**
-   * Streaming "fake" via requestUrl (não-streaming real).
-   *
-   * **Por que não fetch real?** integrate.api.nvidia.com não devolve CORS
-   * headers liberais — o browser bloqueia o `fetch` direto com TypeError
-   * ("Falha de conexão"). requestUrl do Obsidian vai pelo módulo `net` do
-   * Electron / capacitor, bypassando CORS. Trade-off: a resposta inteira
-   * vem de uma vez. UX: o user vê o "Pensando..." e depois a resposta
-   * completa aparece num bloco só. Cancelar via AbortController não
-   * funciona pra requestUrl — checamos signal antes/depois manualmente.
+   * Streaming do NIM (v0.1.226):
+   *   DESKTOP → SSE REAL via Node `https`. O servidor sempre suportou
+   *   stream:true; o bloqueio era só o CORS do `fetch` do renderer. O módulo
+   *   `https` do Electron faz a request fora do contexto de browser → CORS não
+   *   se aplica → tokens chegam de verdade, um a um. Abort via req.destroy().
+   *   MOBILE (webview, sem Node) → pseudo-stream via requestUrl (de sempre):
+   *   resposta inteira de uma vez, abort checado antes/depois.
    */
   async streamChat(
     req: ProviderRequest,
@@ -160,12 +276,23 @@ export class NimProvider implements Provider {
     signal?: AbortSignal,
     onReasoning?: ReasoningHandler
   ): Promise<ProviderResponse> {
-    // Reusa a chat() que já vai por requestUrl e funciona em prod.
     if (signal?.aborted) {
       throw new DOMException("Aborted", "AbortError");
     }
+    if (!apiKey || !apiKey.trim()) {
+      throw new ProviderError(
+        "API key Nvidia NIM não configurada. Gere uma em build.nvidia.com (prefixo 'nvapi-').",
+        "no-key"
+      );
+    }
+
+    const https = Platform.isMobile ? null : getNodeHttps();
+    if (https) {
+      return this.streamViaNode(https, req, apiKey, onToken, onUsage, signal, onReasoning);
+    }
+
+    // ── Fallback MOBILE: pseudo-stream (reusa a chat() via requestUrl).
     const response = await this.chat(req, apiKey);
-    // Verifica abort no meio do caminho (depois da resposta chegar)
     if (signal?.aborted) {
       throw new DOMException("Aborted", "AbortError");
     }
@@ -182,6 +309,60 @@ export class NimProvider implements Provider {
     }
     // Retorna a resposta completa pra Agent loop poder consumir tool_calls.
     return response;
+  }
+
+  /** SSE real via Node https (desktop). Retry sem stream_options se o modelo
+   *  recusar (alguns NIM antigos 400am em params desconhecidos). */
+  private async streamViaNode(
+    https: NodeHttpsLike,
+    req: ProviderRequest,
+    apiKey: string,
+    onToken: TokenHandler,
+    onUsage?: UsageHandler,
+    signal?: AbortSignal,
+    onReasoning?: ReasoningHandler,
+    includeUsage = true
+  ): Promise<ProviderResponse> {
+    const body = buildChatBody(req, { provider: "nim", stream: true, includeUsage });
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey.trim()}`,
+      Accept: "text/event-stream",
+    };
+
+    let resp: { status: number; body: ReadableStream<Uint8Array> };
+    try {
+      resp = await nodeStreamRequest(https, NIM_ENDPOINT, headers, JSON.stringify(body), signal);
+    } catch (err) {
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      console.error("[axxa] NIM stream network error:", err);
+      throw new ProviderError("Falha de conexão NIM.", "network");
+    }
+
+    if (resp.status < 200 || resp.status >= 300) {
+      const text = await readAllText(resp.body).catch(() => "");
+      let json: { detail?: string; error?: { message?: string }; message?: string } | undefined;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        /* corpo não-JSON */
+      }
+      // Modelo recusou stream_options? Tenta 1× sem (param novo p/ NIM antigo).
+      if (includeUsage && resp.status === 400 && /stream_options/i.test(text)) {
+        return this.streamViaNode(https, req, apiKey, onToken, onUsage, signal, onReasoning, false);
+      }
+      console.error("[axxa] NIM stream failed:", resp.status, json ?? text);
+      throw this.nimError(resp.status, json, text, req.model);
+    }
+
+    try {
+      return await parseOpenAICompatSSE(resp.body, onToken, onUsage, "nim_call", onReasoning);
+    } catch (err) {
+      // req.destroy() no abort derruba o reader com erro — normaliza pra
+      // AbortError (o caller trata como "parado pelo user").
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      throw err;
+    }
   }
 
   /**

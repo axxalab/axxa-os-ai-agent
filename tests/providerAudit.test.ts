@@ -13,10 +13,11 @@
 //   8. parseOpenAIChatMessage extrai reasoning_content (R1 via pseudo-stream).
 
 import { describe, it, expect, afterEach } from "vitest";
+import { Platform } from "obsidian";
 import { getModelCapabilities } from "../src/providers/modelCapabilities";
 import { hydrateModelInfoCache } from "../src/providers/modelInfoStore";
 import { isRelevantOpenRouterModel } from "../src/providers/openrouter";
-import { isRelevantNimModel } from "../src/providers/nim";
+import { isRelevantNimModel, nodeBodyToWebStream } from "../src/providers/nim";
 import { isRelevantOpenAIModel } from "../src/providers/openai";
 import { resolveMaxTokens } from "../src/providers/paramPolicy";
 import { parseOpenAIChatMessage } from "../src/providers/_shared";
@@ -58,13 +59,59 @@ describe("capabilities — multi-vendor (OpenRouter)", () => {
   });
 });
 
-describe("capabilities — NIM (pseudo-stream)", () => {
-  it("publisher desconhecido no NIM: tools sim, streaming NÃO (pseudo)", () => {
+describe("capabilities — NIM (stream por plataforma)", () => {
+  it("DESKTOP: publisher desconhecido tem tools E streaming REAL (Node https)", () => {
+    Platform.isMobile = false;
     for (const m of ["openai/gpt-oss-120b", "ibm/granite-4.0-h-small"]) {
       const caps = getModelCapabilities("nim", m);
       expect(caps.tools, m).toBe(true);
-      expect(caps.streaming, m).toBe(false);
+      expect(caps.streaming, m).toBe(true);
     }
+  });
+
+  it("MOBILE: streaming continua pseudo (false)", () => {
+    Platform.isMobile = true;
+    try {
+      expect(getModelCapabilities("nim", "openai/gpt-oss-120b").streaming).toBe(false);
+      expect(getModelCapabilities("nim", "meta/llama-3.3-70b-instruct").streaming).toBe(false);
+    } finally {
+      Platform.isMobile = false;
+    }
+  });
+
+  it("image-gen do NIM nunca vira 'stream' (não é chat)", () => {
+    Platform.isMobile = false;
+    const caps = getModelCapabilities("nim", "stabilityai/stable-diffusion-3-medium");
+    expect(caps.imageGen).toBe(true);
+    expect(caps.streaming).toBe(false);
+  });
+});
+
+describe("NIM SSE real — conversor Node→Web stream", () => {
+  it("nodeBodyToWebStream entrega chunks e fecha no end", async () => {
+    type Handler = (...args: unknown[]) => void;
+    const handlers: Record<string, Handler[]> = {};
+    const fakeRes = {
+      statusCode: 200,
+      on(ev: string, cb: Handler) {
+        (handlers[ev] ??= []).push(cb);
+      },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stream = nodeBodyToWebStream(fakeRes as any);
+    const reader = stream.getReader();
+    const enc = new TextEncoder();
+    handlers["data"]?.forEach((cb) => cb(enc.encode("data: hello\n")));
+    handlers["data"]?.forEach((cb) => cb(enc.encode("data: [DONE]\n")));
+    handlers["end"]?.forEach((cb) => cb());
+    const dec = new TextDecoder();
+    let out = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      out += dec.decode(value);
+    }
+    expect(out).toBe("data: hello\ndata: [DONE]\n");
   });
 });
 
@@ -100,13 +147,18 @@ describe("capabilities — overlay do catálogo vivo (enriched)", () => {
     expect(caps.free).toBe(true);
   });
 
-  it("overlay NUNCA mexe no streaming (transporte é nosso)", () => {
-    hydrateModelInfoCache({
-      "nim::meta/llama-3.3-70b-instruct": { supportsTools: true },
-    });
-    expect(
-      getModelCapabilities("nim", "meta/llama-3.3-70b-instruct").streaming
-    ).toBe(false);
+  it("overlay NUNCA mexe no streaming (transporte é nosso) — mobile pseudo", () => {
+    Platform.isMobile = true;
+    try {
+      hydrateModelInfoCache({
+        "nim::meta/llama-3.3-70b-instruct": { supportsTools: true },
+      });
+      expect(
+        getModelCapabilities("nim", "meta/llama-3.3-70b-instruct").streaming
+      ).toBe(false);
+    } finally {
+      Platform.isMobile = false;
+    }
   });
 });
 
