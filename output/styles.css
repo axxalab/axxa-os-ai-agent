@@ -7841,11 +7841,15 @@ body.theme-dark .axxa-bg-lagoon {
   font-weight: 500;
 }
 
+/* Pills de período: vidro (blur+saturate) como a aba Providers. v0.1.231 */
 .axxa-usage-period-pills {
   display: flex;
   gap: 4px;
   padding: 4px;
-  background: var(--background-modifier-hover);
+  background: color-mix(in srgb, var(--background-modifier-hover) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
   border-radius: 12px;
   flex-wrap: nowrap;
 }
@@ -7876,7 +7880,8 @@ body.theme-dark .axxa-bg-lagoon {
   background: var(--background-primary) !important;
   color: var(--text-accent) !important;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18),
+    0 0 0 1px color-mix(in srgb, var(--interactive-accent) 28%, transparent) !important;
 }
 
 .axxa-usage-loading,
@@ -7899,16 +7904,37 @@ body.theme-dark .axxa-bg-lagoon {
   margin-bottom: 20px;
 }
 
+/* Stat cards: profundidade + leve glow no canto + lift no hover. v0.1.231 */
 .axxa-usage-card {
-  padding: 12px 14px;
-  background: var(--background-secondary);
+  position: relative;
+  overflow: hidden;
+  padding: 13px 15px;
+  background:
+    radial-gradient(130% 90% at 100% 0%, color-mix(in srgb, var(--interactive-accent) 7%, transparent), transparent 58%),
+    var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 12px;
+  border-radius: 13px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 8px 22px -15px rgba(0, 0, 0, 0.45);
+  transition: transform 0.18s cubic-bezier(0.34, 1.06, 0.4, 1),
+    border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.axxa-usage-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--interactive-accent) 45%, var(--background-modifier-border));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 16px 32px -16px rgba(0, 0, 0, 0.55);
 }
 
+/* Ícone vira um chip tingido com a própria cor semântica (set inline no JS). */
 .axxa-usage-card-icon {
-  font-size: 14px;
-  margin-bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  font-size: 15px;
+  margin-bottom: 9px;
 }
 
 .axxa-usage-card-label {
@@ -7920,10 +7946,11 @@ body.theme-dark .axxa-bg-lagoon {
 }
 
 .axxa-usage-card-value {
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 600;
   color: var(--text-normal);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
 }
 
 /* Tabelas — usa estilo Obsidian tweak */
@@ -7936,11 +7963,12 @@ body.theme-dark .axxa-bg-lagoon {
 
 .axxa-usage-table th,
 .axxa-usage-table td {
-  padding: 7px 10px;
+  padding: 8px 11px;
   text-align: left;
-  border-bottom: 1px solid var(--background-modifier-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
 }
 
+/* Header sticky com sombra-de-queda + zebra + hover com tinta do accent. v0.1.231 */
 .axxa-usage-table th {
   font-size: 10px;
   text-transform: uppercase;
@@ -7950,10 +7978,18 @@ body.theme-dark .axxa-bg-lagoon {
   background: var(--background-modifier-hover);
   position: sticky;
   top: 0;
+  box-shadow: 0 1px 0 var(--background-modifier-border),
+    0 7px 11px -9px rgba(0, 0, 0, 0.45);
 }
 
+.axxa-usage-table tbody tr {
+  transition: background 0.12s ease;
+}
+.axxa-usage-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--background-secondary) 45%, transparent);
+}
 .axxa-usage-table tbody tr:hover {
-  background: var(--background-modifier-hover);
+  background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
 }
 
 .axxa-usage-table td.axxa-usage-num,
@@ -7986,9 +8022,16 @@ body.theme-dark .axxa-bg-lagoon {
 
 .axxa-usage-heatcell {
   aspect-ratio: 1;
-  border-radius: 3px;
-  background: var(--background-modifier-border);
-  min-height: 12px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
+  min-height: 13px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.axxa-usage-heatcell:hover {
+  transform: scale(1.22);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--interactive-accent) 65%, transparent);
+  position: relative;
+  z-index: 1;
 }
 
 .axxa-usage-footnote {
@@ -9307,9 +9350,12 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-usage-ds {
   margin: 14px 0;
   padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 10px 26px -16px rgba(0, 0, 0, 0.5);
 }
 .axxa-usage-ds h4 {
   margin: 0 0 8px;
@@ -9340,18 +9386,22 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 .axxa-usage-freebar-track {
   flex: 1 1 auto;
-  height: 7px;
+  height: 9px;
   border-radius: 999px;
-  background: var(--background-modifier-border);
+  background: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
   overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 .axxa-usage-freebar-fill {
   height: 100%;
   border-radius: 999px;
-  background: var(--interactive-accent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--interactive-accent) 65%, transparent), var(--interactive-accent));
+  box-shadow: 0 0 8px -1px color-mix(in srgb, var(--interactive-accent) 60%, transparent);
+  transition: width 0.4s cubic-bezier(0.34, 1.06, 0.4, 1);
 }
 .axxa-usage-freebar-fill.is-full {
-  background: var(--color-orange, #f4a261);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-orange, #f4a261) 65%, transparent), var(--color-orange, #f4a261));
+  box-shadow: 0 0 8px -1px color-mix(in srgb, var(--color-orange, #f4a261) 60%, transparent);
 }
 .axxa-usage-freebar-num {
   flex: 0 0 auto;
@@ -9368,9 +9418,12 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-usage-xcheck {
   margin: 14px 0;
   padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 10px 26px -16px rgba(0, 0, 0, 0.5);
 }
 .axxa-usage-xcheck-head {
   display: flex;
@@ -9383,16 +9436,27 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   margin: 0;
 }
 .axxa-usage-xcheck-btn {
-  padding: 5px 12px;
-  border-radius: 7px;
+  padding: 5px 13px;
+  border-radius: 999px;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   cursor: pointer;
   font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--interactive-accent) 40%, transparent);
+  transition: transform 0.12s, box-shadow 0.12s, filter 0.12s;
+}
+.axxa-usage-xcheck-btn:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 2px 9px -1px color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+}
+.axxa-usage-xcheck-btn:active {
+  transform: scale(0.97);
 }
 .axxa-usage-xcheck-btn:disabled {
   opacity: 0.6;
   cursor: default;
+  box-shadow: none;
 }
 .axxa-usage-xcheck-list {
   display: flex;
@@ -9403,9 +9467,14 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   grid-template-columns: 1.1fr 0.8fr 1.2fr 2.2fr;
   gap: 10px;
   align-items: center;
-  padding: 7px 0 7px 9px;
-  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 8px 0 8px 11px;
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
   font-size: 12.5px;
+  border-radius: 7px;
+  transition: background 0.12s ease;
+}
+.axxa-usage-xcheck-row:not(.is-head):hover {
+  background: color-mix(in srgb, var(--interactive-accent) 7%, transparent);
 }
 .axxa-usage-xcheck-row:last-child {
   border-bottom: none;
@@ -9445,19 +9514,30 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   box-shadow: inset 3px 0 0 var(--color-blue, #4361ee);
 }
 /* Painel de saldo por provider (âncora + gasto). v0.1.171 */
+/* ===== Saldo — painel premium por provider (v0.1.231) ===== */
+/* Cores de marca por provider (mesmo espírito do Arena). */
+.axxa-balance-block[data-provider="openai"] { --axxa-brand: #10a37f; }
+.axxa-balance-block[data-provider="anthropic"] { --axxa-brand: #d97757; }
+.axxa-balance-block[data-provider="gemini"] { --axxa-brand: #4285f4; }
+.axxa-balance-block[data-provider="openrouter"] { --axxa-brand: #6467f2; }
+.axxa-balance-block[data-provider="nim"] { --axxa-brand: #76b900; }
+
 .axxa-balance {
   margin: 4px 0 14px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
+  padding: 12px 14px 14px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 10px 26px -16px rgba(0, 0, 0, 0.5);
 }
 .axxa-balance-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 .axxa-balance-head h4 {
   margin: 0;
@@ -9465,14 +9545,28 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-balance-list {
   display: flex;
   flex-direction: column;
+  gap: 9px;
 }
-/* Bloco por provider: cabeçalho (nome + saldo) + ledger de recargas. v0.1.230 */
+/* Cada provider = card com barra de marca + glow sutil no canto. */
 .axxa-balance-block {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--background-modifier-border);
+  position: relative;
+  overflow: hidden;
+  padding: 10px 12px 10px 14px;
+  border-radius: 11px;
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--axxa-brand, var(--interactive-accent)) 12%, transparent), transparent 55%),
+    var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
 }
-.axxa-balance-block:last-child {
-  border-bottom: none;
+.axxa-balance-block::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--axxa-brand, var(--interactive-accent));
+  opacity: 0.85;
 }
 .axxa-balance-row {
   display: flex;
@@ -9484,6 +9578,18 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   font-weight: 600;
   flex: 0 0 auto;
   text-transform: capitalize;
+  color: var(--text-normal);
+}
+.axxa-balance-prov::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+  background: var(--axxa-brand, var(--interactive-accent));
+  box-shadow: 0 0 7px -1px var(--axxa-brand, var(--interactive-accent));
 }
 .axxa-balance-amt {
   width: 96px;
@@ -9496,17 +9602,24 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   color: var(--text-muted);
   font-size: 11.5px;
 }
-/* Ledger de recargas: cada linha = data + valor + remover. v0.1.230 */
+/* Ledger de recargas dentro de um sub-card, com focus ring de marca. */
 .axxa-balance-credits {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 7px 0 2px;
+  margin: 9px 0 1px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--background-modifier-hover) 45%, transparent);
 }
 .axxa-balance-credit-row {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.axxa-balance-credit-row input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--axxa-brand, var(--interactive-accent)) 45%, transparent);
 }
 .axxa-balance-credit-del {
   flex: 0 0 auto;
@@ -9523,43 +9636,56 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
+  transition: background 0.12s, color 0.12s;
 }
 .axxa-balance-credit-del:hover {
-  background: var(--background-modifier-hover);
+  background: color-mix(in srgb, var(--text-error, #e5534b) 14%, transparent);
   color: var(--text-error, #e5534b);
 }
+/* "+ Recarga": pill de marca (não mais tracejado). */
 .axxa-balance-add {
   align-self: flex-start;
-  padding: 3px 10px;
-  border: 1px dashed var(--background-modifier-border);
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-muted);
+  padding: 4px 11px;
+  border: 1px solid color-mix(in srgb, var(--axxa-brand, var(--interactive-accent)) 35%, var(--background-modifier-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--axxa-brand, var(--interactive-accent)) 9%, transparent);
+  color: var(--text-normal);
   cursor: pointer;
   font-size: 11.5px;
+  font-weight: 500;
+  transition: background 0.14s, border-color 0.14s;
 }
 .axxa-balance-add:hover {
-  color: var(--text-normal);
-  border-color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--axxa-brand, var(--interactive-accent)) 18%, transparent);
+  border-color: var(--axxa-brand, var(--interactive-accent));
 }
+/* Saldo vira um badge: real = verde com glow, estimado = neutro. */
 .axxa-balance-value {
   margin-left: auto;
   text-align: right;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
   color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .axxa-balance-value.is-real {
   color: var(--color-green, #06d6a0);
   font-weight: 700;
+  background: color-mix(in srgb, var(--color-green, #06d6a0) 14%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-green, #06d6a0) 30%, transparent);
 }
 .axxa-balance-value.is-est {
   color: var(--text-normal);
+  background: color-mix(in srgb, var(--text-normal) 9%, transparent);
 }
 .axxa-balance-note {
-  margin-top: 9px;
+  margin-top: 11px;
   font-size: 11px;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 /* Badge de formato da API key (projeto vs admin). v0.1.170 */
 .axxa-key-kind {

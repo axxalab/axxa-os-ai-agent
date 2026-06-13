@@ -2540,7 +2540,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
     };
 
     for (const p of PROVS) {
-      const block = list.createDiv({ cls: "axxa-balance-block" });
+      const block = list.createDiv({
+        cls: "axxa-balance-block",
+        attr: { "data-provider": p }, // cor de marca por provider (v0.1.231)
+      });
       const head = block.createDiv({ cls: "axxa-balance-row" });
       head.createSpan({ text: p, cls: "axxa-balance-prov" });
       if (p === "openrouter") {
