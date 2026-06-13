@@ -810,6 +810,35 @@ body.axxa-reduce-motion *::after {
 .axxa-root ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* superfícies-chave visíveis (pass 1.1) — evita containers transparentes no teste.
+   Se algum elemento ainda aparecer "sem pele", é só apontar e a gente veste. */
+.axxa-composer {
+  background: var(--background-primary);
+  border-top: 1px solid var(--background-modifier-border);
+}
+.axxa-composer-editor {
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l, 12px);
+}
+.axxa-composer-row {
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l, 12px);
+}
+.axxa-bubble-user {
+  background: var(--background-modifier-hover);
+}
+.axxa-msg-error {
+  background: color-mix(in srgb, var(--text-error) 12%, transparent);
+}
+.axxa-sidebar {
+  background: var(--background-secondary);
+}
+.axxa-header {
+  background: var(--background-primary);
+}
 .axxa-list-compact-row {
   display: flex;
   align-items: baseline;
