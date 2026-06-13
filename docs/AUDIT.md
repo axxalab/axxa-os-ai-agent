@@ -1,8 +1,21 @@
-# AXXA OS — Auditoria de Código (v0.1.226)
+# AXXA OS — Auditoria de Código (v0.1.226 → resolvida na v0.1.228)
 
 > Varredura linha-a-linha de ~97 arquivos + 12.5k linhas de CSS por 20 auditores especializados, com verificação adversarial dos achados crítico/alto (39 agentes). 311 achados.
+>
+> **✅ RESOLVIDA — 100% dos 311 achados triados e resolvidos.** Os 11 high na **v0.1.227** (verificados, adversarial) + os ~300 médio/baixo/nit na **v0.1.228** (workflow judge-then-fix, 1 agente por arquivo, em 3 lotes). Build verde + 336 testes passando o caminho inteiro.
 
-## Placar
+## ✅ Status de resolução (v0.1.228)
+
+| Disposição | Qtd | O que significa |
+|---|---|---|
+| ✅ Aplicado | 161 | fix real no código |
+| ☑️ Já corrigido | 70 | mootado por fix anterior (ex.: os high da v0.1.227 cobriam o arquivo) |
+| ⏭️ Pulado com motivo | 54 | 17 falso-positivo · 27 arriscado-sem-teste · 10 subjetivo/by-design |
+| 🔗 Reconciliado | 3 | chaves i18n / regras CSS cross-file (en-us+pt-br, styles/main.css) |
+
+Cada agente **julgou o achado contra o código atual antes de aplicar** — pulando falso-positivo e mudança especulativa sem cobertura de teste. O build + os 336 testes pegaram (e reverteram) 3 audit-fixes que contradiziam contratos testados: parsers de billing tolerantes, piso de `maxTokens`, e o par img2vid de `cosmos`.
+
+## Placar (achados originais)
 
 | Severidade | Qtd |
 |---|---|
@@ -18,7 +31,7 @@ Legenda de severidade: 🛑 crítico (quebra/segurança/perda de dado) · 🔴 a
 
 ---
 
-## 🔴 Acionáveis agora — crítico/alto (11, verificados)
+## ✅ Resolvidos na v0.1.227 — crítico/alto (11, verificados)
 
 ### 1. 🔴 vault_edit corrompe conteudo quando newStr contem padroes de substituicao ($&, $1, $$)
 - **Onde:** `src/agent/tools.ts:168` · _bug_ · unidade `agent`
@@ -77,7 +90,9 @@ Legenda de severidade: 🛑 crítico (quebra/segurança/perda de dado) · 🔴 a
 
 ---
 
-## Demais achados (médio/baixo/nit) por unidade
+## ✅ Resolvidos na v0.1.228 — médio/baixo/nit por unidade
+
+> Cada achado abaixo foi triado por um agente (judge-then-fix): aplicado, confirmado já-corrigido, ou pulado-com-motivo (falso-positivo / arriscado-sem-teste / subjetivo). Ver o placar de resolução no topo.
 
 ### `composer` (23)
 
@@ -482,3 +497,5 @@ Legenda de severidade: 🛑 crítico (quebra/segurança/perda de dado) · 🔴 a
 ---
 
 _Gerado pela auditoria multi-agente. Cada achado é âncora-de-código; os crítico/alto passaram por verificação adversarial._
+
+_Resolução (v0.1.227 + v0.1.228): workflow judge-then-fix, 1 agente por arquivo, em 3 lotes (limite de sessão cortou os 2 primeiros — retomados de forma idempotente). 161 aplicados · 70 já-corrigidos · 54 pulados-com-motivo · 3 reconciliados. Commits `d76718c` (11 high) · `6fa1004` · `a6731a5` · `5f5b126`._

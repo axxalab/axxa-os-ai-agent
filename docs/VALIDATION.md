@@ -1,5 +1,10 @@
 # Checklist de validação pré-Alpha (#14)
 
+> **Build atual: v0.1.228.** Lado automatizado em dia: `tsc` + `esbuild` limpos
+> e **336 testes** passando; auditoria de código (311 achados) 100% resolvida —
+> ver [AUDIT.md](AUDIT.md). O que segue exige **chaves reais** e device físico,
+> então só você consegue marcar.
+
 Só **você** consegue rodar isto (precisa das chaves reais). Marque cada um antes
 de submeter. Recarregue o plugin antes de começar (pega a build mais nova).
 

@@ -1,8 +1,12 @@
 # AXXA OS — AI Agent · Mapa de Features & Diferenciais
 
-> Auditoria completa do produto (v0.1.226, jun/2026). Gerada por varredura do
-> código-fonte inteiro. **Números:** 6 providers · 54 releases · 335 testes ·
+> Auditoria completa do produto (v0.1.228, jun/2026). Gerada por varredura do
+> código-fonte inteiro. **Números:** 6 providers · 56 releases · 336 testes ·
 > ~45 componentes de UI · 10 ferramentas de agente · 2 idiomas (pt-br/en-us).
+>
+> **Saúde do código:** auditoria linha-a-linha de 311 achados 100% resolvida
+> (11 high na v0.1.227 + ~300 médio/baixo/nit na v0.1.228) — ver
+> [AUDIT.md](AUDIT.md).
 
 ---
 
@@ -174,7 +178,7 @@
   mobile-tap 44px, .theme-dark button, CORS), haptics, fullscreen, navbar
   clearance, câmera/voz com fallback.
 - i18n completo pt-BR/en-US (tipado — chave faltando = erro de build).
-- 335 testes (vitest) cobrindo persistência, providers/stream, RAG/shards,
+- 336 testes (vitest) cobrindo persistência, providers/stream, RAG/shards,
   effort, entitlements, auditoria de capabilities.
 - Release pipeline por tag no GitHub Actions; DS documentado e tagueado
   (`[DS:*]`) pra manutenção.
