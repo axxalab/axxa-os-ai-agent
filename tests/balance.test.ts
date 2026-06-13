@@ -3,6 +3,10 @@ import {
   spentSinceFromRows,
   computeBalance,
   hasValidAnchor,
+  totalCredits,
+  earliestCreditDate,
+  validCredits,
+  computeCreditBalance,
 } from "../src/usage/balance";
 import type { BillingRow } from "../src/usage/freeBilling";
 import { parseAnthropicCosts } from "../src/usage/providerBilling";
@@ -52,6 +56,56 @@ describe("hasValidAnchor", () => {
     expect(hasValidAnchor({ amount: 5, date: "2026-06-10" })).toBe(true);
     expect(hasValidAnchor({ amount: 5, date: "" })).toBe(false);
     expect(hasValidAnchor(undefined)).toBe(false);
+  });
+});
+
+describe("recargas de crédito (v0.1.230)", () => {
+  it("validCredits filtra inválidas e ordena por data asc", () => {
+    const v = validCredits([
+      { amount: 10, date: "2026-02-01" },
+      { amount: 0, date: "2026-01-01" }, // amount 0 → fora
+      { amount: 5, date: "bad" }, // data inválida → fora
+      { amount: 7, date: "2026-01-15" },
+      { amount: NaN, date: "2026-03-01" }, // NaN → fora
+    ]);
+    expect(v.map((c) => c.date)).toEqual(["2026-01-15", "2026-02-01"]);
+  });
+
+  it("totalCredits soma só as válidas", () => {
+    expect(
+      totalCredits([
+        { amount: 25, date: "2025-06-01" },
+        { amount: 10, date: "2026-01-15" },
+        { amount: -3, date: "2026-02-01" }, // negativo → fora
+      ])
+    ).toBeCloseTo(35);
+    expect(totalCredits([])).toBe(0);
+    expect(totalCredits(undefined)).toBe(0);
+  });
+
+  it("earliestCreditDate pega a recarga mais antiga (válida)", () => {
+    expect(
+      earliestCreditDate([
+        { amount: 10, date: "2026-03-01" },
+        { amount: 5, date: "2025-12-10" },
+      ])
+    ).toBe("2025-12-10");
+    expect(earliestCreditDate([{ amount: 0, date: "2026-01-01" }])).toBeNull();
+    expect(earliestCreditDate(undefined)).toBeNull();
+  });
+
+  it("computeCreditBalance = Σ recargas − gasto; null sem recarga válida", () => {
+    const r = computeCreditBalance(
+      [
+        { amount: 25, date: "2025-06-01" },
+        { amount: 10, date: "2026-01-15" },
+      ],
+      8,
+      "estimate"
+    );
+    expect(r.balance).toBeCloseTo(27); // 35 − 8
+    expect(r.spent).toBe(8);
+    expect(computeCreditBalance([], 5, "real").balance).toBeNull();
   });
 });
 

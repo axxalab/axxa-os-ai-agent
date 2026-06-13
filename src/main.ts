@@ -174,9 +174,13 @@ interface AxxaSettings {
   /** Workspace ID OPCIONAL da Anthropic — filtra o custo real só desse
    *  workspace (atribuição), análogo ao project da OpenAI. v0.1.173 */
   anthropicWorkspaceId: string;
-  /** Âncora de saldo por provider (v0.1.171): { amount, date(ISO) }. O saldo é
-   *  estimado/real = âncora − gasto desde a data. Crédito é separado por provider. */
+  /** Âncora de saldo por provider (v0.1.171): { amount, date(ISO) }. LEGADO —
+   *  migrado pra balanceCredits na v0.1.230. Mantido só pra migração. */
   balanceAnchors: Record<string, { amount: number; date: string }>;
+  /** Histórico de recargas por provider (v0.1.230): lista de { amount, date(ISO) }.
+   *  O user vai lançando cada crédito que carrega; saldo = Σ recargas − gasto
+   *  desde a recarga mais antiga. Substitui a âncora única. */
+  balanceCredits: Record<string, Array<{ amount: number; date: string }>>;
   // ============ Plano / entitlements (v0.1.174) ============
   /** Entitlement REAL da conta: "free" | "pro" (futuro: billing). Default pro. */
   accountTier: string;
@@ -288,6 +292,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   openaiProjectId: "",
   anthropicWorkspaceId: "",
   balanceAnchors: {},
+  balanceCredits: {},
   accountTier: "pro",
   devTierOverride: "auto",
   founder: false,

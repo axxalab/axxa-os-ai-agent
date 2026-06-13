@@ -72,7 +72,12 @@ import {
   fetchAnthropicCosts,
 } from "../../usage/providerBilling";
 import { detectKeyKind, type KeyKind } from "../../providers/keyFormat";
-import { spentSinceFromRows } from "../../usage/balance";
+import {
+  spentSinceFromRows,
+  totalCredits,
+  earliestCreditDate,
+  type CreditEntry,
+} from "../../usage/balance";
 import {
   getModelCapabilities,
   capabilityBadges,
@@ -2499,55 +2504,107 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const PROVS = ["openai", "anthropic", "gemini", "openrouter", "nim"];
     const valueCells: Record<string, HTMLElement> = {};
     if (!this.plugin.settings.balanceAnchors) this.plugin.settings.balanceAnchors = {};
+    if (!this.plugin.settings.balanceCredits) this.plugin.settings.balanceCredits = {};
     const anchors = this.plugin.settings.balanceAnchors;
+    const allCredits = this.plugin.settings.balanceCredits;
 
+    // Lazy-migra a âncora única (legado) pra uma recarga só, na 1ª vez. v0.1.230
+    const getCredits = (p: string): CreditEntry[] => {
+      if (!allCredits[p]) {
+        const old = anchors[p];
+        allCredits[p] =
+          old && (old.amount || old.date)
+            ? [{ amount: old.amount, date: old.date }]
+            : [];
+      }
+      return allCredits[p];
+    };
+
+    // saldo = Σ recargas − gasto desde a recarga MAIS ANTIGA.
     const recompute = (p: string) => {
       const cell = valueCells[p];
       if (!cell || p === "openrouter") return;
-      const a = anchors[p];
-      if (!a || typeof a.amount !== "number" || !a.date) {
+      const entries = getCredits(p);
+      const earliest = earliestCreditDate(entries);
+      if (earliest === null) {
         cell.setText(t.settings.balanceSetAnchor);
         cell.removeClass("is-real", "is-est");
         return;
       }
-      const spent = spentSinceFromRows(agg.chats, p, a.date);
-      cell.setText(`≈ ${formatUsd(a.amount - spent)} · ${t.settings.balanceEstimate}`);
+      const spent = spentSinceFromRows(agg.chats, p, earliest);
+      cell.setText(
+        `≈ ${formatUsd(totalCredits(entries) - spent)} · ${t.settings.balanceEstimate}`
+      );
       cell.removeClass("is-real");
       cell.addClass("is-est");
     };
 
     for (const p of PROVS) {
-      const row = list.createDiv({ cls: "axxa-balance-row" });
-      row.createSpan({ text: p, cls: "axxa-balance-prov" });
+      const block = list.createDiv({ cls: "axxa-balance-block" });
+      const head = block.createDiv({ cls: "axxa-balance-row" });
+      head.createSpan({ text: p, cls: "axxa-balance-prov" });
       if (p === "openrouter") {
-        row.createSpan({ text: t.settings.balanceLiveHint, cls: "axxa-balance-hint" });
-      } else {
-        const a = anchors[p] ?? { amount: 0, date: "" };
-        const amt = row.createEl("input", {
-          cls: "axxa-balance-amt",
-          // v0.1.228: min=0 — âncora de saldo negativa não faz sentido.
-          attr: { type: "number", step: "0.01", min: "0", placeholder: "$ âncora" },
-        }) as HTMLInputElement;
-        if (a.amount) amt.value = String(a.amount);
-        const dt = row.createEl("input", {
-          cls: "axxa-balance-date",
-          attr: { type: "date" },
-        }) as HTMLInputElement;
-        if (a.date) dt.value = a.date;
-        const save = async () => {
-          // v0.1.228: clampa amount em 0 e ignora data inválida (input date
-          // vazio/malformado vira string vazia, tratada como sem âncora).
-          const amount = Math.max(0, parseFloat(amt.value) || 0);
-          const date =
-            dt.value && Number.isFinite(Date.parse(dt.value)) ? dt.value : "";
-          anchors[p] = { amount, date };
-          await this.plugin.saveSettings();
-          recompute(p);
-        };
-        amt.onchange = save;
-        dt.onchange = save;
+        head.createSpan({ text: t.settings.balanceLiveHint, cls: "axxa-balance-hint" });
+        valueCells[p] = head.createSpan({ text: "—", cls: "axxa-balance-value" });
+        continue; // OpenRouter expõe saldo nativo — sem ledger de recargas.
       }
-      valueCells[p] = row.createSpan({ text: "—", cls: "axxa-balance-value" });
+      valueCells[p] = head.createSpan({ text: "—", cls: "axxa-balance-value" });
+
+      // Ledger de recargas: cada linha = data + valor carregado, + botão remover.
+      const ledger = block.createDiv({ cls: "axxa-balance-credits" });
+      const renderLedger = () => {
+        ledger.empty();
+        const entries = getCredits(p);
+        entries.forEach((entry, i) => {
+          const crow = ledger.createDiv({ cls: "axxa-balance-credit-row" });
+          const dt = crow.createEl("input", {
+            cls: "axxa-balance-date",
+            attr: { type: "date" },
+          }) as HTMLInputElement;
+          if (entry.date) dt.value = entry.date;
+          const amt = crow.createEl("input", {
+            cls: "axxa-balance-amt",
+            attr: {
+              type: "number",
+              step: "0.01",
+              min: "0",
+              placeholder: t.settings.balanceCreditAmount,
+            },
+          }) as HTMLInputElement;
+          if (entry.amount) amt.value = String(entry.amount);
+          const saveEntry = async () => {
+            entry.amount = Math.max(0, parseFloat(amt.value) || 0);
+            entry.date =
+              dt.value && Number.isFinite(Date.parse(dt.value)) ? dt.value : "";
+            await this.plugin.saveSettings();
+            recompute(p);
+          };
+          amt.onchange = saveEntry;
+          dt.onchange = saveEntry;
+          const del = crow.createEl("button", {
+            cls: "axxa-balance-credit-del",
+            text: "×",
+            attr: { type: "button", "aria-label": t.settings.balanceRemoveCredit },
+          });
+          del.onclick = async () => {
+            entries.splice(i, 1);
+            await this.plugin.saveSettings();
+            renderLedger();
+            recompute(p);
+          };
+        });
+        const add = ledger.createEl("button", {
+          cls: "axxa-balance-add",
+          text: t.settings.balanceAddCredit,
+          attr: { type: "button" },
+        });
+        add.onclick = async () => {
+          getCredits(p).push({ amount: 0, date: "" });
+          await this.plugin.saveSettings();
+          renderLedger();
+        };
+      };
+      renderLedger();
       recompute(p);
     }
 
@@ -2581,19 +2638,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })()
         );
       }
-      const oaA = anchors["openai"];
-      // v0.1.228: valida a data da âncora antes de derivar `start` — Date.parse
-      // de uma data inválida vira NaN e iria para fetchOpenAICosts quebrado.
-      if (
-        oaAdmin &&
-        oaA?.date &&
-        typeof oaA.amount === "number" &&
-        Number.isFinite(Date.parse(oaA.date))
-      ) {
+      // Saldo REAL = Σ recargas − gasto (Costs API) desde a recarga mais antiga.
+      const oaEntries = getCredits("openai");
+      const oaEarliest = earliestCreditDate(oaEntries);
+      if (oaAdmin && oaEarliest) {
         tasks.push(
           (async () => {
             try {
-              const start = Math.floor(Date.parse(oaA.date) / 1000);
+              const start = Math.floor(Date.parse(oaEarliest) / 1000);
               const spent = await fetchOpenAICosts(
                 oaAdmin,
                 requestUrl,
@@ -2601,7 +2653,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
                 this.plugin.settings.openaiProjectId
               );
               valueCells["openai"].setText(
-                `≈ ${formatUsd(oaA.amount - spent)} · ${t.settings.balanceReal}`
+                `≈ ${formatUsd(totalCredits(oaEntries) - spent)} · ${t.settings.balanceReal}`
               );
               valueCells["openai"].removeClass("is-est");
               valueCells["openai"].addClass("is-real");
@@ -2611,24 +2663,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })()
         );
       }
-      const antA = anchors["anthropic"];
-      if (
-        antAdmin &&
-        antA?.date &&
-        typeof antA.amount === "number" &&
-        Number.isFinite(Date.parse(antA.date))
-      ) {
+      const antEntries = getCredits("anthropic");
+      const antEarliest = earliestCreditDate(antEntries);
+      if (antAdmin && antEarliest) {
         tasks.push(
           (async () => {
             try {
               const spent = await fetchAnthropicCosts(
                 antAdmin,
                 requestUrl,
-                antA.date,
+                antEarliest,
                 this.plugin.settings.anthropicWorkspaceId
               );
               valueCells["anthropic"].setText(
-                `≈ ${formatUsd(antA.amount - spent)} · ${t.settings.balanceRealExp}`
+                `≈ ${formatUsd(totalCredits(antEntries) - spent)} · ${t.settings.balanceRealExp}`
               );
               valueCells["anthropic"].removeClass("is-est");
               valueCells["anthropic"].addClass("is-real");

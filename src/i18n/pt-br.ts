@@ -1017,12 +1017,15 @@ export const PT_BR = {
     // Saldo por provider (âncora). v0.1.171
     balanceTitle: "Saldo",
     balanceRefresh: "Atualizar saldo",
-    balanceSetAnchor: "defina a âncora →",
+    balanceSetAnchor: "adicione uma recarga →",
     balanceEstimate: "estimado",
     balanceReal: "real",
     balanceLiveHint: "saldo real direto da API (clique Atualizar)",
+    balanceCreditAmount: "$ carregado",
+    balanceAddCredit: "+ Recarga",
+    balanceRemoveCredit: "Remover recarga",
     balanceNote:
-      "Saldo = âncora − gasto desde a data. “real” usa o billing do provider (OpenAI/Anthropic admin · OpenRouter nativo); senão é “estimado” pelos chats do vault. Crédito é separado por provider.",
+      "Lance cada recarga que você carrega (data + valor). Saldo = soma das recargas − gasto desde a recarga mais antiga. “real” usa o billing do provider (OpenAI/Anthropic admin · OpenRouter nativo); senão é “estimado” pelos chats do vault. Obs.: o estimado só conta os chats que existem no vault desde a data; o real depende da janela da API de custos do provider.",
     usageTokensInLabel: "Tokens in",
     usageTokensOutLabel: "Tokens out",
     usageChatsLabel: "Conversas",
