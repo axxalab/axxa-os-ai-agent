@@ -34,6 +34,7 @@ import {
   parseOpenAIChatMessage,
   usageFrom,
   parseOpenAICompatSSE,
+  streamFallbackToChat,
 } from "./_shared";
 
 const GEMINI_ENDPOINT =
@@ -168,7 +169,14 @@ export class GeminiProvider implements Provider {
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
-      throw new ProviderError("Falha de conexão.", "network");
+      // Falha de CONEXÃO do fetch SSE (típico: CORS no WebView mobile) → cai pro
+      // chat() via requestUrl (fura CORS) e emite tudo de uma vez. v0.1.232
+      return streamFallbackToChat(
+        () => this.chat(req, apiKey),
+        onToken,
+        onUsage,
+        onReasoning
+      );
     }
     // Billing primeiro (lê uma cópia do corpo; ensureOkStream ainda lê o original).
     if (!res.ok) {

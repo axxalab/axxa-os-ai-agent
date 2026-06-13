@@ -27,6 +27,7 @@ import {
   parseOpenAIChatMessage,
   usageFrom,
   parseOpenAICompatSSE,
+  streamFallbackToChat,
 } from "./_shared";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
@@ -112,7 +113,14 @@ export class OpenRouterProvider implements Provider {
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
-      throw new ProviderError("Falha de conexão.", "network");
+      // Falha de CONEXÃO do fetch SSE (típico: CORS no WebView mobile) → cai pro
+      // chat() via requestUrl (fura CORS) e emite tudo de uma vez. v0.1.232
+      return streamFallbackToChat(
+        () => this.chat(req, apiKey),
+        onToken,
+        onUsage,
+        onReasoning
+      );
     }
     await ensureOkStream(res, { label: "OpenRouter" });
     if (!res.body) throw new ProviderError("Stream vazio.", "unknown");

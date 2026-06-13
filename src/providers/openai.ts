@@ -25,6 +25,7 @@ import {
   parseOpenAIChatMessage,
   usageFrom,
   parseOpenAICompatSSE,
+  streamFallbackToChat,
 } from "./_shared";
 // Reexporta os helpers compartilhados (gemini/nim/openrouter importavam daqui).
 export { toOpenAIMessages, finalizeOpenAIResponse } from "./_shared";
@@ -117,7 +118,14 @@ export class OpenAIProvider implements Provider {
     } catch (err) {
       // AbortError sobe sem mudar pra ProviderError — caller distingue
       if (err instanceof DOMException && err.name === "AbortError") throw err;
-      throw new ProviderError("Falha de conexão. Confira sua internet.", "network");
+      // Falha de CONEXÃO do fetch SSE (típico: CORS no WebView mobile) → cai pro
+      // chat() via requestUrl (fura CORS) e emite tudo de uma vez. v0.1.232
+      return streamFallbackToChat(
+        () => this.chat(req, apiKey),
+        onToken,
+        onUsage,
+        onReasoning
+      );
     }
     await ensureOkStream(res, { label: "OpenAI" });
     if (!res.body) throw new ProviderError("Stream vazio da OpenAI.", "unknown");

@@ -476,6 +476,86 @@ describe("nim streamChat — pseudo-stream via requestUrl", () => {
   });
 });
 
+describe("streamChat — fallback p/ chat() quando o fetch SSE falha (CORS mobile)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __setRequestUrl(null);
+  });
+
+  // Simula o WebView do mobile barrando o stream: o fetch REJEITA na conexão
+  // (não é AbortError, não é HTTP do servidor). O provider deve cair pro chat()
+  // via requestUrl (fura CORS) e emitir a resposta inteira de uma vez. v0.1.232
+  function mockFetchThrows() {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      })
+    );
+  }
+
+  it("openai: fetch falha → pseudo-stream via requestUrl (content + usage)", async () => {
+    mockFetchThrows();
+    __setRequestUrl(async () => ({
+      status: 200,
+      json: {
+        choices: [{ message: { content: "resposta via fallback" } }],
+        usage: { prompt_tokens: 12, completion_tokens: 4 },
+      },
+    }));
+    const tokens: string[] = [];
+    let usage: unknown;
+    const res = await openaiProvider.streamChat(
+      userReq("gpt-4o"),
+      "key",
+      (t) => tokens.push(t),
+      (u) => (usage = u)
+    );
+    expect(tokens).toEqual(["resposta via fallback"]);
+    expect(res.content).toBe("resposta via fallback");
+    expect(usage).toEqual({ input: 12, output: 4 });
+  });
+
+  it("anthropic: fetch falha → pseudo-stream via requestUrl (content blocks)", async () => {
+    mockFetchThrows();
+    __setRequestUrl(async () => ({
+      status: 200,
+      json: {
+        content: [{ type: "text", text: "claude via fallback" }],
+        usage: { input_tokens: 9, output_tokens: 5 },
+      },
+    }));
+    const tokens: string[] = [];
+    const res = await anthropicProvider.streamChat(
+      userReq("claude-sonnet-4-6"),
+      "key",
+      (t) => tokens.push(t)
+    );
+    expect(tokens).toEqual(["claude via fallback"]);
+    expect(res.content).toBe("claude via fallback");
+    expect(res.usage).toEqual({ input: 9, output: 5 });
+  });
+
+  it("openrouter: fetch falha → pseudo-stream via requestUrl", async () => {
+    mockFetchThrows();
+    __setRequestUrl(async () => ({
+      status: 200,
+      json: {
+        choices: [{ message: { content: "via openrouter" } }],
+        usage: { prompt_tokens: 3, completion_tokens: 2 },
+      },
+    }));
+    const tokens: string[] = [];
+    const res = await openrouterProvider.streamChat(
+      userReq("anthropic/claude-3.5-sonnet"),
+      "key",
+      (t) => tokens.push(t)
+    );
+    expect(tokens).toEqual(["via openrouter"]);
+    expect(res.content).toBe("via openrouter");
+  });
+});
+
 describe("param policy aplicada no BODY real (regressão temperature)", () => {
   afterEach(() => vi.unstubAllGlobals());
 

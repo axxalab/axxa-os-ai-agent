@@ -18,8 +18,39 @@ import {
   type ImageAttachment,
   type TokenHandler,
   type UsageHandler,
+  type ReasoningHandler,
 } from "./base";
 import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
+
+// ============================================================
+// Fallback de streaming → não-streaming (pseudo-stream). v0.1.232
+// ============================================================
+//
+// O streaming REAL usa fetch() pra ler SSE token-a-token. No WebView do mobile
+// (iOS WKWebView / Android), o fetch cross-origin pode bater em CORS e FALHAR
+// na conexão — e aí o usuário levava um erro duro "Falha de conexão", mesmo com
+// internet ok. Mas todo provider tem um chat() não-streaming via requestUrl, que
+// é uma requisição NATIVA do Obsidian e FURA o CORS.
+//
+// Então, quando o fetch SSE falha em CONECTAR (não é abort, não é erro HTTP do
+// servidor — esses a gente respeita), em vez de erro duro caímos pro chat() e
+// emitimos a resposta inteira de uma vez via onToken. O usuário perde o efeito
+// "digitando", mas RECEBE a resposta. Degradação graciosa em vez de falha.
+//
+// Só dispara em falha de CONEXÃO do fetch — no desktop e onde o CORS já
+// funciona, o caminho de streaming real continua intacto (este código nem roda).
+export async function streamFallbackToChat(
+  call: () => Promise<ProviderResponse>,
+  onToken: TokenHandler,
+  onUsage?: UsageHandler,
+  onReasoning?: ReasoningHandler
+): Promise<ProviderResponse> {
+  const resp = await call();
+  if (resp.reasoning && onReasoning) onReasoning(resp.reasoning);
+  if (resp.content) onToken(resp.content);
+  if (resp.usage && onUsage) onUsage(resp.usage);
+  return resp;
+}
 
 // ============================================================
 // Mensagens → formato wire OpenAI (text + tool_calls + vision)

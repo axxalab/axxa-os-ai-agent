@@ -30,7 +30,7 @@ import {
   ReasoningHandler,
 } from "./base";
 import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
-import { ensureOkRequest, ensureOkStream } from "./_shared";
+import { ensureOkRequest, ensureOkStream, streamFallbackToChat } from "./_shared";
 
 const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -356,7 +356,16 @@ export class AnthropicProvider implements Provider {
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
-      throw new ProviderError("Falha de conexão. Confira sua internet.", "network");
+      // Falha de CONEXÃO do fetch SSE (típico: CORS no WebView mobile). Em vez
+      // de erro duro, cai pro chat() via requestUrl (fura CORS) e emite tudo de
+      // uma vez. O header dangerous-direct-browser-access já libera o desktop;
+      // isto cobre o mobile onde o WebView ainda barra o stream. v0.1.232
+      return streamFallbackToChat(
+        () => this.chat(req, apiKey),
+        onToken,
+        onUsage,
+        onReasoning
+      );
     }
 
     await ensureOkStream(res, { label: "Anthropic" });
