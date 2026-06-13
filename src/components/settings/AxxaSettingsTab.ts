@@ -1618,7 +1618,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
       .setDesc(t.settings.languageDesc)
       .addDropdown((dropdown) =>
         dropdown
-          .addOption("pt-br", t.settings.languagePtBr)
           .addOption("en-us", t.settings.languageEnUs)
           .setValue(this.plugin.settings.language)
           .onChange(async (value) => {

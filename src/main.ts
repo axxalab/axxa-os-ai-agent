@@ -255,7 +255,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   defaultEffort: "med",
   chatsPath: "axxa-ai/chats",
   skillsPath: "axxa-ai/skills",
-  language: "pt-br",
+  language: "en-us",
   background: "none",
   density: "normal",
   motion: "wave",
@@ -926,6 +926,8 @@ export default class AxxaPlugin extends Plugin {
     // loadData() lê do arquivo do plugin no vault — substitui localStorage.
     const saved = (await this.loadData()) ?? {};
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved);
+    // PT-BR removido (base 1.0) — força en-us e migra quem estava salvo em pt-br.
+    this.settings.language = "en-us";
     // Object.assign é shallow — pra activeModels (Record por provider),
     // mescla por provider: providers não tocados pelo user mantêm defaults.
     this.settings.activeModels = {

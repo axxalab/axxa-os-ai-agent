@@ -1,8 +1,8 @@
 // src/components/_shared/timestamps.ts
-// Utilitários de formatação de data/hora pras mensagens.
-// Tudo em PT-BR (default do projeto — vide user_profile).
+// Utilitários de formatação de data/hora pras mensagens. en-US por enquanto
+// (PT-BR removido na base 1.0; i18n próprio será refeito depois).
 
-const PT_BR = "pt-BR";
+const DATE_LOCALE = "en-US";
 
 function sameDay(a: Date, b: Date): boolean {
   return (
@@ -12,9 +12,9 @@ function sameDay(a: Date, b: Date): boolean {
   );
 }
 
-/** Hora curta da mensagem — "14:32" */
+/** Hora curta da mensagem — "2:32 PM" */
 export function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString(PT_BR, {
+  return new Date(ts).toLocaleTimeString(DATE_LOCALE, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -22,21 +22,21 @@ export function formatTime(ts: number): string {
 
 /**
  * Label do dia pra usar no day separator.
- * "Hoje" / "Ontem" / "12 de junho" / "12 de junho de 2025"
+ * "Today" / "Yesterday" / "June 12" / "June 12, 2025"
  */
 export function formatDayLabel(ts: number, now: Date = new Date()): string {
   const d = new Date(ts);
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
 
-  if (sameDay(d, now)) return "Hoje";
-  if (sameDay(d, yesterday)) return "Ontem";
+  if (sameDay(d, now)) return "Today";
+  if (sameDay(d, yesterday)) return "Yesterday";
 
-  // Mesmo ano → "12 de junho"; ano diferente → "12 de junho de 2025"
+  // Mesmo ano → "June 12"; ano diferente → "June 12, 2025"
   if (d.getFullYear() === now.getFullYear()) {
-    return d.toLocaleDateString(PT_BR, { day: "2-digit", month: "long" });
+    return d.toLocaleDateString(DATE_LOCALE, { day: "2-digit", month: "long" });
   }
-  return d.toLocaleDateString(PT_BR, {
+  return d.toLocaleDateString(DATE_LOCALE, {
     day: "2-digit",
     month: "long",
     year: "numeric",

@@ -10,25 +10,17 @@
 //   notice(t.settings.modelSetNotice(modelName));
 
 import { createContext, useContext } from "react";
-import { PT_BR, type Translations } from "./pt-br";
-import { EN_US } from "./en-us";
+import { EN_US, type Translations } from "./en-us";
 
-export type { Translations } from "./pt-br";
+export type { Translations } from "./en-us";
 
-export type Locale = "pt-br" | "en-us";
-
-const TRANSLATIONS: Record<Locale, Translations> = {
-  "pt-br": PT_BR,
-  "en-us": EN_US,
-};
-
-/** Devolve o dicionário do locale ou PT-BR como fallback. */
-export function getTranslations(locale: string): Translations {
-  return TRANSLATIONS[locale as Locale] ?? PT_BR;
+// EN-US é o único locale por enquanto — PT-BR removido (i18n será refeito).
+export function getTranslations(_locale: string): Translations {
+  return EN_US;
 }
 
 /** Context React — AxxaApp envolve toda a árvore com o locale ativo. */
-export const TranslationsContext = createContext<Translations>(PT_BR);
+export const TranslationsContext = createContext<Translations>(EN_US);
 
 /** Hook pra ler o dicionário do locale ativo. */
 export function useT(): Translations {
