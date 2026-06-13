@@ -701,6 +701,115 @@ body.axxa-reduce-motion *::after {
   transition-delay: 0s !important;
   scroll-behavior: auto !important;
 }
+
+/* ============================================================
+ * TEMA NATIVO AXXA — pass 1 (fundação). Re-veste a estrutura do
+ * scaffold usando SÓ as variáveis nativas do Obsidian (--background-*,
+ * --text-*, --interactive-*, --radius-*). Herda o tema do usuário →
+ * parece feature de fábrica. Cor/superfície vivem AQUI; layout no
+ * scaffold abaixo. Polish por componente vem nos próximos passes.
+ * ============================================================ */
+
+/* superfície raiz + texto base */
+.axxa-root {
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+/* tipografia semântica: apoio = muted, carimbos/versão = faint */
+.axxa-root :is([class*="-sub"], [class*="-desc"], [class*="-meta"], [class*="-hint"]) {
+  color: var(--text-muted);
+}
+.axxa-root :is([class*="-time"], [class*="-version"], [class*="-faint"]) {
+  color: var(--text-faint);
+}
+
+/* botões: fantasma por padrão (combina com os ícone-only), accent no primary */
+.axxa-root button {
+  color: inherit;
+  background: transparent;
+  border-radius: var(--radius-m, 8px);
+}
+.axxa-root button:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-root :is([class*="-btn-primary"], [class*="-cta"], [class*="-gear-primary"]) {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.axxa-root :is([class*="-btn-primary"], [class*="-cta"], [class*="-gear-primary"]):hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* campos de formulário → campo nativo do Obsidian */
+.axxa-root :is(input, textarea, select) {
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+}
+.axxa-root :is(input, textarea, select):focus {
+  border-color: var(--interactive-accent);
+}
+
+/* chips / pills → fundo sutil (token nativo já = color-mix de --text-normal) */
+.axxa-root :is([class*="-chip"], [class*="-pill"]) {
+  background: var(--axxa-pill-bg);
+}
+
+/* cards / tiles → superfície secundária + borda nativa */
+.axxa-root :is([class*="-card"], [class*="-tile"]) {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l, 12px);
+}
+
+/* divisores → borda nativa */
+.axxa-root [class*="-divider"] {
+  background: var(--background-modifier-border);
+}
+
+/* overlays (backdrop) → scrim nativo. Portaled p/ fora do root → selector global */
+.axxa-plus-overlay,
+.axxa-camera-overlay,
+.axxa-arena-overlay,
+.axxa-mc-modal-overlay {
+  background: var(--background-modifier-cover, rgba(0, 0, 0, 0.45));
+}
+
+/* superfícies flutuantes React (sheet/popover/menu/dropdown/arena).
+   Os modais .ts (confirm/persona/rename/imggen/linksafe) já vivem no
+   .modal NATIVO do Obsidian — NÃO tocar, herdam superfície de fábrica. */
+.axxa-plus-sheet,
+.axxa-popover,
+.axxa-popover-menu,
+.axxa-model-menu,
+.axxa-model-dropdown,
+.axxa-model-modal,
+.axxa-mc-modal {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l, 12px);
+  box-shadow: var(--shadow-l, 0 8px 28px rgba(0, 0, 0, 0.32));
+}
+
+/* código inline/bloco → superfície nativa */
+.axxa-root :is(code, pre) {
+  background: var(--background-primary-alt);
+}
+
+/* scrollbar discreta, nativa */
+.axxa-root ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.axxa-root ::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 8px;
+}
+.axxa-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
 .axxa-list-compact-row {
   display: flex;
   align-items: baseline;
