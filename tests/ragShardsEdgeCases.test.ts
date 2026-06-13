@@ -96,8 +96,10 @@ describe("edge cases: empty + mode switching + backward compat", () => {
     const loaded = await loadIndex(adapter as unknown as DataAdapter, PATH);
     expect(loaded).not.toBeNull();
 
-    // searchStreamed must not crash; should get results from shards 0 and 2
-    const results = await loaded!.searchStreamed([1, 0, 0, 0], 10, 0.5);
+    // searchStreamed must not crash; should get results from shards 0 and 2.
+    // Query dim = índice dim (1): searchStreamed agora pula vetores de dim
+    // divergente (corrupção/mistura de modelos), então a query precisa casar. v0.1.227
+    const results = await loaded!.searchStreamed([1], 10, 0.5);
     expect(results.length).toBeGreaterThan(0);
     expect(results.map((r) => r.entry.path)).toContain("a.md");
     expect(results.map((r) => r.entry.path)).toContain("c.md");

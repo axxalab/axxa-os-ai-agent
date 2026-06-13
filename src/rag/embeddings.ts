@@ -138,11 +138,24 @@ async function embedOpenAICompat(
   } catch {
     throw new ProviderError("Resposta de embeddings inválida.", "unknown");
   }
-  // Devolve em ordem de `index` — ordenar pra garantir
-  return parsed.data
-    .slice()
-    .sort((a, b) => a.index - b.index)
-    .map((d) => d.embedding);
+  // Reconstrói POR index (não confia em sort+map sequencial): se a API
+  // omitir/rejeitar um item, isso desalinharia os vetores dos chunks e
+  // corromperia o índice silenciosamente. v0.1.227
+  const out: number[][] = new Array(texts.length);
+  for (const d of parsed.data ?? []) {
+    if (d && d.index >= 0 && d.index < out.length && Array.isArray(d.embedding)) {
+      out[d.index] = d.embedding;
+    }
+  }
+  for (let i = 0; i < out.length; i++) {
+    if (!Array.isArray(out[i]) || out[i].length === 0) {
+      throw new ProviderError(
+        `Embeddings ${label}: a API devolveu ${parsed.data?.length ?? 0} vetores pra ${texts.length} inputs (faltou o índice ${i}).`,
+        "unknown"
+      );
+    }
+  }
+  return out;
 }
 
 /** OpenAI text-embedding-3-* / ada-002 (batch nativo). */
@@ -319,7 +332,14 @@ export async function embedBatchOpenRouter(
         "unknown"
       );
     }
-    results.push(parsed.data[0].embedding);
+    const emb = parsed.data[0]?.embedding;
+    if (!Array.isArray(emb) || emb.length === 0) {
+      throw new ProviderError(
+        "Nemotron devolveu data sem embedding (item vazio/inválido).",
+        "unknown"
+      );
+    }
+    results.push(emb);
   }
   return results;
 }

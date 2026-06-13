@@ -26,7 +26,9 @@ export function isLinkSafetyMuted(): boolean {
 
 function openExternal(url: string): void {
   // window.open cobre desktop (Electron) e mobile (WebView) no Obsidian.
-  window.open(url, "_blank");
+  // noopener,noreferrer: impede reverse tabnabbing (a aba aberta não acessa
+  // window.opener pra redirecionar a nossa). v0.1.227
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export class LinkSafetyModal extends Modal {
@@ -138,8 +140,13 @@ export function wireExternalLinkSafety(
     a.addEventListener("click", handler);
     wired.push({ el: a, handler });
   });
-  // Disposer: remove os listeners (chamado no cleanup do efeito do Markdown).
+  // Disposer: remove os listeners E limpa o guard data-axxaSafeWired — senão,
+  // se o MESMO nó <a> for re-renderizado/reusado, o re-wire vira no-op e os
+  // links externos passam a abrir SEM o modal de segurança. v0.1.227
   return () => {
-    for (const { el, handler } of wired) el.removeEventListener("click", handler);
+    for (const { el, handler } of wired) {
+      el.removeEventListener("click", handler);
+      delete el.dataset.axxaSafeWired;
+    }
   };
 }

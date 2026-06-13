@@ -213,7 +213,14 @@ export class VectorIndex {
         continue;
       }
       for (const s of parsed.entries) {
-        const embedding = base64ToTypedArray(s.emb, this.precision);
+        let embedding: Float32Array | Int8Array;
+        try {
+          embedding = base64ToTypedArray(s.emb, this.precision);
+        } catch {
+          continue; // entry corrompida — pula em vez de derrubar a busca. v0.1.227
+        }
+        // Dim divergente da query (corrupção/mistura de modelos) → ignora.
+        if (embedding.length !== q.length) continue;
         const score = scoreVectors(q, embedding, this.precision);
         if (score >= minScore) {
           top.push({

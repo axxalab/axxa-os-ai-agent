@@ -165,7 +165,10 @@ export async function toolVaultEdit(app: App, args: EditArgs): Promise<string> {
         `Use uma string mais específica pra evitar ambiguidade.`
     );
   }
-  const newContent = content.replace(args.oldStr, args.newStr);
+  // split/join (NÃO .replace): replace interpreta $&, $1, $$ no newStr e
+  // corromperia trechos com '$' (regex, TeX, preços) silenciosamente. Como já
+  // garantimos occurrences===1, split/join troca exatamente a única ocorrência.
+  const newContent = content.split(args.oldStr).join(args.newStr);
   await adapter.write(path, newContent);
   const delta = args.newStr.length - args.oldStr.length;
   const sign = delta >= 0 ? "+" : "";

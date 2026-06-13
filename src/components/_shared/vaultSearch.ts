@@ -32,12 +32,15 @@ const STOPWORDS_PT_EN = new Set([
   "but", "if", "this", "that", "these", "those", "it", "its", "they", "them",
 ]);
 
+/** minúsculas + sem acentos (NFD) — keywords e conteúdo DEVEM usar a mesma
+ *  dobra, senão "joão"→keyword "joao" nunca casa o conteúdo "joão". v0.1.227 */
+export function foldText(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
 /** Tokeniza query em keywords minúsculas, ≥3 chars, sem stopwords, dedupe. */
 export function extractKeywords(query: string): string[] {
-  return query
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // remove acentos pra match mais robusto
+  return foldText(query)
     .split(/\s+/)
     .map((w) => w.replace(/[^\w]/g, ""))
     .filter((w) => w.length >= 3 && !STOPWORDS_PT_EN.has(w))
@@ -46,7 +49,9 @@ export function extractKeywords(query: string): string[] {
 
 /** Extrai um excerpt centrado na primeira ocorrência de qualquer keyword. */
 function extractExcerpt(content: string, keywords: string[], maxLen: number): string {
-  const lc = content.toLowerCase();
+  // foldText preserva o COMPRIMENTO (toLowerCase + remoção de diacrítico NFD
+  // 1-char), então o índice encontrado mapeia 1:1 no content original.
+  const lc = foldText(content);
   let bestStart = 0;
   for (const kw of keywords) {
     const idx = lc.indexOf(kw);
@@ -81,8 +86,10 @@ export async function searchVault(
   for (const file of files) {
     try {
       const content = await app.vault.cachedRead(file);
-      const lcContent = content.toLowerCase();
-      const lcTitle = file.basename.toLowerCase();
+      // Mesma dobra (lowercase + sem acento) das keywords — senão o match falha
+      // em PT-BR sempre que há acento de um lado só. v0.1.227
+      const lcContent = foldText(content);
+      const lcTitle = foldText(file.basename);
       let score = 0;
 
       for (const kw of keywords) {

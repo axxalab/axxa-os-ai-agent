@@ -136,9 +136,13 @@ export function base64ToTypedArray(
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return precision === "int8"
-    ? new Int8Array(bytes.buffer)
-    : new Float32Array(bytes.buffer);
+  if (precision === "int8") return new Int8Array(bytes.buffer);
+  // Float32Array exige byteLength múltiplo de 4 — um base64 truncado/corrompido
+  // (write parcial, shard cortado) lançaria RangeError. Trunca ao múltiplo de 4
+  // pra degradar (a entrada vira inválida e é filtrada lá em cima) em vez de
+  // derrubar a busca inteira. v0.1.227
+  const usable = bytes.byteLength - (bytes.byteLength % 4);
+  return new Float32Array(bytes.buffer, 0, usable / 4);
 }
 
 /** Estimativa de RAM (bytes) pra N chunks numa dim/precisão. UI pré-indexação. */

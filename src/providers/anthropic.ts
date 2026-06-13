@@ -171,7 +171,14 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
           }
         }
       }
-      converted.push({ role: "user", content: blocks });
+      // Se TODAS as imagens falharam o parse (data URL malformada) e não havia
+      // texto, blocks fica []. Anthropic rejeita content[] vazio com 400 →
+      // cai pro text-only (string vazia vira " " pra não quebrar). v0.1.227
+      if (blocks.length === 0) {
+        converted.push({ role: "user", content: m.content || " " });
+      } else {
+        converted.push({ role: "user", content: blocks });
+      }
       continue;
     }
 

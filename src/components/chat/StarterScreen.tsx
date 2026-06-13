@@ -282,12 +282,17 @@ export function ModelInfoCard({
   useEffect(() => {
     const key = provider + "::" + model;
     if (enriched || autoFetchedRef.current.has(key)) return;
-    autoFetchedRef.current.add(key);
     let cancelled = false;
     void (async () => {
       try {
         const res = await plugin.fetchModelInfo(provider, model);
-        if (!cancelled && res) setBump((b) => b + 1);
+        // Só marca como "já buscado" no SUCESSO — uma falha transitória (rede,
+        // res null) NÃO deve bloquear o retry pra sempre. Próximo render tenta
+        // de novo até trazer specs. v0.1.227
+        if (!cancelled && res) {
+          autoFetchedRef.current.add(key);
+          setBump((b) => b + 1);
+        }
       } catch {
         /* auto-fetch é silencioso — o botão manual reporta erros */
       }

@@ -2172,10 +2172,28 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     if (idx < 0) return;
     const text = newContent.trim();
     if (!text) return;
+
+    const caps = getModelCapabilities(activeProviderId, activeModel);
+    // Reanexa o que estiver pendente no compositor (mesma regra do handleSend:
+    // imagem só se o modelo tem visão). Edição raramente tem anexos, mas se
+    // houver, segue o mesmo caminho do envio normal. v0.1.227
+    const attachments =
+      pendingAttachments.length > 0
+        ? pendingAttachments
+            .map((p) => p.attachment)
+            .filter((a) => (a.type === "image" ? caps.vision : true))
+        : undefined;
+
     useChatStore.getState().setMessages(current.slice(0, idx));
     useChatStore.getState().addMessage({ type: "user", content: text });
-    if (activeMode === "agent") await runAgentTurn(text);
-    else await streamReply(text);
+    setPendingAttachments([]);
+
+    // Mesmo dispatch do handleSend: generation → runGenerationTurn (antes não
+    // roteava, então editar a prompt de um modelo de imagem/áudio/vídeo dava
+    // erro), agent → runAgentTurn, senão streamReply. v0.1.227
+    if (isGenerationModel(caps)) await runGenerationTurn(text, caps);
+    else if (activeMode === "agent") await runAgentTurn(text, attachments);
+    else await streamReply(text, attachments);
   };
 
   // "Tentar de novo" da bolha de erro: diferente do regenerate (que ramifica a
