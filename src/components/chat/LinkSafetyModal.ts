@@ -128,7 +128,19 @@ export function wireExternalLinkSafety(
     a.dataset.axxaSafeWired = "1";
     const handler = (e: MouseEvent) => {
       const href = a.getAttribute("href") || a.getAttribute("data-href") || "";
-      if (!href || !/^https?:\/\//i.test(href)) return; // só http(s)
+      if (!href) return;
+      // Esquemas perigosos (javascript:/data:/vbscript:/file:) nunca devem
+      // navegar a partir de uma resposta da IA — bloqueia de forma silenciosa
+      // (preventDefault) em vez de deixar o default rodar. v0.1.228
+      if (/^\s*(javascript|data|vbscript|file):/i.test(href)) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.warn("[axxa] link com esquema bloqueado:", href);
+        return;
+      }
+      // Só http(s) passa pelo modal de segurança; demais esquemas seguros
+      // (mailto:/tel:/obsidian:) seguem o comportamento default do Obsidian.
+      if (!/^https?:\/\//i.test(href)) return;
       e.preventDefault();
       e.stopPropagation();
       if (isLinkSafetyMuted()) {

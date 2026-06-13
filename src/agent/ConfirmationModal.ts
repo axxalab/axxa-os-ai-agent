@@ -66,7 +66,7 @@ export class ConfirmationModal extends Modal {
     });
     summaryEl.createEl("div", {
       cls: "axxa-confirm-tool-desc",
-      text: opts.definition.description.split(".")[0] + ".",
+      text: firstSentence(opts.definition.description),
     });
 
     this.renderPreview(contentEl);
@@ -164,4 +164,14 @@ export class ConfirmationModal extends Modal {
 
 function trunc(s: string, max = 1200): string {
   return s.length > max ? s.slice(0, max) + `\n\n[+${s.length - max} chars]` : s;
+}
+
+// v0.1.228: corta na 1ª frase real (ponto + espaço), sem quebrar em pontos
+// internos como ".md" ou "1.5". Fallback: descrição inteira truncada curta.
+function firstSentence(desc: string, max = 140): string {
+  const d = desc.trim();
+  if (!d) return "";
+  const m = d.match(/^(.+?\.)(?:\s|$)/);
+  const sentence = m ? m[1] : d;
+  return sentence.length > max ? sentence.slice(0, max - 1) + "…" : sentence;
 }

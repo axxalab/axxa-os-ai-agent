@@ -88,6 +88,9 @@ export function quantizeEmbedding(
   const out = new Int8Array(unit.length);
   for (let i = 0; i < unit.length; i++) {
     const q = Math.round(unit[i] * 127);
+    // Range simétrico [-127, 127] de propósito: casa com a divisão por 127²
+    // no scoreVectors (escala 127). Não usamos -128 pra não introduzir viés
+    // assimétrico no dot. v0.1.228
     out[i] = q > 127 ? 127 : q < -127 ? -127 : q;
   }
   return out;

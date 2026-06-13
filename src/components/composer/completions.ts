@@ -127,8 +127,12 @@ export function wikilinkCompletionSource(
               view.dispatch({
                 changes: { from: fromArg, to: toArg, insert: alias + " " },
               });
-              // Dispara callback (caller adiciona como anexo)
-              Promise.resolve().then(() => onPickNote(item.path, item.isFolder));
+              // Dispara callback (caller adiciona como anexo). A dispatch acima
+              // já é síncrona e completa; o .catch evita unhandled rejection se
+              // onPickNote lançar (v0.1.228).
+              Promise.resolve()
+                .then(() => onPickNote(item.path, item.isFolder))
+                .catch(() => {});
             }
           : `[[${item.path}]] `,
       })),

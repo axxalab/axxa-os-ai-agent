@@ -6890,6 +6890,9 @@ body.is-mobile .axxa-dash .axxa-launch-chip {
   border-radius: 999px;
   color: var(--text-muted);
   cursor: pointer;
+  /* Não entra numa seleção manual de texto dentro do <pre> (blindagem). v0.1.228 */
+  user-select: none;
+  -webkit-user-select: none;
   opacity: 0;
   transition: opacity 0.15s, color 0.15s, background 0.15s;
 }

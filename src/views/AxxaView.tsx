@@ -53,6 +53,7 @@ export class AxxaView extends ItemView {
   async onClose() {
     this.teardownMobileKeyboardObserver();
     this.root?.unmount();
+    this.root = null; // v0.1.228: zera a ref pra não segurar Root já desmontado
   }
 
   /**
@@ -72,7 +73,20 @@ export class AxxaView extends ItemView {
 
     const docEl = this.containerEl.doc.documentElement;
 
+    // v0.1.228: o MutationObserver dispara em TODA mudança de `style` global
+    // do <html>, mas só nos importa quando `--keyboard-height` muda. Cacheamos
+    // o último valor lido pra dar early-return e evitar closest()/toggle()
+    // redundantes nas mudanças de style que não mexem no teclado.
+    let lastKeyboardHeight = -1;
+
     const update = () => {
+      // Lê o valor atual da variável CSS (Obsidian seta inline no style)
+      const keyboardHeight = parseFloat(
+        docEl.style.getPropertyValue("--keyboard-height") || "0"
+      );
+      if (keyboardHeight === lastKeyboardHeight) return;
+      lastKeyboardHeight = keyboardHeight;
+
       // Re-busca o drawer a cada update — sobrevive a migração entre janelas
       const drawer = this.containerEl.closest(".workspace-drawer");
       if (!drawer) return;
@@ -80,11 +94,6 @@ export class AxxaView extends ItemView {
       // Confere se a view está na aba ativa do drawer (multi-tab support)
       const active = !!this.containerEl.closest(
         ".workspace-drawer-active-tab-content"
-      );
-
-      // Lê o valor atual da variável CSS (Obsidian seta inline no style)
-      const keyboardHeight = parseFloat(
-        docEl.style.getPropertyValue("--keyboard-height") || "0"
       );
 
       const isOpen = active && keyboardHeight > 0;

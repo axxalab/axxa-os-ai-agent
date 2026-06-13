@@ -359,9 +359,9 @@ function HeaderModelSwitcher({
     };
   }, [open]);
 
-  const opts = modelOptions.includes(modelName)
-    ? modelOptions
-    : [modelName, ...modelOptions];
+  // v0.1.228: dedup + ativo primeiro. Set elimina duplicatas dentro de
+  // modelOptions (senão dois itens iguais geram key React repetida no map).
+  const opts = Array.from(new Set([modelName, ...modelOptions]));
 
   return (
     <div className="axxa-header-model" ref={wrapRef}>

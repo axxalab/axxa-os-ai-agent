@@ -156,6 +156,10 @@ export function SegmentedRow({
         ref={indRef}
         style={indStyle}
       />
+      {/* Trunca refs obsoletas quando a lista encolhe: refs além de items.length
+          ficariam segurando DOM detached (os callbacks abaixo só preenchem
+          0..length-1, nunca limpam o resto). v0.1.228 */}
+      {((btnRefs.current.length = items.length), null)}
       {items.map((it, i) => {
         const active = it.id === activeId;
         return (

@@ -38,6 +38,11 @@ interface PoolAcc {
   cost: number;
 }
 
+// v0.1.228: a cota é rateada pela fração de TOKENS, não de custo. Como o pool
+// agrega modelos de preços diferentes (ex: vários modelos "big"), a fração de
+// tokens coberta ≠ fração de custo coberta — o desconto é aproximado. Tudo aqui
+// já é estimativa (ver header), e ordenar por custo/token mudaria o resultado
+// sem cobertura de teste, então fica documentado em vez de "corrigido".
 function applyAllowance(pool: PoolAcc, allowance: number): { cost: number; free: number } {
   if (pool.tok <= 0) return { cost: 0, free: 0 };
   const covered = Math.min(pool.tok, allowance);
@@ -70,7 +75,10 @@ export function computeBilledUsage(
       r.provider === "openai" && allow.eligible
         ? openaiFreeTierForModel(r.model)
         : null;
-    const tok = r.tokensIn + r.tokensOut;
+    // v0.1.228: sanear NaN/Infinity de frontmatter corrompido pra não envenenar a cota.
+    const tin = Number.isFinite(r.tokensIn) ? r.tokensIn : 0;
+    const tout = Number.isFinite(r.tokensOut) ? r.tokensOut : 0;
+    const tok = tin + tout;
     if (pool === "big") {
       g.big.tok += tok;
       g.big.cost += cost;
@@ -122,7 +130,10 @@ export function todayFreeStatus(
     if (r.day !== today) continue;
     if (r.provider !== "openai" || !allow.eligible) continue;
     const pool = openaiFreeTierForModel(r.model);
-    const tok = r.tokensIn + r.tokensOut;
+    // v0.1.228: idem — saneia NaN/Infinity de linhas corrompidas.
+    const tin = Number.isFinite(r.tokensIn) ? r.tokensIn : 0;
+    const tout = Number.isFinite(r.tokensOut) ? r.tokensOut : 0;
+    const tok = tin + tout;
     if (pool === "big") bigTok += tok;
     else if (pool === "mini") miniTok += tok;
   }

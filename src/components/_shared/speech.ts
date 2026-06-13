@@ -142,14 +142,23 @@ export function startDictation(
   rec.continuous = true;
   rec.interimResults = true;
   rec.onresult = (e) => {
-    let interim = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const r = e.results[i];
-      const txt = r[0].transcript;
-      if (r.isFinal) handlers.onFinal(txt.trim());
-      else interim += txt;
+    // v0.1.228: guarda r[0]?.transcript e envolve em try/catch — entrada
+    // malformada (alternativa ausente) jogava TypeError que matava o handler
+    // sem avisar onError. Agora pula a entrada e reporta a falha.
+    try {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        const alt = r && r[0];
+        const txt = alt?.transcript;
+        if (!txt) continue;
+        if (r.isFinal) handlers.onFinal(txt.trim());
+        else interim += txt;
+      }
+      if (interim) handlers.onInterim?.(interim.trim());
+    } catch {
+      handlers.onError?.();
     }
-    if (interim) handlers.onInterim?.(interim.trim());
   };
   rec.onerror = () => handlers.onError?.();
   rec.onend = () => handlers.onEnd?.();

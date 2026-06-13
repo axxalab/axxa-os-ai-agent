@@ -58,6 +58,9 @@ export function InspireScreen({ onPick, onClose }: InspireScreenProps) {
             key={c.id}
             type="button"
             role="tab"
+            // v0.1.228: liga a aba ao painel (grid) via aria-controls pra
+            // completar a relacao ARIA que os roles tablist/tab ja implicavam.
+            aria-controls="axxa-inspire-grid"
             aria-selected={cat === c.id}
             className={
               "axxa-inspire-tab" + (cat === c.id ? " axxa-inspire-tab-active" : "")
@@ -69,10 +72,15 @@ export function InspireScreen({ onPick, onClose }: InspireScreenProps) {
         ))}
       </div>
 
-      <div className="axxa-inspire-grid">
-        {cards.map((c, i) => (
+      <div
+        className="axxa-inspire-grid"
+        id="axxa-inspire-grid"
+        role="tabpanel">
+        {cards.map((c) => (
           <button
-            key={i}
+            // v0.1.228: chave estavel pelo prompt curado (unico por card),
+            // em vez do indice do array filtrado.
+            key={c.prompt}
             type="button"
             className="axxa-inspire-card"
             onClick={() => onPick(c.prompt)}

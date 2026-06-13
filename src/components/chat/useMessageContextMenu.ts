@@ -8,7 +8,7 @@
 // Decisão de design: usa Menu nativo do Obsidian (não custom popup) — herda
 // estilo do tema, ícones Lucide, comportamento de fechar ao clicar fora.
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Menu } from "obsidian";
 import type { MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from "react";
 
@@ -49,6 +49,10 @@ export function useMessageContextMenu(getItems: () => MessageMenuItem[]) {
     }
     startRef.current = null;
   };
+
+  // v0.1.228 — cancela qualquer long-press pendente no unmount, evitando que o
+  // timer dispare showMenu/vibrate depois do componente sair da árvore.
+  useEffect(() => cancel, []);
 
   return {
     onContextMenu: (e: ReactMouseEvent) => {
