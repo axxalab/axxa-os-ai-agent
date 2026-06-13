@@ -32,8 +32,10 @@ import {
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODELS_ENDPOINT = "https://openrouter.ai/api/v1/models";
 
+// OpenRouter usa esses headers só pra ATRIBUIÇÃO (aparece no dashboard/ranking
+// deles) — não é telemetria nossa. Referer = URL pública real do plugin.
 const APP_HEADERS = {
-  "HTTP-Referer": "https://axxa.lab",
+  "HTTP-Referer": "https://github.com/axxalab/axxa-os-ai-agent",
   "X-Title": "AXXA OS - AI Agent",
 };
 

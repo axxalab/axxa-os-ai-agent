@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { hapticTick } from "../_shared/haptics";
+import { useFocusTrap } from "../_shared/useFocusTrap";
 import { useT } from "../../i18n";
 import type AxxaPlugin from "../../main";
 import {
@@ -204,8 +205,8 @@ export function ModelArena({
   // sem re-registrar a cada render (handler sempre lê o estado atual via ref).
   const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   onKeyRef.current = (e: KeyboardEvent) => {
-    if (e.key === "Escape") onClose();
-    else if (e.key === "ArrowRight") moveModel(1);
+    // Escape é tratado pelo useFocusTrap (que também devolve o foco ao fechar).
+    if (e.key === "ArrowRight") moveModel(1);
     else if (e.key === "ArrowLeft") moveModel(-1);
     else if (e.key === "ArrowUp") moveProvider(-1);
     else if (e.key === "ArrowDown") moveProvider(1);
@@ -215,6 +216,11 @@ export function ModelArena({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  // Focus-trap: prende Tab no diálogo, Escape fecha, devolve o foco ao sair.
+  // As setas continuam vivas no handler acima (o trap só intercepta Tab/Escape).
+  const arenaRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(arenaRef, { onEscape: onClose });
 
   const moveModel = (dir: number) => {
     if (flat.length < 2) return;
@@ -297,8 +303,10 @@ export function ModelArena({
       onClick={onClose}
     >
       <div
+        ref={arenaRef}
         className="axxa-arena"
         data-provider={prov}
+        tabIndex={-1}
         style={{ ["--axxa-fam" as string]: fam.color }}
         onClick={(e) => e.stopPropagation()}
       >

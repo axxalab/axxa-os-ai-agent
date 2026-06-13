@@ -13,6 +13,7 @@
 import { Notice } from "obsidian";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../_shared/Icon";
+import { useFocusTrap } from "../_shared/useFocusTrap";
 import { useT } from "../../i18n";
 
 interface CameraModalProps {
@@ -96,14 +97,9 @@ export function CameraModal({ onCapture, onClose }: CameraModalProps) {
   // Cleanup garantido no unmount (solta a câmera).
   useEffect(() => () => stopStream(), []);
 
-  // Escape fecha.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Focus-trap + Escape + devolve foco ao fechar (a11y, padrão WAI-ARIA dialog).
+  const overlayRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(overlayRef, { onEscape: onClose });
 
   const toggleTorch = async () => {
     const track = streamRef.current?.getVideoTracks()[0];
@@ -164,7 +160,14 @@ export function CameraModal({ onCapture, onClose }: CameraModalProps) {
   };
 
   return (
-    <div className="axxa-camera-overlay" role="dialog" aria-label={t.camera.title}>
+    <div
+      ref={overlayRef}
+      className="axxa-camera-overlay"
+      role="dialog"
+      aria-modal="true"
+      tabIndex={-1}
+      aria-label={t.camera.title}
+    >
       <div className="axxa-camera-stage">
         {captured ? (
           <img

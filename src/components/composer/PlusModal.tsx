@@ -6,8 +6,9 @@
 //   3. Effort selector (5 níveis pill)
 //   4. Future: settings (max_tokens, system prompt override, etc)
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { FuzzySuggestModal, Menu, Notice, Platform, TFile } from "obsidian";
+import { useFocusTrap } from "../_shared/useFocusTrap";
 import type { App } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { CameraModal } from "./CameraModal";
@@ -115,14 +116,9 @@ export function PlusModal({
   // Câmera in-app (getUserMedia) — overlay full-screen sobre o sheet (desktop).
   const [cameraOpen, setCameraOpen] = useState(false);
 
-  // Fecha com Escape
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Focus-trap + Escape + devolve foco ao fechar (a11y, padrão WAI-ARIA dialog).
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(sheetRef, { onEscape: onClose });
 
   // Helper: blob → dataUrl via FileReader
   const blobToDataUrl = (blob: Blob): Promise<string> =>
@@ -276,9 +272,12 @@ export function PlusModal({
   return (
     <div className="axxa-plus-overlay" onClick={onClose}>
       <div
+        ref={sheetRef}
         className="axxa-plus-sheet"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
         aria-label={t.plus.dialogLabel}
       >
         <div className="axxa-plus-handle" />
