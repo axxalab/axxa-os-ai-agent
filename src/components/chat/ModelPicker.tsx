@@ -22,7 +22,6 @@ import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
 } from "../../providers/modelDescriptions";
-import { ModelArena } from "./ModelArena";
 
 const FAV = "__fav__";
 
@@ -100,7 +99,6 @@ export function ModelPicker({
 }) {
   const t = useT();
   const lang = plugin.settings.language;
-  const [modalOpen, setModalOpen] = useState(false);
   const [, bump] = useState(0); // re-render ao favoritar
 
   // Garante o modelo atual na lista, mesmo se não estiver no activeModels.
@@ -195,18 +193,6 @@ export function ModelPicker({
         <span className={"axxa-model-tier axxa-model-tier-" + tier}>
           {tierText}
         </span>
-        <button
-          type="button"
-          className="axxa-mpick-expand"
-          aria-label={t.modelPicker.expand}
-          title={t.modelPicker.expand}
-          onClick={() => {
-            hapticTick();
-            setModalOpen(true);
-          }}
-        >
-          <Icon name="maximize-2" />
-        </button>
       </div>
       {desc && <p className="axxa-mc-desc">{desc}</p>}
       <Pills ids={cardPills(info)} />
@@ -244,18 +230,6 @@ export function ModelPicker({
         )}
       </div>
 
-      {modalOpen && (
-        <ModelArena
-          provider={provider}
-          model={model}
-          plugin={plugin}
-          onConfirm={(p, m) => {
-            onArenaConfirm(p, m);
-            setModalOpen(false);
-          }}
-          onClose={() => setModalOpen(false)}
-        />
-      )}
     </div>
   );
 }

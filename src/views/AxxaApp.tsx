@@ -21,7 +21,6 @@ import { Icon } from "../components/_shared/Icon";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
-import { StarterScreen } from "../components/chat/StarterScreen";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
 import { ConversationsList } from "../components/chat/ConversationsList";
 import {
@@ -1600,7 +1599,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onOpenSettings={() => finishOnboarding(true)}
             onDismiss={() => finishOnboarding(false)}
           />
-        ) : isEmpty && cleanChat ? (
+        ) : isEmpty ? (
           <NewChatScreen
             mode={activeMode}
             plugin={plugin}
@@ -1611,26 +1610,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onModelChange={handleStarterModel}
             onArenaConfirm={handleArenaConfirm}
             onOpenSettings={handleOpenSettings}
-          />
-        ) : isEmpty ? (
-          <StarterScreen
-            plugin={plugin}
-            provider={providerSel}
-            model={starterModel}
-            effort={effort}
-            mode={mode}
-            recentChats={recentChats}
-            summaries={chatSummaries}
-            activeModels={plugin.settings.activeModels}
-            onProviderChange={handleStarterProvider}
-            onModelChange={handleStarterModel}
-            onEffortChange={handleSelectEffort}
-            onModeChange={handleStarterMode}
-            onLoadChat={handleLoadChat}
-            onOpenConversations={handleOpenConversations}
-            onOpenSettings={handleOpenSettings}
-            onPromptStarter={handlePromptStarter}
-            visibleChips={plugin.settings.listChips}
           />
         ) : (
           <ChatArea highlightTarget={searchTarget} />
