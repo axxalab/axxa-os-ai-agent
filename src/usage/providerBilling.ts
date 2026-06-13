@@ -95,7 +95,19 @@ export type RequestUrlLike = (opts: {
   method: string;
   headers: Record<string, string>;
   throw: boolean;
-}) => Promise<{ status: number; json?: unknown }>;
+}) => Promise<{ status: number; json?: unknown; text?: string }>;
+
+/** Extrai o MOTIVO real de um erro de billing (OpenAI/Anthropic devolvem
+ *  `{error:{message}}`). Sem isso o usuário só vê "HTTP 400" e não dá pra
+ *  saber se é admin key errada, projeto inválido, escopo, etc. v0.1.228 */
+function billingErrorDetail(res: { json?: unknown; text?: string }): string {
+  const msg = (res.json as { error?: { message?: string } } | null | undefined)
+    ?.error?.message;
+  if (msg) return ` — ${msg}`;
+  if (typeof res.text === "string" && res.text.trim())
+    return ` — ${res.text.trim().slice(0, 300)}`;
+  return "";
+}
 
 /** Timeout padrão (ms) das chamadas de billing — evita pendurar a UI. */
 export const BILLING_REQUEST_TIMEOUT_MS = 15_000;
@@ -136,7 +148,7 @@ export async function fetchOpenRouterBilling(
     "OpenRouter billing"
   );
   if (res.status < 200 || res.status >= 300) {
-    throw new Error(`OpenRouter billing: HTTP ${res.status}`);
+    throw new Error(`OpenRouter billing: HTTP ${res.status}${billingErrorDetail(res)}`);
   }
   return parseOpenRouterKey(res.json);
 }
@@ -189,10 +201,12 @@ export async function fetchOpenAICosts(
     "OpenAI costs"
   );
   if (res.status === 401 || res.status === 403) {
-    throw new Error("Admin key inválida ou sem permissão de billing.");
+    throw new Error(
+      `Admin key inválida ou sem permissão de billing.${billingErrorDetail(res)}`
+    );
   }
   if (res.status < 200 || res.status >= 300) {
-    throw new Error(`OpenAI costs: HTTP ${res.status}`);
+    throw new Error(`OpenAI costs: HTTP ${res.status}${billingErrorDetail(res)}`);
   }
   return parseOpenAICosts(res.json);
 }
@@ -254,10 +268,12 @@ export async function fetchAnthropicCosts(
     "Anthropic costs"
   );
   if (res.status === 401 || res.status === 403) {
-    throw new Error("Admin key Anthropic inválida ou sem permissão.");
+    throw new Error(
+      `Admin key Anthropic inválida ou sem permissão.${billingErrorDetail(res)}`
+    );
   }
   if (res.status < 200 || res.status >= 300) {
-    throw new Error(`Anthropic costs: HTTP ${res.status}`);
+    throw new Error(`Anthropic costs: HTTP ${res.status}${billingErrorDetail(res)}`);
   }
   return parseAnthropicCosts(res.json);
 }
