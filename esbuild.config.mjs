@@ -35,6 +35,17 @@ const copyAssetsPlugin = {
 const context = await esbuild.context({
   entryPoints: ["src/main.ts"],
   bundle: true,
+  // Frente 1 (base 1.0): troca React+ReactDOM por Preact/compat SÓ no bundle que
+  // vai pro Obsidian. Types e testes (vitest) seguem no React real — o alias é só
+  // do esbuild. ~40KB gz a menos. APIs usadas (createPortal/useId/useLayoutEffect)
+  // são cobertas pelo compat.
+  alias: {
+    react: "preact/compat",
+    "react-dom": "preact/compat",
+    // createRoot do React 18 não existe no preact/compat → shim sobre render().
+    "react-dom/client": path.resolve("src/shims/reactDomClient.ts"),
+    "react/jsx-runtime": "preact/jsx-runtime",
+  },
   external: [
     "obsidian",
     "electron",
