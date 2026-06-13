@@ -175,7 +175,9 @@ export function ensureOkRequest(
 export function parseOpenAIChatMessage(message: {
   content?: unknown;
   tool_calls?: Array<{ type: string; id: string; function: { name: string; arguments: string } }>;
-}): { content: string; toolCalls?: ProviderToolCall[] } {
+  reasoning_content?: unknown;
+  reasoning?: unknown;
+}): { content: string; toolCalls?: ProviderToolCall[]; reasoning?: string } {
   let toolCalls: ProviderToolCall[] | undefined;
   if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
     toolCalls = message.tool_calls
@@ -191,7 +193,13 @@ export function parseOpenAIChatMessage(message: {
       });
   }
   const content = typeof message.content === "string" ? message.content : "";
-  return { content, toolCalls };
+  // Reasoning de resposta NÃO-stream (DeepSeek R1 e afins expõem
+  // reasoning_content; alguns hosts usam "reasoning"). Auditoria v0.1.225.
+  const reasoning =
+    (typeof message.reasoning_content === "string" && message.reasoning_content) ||
+    (typeof message.reasoning === "string" && message.reasoning) ||
+    undefined;
+  return { content, toolCalls, reasoning };
 }
 
 export function usageFrom(json: {

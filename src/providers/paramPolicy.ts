@@ -100,6 +100,11 @@ export function maxOutputTokens(provider: string, model: string): number {
   // Gemini
   if (/gemini-(3|2\.5)/.test(id)) return 65536;
   if (/gemini/.test(id)) return 8192;
+  // DeepSeek capa output em 8k (API própria e na maioria dos hosts).
+  if (/deepseek/.test(id)) return 8192;
+  // NIM hosted: muitos modelos capam output em 4k-8k e devolvem 400 acima
+  // disso — fallback conservador SÓ pro NIM (auditoria v0.1.225).
+  if (provider === "nim") return 4096;
   return 16384;
 }
 

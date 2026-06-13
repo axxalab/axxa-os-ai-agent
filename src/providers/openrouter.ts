@@ -137,9 +137,7 @@ export class OpenRouterProvider implements Provider {
       throw new ProviderError(`OpenRouter: HTTP ${res.status}`, "unknown");
     }
     const all: string[] = (res.json?.data ?? []).map((m: { id: string }) => m.id);
-    return all
-      .filter((id) => !id.includes(":free") && !id.includes("auto"))
-      .sort();
+    return all.filter(isRelevantOpenRouterModel).sort();
   }
 
   /** Modelos de EMBEDDING do catálogo (pro RAG). Mantém os :free (o embedding
@@ -160,6 +158,21 @@ export class OpenRouterProvider implements Provider {
       return [];
     }
   }
+}
+
+/**
+ * Filtro do catálogo OpenRouter (auditoria v0.1.225).
+ * O antigo `!id.includes("auto")` excluía QUALQUER modelo com "auto" no nome
+ * (falso-positivo), e `!id.includes(":free")` escondia TODAS as variantes
+ * grátis — justamente as do onboarding sem cartão. Agora:
+ *   - exclui só os pseudo-modelos do roteador ("openrouter/auto", etc);
+ *   - exclui embeddings (vão pro listEmbeddingModels);
+ *   - MANTÉM ":free" (capabilities marcam free via overlay).
+ */
+export function isRelevantOpenRouterModel(id: string): boolean {
+  if (id.startsWith("openrouter/")) return false; // auto-router etc
+  if (isEmbeddingModelId(id)) return false;
+  return true;
 }
 
 export const openrouterProvider = new OpenRouterProvider();

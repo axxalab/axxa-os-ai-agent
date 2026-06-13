@@ -86,6 +86,9 @@ export interface ProviderResponse {
   /** Set se LLM decidiu chamar tools em vez de devolver texto direto. */
   toolCalls?: ProviderToolCall[];
   usage?: { input: number; output: number };
+  /** Raciocínio (reasoning_content) de respostas NÃO-stream — ex: DeepSeek R1
+   *  via NIM (pseudo-stream). No stream real vai pelo ReasoningHandler. */
+  reasoning?: string;
 }
 
 /** Callback que recebe cada delta de token vindo do streaming. */

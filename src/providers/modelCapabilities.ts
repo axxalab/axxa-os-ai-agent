@@ -9,6 +9,8 @@
 // especificidade. Quando o modelo não bate em nenhum prefixo, retorna
 // fallback conservador (apenas streaming).
 
+import { getEnrichedInfo } from "./modelInfoStore";
+
 export interface ModelCapabilities {
   /** Aceita imagens (input multimodal: image_url / image base64) */
   vision: boolean;
@@ -30,6 +32,18 @@ const DEFAULT_CAPS: ModelCapabilities = {
   vision: false,
   tools: false,
   streaming: true,
+};
+
+// Fallback POR PROVIDER pra modelos fora da tabela (auditoria v0.1.225):
+//   - openrouter: o roteador NORMALIZA tools — modelos modernos esmagadoramente
+//     suportam. tools:false aqui bloqueava o Agent em qualquer vendor não
+//     mapeado (x-ai, cohere, amazon, moonshot, z-ai…). Otimista + overlay do
+//     catálogo (abaixo) corrige por-modelo com dado REAL.
+//   - nim: 100% OpenAI-compat com tools; e o streaming é SEMPRE pseudo
+//     (requestUrl/CORS) — streaming:true aqui era mentira no badge.
+const FALLBACK_BY_PROVIDER: Record<string, ModelCapabilities> = {
+  openrouter: { vision: false, tools: true, streaming: true },
+  nim: { vision: false, tools: true, streaming: false },
 };
 
 interface CapsEntry {
@@ -109,10 +123,13 @@ const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
     { prefix: "openai/gpt-4o", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "openai/gpt-5", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "openai/o", caps: { vision: true, tools: true, streaming: true } },
-    // Google
+    // Google — gemini-3 ANTES do genérico (caía em tools:false e bloqueava
+    // o Agent no Gemini 3 via OpenRouter — bug da auditoria v0.1.225).
+    { prefix: "google/gemini-3", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "google/gemini-2", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "google/gemini-1.5", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "google/gemini", caps: { vision: true, tools: false, streaming: true } },
+    { prefix: "google/gemma", caps: { vision: false, tools: false, streaming: true } },
     // Meta Llama 3.2+ tem vision em variantes "vision"; Llama 3.3 base é texto-only
     { prefix: "meta-llama/llama-3.3", caps: { vision: false, tools: true, streaming: true } },
     { prefix: "meta-llama/llama-3.2-vision", caps: { vision: true, tools: true, streaming: true } },
@@ -126,8 +143,19 @@ const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
     { prefix: "qwen/qwen", caps: { vision: false, tools: true, streaming: true } },
     { prefix: "deepseek/deepseek-vl", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "deepseek/", caps: { vision: false, tools: true, streaming: true } },
-    // :free suffix indica modelo gratuito
-    { prefix: ":free", caps: { vision: false, tools: false, streaming: true, free: true } },
+    // Vendors que faltavam (auditoria v0.1.225) — sem eles, caíam no fallback.
+    { prefix: "x-ai/grok-4", caps: { vision: true, tools: true, streaming: true } },
+    { prefix: "x-ai/", caps: { vision: false, tools: true, streaming: true } },
+    { prefix: "amazon/nova", caps: { vision: true, tools: true, streaming: true } },
+    { prefix: "cohere/", caps: { vision: false, tools: true, streaming: true } },
+    { prefix: "moonshotai/", caps: { vision: false, tools: true, streaming: true } },
+    { prefix: "z-ai/", caps: { vision: false, tools: true, streaming: true } },
+    { prefix: "nvidia/", caps: { vision: false, tools: true, streaming: true } },
+    { prefix: "microsoft/", caps: { vision: false, tools: true, streaming: true } },
+    // Perplexity Sonar NÃO suporta tool calling (search-grounded).
+    { prefix: "perplexity/", caps: { vision: false, tools: false, streaming: true } },
+    // (o sufixo ":free" é tratado como OVERLAY no getModelCapabilities — um
+    // entry de prefixo nunca casaria com sufixo; o antigo era código morto.)
   ],
 
   // ─────────────────────────── Nvidia NIM ──────────────────────────
@@ -186,10 +214,20 @@ const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
 /**
  * Lookup das capacidades do modelo dado o provider.
  * Match por prefixo, ordem do array (mais específico primeiro).
- * Fallback: DEFAULT_CAPS (texto only, sem tools, streaming).
+ * Fallback: por-provider (FALLBACK_BY_PROVIDER) → DEFAULT_CAPS.
  *
- * Para OpenRouter, faz dupla checagem do sufixo `:free` pra marcar free=true
- * sem perder as caps do modelo upstream.
+ * OVERLAY do catálogo vivo (auditoria v0.1.225): se o user já fez "Fetch info"
+ * (ou o auto-fetch do card rodou), o cache enriquecido tem `supportsTools` +
+ * `modalities` REAIS do catálogo OpenRouter. Regras:
+ *   - openrouter: o catálogo é a VERDADE pro próprio id → tools pode subir E
+ *     descer (ex: perplexity/sonar sem tools).
+ *   - demais providers: só UPGRADE (a tabela curada é a verdade do API direto;
+ *     o catálogo serve pra ligar o que faltou, nunca pra desligar).
+ *   - vision/free: upgrade-only em todos.
+ *   - streaming NUNCA vem do overlay — é propriedade do NOSSO transporte
+ *     (NIM é pseudo-stream independente do modelo).
+ *
+ * Sufixo `:free` no OpenRouter — overlay no flag free sem mudar outras caps.
  */
 export function getModelCapabilities(
   provider: string,
@@ -197,24 +235,37 @@ export function getModelCapabilities(
 ): ModelCapabilities {
   if (!model) return { ...DEFAULT_CAPS };
 
+  const fallback = FALLBACK_BY_PROVIDER[provider] ?? DEFAULT_CAPS;
   const entries = ENTRIES_BY_PROVIDER[provider];
-  if (!entries) return { ...DEFAULT_CAPS };
-
   const lower = model.toLowerCase();
+
   let matched: ModelCapabilities | null = null;
-  for (const entry of entries) {
-    if (lower.startsWith(entry.prefix.toLowerCase())) {
-      matched = entry.caps;
-      break;
+  if (entries) {
+    for (const entry of entries) {
+      if (lower.startsWith(entry.prefix.toLowerCase())) {
+        matched = entry.caps;
+        break;
+      }
     }
   }
-  // Sufixo :free no OpenRouter — overlay no flag free sem mudar outras caps
-  if (provider === "openrouter" && lower.endsWith(":free")) {
-    if (matched) return { ...matched, free: true };
-    return { ...DEFAULT_CAPS, free: true };
+  const caps: ModelCapabilities = matched ? { ...matched } : { ...fallback };
+
+  // Overlay do cache enriquecido (catálogo OpenRouter, por provider::model).
+  const enriched = getEnrichedInfo(provider, model);
+  if (enriched) {
+    if (enriched.supportsTools != null) {
+      if (provider === "openrouter") caps.tools = enriched.supportsTools;
+      else if (enriched.supportsTools) caps.tools = true;
+    }
+    if (enriched.modalities?.includes("image")) caps.vision = true;
+    if (enriched.outputModalities?.includes("image")) caps.imageGen = true;
+    if (enriched.tier === "free") caps.free = true;
   }
 
-  return matched ? { ...matched } : { ...DEFAULT_CAPS };
+  // Sufixo :free no OpenRouter — marca free sem mudar outras caps.
+  if (provider === "openrouter" && lower.endsWith(":free")) caps.free = true;
+
+  return caps;
 }
 
 export type CapabilityBadgeId =

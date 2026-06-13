@@ -340,33 +340,34 @@ export class OpenAIProvider implements Provider {
 }
 
 /** Mantém modelos relevantes — chat moderno + image gen (DALL-E, gpt-image)
- *  + TTS (tts-*, gpt-4o-mini-tts). Filtra só embed/legacy/moderation. */
-function isRelevantOpenAIModel(id: string): boolean {
-  // Chat
+ *  + TTS (tts-*, gpt-4o-mini-tts). Filtra só embed/legacy/moderation.
+ *  Auditoria v0.1.225: o filtro antigo perdia gpt-4.1*, gpt-4-turbo,
+ *  chatgpt-4o-latest, gpt-3.5-turbo e o-series futuras (o5+); e "preview"
+ *  derrubava modelos de chat legítimos (o1-preview, gpt-4.5-preview). */
+export function isRelevantOpenAIModel(id: string): boolean {
+  // Generation PRIMEIRO (gpt-4o-mini-tts casaria com o branch de chat e seria
+  // excluído pelo keyword "tts" antes de chegar aqui).
+  if (id.startsWith("dall-e") || id.startsWith("gpt-image")) return true;
+  if (id === "tts-1" || id === "tts-1-hd" || id.startsWith("gpt-4o-mini-tts"))
+    return true;
+  // Chat — famílias gpt-3.5/4/5, chatgpt-* e o-series (qualquer número).
   if (
-    id.startsWith("gpt-4o") ||
-    id.startsWith("gpt-5") ||
-    id.startsWith("o1") ||
-    id.startsWith("o3") ||
-    id.startsWith("o4")
+    /^gpt-(3\.5-turbo|4|5)/.test(id) ||
+    /^chatgpt-/.test(id) ||
+    /^o[0-9]+(-|$)/.test(id)
   ) {
     const excludeKeywords = [
       "audio",
       "realtime",
       "transcribe",
       "search",
-      "preview",
-      "vision",
-      "instruct",
+      "vision", // gpt-4-vision-preview (deprecado)
+      "instruct", // API /completions, não /chat
       "moderation",
+      "tts", // TTS já tratado acima
     ];
     return !excludeKeywords.some((kw) => id.includes(kw));
   }
-  // Image generation
-  if (id.startsWith("dall-e") || id.startsWith("gpt-image")) return true;
-  // TTS
-  if (id === "tts-1" || id === "tts-1-hd" || id.startsWith("gpt-4o-mini-tts"))
-    return true;
   return false;
 }
 

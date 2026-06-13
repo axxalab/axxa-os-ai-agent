@@ -134,11 +134,11 @@ export class NimProvider implements Provider {
 
     const message = res.json?.choices?.[0]?.message;
     if (!message) throw new ProviderError("Resposta vazia do NIM.", "unknown");
-    const { content, toolCalls } = parseOpenAIChatMessage(message);
+    const { content, toolCalls, reasoning } = parseOpenAIChatMessage(message);
     if (!toolCalls && !content) {
       throw new ProviderError("Resposta vazia do NIM (sem texto nem tool_calls).", "unknown");
     }
-    return { content, toolCalls, usage: usageFrom(res.json) };
+    return { content, toolCalls, usage: usageFrom(res.json), reasoning };
   }
 
   /**
@@ -158,11 +158,9 @@ export class NimProvider implements Provider {
     onToken: TokenHandler,
     onUsage?: UsageHandler,
     signal?: AbortSignal,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _onReasoning?: ReasoningHandler
+    onReasoning?: ReasoningHandler
   ): Promise<ProviderResponse> {
     // Reusa a chat() que já vai por requestUrl e funciona em prod.
-    // (pseudo-stream — sem deltas de reasoning a rotear)
     if (signal?.aborted) {
       throw new DOMException("Aborted", "AbortError");
     }
@@ -170,6 +168,11 @@ export class NimProvider implements Provider {
     // Verifica abort no meio do caminho (depois da resposta chegar)
     if (signal?.aborted) {
       throw new DOMException("Aborted", "AbortError");
+    }
+    // Reasoning (DeepSeek R1 e afins) vem inteiro no non-stream — roteia ANTES
+    // do texto, igual à ordem dos deltas num stream real. v0.1.225
+    if (response.reasoning && onReasoning) {
+      onReasoning(response.reasoning);
     }
     if (response.content) {
       onToken(response.content);
@@ -323,45 +326,29 @@ export class NimProvider implements Provider {
 /**
  * Filtro de modelos NIM relevantes pro plugin.
  *
- * Estratégia: lista permissiva — aceita os principais publishers
- * (LLM + image generation + multimodal) e exclui apenas componentes
- * de pipeline (embeddings, rerank, retriever) e modelos de áudio
- * de baixo nível (parakeet/canary) que não fazem sentido na UI de chat.
- *
- * Em particular: AGORA inclui modelos de geração de imagem (stabilityai,
- * black-forest-labs, etc) — eles aparecem com badge "img-gen" no DS.
+ * Auditoria v0.1.225: a ALLOWLIST de publishers escondia modelos válidos de
+ * publishers fora dela — ex: "openai/gpt-oss-120b" e "ibm/granite-*" são
+ * hospedados no NIM e NÃO apareciam. Estratégia invertida: aceita TUDO que
+ * tem formato publisher/model e exclui só componentes de pipeline
+ * (embedding/rerank/retriever), ASR/voz de baixo nível e visão NeMo — que
+ * não fazem sentido na UI de chat.
  */
-function isRelevantNimModel(id: string): boolean {
-  const allowedPrefixes = [
-    "nvidia/",
-    "meta/",
-    "qwen/",
-    "deepseek-ai/",
-    "microsoft/",
-    "mistralai/",
-    "google/",
-    // Image generation publishers
-    "stabilityai/",
-    "black-forest-labs/",
-    "shutterstock/",
-    // Outros que aparecem em chat
-    "minimaxai/",
-    "moonshot-ai/",
-    "ai21labs/",
-    "01-ai/",
-  ];
-  if (!allowedPrefixes.some((p) => id.startsWith(p))) return false;
-  // Exclui só o que NÃO faz sentido na UI: embedding, rerank, retriever,
-  // OCR, áudio de baixo nível (parakeet/canary), vista (NeMo).
+export function isRelevantNimModel(id: string): boolean {
+  // Catálogo NIM é sempre publisher/model — sem "/" não é um modelo servível.
+  if (!id.includes("/")) return false;
   const excludeKeywords = [
-    "embed",
-    "embedqa",
+    "embed", // embedding/embedqa
     "rerank",
     "retriever",
-    "parakeet",
-    "canary",
-    "ocdrnet",
-    "vista",
+    "parakeet", // ASR
+    "canary", // ASR
+    "fastpitch", // TTS de baixo nível
+    "riva", // pipeline de voz
+    "studiovoice",
+    "maxine",
+    "ocdrnet", // OCR
+    "paddleocr",
+    "vista", // NeMo vision pipeline
   ];
   if (excludeKeywords.some((kw) => id.includes(kw))) return false;
   return true;
