@@ -68,16 +68,9 @@ import {
 import { checkCompatibility } from "../providers/compatibility";
 import { IncompatibleBanner } from "../components/composer/IncompatibleBanner";
 import {
-  saveGeneration,
-  generationSupported,
-  generationSupportSummary,
-  type GenerationMediaType,
-} from "../generation/save";
-import {
   ImageGenModal,
   type ImageModelOption,
 } from "../generation/ImageGenModal";
-import { getPricing } from "../usage/pricing";
 import {
   effortToMaxTokensSmart,
   effortToVaultLookup,
@@ -114,6 +107,8 @@ import {
   providerNeedsKey,
 } from "./axxaApp.helpers";
 import { useProjectActions } from "./useProjectActions";
+import { useGeneration } from "./useGeneration";
+import type { PendingAttachmentEntry } from "./chatTypes";
 
 interface AxxaAppProps {
   plugin: AxxaPlugin;
@@ -1354,11 +1349,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Anexos pendentes (multi-tipo) — limpa após envio.
   // Cada attachment ganha id estável pra UI tracking — não persiste no .md.
-  interface PendingAttachmentEntry {
-    id: string;
-    attachment: MessageAttachment;
-    name: string;
-  }
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachmentEntry[]>([]);
   const makeAttachmentId = () =>
     `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1449,344 +1439,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // do modelo, salva o resultado em axxa-ai/generation/{type}/ + sidecar .md
   // com frontmatter, e renderiza a mídia inline na conversa.
   // ============================================================
-  const runGenerationTurn = async (
-    prompt: string,
-    caps: ReturnType<typeof getModelCapabilities>
-  ) => {
-    const {
-      addMessage,
-      updateActivity,
-      setLoading,
-      newChat,
-    } = useChatStore.getState();
-    void newChat;
-
-    setLoading(true);
-    // v0.1.228: registra um AbortController do turno de geração no abortRef pra
-    // o Stop não operar num controller STALE de um turno de chat anterior. (O
-    // sinal ainda não chega ao provider — generateImage/Audio/Video não aceitam
-    // signal na API atual — mas o lifecycle do abortRef fica correto e pronto
-    // pra propagar quando a base.ts ganhar o parâmetro.)
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const mediaType: GenerationMediaType = caps.imageGen
-      ? "image"
-      : caps.audioGen
-        ? "audio"
-        : "video";
-
-    // Pre-flight HONESTO: o modelo tem a cap, mas o provider implementa de fato?
-    // (ex: Veo/Sora flagam videoGen, mas não há generateVideo). Avisa com clareza
-    // em vez de deixar estourar "Provider não implementa…". Auditoria v0.1.164.
-    if (!generationSupported(activeProviderId, mediaType)) {
-      setLoading(false);
-      if (abortRef.current === controller) abortRef.current = null;
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${t.ai.genUnsupported(mediaType, generationSupportSummary())}`,
-        isError: true,
-        errorCode: "unknown",
-      });
-      return;
-    }
-
-    const activityId = addMessage({
-      type: "ai-comment",
-      content: "",
-      activity: {
-        phase: "pending",
-        iconPending: mediaType === "image" ? "image-plus" : mediaType === "audio" ? "volume-2" : "video",
-        iconDone: "check",
-        pendingText: mediaType === "image"
-          ? "Gerando imagem..."
-          : mediaType === "audio"
-            ? "Gerando áudio..."
-            : "Gerando vídeo...",
-        doneText: "",
-      },
-    });
-
-    try {
-      const provider = activeProvider;
-      const apiKey = apiKeyFor(activeProviderId);
-      let items;
-      if (mediaType === "image") {
-        if (!provider.generateImage) {
-          throw new Error(`Provider "${provider.name}" não implementa generateImage.`);
-        }
-        items = await provider.generateImage(
-          { model: activeModel, prompt, size: "1024x1024" },
-          apiKey
-        );
-      } else if (mediaType === "audio") {
-        if (!provider.generateAudio) {
-          throw new Error(`Provider "${provider.name}" não implementa generateAudio.`);
-        }
-        items = await provider.generateAudio(
-          { model: activeModel, prompt },
-          apiKey
-        );
-      } else {
-        if (!provider.generateVideo) {
-          throw new Error(`Provider "${provider.name}" não implementa generateVideo.`);
-        }
-        items = await provider.generateVideo(
-          { model: activeModel, prompt },
-          apiKey
-        );
-      }
-
-      // Salva cada item gerado no vault com sidecar de metadata
-      const savedPaths: string[] = [];
-      for (const item of items) {
-        const result = await saveGeneration(
-          plugin.app,
-          plugin.settings.generationPath,
-          item.data,
-          {
-            id: makeId(),
-            type: mediaType,
-            provider: activeProviderId,
-            model: activeModel,
-            prompt,
-            created: new Date().toISOString(),
-            size: item.data.byteLength,
-            mime: item.mime,
-            width: item.width,
-            height: item.height,
-            duration: item.duration,
-            seed: item.seed,
-            chatId: useChatStore.getState().currentChatId ?? undefined,
-          }
-        );
-        savedPaths.push(result.mediaPath);
-      }
-
-      updateActivity(
-        activityId,
-        {
-          phase: "done",
-          doneText: `${items.length} ${mediaType === "image" ? "imagem" : mediaType === "audio" ? "áudio" : "vídeo"}${items.length > 1 ? "s" : ""} gerado${items.length > 1 ? "s" : ""}`,
-        },
-        savedPaths[0]
-      );
-
-      // Resposta com wikilinks pra cada mídia salva (renderizado como embed pelo Obsidian)
-      const responseContent = savedPaths
-        .map((p) => mediaType === "image" ? `![[${p}]]` : `[[${p}]]`)
-        .join("\n\n");
-      addMessage({ type: "ai-response", content: responseContent });
-    } catch (err) {
-      const { message, code } = describeProviderError(
-        err,
-        t,
-        activeProvider.name
-      );
-      updateActivity(
-        activityId,
-        {
-          phase: "failed",
-          iconFailed: "x-circle",
-          failedText: t.ai.failed,
-        },
-        message
-      );
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${message}`,
-        isError: true,
-        errorCode: code,
-      });
-    } finally {
-      setLoading(false);
-      // Só limpa se ainda for o NOSSO controller (não clobra um turno mais novo).
-      if (abortRef.current === controller) abortRef.current = null;
-    }
-  };
-
-  // ============================================================
-  // Geração de imagem IN-CHAT (sem trocar de modelo) — v0.1.166
-  // O fallback que o user pediu: abre um modal de confirmação (modelo + preço +
-  // conectado), gera com o modelo escolhido e injeta a imagem NA CONVERSA ATUAL.
-  // Suporta IMG2IMG quando há imagem anexada e o modelo edita (Nano Banana).
-  // ============================================================
-
-  /** Enumera os modelos de imagem ATIVOS (que o plugin gera de fato) com preço
-   *  por imagem + se o provider está conectado (first-user case). */
-  const buildImageModelOptions = (): ImageModelOption[] => {
-    const opts: ImageModelOption[] = [];
-    const active = plugin.settings.activeModels ?? {};
-    for (const providerId of Object.keys(active)) {
-      if (!generationSupported(providerId, "image")) continue;
-      for (const model of active[providerId] ?? []) {
-        if (!getModelCapabilities(providerId, model).imageGen) continue;
-        const pricing = getPricing(providerId, model);
-        opts.push({
-          providerId,
-          providerLabel: getProvider(providerId).name,
-          model,
-          pricePerImage: pricing.imagePerCall ?? undefined,
-          connected:
-            providerId === "ollama" ? true : apiKeyFor(providerId).trim().length > 0,
-          // Edição (IMG2IMG) hoje só no Nano Banana.
-          supportsEdit:
-            providerId === "gemini" && model.startsWith("gemini-2.5-flash-image"),
-        });
-      }
-    }
-    return opts;
-  };
-
-  /** Gera UMA imagem com provider/modelo explícitos e injeta na conversa atual.
-   *  Retorna o resultado (pra tool do agente reportar). NÃO mexe no loading
-   *  global — quem chama gerencia. */
-  const runImageGeneration = async (
-    prompt: string,
-    providerId: string,
-    model: string,
-    inputImage?: { data: string; mimeType: string }
-  ): Promise<{ ok: boolean; paths: string[]; error?: string }> => {
-    const { addMessage, updateActivity } = useChatStore.getState();
-    const provider = getProvider(providerId);
-    const apiKey = apiKeyFor(providerId);
-    if (providerNeedsKey(providerId) && !apiKey.trim()) {
-      const msg = t.ai.err.noKey(provider.name);
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${msg}`,
-        isError: true,
-        errorCode: "no-key",
-      });
-      return { ok: false, paths: [], error: msg };
-    }
-    if (!generationSupported(providerId, "image") || !provider.generateImage) {
-      const msg = t.ai.genUnsupported("image", generationSupportSummary());
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${msg}`,
-        isError: true,
-        errorCode: "unknown",
-      });
-      return { ok: false, paths: [], error: msg };
-    }
-    const activityId = addMessage({
-      type: "ai-comment",
-      content: "",
-      activity: {
-        phase: "pending",
-        iconPending: inputImage ? "wand-2" : "image-plus",
-        iconDone: "check",
-        pendingText: inputImage ? "Editando imagem..." : "Gerando imagem...",
-        doneText: "",
-        placeholder: "image",
-      },
-    });
-    try {
-      const items = await provider.generateImage(
-        {
-          model,
-          prompt,
-          size: "1024x1024",
-          ...(inputImage ? { image: inputImage } : {}),
-        },
-        apiKey
-      );
-      const savedPaths: string[] = [];
-      for (const item of items) {
-        const r = await saveGeneration(
-          plugin.app,
-          plugin.settings.generationPath,
-          item.data,
-          {
-            id: makeId(),
-            type: "image",
-            provider: providerId,
-            model,
-            prompt,
-            created: new Date().toISOString(),
-            size: item.data.byteLength,
-            mime: item.mime,
-            width: item.width,
-            height: item.height,
-            seed: item.seed,
-            chatId: useChatStore.getState().currentChatId ?? undefined,
-          }
-        );
-        savedPaths.push(r.mediaPath);
-      }
-      updateActivity(
-        activityId,
-        {
-          phase: "done",
-          doneText: `${items.length} imagem${items.length > 1 ? "ns" : ""} gerada${items.length > 1 ? "s" : ""}`,
-        },
-        savedPaths[0]
-      );
-      addMessage({
-        type: "ai-response",
-        content: savedPaths.map((p) => `![[${p}]]`).join("\n\n"),
-      });
-      return { ok: true, paths: savedPaths };
-    } catch (err) {
-      const { message, code } = describeProviderError(err, t, provider.name);
-      updateActivity(
-        activityId,
-        { phase: "failed", iconFailed: "x-circle", failedText: t.ai.failed },
-        message
-      );
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${message}`,
-        isError: true,
-        errorCode: code,
-      });
-      return { ok: false, paths: [], error: message };
-    }
-  };
-
-  /** Abre o modal de confirmação (fallback do + → Criar imagem). */
-  const handleCreateImage = async () => {
-    // Imagem anexada vira candidata a IMG2IMG.
-    const imgAtt = pendingAttachments.find(
-      (p) => p.attachment.type === "image"
-    );
-    let inputImage: { data: string; mimeType: string } | undefined;
-    if (imgAtt && imgAtt.attachment.type === "image") {
-      const m = /^data:([^;]+);base64,(.+)$/.exec(imgAtt.attachment.dataUrl);
-      if (m) inputImage = { mimeType: m[1], data: m[2] };
-    }
-    const modal = new ImageGenModal(plugin.app, {
-      options: buildImageModelOptions(),
-      // Prefill com o que o user já digitou no composer (#9).
-      initialPrompt: composerDraftRef.current.trim(),
-      hasInputImage: !!inputImage,
-      strings: t.imageGen,
-    });
-    const choice = await modal.openAndWait();
-    if (!choice) return;
-    const store = useChatStore.getState();
-    if (store.messages.length === 0) {
-      const newId = makeId();
-      store.setCurrentChatId(newId);
-      store.setCurrentChatTitle(generateTitle(choice.prompt));
-      store.lockSession(activeProviderId, activeModel, activeMode);
-    }
-    store.addMessage({ type: "user", content: `🖼️ ${choice.prompt}` });
-    if (choice.useInputImage && inputImage) {
-      setPendingAttachments([]);
-    }
-    store.setLoading(true);
-    try {
-      await runImageGeneration(
-        choice.prompt,
-        choice.providerId,
-        choice.model,
-        choice.useInputImage ? inputImage : undefined
-      );
-    } finally {
-      store.setLoading(false);
-    }
-  };
+  // Geração de mídia (img/áudio/vídeo) extraída → useGeneration (Frente 2).
+  // runGenerationTurn é retornado porque handleSend/regenerate/retry o reusam.
+  const {
+    runGenerationTurn,
+    buildImageModelOptions,
+    runImageGeneration,
+    handleCreateImage,
+  } = useGeneration({
+    plugin,
+    t,
+    abortRef,
+    composerDraftRef,
+    activeProviderId,
+    activeModel,
+    activeMode,
+    apiKeyFor,
+    pendingAttachments,
+    setPendingAttachments,
+  });
 
   // Regenerar: remove o ai-response (e qualquer msg posterior) e re-roda
   // streamReply usando a user-msg que precedia. Ignora se já tá streamando.
