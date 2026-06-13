@@ -8,6 +8,7 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"test": "vitest run",
 		"test:watch": "vitest",
+		"size": "node scripts/size-report.mjs",
 		"collect:hot": "node scripts/collect-hot.mjs",
 		"deploy:output": "node scripts/deploy.mjs"
 	},
