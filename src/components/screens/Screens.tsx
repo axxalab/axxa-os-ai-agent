@@ -78,8 +78,18 @@ export function MediaScreen({
 }) {
   const t = useT();
   const [scope, setScope] = useState<"axxa" | "all">("axxa");
+  // Dep estável: array de paths costuma vir por referência nova a cada render
+  // do pai; usa a chave string pra não re-varrer o vault à toa. v0.1.228
+  const axxaKey = axxaPaths.join("|");
   const media = useMemo(() => {
-    const inAxxa = (p: string) => axxaPaths.some((base) => base && p.startsWith(base));
+    // Fronteira de pasta: startsWith puro vaza pastas irmãs (ex.: "AXXA" casa
+    // "AXXA-old/"). Compara igualdade exata OU prefixo com "/". v0.1.228
+    const inAxxa = (p: string) =>
+      axxaPaths.some((base) => {
+        if (!base) return false;
+        const b = base.endsWith("/") ? base : base + "/";
+        return p === base || p.startsWith(b);
+      });
     const files = app.vault.getFiles();
     const imgs: { path: string; src: string }[] = [];
     const others: { path: string; ext: string; kind: "audio" | "video" }[] = [];
@@ -95,7 +105,9 @@ export function MediaScreen({
       }
     }
     return { imgs: imgs.slice(0, 300), others: others.slice(0, 200) };
-  }, [app, axxaPaths, scope]);
+    // axxaKey reflete axxaPaths de forma estável (string). v0.1.228
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app, axxaKey, scope]);
 
   const total = media.imgs.length + media.others.length;
 
@@ -123,14 +135,16 @@ export function MediaScreen({
         <>
           <div className="axxa-media-grid">
             {media.imgs.map((m) => (
-              <a
+              // Abre o arquivo no Obsidian (href com path do vault não abre). v0.1.228
+              <button
                 key={m.path}
+                type="button"
                 className="axxa-media-cell"
-                href={m.path}
                 title={m.path}
+                onClick={() => app.workspace.openLinkText(m.path, "", false)}
               >
-                <img src={m.src} loading="lazy" alt="" />
-              </a>
+                <img src={m.src} loading="lazy" alt={m.path.split("/").pop() ?? ""} />
+              </button>
             ))}
           </div>
           {media.others.length > 0 && (
@@ -226,7 +240,10 @@ export function ProfileScreen({
   onOpenSettings: () => void;
 }) {
   const t = useT();
-  const initials = (email || "AXXA").trim().slice(0, 2).toUpperCase();
+  // Só alfanumérico: evita iniciais vazias/1-char p/ emails curtos/estranhos. v0.1.228
+  const initials = (
+    email.match(/[a-zA-Z0-9]/g)?.slice(0, 2).join("") || "AX"
+  ).toUpperCase();
   return (
     <ScreenShell title={t.nav.profile} icon="user-round" onClose={onClose}>
       {/* Hero centralizado (avatar com iniciais + nome + tier) — ref print #318. */}

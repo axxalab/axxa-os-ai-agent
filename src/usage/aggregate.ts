@@ -84,10 +84,25 @@ function bump(bucket: UsageBucket, row: ChatUsageRow): void {
 /**
  * Constrói ChatUsageRow a partir de ChatSummary + pricing lookup.
  * Cost vira null quando o pricing do modelo não cobre os tokens existentes.
+ *
+ * `pricingCache` (opcional) memoiza getPricing por `${provider}::${model}` —
+ * pricing é estático, então em vaults grandes evita refazer o lookup linear
+ * por chat (v0.1.228).
  */
-function summaryToRow(s: ChatSummary): ChatUsageRow {
-  const pricing: ModelPricing = getPricing(s.provider, s.model);
-  const cost = calculateCost(pricing, s.tokensIn, s.tokensOut);
+function summaryToRow(s: ChatSummary, pricingCache?: Map<string, ModelPricing>): ChatUsageRow {
+  let pricing: ModelPricing;
+  if (pricingCache) {
+    const key = `${s.provider}::${(s.model || "").toLowerCase()}`;
+    pricing = pricingCache.get(key) ?? getPricing(s.provider, s.model);
+    pricingCache.set(key, pricing);
+  } else {
+    pricing = getPricing(s.provider, s.model);
+  }
+  // Saneia tokens: ChatSummary vem de frontmatter parseado e pode trazer
+  // NaN/undefined, que envenenaria todos os totais via bump() (v0.1.228).
+  const tokensIn = Number.isFinite(s.tokensIn) ? s.tokensIn : 0;
+  const tokensOut = Number.isFinite(s.tokensOut) ? s.tokensOut : 0;
+  const cost = calculateCost(pricing, tokensIn, tokensOut);
   return {
     id: s.id,
     title: s.title,
@@ -96,8 +111,8 @@ function summaryToRow(s: ChatSummary): ChatUsageRow {
     provider: s.provider,
     model: s.model,
     mode: s.mode,
-    tokensIn: s.tokensIn,
-    tokensOut: s.tokensOut,
+    tokensIn,
+    tokensOut,
     cost,
     messages: s.messageCount,
     filePath: s.filePath,
@@ -139,7 +154,10 @@ export function aggregateFromSummaries(
   summaries: ChatSummary[],
   periodDays = 0
 ): UsageAggregate {
-  const rawRows = summaries.map(summaryToRow);
+  // Memo de pricing por `${provider}::${model}` — escopo da agregação,
+  // descartado ao fim (sem cache stale entre chamadas) (v0.1.228).
+  const pricingCache = new Map<string, ModelPricing>();
+  const rawRows = summaries.map((s) => summaryToRow(s, pricingCache));
   const rows = filterByPeriod(rawRows, periodDays);
 
   const total = emptyBucket();
@@ -209,11 +227,13 @@ export function lastNDays(
   n: number
 ): Array<{ day: string; bucket: UsageBucket }> {
   const out: Array<{ day: string; bucket: UsageBucket }> = [];
-  const today = new Date();
+  // Eixo de dias inteiramente em UTC pra casar exatamente com a indexação
+  // UTC de dayFromIso — local + setDate podia pular/duplicar dia perto da
+  // meia-noite, dependendo do fuso (v0.1.228).
+  const dayMs = 86_400_000;
+  const nowMs = Date.now();
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = new Date(nowMs - i * dayMs).toISOString().slice(0, 10);
     out.push({
       day: key,
       bucket: byDay[key] ?? emptyBucket(),

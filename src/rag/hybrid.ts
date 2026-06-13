@@ -24,7 +24,10 @@ export interface HybridHit {
 }
 
 const RRF_K = 60;
-const GRAPH_BOOST = 1.15;
+// Bônus de co-citação, ADITIVO no espaço RRF (não multiplicativo no score
+// final) — mantém a escala RRF consistente e não distorce hits de score alto
+// desproporcionalmente. ~1/4 de um rank-0 RRF (1/60). v0.1.228
+const GRAPH_BOOST = 1 / (RRF_K * 4);
 
 export interface HybridOptions {
   app: App;
@@ -68,8 +71,10 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
         seen.add(r.entry.path);
         bump(r.entry.path, rank++, r.entry.text.slice(0, 500), "semantic");
       }
-    } catch {
-      // embed falhou (sem key / rate limit) → segue só com keyword
+    } catch (err) {
+      // embed falhou (sem key / rate limit) → segue só com keyword.
+      // Loga pra erro real (não só rate limit) ficar diagnosticável. v0.1.228
+      console.warn("[axxa/rag] busca semântica falhou, caindo pra keyword:", err);
     }
   }
 
@@ -95,15 +100,16 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
       for (const l of links) {
         const dest = app.metadataCache.getFirstLinkpathDest(l.link, h.path);
         if (dest && dest.path !== h.path && inResults.has(dest.path)) {
-          // dest é citado por um resultado relevante → boost
-          scoreBoost.set(dest.path, (scoreBoost.get(dest.path) ?? 1) * GRAPH_BOOST);
+          // dest é citado por um resultado relevante → boost (aditivo, acumula
+          // por co-citação no espaço RRF, não multiplica o score). v0.1.228
+          scoreBoost.set(dest.path, (scoreBoost.get(dest.path) ?? 0) + GRAPH_BOOST);
         }
       }
     }
     if (scoreBoost.size > 0) {
       hits = hits.map((h) => ({
         ...h,
-        score: h.score * (scoreBoost.get(h.path) ?? 1),
+        score: h.score + (scoreBoost.get(h.path) ?? 0),
       }));
     }
   }

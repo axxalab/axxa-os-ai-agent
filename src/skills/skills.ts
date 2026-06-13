@@ -61,11 +61,22 @@ export async function loadSkills(
     .getMarkdownFiles()
     .filter((f) => f.path.startsWith(prefix));
   const skills: Skill[] = [];
+  // v0.1.228: dois arquivos cujo basename só difere por caractere não-\w geram
+  // o mesmo id (ex: "Plano!" e "Plano?"). Desambigua com sufixo numérico pra o
+  // id continuar único (o path já é, mas o id é usado como chave estável).
+  const seenIds = new Set<string>();
   for (const f of files) {
     try {
       const raw = await app.vault.cachedRead(f);
       const s = parseSkillFile(f.path, raw);
-      if (s) skills.push(s);
+      if (!s) continue;
+      if (seenIds.has(s.id)) {
+        let n = 2;
+        while (seenIds.has(`${s.id}-${n}`)) n++;
+        s.id = `${s.id}-${n}`;
+      }
+      seenIds.add(s.id);
+      skills.push(s);
     } catch {
       /* nota ilegível — skip */
     }
@@ -130,10 +141,16 @@ export async function seedExampleSkills(
   }
   let created = 0;
   for (const ex of EXAMPLE_SKILLS) {
-    const p = `${folder}/${ex.file}`;
-    if (!(await app.vault.adapter.exists(p))) {
+    const p = normalizePath(`${folder}/${ex.file}`);
+    // v0.1.228: checa e cria na MESMA camada (vault), e isola cada create num
+    // try/catch — assim um arquivo que já existe no disco (mas fora do índice)
+    // não dispara desync nem aborta a criação dos demais exemplos.
+    if (app.vault.getAbstractFileByPath(p)) continue;
+    try {
       await app.vault.create(p, ex.content);
       created++;
+    } catch {
+      /* já existe / corrida com o índice — ignora e segue */
     }
   }
   return created;

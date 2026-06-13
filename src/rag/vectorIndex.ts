@@ -275,13 +275,18 @@ export async function loadIndex(
       // Valida que TODOS os shards do manifesto existem — pega um índice
       // incompleto (ex: save interrompido) no LOAD em vez de degradar calado
       // na busca. Faltando algum → null (cai pro keyword; user reindexa).
-      for (const s of manifest.shards ?? []) {
-        if (!(await adapter.exists(`${indexPath}/${s}`))) {
-          console.warn(
-            `[axxa/rag] índice sharded incompleto — shard ausente: ${s}. Reindexe.`
-          );
-          return null;
-        }
+      // v0.1.228: exists() em PARALELO (Promise.all) — load O(1) round em vez
+      // de N awaits sequenciais; mesma semântica (faltando algum → null).
+      const shardNames = manifest.shards ?? [];
+      const present = await Promise.all(
+        shardNames.map((s) => adapter.exists(`${indexPath}/${s}`))
+      );
+      const missingIdx = present.findIndex((ok) => !ok);
+      if (missingIdx !== -1) {
+        console.warn(
+          `[axxa/rag] índice sharded incompleto — shard ausente: ${shardNames[missingIdx]}. Reindexe.`
+        );
+        return null;
       }
       const idx = new VectorIndex({
         provider: manifest.provider,
@@ -399,7 +404,8 @@ export async function saveIndex(
 
     // Nomes ÚNICOS por save (gen) → nunca sobrescrevem shards antigos in-place
     // (evita corromper o índice válido se crashar no meio). v0.1.200
-    const gen = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
+    // v0.1.228: gen via randomUUID (sem colisão) em vez de Date.now()+Math.random().
+    const gen = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
     const shards: string[] = [];
     let cur: StoredEntry[] = [];
     let curBytes = 0;
@@ -419,7 +425,11 @@ export async function saveIndex(
     // da busca (ler+parsear UM shard) fica limitado. v0.1.200
     for (const e of index.entries) {
       const s = toStored(e);
-      const sz = s.emb.length + s.text.length + 96; // bytes aprox do entry
+      // v0.1.228: estimativa com folga p/ overhead de JSON (escapes do texto,
+      // chaves, aspas) — text*1.3 + path + 160. Antes (emb+text+96) subestimava
+      // → shards reais maiores que o alvo. Estimar a MAIS corta o shard mais
+      // cedo, mantendo o pico de memória da busca dentro do orçamento.
+      const sz = s.emb.length + Math.ceil(s.text.length * 1.3) + s.path.length + 160; // bytes aprox do entry
       if (
         cur.length > 0 &&
         (curBytes + sz > SHARD_TARGET_BYTES || cur.length >= shardSize)

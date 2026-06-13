@@ -70,6 +70,9 @@ const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
     { prefix: "sora", caps: { vision: false, tools: false, streaming: false, videoGen: true } },
     // Chat LLM
     { prefix: "gpt-4o-mini", caps: { vision: true, tools: true, streaming: true } },
+    // gpt-4o-audio/gpt-4o-realtime NÃO são expostos no plugin; se algum id de
+    // chat parecido aparecer, herdar do prefixo "gpt-4o" (chat+vision) é
+    // intencional — caps conservadoras e corrigíveis pelo overlay. (v0.1.228)
     { prefix: "gpt-4o", caps: { vision: true, tools: true, streaming: true } },
     { prefix: "gpt-5", caps: { vision: true, tools: true, streaming: true } },
     // o1/o3/o4 séries — reasoning, com vision a partir do o1
@@ -251,6 +254,9 @@ export function getModelCapabilities(
       }
     }
   }
+  // Spread raso já é clone COMPLETO: ModelCapabilities é plano (só primitivos),
+  // então nenhuma referência mutável é compartilhada com a entry/fallback.
+  // Se um dia adicionar campo não-primitivo, trocar por deep clone. (v0.1.228)
   const caps: ModelCapabilities = matched ? { ...matched } : { ...fallback };
 
   // Overlay do cache enriquecido (catálogo OpenRouter, por provider::model).

@@ -25,6 +25,30 @@ interface OpenAIEmbeddingResponse {
   usage: { prompt_tokens: number; total_tokens: number };
 }
 
+/** Teto de tempo (ms) por request de embedding — `requestUrl` do Obsidian não
+ *  tem timeout próprio, então uma chamada pendurada travaria a UI de
+ *  indexação indefinidamente. v0.1.228 */
+const EMBED_REQUEST_TIMEOUT_MS = 60_000;
+
+/**
+ * Corre `promise` contra um timeout. Se estourar, rejeita com ProviderError
+ * ('network') pra cair no mesmo tratamento de erro de rede dos callers. v0.1.228
+ */
+function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        new ProviderError(
+          `Timeout (${EMBED_REQUEST_TIMEOUT_MS / 1000}s) ao chamar embeddings ${label}.`,
+          "network"
+        )
+      );
+    }, EMBED_REQUEST_TIMEOUT_MS);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 // ============================================================
 // EmbedInput — input unificado: texto ou imagem (data URL)
 // ============================================================
@@ -56,7 +80,9 @@ export function arrayBufferToDataUrl(
   const chunkSize = 0x8000; // 32K — evita stack overflow com strings gigantes
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode.apply(null, Array.from(chunk));
+    // apply aceita array-like — Uint8Array funciona direto, sem cópia
+    // intermediária via Array.from por chunk. v0.1.228
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
   }
   const b64 = btoa(binary);
   return `data:${mimeType};base64,${b64}`;
@@ -90,24 +116,27 @@ async function embedOpenAICompat(
 
   let res;
   try {
-    res = await requestUrl({
-      url: endpoint,
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      // `dimensions` (Matryoshka) só em modelos que suportam (OpenAI 3-*, Gemini).
-      body: JSON.stringify({
-        model,
-        input: texts,
-        ...(opts?.dimensions && opts.dimensions > 0
-          ? { dimensions: opts.dimensions }
-          : {}),
-        ...(opts?.extraBody ?? {}),
+    res = await withTimeout(
+      requestUrl({
+        url: endpoint,
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        // `dimensions` (Matryoshka) só em modelos que suportam (OpenAI 3-*, Gemini).
+        body: JSON.stringify({
+          model,
+          input: texts,
+          ...(opts?.dimensions && opts.dimensions > 0
+            ? { dimensions: opts.dimensions }
+            : {}),
+          ...(opts?.extraBody ?? {}),
+        }),
+        throw: false,
       }),
-      throw: false,
-    });
+      label
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erro de rede.";
     throw new ProviderError(
@@ -132,11 +161,14 @@ async function embedOpenAICompat(
     );
   }
 
-  let parsed: OpenAIEmbeddingResponse;
-  try {
-    parsed = res.json as OpenAIEmbeddingResponse;
-  } catch {
-    throw new ProviderError("Resposta de embeddings inválida.", "unknown");
+  // `requestUrl` já parseou o corpo em `res.json` — um try/catch aqui não
+  // pegaria nada. Validamos a forma explicitamente (data como array). v0.1.228
+  const parsed = res.json as OpenAIEmbeddingResponse | undefined;
+  if (!parsed || !Array.isArray(parsed.data)) {
+    throw new ProviderError(
+      `Resposta de embeddings ${label} sem campo data.`,
+      "unknown"
+    );
   }
   // Reconstrói POR index (não confia em sort+map sequencial): se a API
   // omitir/rejeitar um item, isso desalinharia os vetores dos chunks e
@@ -244,22 +276,25 @@ export async function embedBatchOpenRouter(
     };
     let res;
     let attempt = 0;
-    const MAX_ATTEMPTS = 2;
+    const MAX_ATTEMPTS = 4;
     while (true) {
       attempt++;
       try {
-        res = await requestUrl({
-          url: OPENROUTER_EMBEDDINGS_ENDPOINT,
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://axxa.lab",
-            "X-Title": "AXXA OS",
-          },
-          body: JSON.stringify(body),
-          throw: false,
-        });
+        res = await withTimeout(
+          requestUrl({
+            url: OPENROUTER_EMBEDDINGS_ENDPOINT,
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://axxa.lab",
+              "X-Title": "AXXA OS",
+            },
+            body: JSON.stringify(body),
+            throw: false,
+          }),
+          "OpenRouter"
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro de rede.";
         throw new ProviderError(
@@ -267,12 +302,15 @@ export async function embedBatchOpenRouter(
           "network"
         );
       }
-      // Retry só pra 429
-      if (res.status === 429 && attempt < MAX_ATTEMPTS) {
+      // Retry pra transitórios: 429 (rate limit) e 5xx (erro de servidor).
+      // Backoff exponencial (1s, 2s, 4s) + jitter pra não martelar em fase. v0.1.228
+      const transient = res.status === 429 || res.status >= 500;
+      if (transient && attempt < MAX_ATTEMPTS) {
+        const backoff = 1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 500);
         console.warn(
-          `[axxa/rag] OpenRouter 429 — esperando 3s antes do retry ${attempt + 1}/${MAX_ATTEMPTS}`
+          `[axxa/rag] OpenRouter ${res.status} — esperando ${backoff}ms antes do retry ${attempt + 1}/${MAX_ATTEMPTS}`
         );
-        await sleep(3000);
+        await sleep(backoff);
         continue;
       }
       break;
@@ -303,16 +341,10 @@ export async function embedBatchOpenRouter(
       );
     }
 
-    let parsed: OpenRouterEmbeddingResponse;
-    try {
-      parsed = res.json as OpenRouterEmbeddingResponse;
-    } catch {
-      throw new ProviderError(
-        "Resposta de OpenRouter embeddings inválida (não é JSON).",
-        "unknown"
-      );
-    }
-    if (!parsed.data || parsed.data.length === 0) {
+    // `requestUrl` já parseou o corpo — try/catch em res.json não pegaria
+    // nada. Validamos a forma explicitamente. v0.1.228
+    const parsed = res.json as OpenRouterEmbeddingResponse | undefined;
+    if (!parsed || !Array.isArray(parsed.data) || parsed.data.length === 0) {
       // CASO DO BUG ORIGINAL — vamos logar tudo pra inspeção
       console.error(
         "[axxa/rag] Nemotron devolveu data vazio. Modelo:",
@@ -373,6 +405,16 @@ export async function embedItems(
   if (spec.provider === "openrouter") {
     // OpenRouter (Nemotron VL) não suporta `dimensions` — ignora.
     return embedBatchOpenRouter(items, creds.openrouterApiKey, model);
+  }
+  // Só o path do OpenRouter sabe embedar imagem. Um spec DESCOBERTO pode marcar
+  // supportsImage=true por heurística de nome (ex: "...-vl...") em outro provider
+  // e passar o guard acima — aqui a imagem viraria string vazia. Falha explícito
+  // em vez de embedar texto vazio e corromper o índice. v0.1.228
+  if (hasImage) {
+    throw new ProviderError(
+      `Embedding de imagem só é suportado via OpenRouter (Nemotron VL). O modelo ${model} (${spec.provider}) não embeda imagem.`,
+      "unknown"
+    );
   }
   // Texto puro pros endpoints OpenAI-compat (OpenAI / Gemini / NIM)
   const texts = items.map((i) => (i.kind === "text" ? i.text : ""));
@@ -447,8 +489,10 @@ export function chunkText(
         const tail = current.slice(-overlap);
         current = tail + "\n\n" + p;
       } else {
-        // Parágrafo único maior que maxSize — força quebra
-        for (let i = 0; i < p.length; i += maxSize - overlap) {
+        // Parágrafo único maior que maxSize — força quebra.
+        // Passo mínimo de 1 pra não travar em loop se overlap >= maxSize. v0.1.228
+        const step = Math.max(1, maxSize - overlap);
+        for (let i = 0; i < p.length; i += step) {
           chunks.push(p.slice(i, i + maxSize));
         }
         current = "";

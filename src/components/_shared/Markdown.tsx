@@ -45,7 +45,7 @@ export function Markdown({ content }: MarkdownProps) {
       MarkdownRenderer.render(app, content, el, "", component)
     ).then(() => {
       if (cancelled) return;
-      enhanceCodeBlocks(el);
+      enhanceCodeBlocks(el, t.chat.copyCode);
       enhanceInternalLinks(el, app);
       disposeLinks = wireExternalLinkSafety(el, app, {
         title: t.linkSafety.title,
@@ -94,7 +94,7 @@ function enhanceInternalLinks(root: HTMLElement, app: App) {
 
 // Anexa botão "copy" em cada <pre> do bloco renderizado.
 // Idempotente: se já tem botão, skip (proteção contra duplicação em re-renders).
-function enhanceCodeBlocks(root: HTMLElement) {
+function enhanceCodeBlocks(root: HTMLElement, copyLabel: string) {
   const pres = root.querySelectorAll<HTMLPreElement>("pre");
   pres.forEach((pre) => {
     if (pre.querySelector(":scope > .axxa-code-copy")) return;
@@ -104,8 +104,8 @@ function enhanceCodeBlocks(root: HTMLElement) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "axxa-code-copy";
-    btn.setAttribute("aria-label", "Copiar código");
-    btn.setAttribute("title", "Copiar código");
+    btn.setAttribute("aria-label", copyLabel);
+    btn.setAttribute("title", copyLabel);
     setIcon(btn, "copy");
 
     btn.addEventListener("click", async (e) => {

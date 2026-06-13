@@ -59,9 +59,13 @@ export function VoiceScreen({
   const [state, setState] = useState<ConvoState>("idle");
   const [interim, setInterim] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(listVoices());
+  // Inicializador preguiçoso: listVoices() só roda na 1ª render, não a cada uma. v0.1.228
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => listVoices());
 
   const dictationRef = useRef<DictationHandle | null>(null);
+  // cancelSpeech() no cleanup dispara o onEnd da utterance de forma async; sem
+  // este guard, ele rodaria setState/startListening após desmontar (leak). v0.1.228
+  const mountedRef = useRef(true);
   // Inicia "já falado" como a última msg EXISTENTE — evita ler em voz a última
   // resposta do chat ao só ENTRAR no modo voz; só novas respostas são lidas.
   const spokenIdRef = useRef<string | null>(lastAi?.id ?? null);
@@ -90,8 +94,9 @@ export function VoiceScreen({
   const startListening = () => {
     if (!sttOk) return;
     setInterim("");
-    setState("listening");
-    dictationRef.current = startDictation(lang, {
+    // Atribui o handle ANTES de marcar "listening": se startDictation falhar
+    // (null), o estado não fica preso em "ouvindo" sem reconhecimento ativo. v0.1.228
+    const h = startDictation(lang, {
       onInterim: setInterim,
       onFinal: (text) => {
         if (!text) return;
@@ -106,6 +111,12 @@ export function VoiceScreen({
         if (stateRef.current === "listening") setState("idle");
       },
     });
+    if (!h) {
+      setState("idle");
+      return;
+    }
+    dictationRef.current = h;
+    setState("listening");
   };
 
   const toggleMic = () => {
@@ -135,11 +146,13 @@ export function VoiceScreen({
       rate: voiceRate,
       onEnd: () => {
         releaseSpeaker(voiceResetRef.current);
+        if (!mountedRef.current) return; // tela fechou/desmontou durante a fala. v0.1.228
         setState("idle");
         if (sttOk) startListening();
       },
       onError: () => {
         releaseSpeaker(voiceResetRef.current);
+        if (!mountedRef.current) return; // v0.1.228
         setState("idle");
       },
     });
@@ -150,13 +163,19 @@ export function VoiceScreen({
   useEffect(() => {
     if (isStreaming) {
       stopListening();
-      setState("thinking");
+      // Não sobrescreve "speaking": a fala da resposta anterior segue tocando e
+      // seu onEnd reseta o estado; trocar pra "thinking" deixaria UI e áudio
+      // incoerentes (orb "pensando" com voz no ar). v0.1.228
+      if (stateRef.current !== "speaking") setState("thinking");
     }
   }, [isStreaming]);
 
   // Cleanup ao desmontar.
   useEffect(() => {
     return () => {
+      // Marca desmontado ANTES de cancelar: o onEnd async da fala não reinicia o
+      // ditado nem mexe no state de um componente morto. v0.1.228
+      mountedRef.current = false;
       stopListening();
       cancelSpeech();
     };

@@ -397,6 +397,11 @@ export async function indexVault(
         currentFile: item.file.path,
       });
     } catch (err) {
+      // Cancelamento tem prioridade: `embedItems`/`requestUrl` não propagam o
+      // signal, então um cancel no meio do request volta como erro de rede.
+      // Re-checamos o signal ANTES de classificar/logar pra parar na hora, sem
+      // registrar o arquivo como "falho" indevidamente. v0.1.228
+      if (signal?.aborted) throw new DOMException("cancelled", "AbortError");
       // Skip arquivo com erro, log, continua próximo
       const msg = err instanceof Error ? err.message : String(err);
       console.error(

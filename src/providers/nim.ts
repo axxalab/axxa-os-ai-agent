@@ -56,9 +56,9 @@ interface NodeIncomingLike {
 }
 interface NodeRequestLike {
   on(ev: "error", cb: (err: Error) => void): void;
-  write(body: string): void;
-  end(): void;
+  end(body?: string): void;
   destroy(err?: Error): void;
+  setTimeout(ms: number, cb: () => void): void;
 }
 interface NodeHttpsLike {
   request(
@@ -78,7 +78,12 @@ interface NodeHttpsLike {
 function getNodeHttps(): NodeHttpsLike | null {
   try {
     const req = (globalThis as { require?: (m: string) => unknown }).require;
-    return req ? (req("https") as NodeHttpsLike) : null;
+    if (!req) return null;
+    // v0.1.228: `globalThis.require` pode existir e NÃO ser o require do Node
+    // (algum shim do bundler/webview). Só retorna se o módulo expõe .request —
+    // senão cai no fallback mobile (requestUrl) em vez de explodir adiante.
+    const mod = req("https") as Partial<NodeHttpsLike> | null;
+    return typeof mod?.request === "function" ? (mod as NodeHttpsLike) : null;
   } catch {
     return null;
   }
@@ -88,14 +93,22 @@ function getNodeHttps(): NodeHttpsLike | null {
 export function nodeBodyToWebStream(res: NodeIncomingLike): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
     start(controller) {
-      res.on("data", (chunk) => controller.enqueue(new Uint8Array(chunk)));
-      res.on("end", () => {
+      // v0.1.228: fecha o controller TAMBÉM no "close" — se o socket cair sem
+      // emitir "end" (conexão derrubada), o stream nunca fechava e o reader
+      // ficava pendurado. `closed` guarda contra double-close (end + close).
+      let closed = false;
+      const finish = () => {
+        if (closed) return;
+        closed = true;
         try {
           controller.close();
         } catch {
           /* já fechado */
         }
-      });
+      };
+      res.on("data", (chunk) => controller.enqueue(new Uint8Array(chunk)));
+      res.on("end", finish);
+      res.on("close", finish);
       res.on("error", (err) => controller.error(err));
     },
   });
@@ -107,7 +120,8 @@ function nodeStreamRequest(
   urlStr: string,
   headers: Record<string, string>,
   body: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  timeoutMs = 120_000
 ): Promise<{ status: number; body: ReadableStream<Uint8Array> }> {
   return new Promise((resolve, reject) => {
     const u = new URL(urlStr);
@@ -118,20 +132,31 @@ function nodeStreamRequest(
         port: u.port ? Number(u.port) : 443,
         path: u.pathname + u.search,
         method: "POST",
+        // Content-Length em BYTES (não chars) — TextEncoder casa com o que
+        // req.end(body) realmente escreve (UTF-8). v0.1.228
         headers: { ...headers, "Content-Length": String(new TextEncoder().encode(body).length) },
       },
       (res) => {
+        // v0.1.228: o abort precisa seguir vivo enquanto o body streama (abort
+        // no meio do stream → req.destroy). Só removemos o listener quando o
+        // body realmente termina (end/close) — senão vazava no caminho feliz.
+        res.on("end", () => signal?.removeEventListener("abort", onAbort));
+        res.on("close", () => signal?.removeEventListener("abort", onAbort));
         resolve({ status: res.statusCode ?? 0, body: nodeBodyToWebStream(res) });
       }
     );
     const onAbort = () => req.destroy(new Error("aborted"));
     signal?.addEventListener("abort", onAbort, { once: true });
+    // v0.1.228: timeout duro — se o servidor pendurar sem responder, derruba a
+    // request (o reject abaixo vira ProviderError "network" no caller).
+    req.setTimeout(timeoutMs, () => req.destroy(new Error("timeout")));
     req.on("error", (err) => {
       signal?.removeEventListener("abort", onAbort);
       reject(err);
     });
-    req.write(body);
-    req.end();
+    // req.end(body) escreve o corpo e finaliza numa só chamada — sem write()
+    // pendente, Node cuida do drain/backpressure internamente. v0.1.228
+    req.end(body);
   });
 }
 
@@ -238,14 +263,12 @@ export class NimProvider implements Provider {
 
     // Log de diagnóstico — facilita debug quando user reporta "não funciona"
     if (res.status < 200 || res.status >= 300) {
-      // Tenta parsear corpo JSON; cai pra .text se não for JSON
-      const errBody = res.json ?? (() => {
-        try { return JSON.parse(res.text); } catch { return res.text; }
-      })();
+      // v0.1.228: requestUrl já parseia JSON em res.json — logar res.json ?? text
+      // direto evita o re-parse redundante do IIFE (text fatiado p/ não poluir).
       console.error(
         "[axxa] NIM response failed:",
         res.status,
-        errBody
+        res.json ?? (typeof res.text === "string" ? res.text.slice(0, 500) : res.text)
       );
       throw this.nimError(res.status, res.json, res.text, req.model);
     }
@@ -348,7 +371,14 @@ export class NimProvider implements Provider {
         /* corpo não-JSON */
       }
       // Modelo recusou stream_options? Tenta 1× sem (param novo p/ NIM antigo).
-      if (includeUsage && resp.status === 400 && /stream_options/i.test(text)) {
+      // v0.1.228: um 400 aqui é REJEIÇÃO de request — nada foi gerado, então o
+      // resend não duplica custo. Casamos "stream_options" e qualquer 400 que
+      // mencione "stream"/parâmetro/argumento, pois nem todo NIM nomeia o campo.
+      if (
+        includeUsage &&
+        resp.status === 400 &&
+        /stream_options|stream|param|argument|unexpected|unrecognized/i.test(text)
+      ) {
         return this.streamViaNode(https, req, apiKey, onToken, onUsage, signal, onReasoning, false);
       }
       console.error("[axxa] NIM stream failed:", resp.status, json ?? text);
@@ -549,9 +579,18 @@ function sizeToAspectRatio(size?: string): string {
   }
 }
 
-/** Decode base64 → Uint8Array. */
+/** Decode base64 → Uint8Array. Tolera data-URL e whitespace; lança
+ *  ProviderError em base64 inválido (atob throw) em vez de explodir cru. v0.1.228 */
 function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
+  // Alguns modelos devolvem "data:image/png;base64,...." em vez de base64 puro;
+  // strip do prefixo + whitespace antes do atob (que é estrito).
+  const clean = b64.replace(/^data:[^;]*;base64,/, "").replace(/\s/g, "");
+  let bin: string;
+  try {
+    bin = atob(clean);
+  } catch {
+    throw new ProviderError("NIM retornou imagem em formato inválido.", "unknown");
+  }
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;

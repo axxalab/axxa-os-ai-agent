@@ -76,11 +76,13 @@ export function parseOpenRouterKey(json: unknown): OpenRouterBilling {
     string,
     unknown
   >;
-  const usageUsd = typeof d.usage === "number" ? d.usage : 0;
-  const limitUsd = typeof d.limit === "number" ? d.limit : null;
+  // v0.1.228: clampa valores fora do esperado (uso nunca negativo; limite
+  // negativo é tratado como "sem limite") — robustez barata caso a API mude.
+  const usageUsd = typeof d.usage === "number" ? Math.max(0, d.usage) : 0;
+  const limitUsd = typeof d.limit === "number" && d.limit >= 0 ? d.limit : null;
   const remainingUsd =
     typeof d.limit_remaining === "number"
-      ? d.limit_remaining
+      ? Math.max(0, d.limit_remaining)
       : limitUsd != null
         ? Math.max(0, limitUsd - usageUsd)
         : null;
@@ -95,6 +97,27 @@ export type RequestUrlLike = (opts: {
   throw: boolean;
 }) => Promise<{ status: number; json?: unknown }>;
 
+/** Timeout padrão (ms) das chamadas de billing — evita pendurar a UI. */
+export const BILLING_REQUEST_TIMEOUT_MS = 15_000;
+
+// v0.1.228: o requestUrl do Obsidian não aceita AbortSignal, então usamos um
+// Promise.race contra um timer. A request pode terminar em background, mas o
+// chamador é liberado e a UI recebe um erro acionável em vez de travar.
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label}: tempo esgotado (${ms / 1000}s).`)),
+      ms
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export async function fetchOpenRouterBilling(
   apiKey: string,
   requestUrlFn: RequestUrlLike
@@ -102,12 +125,16 @@ export async function fetchOpenRouterBilling(
   if (!apiKey || !apiKey.trim()) {
     throw new Error("Sem API key do OpenRouter.");
   }
-  const res = await requestUrlFn({
-    url: "https://openrouter.ai/api/v1/auth/key",
-    method: "GET",
-    headers: { Authorization: `Bearer ${apiKey.trim()}` },
-    throw: false,
-  });
+  const res = await withTimeout(
+    requestUrlFn({
+      url: "https://openrouter.ai/api/v1/auth/key",
+      method: "GET",
+      headers: { Authorization: `Bearer ${apiKey.trim()}` },
+      throw: false,
+    }),
+    BILLING_REQUEST_TIMEOUT_MS,
+    "OpenRouter billing"
+  );
   if (res.status < 200 || res.status >= 300) {
     throw new Error(`OpenRouter billing: HTTP ${res.status}`);
   }
@@ -120,6 +147,8 @@ export async function fetchOpenRouterBilling(
 
 /** Parser puro: soma o gasto (USD) de todos os buckets. */
 export function parseOpenAICosts(json: unknown): number {
+  // Parser TOLERANTE por contrato (ver tests): shape inesperado → 0, nunca
+  // throw — uma resposta de billing malformada não pode derrubar a UI de uso.
   const data =
     (json as { data?: Array<{ results?: Array<{ amount?: { value?: number } }> }> })
       ?.data ?? [];
@@ -149,12 +178,16 @@ export async function fetchOpenAICosts(
   const url =
     `https://api.openai.com/v1/organization/costs` +
     `?start_time=${startTimeUnix}&bucket_width=1d&limit=180${projectFilter}`;
-  const res = await requestUrlFn({
-    url,
-    method: "GET",
-    headers: { Authorization: `Bearer ${adminKey.trim()}` },
-    throw: false,
-  });
+  const res = await withTimeout(
+    requestUrlFn({
+      url,
+      method: "GET",
+      headers: { Authorization: `Bearer ${adminKey.trim()}` },
+      throw: false,
+    }),
+    BILLING_REQUEST_TIMEOUT_MS,
+    "OpenAI costs"
+  );
   if (res.status === 401 || res.status === 403) {
     throw new Error("Admin key inválida ou sem permissão de billing.");
   }
@@ -166,8 +199,10 @@ export async function fetchOpenAICosts(
 
 // ── Anthropic cost report (GASTO real, exige ADMIN key) ─────
 // GET /v1/organizations/cost_report?starting_at=YYYY-MM-DD. amount pode vir como
-// number OU string decimal — parser tolerante; cai pra 0 se o shape mudar.
+// number OU string decimal — parser tolerante no nível do result.
 export function parseAnthropicCosts(json: unknown): number {
+  // Parser TOLERANTE por contrato (ver tests): shape inesperado → 0, nunca
+  // throw — billing malformado não pode derrubar a UI de uso.
   const data =
     (json as { data?: Array<{ results?: Array<Record<string, unknown>> }> })?.data ??
     [];
@@ -204,16 +239,20 @@ export async function fetchAnthropicCosts(
   const url =
     `https://api.anthropic.com/v1/organizations/cost_report` +
     `?starting_at=${encodeURIComponent(startingAtIso)}${wsFilter}`;
-  const res = await requestUrlFn({
-    url,
-    method: "GET",
-    headers: {
-      "x-api-key": adminKey.trim(),
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    throw: false,
-  });
+  const res = await withTimeout(
+    requestUrlFn({
+      url,
+      method: "GET",
+      headers: {
+        "x-api-key": adminKey.trim(),
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      throw: false,
+    }),
+    BILLING_REQUEST_TIMEOUT_MS,
+    "Anthropic costs"
+  );
   if (res.status === 401 || res.status === 403) {
     throw new Error("Admin key Anthropic inválida ou sem permissão.");
   }

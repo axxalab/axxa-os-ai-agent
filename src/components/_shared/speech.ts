@@ -48,6 +48,10 @@ export function releaseSpeaker(reset: () => void): void {
   if (activeSpeaker === reset) activeSpeaker = null;
 }
 
+// Ref do último utterance disparado, pra desconectar seus handlers antes do
+// próximo cancel() e evitar callbacks fora de ordem. v0.1.228
+let lastUtter: SpeechSynthesisUtterance | null = null;
+
 /** Fala o texto. Devolve true se conseguiu iniciar. */
 export function speak(text: string, opts: SpeakOpts = {}): boolean {
   if (!("speechSynthesis" in window)) {
@@ -63,6 +67,15 @@ export function speak(text: string, opts: SpeakOpts = {}): boolean {
   }
   utter.onend = () => opts.onEnd?.();
   utter.onerror = () => opts.onError?.();
+  // v0.1.228: desconecta os handlers do utterance anterior antes de cancelar.
+  // synth.cancel() pode disparar o onend/onerror do utterance que estava
+  // tocando — tarde e fora de ordem — confundindo o dono anterior. Sem
+  // handlers, esses callbacks viram no-op e só o `utter` atual reporta estado.
+  if (lastUtter) {
+    lastUtter.onend = null;
+    lastUtter.onerror = null;
+  }
+  lastUtter = utter;
   synth.cancel();
   synth.speak(utter);
   return true;

@@ -1,7 +1,7 @@
 // src/usage/export.ts
 // Exportadores do Usage report — Markdown + PDF.
 //
-// Markdown: gera string formatada, salva em axxa-ai/reports/usage-{YYYY-MM-DD}.md
+// Markdown: gera string formatada, salva em axxa-ai/reports/usage-{YYYY-MM-DD_HH-MM-SS}-{rand}.md
 // PDF: usa Electron BrowserWindow.printToPDF quando disponível (desktop),
 //      cai pra window.print() (com CSS print-only) no resto.
 
@@ -18,11 +18,15 @@ import {
 const REPORTS_FOLDER = "axxa-ai/reports";
 
 function tsFileName(): string {
-  return new Date()
+  // v0.1.228: toISOString().slice(0,19) descarta os ms — dois reports no mesmo
+  // segundo colidiam e um sobrescrevia o outro. Sufixo curto aleatório evita.
+  const stamp = new Date()
     .toISOString()
     .replace(/[:.]/g, "-")
     .replace("T", "_")
     .slice(0, 19);
+  const rand = crypto.randomUUID().slice(0, 8);
+  return `${stamp}-${rand}`;
 }
 
 function formatNumber(n: number): string {
@@ -359,9 +363,14 @@ export async function saveUsageMarkdown(
   basePath = REPORTS_FOLDER
 ): Promise<ExportResult> {
   const md = generateUsageMarkdown(agg, periodDays, chatsPath);
-  await ensureFolder(app.vault.adapter, basePath);
   const path = `${basePath}/usage-${tsFileName()}.md`;
-  await app.vault.adapter.write(path, md);
+  // v0.1.228: erro de IO subia cru pra UI; relança com o path pro Notice ser útil.
+  try {
+    await ensureFolder(app.vault.adapter, basePath);
+    await app.vault.adapter.write(path, md);
+  } catch (e) {
+    throw new Error(`Falha ao salvar o report em ${path}: ${e instanceof Error ? e.message : String(e)}`);
+  }
   return { path, format: "md" };
 }
 
@@ -377,9 +386,14 @@ export async function saveUsageHtml(
   basePath = REPORTS_FOLDER
 ): Promise<ExportResult> {
   const html = generateUsageHtml(agg, periodDays, chatsPath);
-  await ensureFolder(app.vault.adapter, basePath);
   const path = `${basePath}/usage-${tsFileName()}.html`;
-  await app.vault.adapter.write(path, html);
+  // v0.1.228: erro de IO subia cru pra UI; relança com o path pro Notice ser útil.
+  try {
+    await ensureFolder(app.vault.adapter, basePath);
+    await app.vault.adapter.write(path, html);
+  } catch (e) {
+    throw new Error(`Falha ao salvar o report em ${path}: ${e instanceof Error ? e.message : String(e)}`);
+  }
   return { path, format: "html" };
 }
 
@@ -399,21 +413,32 @@ export function printUsageReport(
       "Pop-up bloqueado. Permita pop-ups deste site pra exportar como PDF."
     );
   }
+  // v0.1.228: anula opener pra a nova janela não ter referência de volta (segurança).
+  // Não dá pra passar 'noopener' nas features acima — isso faria window.open()
+  // retornar null e quebrar o document.write/print abaixo.
+  try {
+    win.opener = null;
+  } catch {
+    /* ignore */
+  }
   win.document.open();
   win.document.write(html);
   win.document.close();
-  // Espera o conteúdo renderizar antes de chamar print
-  win.addEventListener("load", () => {
-    win.focus();
-    win.print();
-  });
-  // Fallback: se o load já disparou, força imediato
-  setTimeout(() => {
+  // v0.1.228: load listener + setTimeout disparavam print() duas vezes e o
+  // listener nunca era removido. Flag garante print único; o setTimeout cobre
+  // o caso de o load já ter disparado.
+  let printed = false;
+  const doPrint = () => {
+    if (printed) return;
+    printed = true;
     try {
       win.focus();
       win.print();
     } catch {
       /* ignore */
     }
-  }, 350);
+  };
+  win.addEventListener("load", doPrint, { once: true });
+  // Fallback: se o load já disparou, força imediato
+  setTimeout(doPrint, 350);
 }

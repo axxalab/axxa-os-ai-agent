@@ -131,8 +131,9 @@ const PRICES_BY_PROVIDER: Record<string, PricingEntry[]> = {
     // DeepSeek
     { prefix: "deepseek/deepseek-r1", pricing: { inputPerMillion: 0.55, outputPerMillion: 2.19, tier: "paid", asOf: "2026-06" } },
     { prefix: "deepseek/", pricing: { inputPerMillion: 0.14, outputPerMillion: 0.28, tier: "paid", asOf: "2026-06" } },
-    // Free tier (any provider with :free suffix)
-    { prefix: ":free", pricing: { inputPerMillion: 0, outputPerMillion: 0, tier: "free", asOf: "2026-06" } },
+    // Free tier (:free suffix) é tratado pelo caso especial endsWith(":free") em
+    // getPricing() — um match por prefixo nunca casaria um SUFIXO, então não há
+    // entry aqui (seria código morto). v0.1.228
   ],
 
   // ─────────────────────────── Nvidia NIM ────────────────────────────────

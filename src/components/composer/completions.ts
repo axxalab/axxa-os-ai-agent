@@ -57,6 +57,23 @@ function collectVaultPaths(app: App): WikiLinkOption[] {
   return items;
 }
 
+// Cache curto pra não varrer o vault inteiro a cada keystroke do @ autocomplete
+// (v0.1.228). TTL pequeno: dentro de uma sessão de digitação a lista é reusada;
+// criações/renomeações recentes aparecem em até ~2s sem precisar de listeners
+// de vault (que exigiriam lifecycle/cleanup que este módulo stateless não tem).
+let _vaultPathsCache: { items: WikiLinkOption[]; at: number } | null = null;
+const VAULT_PATHS_TTL_MS = 2000;
+
+function collectVaultPathsCached(app: App): WikiLinkOption[] {
+  const now = Date.now();
+  if (_vaultPathsCache && now - _vaultPathsCache.at < VAULT_PATHS_TTL_MS) {
+    return _vaultPathsCache.items;
+  }
+  const items = collectVaultPaths(app);
+  _vaultPathsCache = { items, at: now };
+  return items;
+}
+
 /**
  * Source pra completion de @notas/pastas. Trigger: @ seguido de qualquer char.
  *
@@ -77,7 +94,7 @@ export function wikilinkCompletionSource(
     if (match.from === match.to && !context.explicit) return null;
 
     const query = match.text.slice(1).toLowerCase().trim();
-    const allItems = collectVaultPaths(app);
+    const allItems = collectVaultPathsCached(app);
 
     const filtered = allItems
       .filter((item) => {

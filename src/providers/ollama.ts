@@ -48,7 +48,20 @@ export class OllamaProvider implements Provider {
   /** Endpoint base que vem das settings (apiKey no nosso modelo, mas é URL). */
   private getEndpoint(apiKey: string): string {
     // No nosso modelo, apiKey carrega o endpoint do Ollama (settings.ollamaEndpoint)
-    const url = (apiKey || "http://localhost:11434").trim().replace(/\/$/, "");
+    const DEFAULT = "http://localhost:11434";
+    const url = (apiKey || DEFAULT).trim().replace(/\/$/, "");
+    // v0.1.228: valida o endpoint configurado — URL malformada ou esquema
+    // não-HTTP cai pro default localhost em vez de produzir erros confusos.
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        console.warn(`[Ollama] Endpoint com esquema inválido (${parsed.protocol}), usando ${DEFAULT}.`);
+        return DEFAULT;
+      }
+    } catch {
+      console.warn(`[Ollama] Endpoint inválido ("${url}"), usando ${DEFAULT}.`);
+      return DEFAULT;
+    }
     return url;
   }
 
@@ -109,28 +122,35 @@ export class OllamaProvider implements Provider {
     // Sem `id` na maioria dos casos — geramos um pra fechar o loop.
     let toolCalls: ProviderToolCall[] | undefined;
     if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
-      toolCalls = message.tool_calls.map(
-        (tc: { id?: string; function: { name: string; arguments: unknown } }, idx: number) => {
-          const raw = tc.function?.arguments;
-          let parsedArgs: Record<string, unknown> = {};
-          if (raw && typeof raw === "object") {
-            // Ollama path: já vem como objeto
-            parsedArgs = raw as Record<string, unknown>;
-          } else if (typeof raw === "string") {
-            // Compat path: alguns modelos via Ollama devolvem string JSON
-            try {
-              parsedArgs = JSON.parse(raw);
-            } catch {
-              parsedArgs = { _raw: raw };
+      toolCalls = message.tool_calls
+        .map(
+          (tc: { id?: string; function?: { name?: string; arguments?: unknown } }, idx: number) => {
+            // v0.1.228: sem name não há tool call válido — descarta (espelha o
+            // `if (!acc.name) continue` do finalizeOpenAIResponse).
+            const fn = tc.function;
+            if (!fn?.name) return null;
+            const raw = fn.arguments;
+            let parsedArgs: Record<string, unknown> = {};
+            if (raw && typeof raw === "object") {
+              // Ollama path: já vem como objeto
+              parsedArgs = raw as Record<string, unknown>;
+            } else if (typeof raw === "string") {
+              // Compat path: alguns modelos via Ollama devolvem string JSON
+              try {
+                parsedArgs = JSON.parse(raw);
+              } catch {
+                parsedArgs = { _raw: raw };
+              }
             }
+            return {
+              id: tc.id ?? `ollama_call_${Date.now()}_${idx}`,
+              name: fn.name,
+              arguments: parsedArgs,
+            };
           }
-          return {
-            id: tc.id ?? `ollama_call_${Date.now()}_${idx}`,
-            name: tc.function.name,
-            arguments: parsedArgs,
-          };
-        }
-      );
+        )
+        .filter((tc: ProviderToolCall | null): tc is ProviderToolCall => tc !== null);
+      if (toolCalls && toolCalls.length === 0) toolCalls = undefined;
     }
 
     const content = typeof message.content === "string" ? message.content : "";
@@ -214,20 +234,40 @@ export class OllamaProvider implements Provider {
     let buffer = "";
     let accumulatedText = "";
     let usage: { input: number; output: number } | undefined;
-    const accumulatedToolCalls: ProviderToolCall[] = [];
+    // v0.1.228: Ollama emite o bloco INTEIRO de tool_calls (não deltas) e pode
+    // reenviar o array em mais de uma linha — guardamos só o último recebido em
+    // vez de concatenar, evitando tool calls duplicados.
+    let lastToolCalls: ProviderToolCall[] = [];
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
+    // v0.1.228: try/finally garante liberar o reader em erro/abort (o read()
+    // já rejeita com AbortError quando o signal aborta, via fetch).
+    try {
+      while (true) {
+        // v0.1.228: aborta cedo se o signal já disparou (read() também rejeita,
+        // mas isto encurta o ciclo entre chunks).
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const json = JSON.parse(trimmed);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          let json: { message?: { content?: unknown; tool_calls?: unknown }; done?: boolean; error?: unknown; prompt_eval_count?: number; eval_count?: number };
+          try {
+            json = JSON.parse(trimmed);
+          } catch {
+            // v0.1.228: linha provavelmente truncada — o buffer já guarda o
+            // resto (último split vira o novo buffer), então ignoramos.
+            continue;
+          }
+          // v0.1.228: Ollama sinaliza erros de runtime com um campo `error` na
+          // própria linha do stream — propaga em vez de engolir silenciosamente.
+          if (typeof json.error === "string" && json.error) {
+            throw new ProviderError(`Ollama: ${json.error}`, "unknown");
+          }
           const message = json?.message;
           const token = message?.content;
           if (typeof token === "string" && token.length > 0) {
@@ -235,24 +275,31 @@ export class OllamaProvider implements Provider {
             onToken(token);
           }
           // Ollama emite tool_calls inteiros (não em deltas) — geralmente
-          // numa linha só, próximo do final do stream.
+          // numa linha só, próximo do final do stream. Se reenviar, o array
+          // novo SUBSTITUI o anterior (não acumula).
           if (Array.isArray(message?.tool_calls) && message.tool_calls.length > 0) {
-            message.tool_calls.forEach(
-              (tc: { id?: string; function: { name: string; arguments: unknown } }, idx: number) => {
-                const raw = tc.function?.arguments;
-                let parsedArgs: Record<string, unknown> = {};
-                if (raw && typeof raw === "object") {
-                  parsedArgs = raw as Record<string, unknown>;
-                } else if (typeof raw === "string") {
-                  try { parsedArgs = JSON.parse(raw); } catch { parsedArgs = { _raw: raw }; }
+            const parsed = message.tool_calls
+              .map(
+                (tc: { id?: string; function?: { name?: string; arguments?: unknown } }, idx: number) => {
+                  // v0.1.228: sem name não há tool call válido — descarta.
+                  const fn = tc.function;
+                  if (!fn?.name) return null;
+                  const raw = fn.arguments;
+                  let parsedArgs: Record<string, unknown> = {};
+                  if (raw && typeof raw === "object") {
+                    parsedArgs = raw as Record<string, unknown>;
+                  } else if (typeof raw === "string") {
+                    try { parsedArgs = JSON.parse(raw); } catch { parsedArgs = { _raw: raw }; }
+                  }
+                  return {
+                    id: tc.id ?? `ollama_call_${Date.now()}_${idx}`,
+                    name: fn.name,
+                    arguments: parsedArgs,
+                  };
                 }
-                accumulatedToolCalls.push({
-                  id: tc.id ?? `ollama_call_${Date.now()}_${accumulatedToolCalls.length + idx}`,
-                  name: tc.function.name,
-                  arguments: parsedArgs,
-                });
-              }
-            );
+              )
+              .filter((tc: ProviderToolCall | null): tc is ProviderToolCall => tc !== null);
+            if (parsed.length > 0) lastToolCalls = parsed;
           }
           if (json?.done === true) {
             usage = {
@@ -261,17 +308,17 @@ export class OllamaProvider implements Provider {
             };
             if (onUsage) onUsage(usage);
             const result: ProviderResponse = { content: accumulatedText };
-            if (accumulatedToolCalls.length > 0) result.toolCalls = accumulatedToolCalls;
+            if (lastToolCalls.length > 0) result.toolCalls = lastToolCalls;
             if (usage) result.usage = usage;
             return result;
           }
-        } catch {
-          /* skip JSON inválido */
         }
       }
+    } finally {
+      try { reader.releaseLock(); } catch { /* já liberado */ }
     }
     const result: ProviderResponse = { content: accumulatedText };
-    if (accumulatedToolCalls.length > 0) result.toolCalls = accumulatedToolCalls;
+    if (lastToolCalls.length > 0) result.toolCalls = lastToolCalls;
     if (usage) result.usage = usage;
     return result;
   }

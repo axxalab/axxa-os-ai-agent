@@ -69,11 +69,13 @@ export class OpenRouterProvider implements Provider {
 
     const message = res.json?.choices?.[0]?.message;
     if (!message) throw new ProviderError("Resposta vazia.", "unknown");
-    const { content, toolCalls } = parseOpenAIChatMessage(message);
+    const { content, toolCalls, reasoning } = parseOpenAIChatMessage(message);
     if (!toolCalls && !content) {
       throw new ProviderError("Resposta vazia da OpenRouter (sem texto nem tool_calls).", "unknown");
     }
-    return { content, toolCalls, usage: usageFrom(res.json) };
+    // v0.1.228: propaga reasoning (DeepSeek R1 & afins expõem reasoning_content
+    // em non-stream); antes era descartado aqui.
+    return { content, toolCalls, usage: usageFrom(res.json), reasoning };
   }
 
   async streamChat(
@@ -136,7 +138,12 @@ export class OpenRouterProvider implements Provider {
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`OpenRouter: HTTP ${res.status}`, "unknown");
     }
-    const all: string[] = (res.json?.data ?? []).map((m: { id: string }) => m.id);
+    // v0.1.228: guarda contra catálogo malformado — `data` que não é array, ou
+    // entradas sem `id` string, fariam o filtro chamar startsWith em undefined.
+    const data = Array.isArray(res.json?.data) ? res.json.data : [];
+    const all: string[] = data
+      .filter((m: unknown): m is { id: string } => typeof (m as { id?: unknown })?.id === "string")
+      .map((m: { id: string }) => m.id);
     return all.filter(isRelevantOpenRouterModel).sort();
   }
 

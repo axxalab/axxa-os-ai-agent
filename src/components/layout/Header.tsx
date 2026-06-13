@@ -123,7 +123,9 @@ export function Header({
 
   const commit = () => {
     const clean = draft.trim();
-    if (!clean || clean === chatTitle) {
+    // v0.1.228: compara contra o título também normalizado — senão um título
+    // externo com espaços nas pontas dispara rename "fantasma" (no-op real).
+    if (!clean || clean === chatTitle.trim()) {
       // sem mudança ou inválido — reverte
       setDraft(chatTitle);
       return;

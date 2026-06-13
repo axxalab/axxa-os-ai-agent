@@ -228,7 +228,11 @@ export class OpenAIProvider implements Provider {
     if (!Array.isArray(items) || items.length === 0) {
       throw new ProviderError("OpenAI: resposta sem imagens (data vazio).", "unknown");
     }
-    const [width, height] = parseSize(body.size as string);
+    // v0.1.228: quando o size pedido era 'auto' (gpt-image-1), a API escolhe a
+    // dimensão real — não fixe 1024x1024. Deixa width/height undefined; o
+    // consumidor lê as dimensões reais dos bytes do PNG se precisar.
+    const sizeRequested = request.size && request.size !== "auto" ? body.size as string : "";
+    const [width, height] = parseSize(sizeRequested);
     return items.map((it: { b64_json?: string; url?: string; revised_prompt?: string }) => {
       const b64 = it.b64_json ?? "";
       if (!b64) {
@@ -316,7 +320,11 @@ export class OpenAIProvider implements Provider {
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`OpenAI: HTTP ${res.status}`, "unknown");
     }
-    const all: string[] = (res.json?.data ?? []).map((m: { id: string }) => m.id);
+    // v0.1.228: a API pode trazer item sem `id` string — filtra antes do
+    // filtro de relevância pra não passar undefined/non-string adiante.
+    const all: string[] = (res.json?.data ?? [])
+      .map((m: { id?: unknown }) => m.id)
+      .filter((id: unknown): id is string => typeof id === "string");
     return all.filter(isRelevantOpenAIModel).sort();
   }
 

@@ -184,9 +184,14 @@ export function ConversationsList({
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
+    // Comparação temporal real (não lexicográfica): datas inválidas viram 0. v0.1.228
+    const ts = (iso: string): number => {
+      const v = new Date(iso).getTime();
+      return Number.isNaN(v) ? 0 : v;
+    };
     switch (sortKey) {
       case "date-asc":
-        arr.sort((a, b) => a.date.localeCompare(b.date));
+        arr.sort((a, b) => ts(a.date) - ts(b.date));
         break;
       case "title-asc":
         arr.sort((a, b) => a.title.localeCompare(b.title, t.dashboard.dateLocale));
@@ -201,22 +206,32 @@ export function ConversationsList({
         break;
       case "date-desc":
       default:
-        arr.sort((a, b) => b.date.localeCompare(a.date));
+        arr.sort((a, b) => ts(b.date) - ts(a.date));
     }
     return arr;
   }, [filtered, sortKey, t.dashboard.dateLocale]);
 
   // Agrupa por dia só quando o sort é por data; senão lista plana.
+  // Chave do grupo = YYYY-MM-DD estável (não o label formatado), pra duas
+  // datas iguais agruparem juntas e "Hoje"/"Ontem" não colidirem com um label
+  // de data. O label só é usado pra exibir o cabeçalho. v0.1.228
   const groups = useMemo(() => {
-    const map = new Map<string, ChatSummary[]>();
+    const map = new Map<string, { label: string; items: ChatSummary[] }>();
     if (sortKey === "date-desc" || sortKey === "date-asc") {
       for (const c of sorted) {
-        const key = formatGroupDate(c.date, t);
-        if (!map.has(key)) map.set(key, []);
-        map.get(key)!.push(c);
+        const d = new Date(c.date);
+        const key = Number.isNaN(d.getTime())
+          ? c.date.slice(0, 10)
+          : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        let g = map.get(key);
+        if (!g) {
+          g = { label: formatGroupDate(c.date, t), items: [] };
+          map.set(key, g);
+        }
+        g.items.push(c);
       }
     } else if (sorted.length > 0) {
-      map.set("", sorted);
+      map.set("", { label: "", items: sorted });
     }
     return Array.from(map.entries());
   }, [sorted, sortKey, t]);
@@ -246,13 +261,16 @@ export function ConversationsList({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t.conversations.searchPlaceholder}
+          // a11y: input sem <label> visível precisa de aria-label próprio. v0.1.228
+          aria-label={t.conversations.searchPlaceholder}
         />
         {search && (
           <button
             type="button"
             className="axxa-conversations-search-clear"
             onClick={() => setSearch("")}
-            aria-label={t.conversations.back}
+            // a11y: rótulo próprio do botão (antes reusava "Voltar" por engano). v0.1.228
+            aria-label={t.conversations.clearSearch}
           >
             <Icon name="x" />
           </button>
@@ -277,7 +295,8 @@ export function ConversationsList({
             className="dropdown"
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            aria-label={t.conversations.sortDateDesc}
+            // a11y: rótulo genérico do controle; o valor já é anunciado pelo select. v0.1.228
+            aria-label={t.conversations.sortLabel}
           >
             <option value="date-desc">{t.conversations.sortDateDesc}</option>
             <option value="date-asc">{t.conversations.sortDateAsc}</option>
@@ -297,18 +316,28 @@ export function ConversationsList({
             </p>
           </div>
         )}
-        {groups.map(([dayLabel, items]) => (
-          <div key={dayLabel || "flat"} className="axxa-conversations-group">
+        {groups.map(([dayKey, { label: dayLabel, items }]) => (
+          <div key={dayKey || "flat"} className="axxa-conversations-group">
             {dayLabel && (
               <div className="axxa-conversations-group-head">{dayLabel}</div>
             )}
             {items.map((c) => (
-              <button
+              // a11y: era <button> com <span role=button> aninhado (interativo
+              // dentro de interativo = HTML inválido). Vira container role=button
+              // alcançável por teclado, e o trigger de menu é um <button> irmão. v0.1.228
+              <div
                 key={c.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className="axxa-recent-item"
                 data-mode={c.mode}
                 onClick={() => onLoadChat(c.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onLoadChat(c.id);
+                  }
+                }}
                 onContextMenu={(e) => openItemMenu(e, c)}
               >
                 <span className="axxa-recent-logo">
@@ -327,7 +356,8 @@ export function ConversationsList({
                         icon={modelVendorLogoId(c.provider, c.model) ?? "cpu"}
                         color={CHIP_COLORS.model}
                       >
-                        {c.model}
+                        {/* fallback p/ chip não ficar vazio quando falta model. v0.1.228 */}
+                        {c.model || c.provider || "—"}
                       </InfoChip>
                     )}
                     {visibleChips.includes("messages") && (
@@ -346,21 +376,20 @@ export function ConversationsList({
                   </span>
                 </span>
                 {(onRenameChat || onDeleteChat) && (
-                  <span
+                  <button
+                    type="button"
                     className="axxa-recent-more"
-                    role="button"
-                    tabIndex={-1}
                     aria-label={t.header.moreOptions}
                     title={t.header.moreOptions}
                     onClick={(e) => openItemMenu(e, c)}
                   >
                     <Icon name="more-horizontal" />
-                  </span>
+                  </button>
                 )}
                 <span className="axxa-recent-chevron">
                   <Icon name="chevron-right" />
                 </span>
-              </button>
+              </div>
             ))}
           </div>
         ))}

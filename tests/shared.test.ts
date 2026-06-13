@@ -27,8 +27,18 @@ describe("mapHttpError", () => {
   it("429 → rate-limit", () => {
     expect(mapHttpError(429, {}, { label: "X" })?.code).toBe("rate-limit");
   });
+  it("5xx/408/409 → rate-limit (transiente/retryável, inclui 529 overloaded)", () => {
+    // v0.1.228: erros de servidor são transientes — a UI re-localiza rate-limit
+    // como "tente de novo".
+    expect(mapHttpError(500, {}, { label: "X" })?.code).toBe("rate-limit");
+    expect(mapHttpError(503, {}, { label: "X" })?.code).toBe("rate-limit");
+    expect(mapHttpError(529, {}, { label: "X" })?.code).toBe("rate-limit");
+    expect(mapHttpError(408, {}, { label: "X" })?.code).toBe("rate-limit");
+  });
   it("outro erro → unknown com o detalhe da API", () => {
-    const err = mapHttpError(500, { error: { message: "boom" } }, { label: "NIM" });
+    // 422: não é auth, rate-limit nem 5xx — cai no ramo genérico que preserva
+    // a mensagem da API.
+    const err = mapHttpError(422, { error: { message: "boom" } }, { label: "NIM" });
     expect(err?.code).toBe("unknown");
     expect(err?.message).toContain("boom");
   });

@@ -278,7 +278,9 @@ export function Composer({
       reader.onload = () => {
         const dataUrl = String(reader.result ?? "");
         resolve({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          // v0.1.228: UUID forte — evita colisão teórica em batch de paste/anexo
+          // (timestamp+random curto podia repetir em loop síncrono).
+          id: crypto.randomUUID(),
           kind: "image",
           dataUrl,
           mimeType: blob.type || "image/png",
@@ -297,11 +299,19 @@ export function Composer({
     fileInputRef.current?.click();
   };
 
+  // Teto de tamanho por imagem (20MB) — dataUrl gigante trava a UI e estoura
+  // o payload do provider. v0.1.228
+  const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = ""; // reset pro mesmo arquivo poder ser reanexado
     for (const file of files) {
       if (!file.type.startsWith("image/")) continue;
+      if (file.size > MAX_IMAGE_BYTES) {
+        new Notice(t.composer.attachImageTooLarge);
+        continue;
+      }
       try {
         const img = await blobToPendingImage(file, file.name);
         onAddImage?.(img);
@@ -338,10 +348,18 @@ export function Composer({
   // mic ao descer o scroll perto do botão durante/após o streaming.
   const micHoldTimerRef = useRef<number | null>(null);
   const micStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  // v0.1.228: hold ainda ativo? Vira true quando o timer dispara startRecording e
+  // false quando o user solta (endMic) ou desmonta. startRecording checa este ref
+  // DEPOIS do await de getUserMedia — se o user já soltou nesse meio-tempo, aborta
+  // e libera os tracks (senão o mic ficava ligado sem recorder pra parar).
+  const holdActiveRef = useRef(false);
 
   // Cleanup do MediaRecorder no unmount (libera o mic se ainda tava ativo)
   useEffect(() => {
     return () => {
+      // v0.1.228: marca hold inativo — se startRecording estiver no meio do
+      // await de getUserMedia, o guard pós-await aborta e solta os tracks.
+      holdActiveRef.current = false;
       if (recordingTimerRef.current !== null) {
         window.clearInterval(recordingTimerRef.current);
       }
@@ -392,7 +410,11 @@ export function Composer({
             wikilinkCompletionSource(app, (path, isFolder) => {
               onPickNoteRef.current?.(path, isFolder);
             }),
-            commandCompletionSource(commandsRef.current),
+            // v0.1.228: lê commandsRef.current A CADA invocação (não captura o
+            // array no mount). Os commands são recriados todo render com closures
+            // vivas (ex: /stop, /mode-* dependem de isLocked atual) — capturar
+            // uma vez executava actions stale.
+            (context) => commandCompletionSource(commandsRef.current)(context),
           ],
           activateOnTyping: true,
           maxRenderedOptions: 30,
@@ -548,9 +570,17 @@ export function Composer({
 
   // Prompt starters da StarterScreen → reescreve o doc + foca + cursor no fim.
   // Dispara a cada novo `nonce`. v0.1.131
+  // v0.1.228: guarda o último nonce aplicado — só injeta quando o nonce é novo E
+  // > 0. Sem isso o effect rodava no mount (nonce inicial) e em remounts com nonce
+  // já consumido, sobrescrevendo um rascunho que o user já tinha digitado.
+  const lastInjectNonceRef = useRef(0);
   useEffect(() => {
     const view = viewRef.current;
     if (!view || !injectText) return;
+    if (injectText.nonce <= 0 || injectText.nonce === lastInjectNonceRef.current) {
+      return;
+    }
+    lastInjectNonceRef.current = injectText.nonce;
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: injectText.text },
       selection: { anchor: injectText.text.length },
@@ -586,12 +616,23 @@ export function Composer({
       return;
     }
 
+    // v0.1.228: hold passou a valer — endMic/unmount zeram este ref.
+    holdActiveRef.current = true;
+
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (err) {
       console.error("[axxa] mic permission falhou:", err);
       new Notice(t.recording.micDenied);
+      return;
+    }
+
+    // v0.1.228: getUserMedia é async — se o user já soltou (ou desmontou) durante
+    // o prompt de permissão, aborta sem iniciar o recorder e libera o mic. Sem
+    // isso o stream ficava ligado e o recorder começava sem ninguém pra pará-lo.
+    if (!holdActiveRef.current) {
+      stream.getTracks().forEach((tr) => tr.stop());
       return;
     }
 
@@ -660,6 +701,9 @@ export function Composer({
   };
 
   const stopRecording = (cancel = false) => {
+    // v0.1.228: hold encerrado — se startRecording ainda estiver no await de
+    // getUserMedia, o guard pós-await vê false e aborta sem iniciar o recorder.
+    holdActiveRef.current = false;
     const recorder = mediaRecorderRef.current;
     if (!recorder || !isRecording) return;
     cancelRecordingRef.current = cancel;
@@ -769,16 +813,27 @@ export function Composer({
     if (!el) return;
     const root = el.closest(".axxa-root") as HTMLElement | null;
     if (!root) return;
+    // v0.1.228: agenda a leitura/escrita num rAF e só escreve a CSS var quando o
+    // valor muda — evita set redundante (que pode reentrar o ResizeObserver) e
+    // espalha o offsetHeight num único frame por burst de resize.
+    let rafId: number | null = null;
+    let lastH = -1;
     const update = () => {
-      root.style.setProperty(
-        "--axxa-composer-h",
-        `${Math.round(el.offsetHeight)}px`
-      );
+      rafId = null;
+      const h = Math.round(el.offsetHeight);
+      if (h === lastH) return;
+      lastH = h;
+      root.style.setProperty("--axxa-composer-h", `${h}px`);
+    };
+    const schedule = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(update);
     };
     update();
-    const ro = new ResizeObserver(update);
+    const ro = new ResizeObserver(schedule);
     ro.observe(el);
     return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
       ro.disconnect();
       root.style.removeProperty("--axxa-composer-h");
     };
@@ -808,7 +863,10 @@ export function Composer({
           Multi-tipo: image (thumbnail+shimmer), note (ícone file-text),
           pdf (ícone file), audio (ícone mic). */}
       {pendingAttachments.length > 0 && (
-        <div className="axxa-composer-attachments" aria-label="Anexos pendentes">
+        <div
+          className="axxa-composer-attachments"
+          aria-label={t.composer.attachmentsLabel}
+        >
           {pendingAttachments.map((att) => {
             if (att.kind === "image") {
               return (
@@ -898,12 +956,16 @@ export function Composer({
             if (!isMicMode) return;
             // Previne click sintético depois (mobile)
             e.preventDefault();
+            // v0.1.228: touches[0] pode ser undefined em eventos raros — guarda.
             const tch = e.touches[0];
+            if (!tch) return;
             armMic(tch.clientX, tch.clientY);
           }}
           onTouchMove={(e) => {
             if (!isMicMode) return;
+            // v0.1.228: touches[0] pode ser undefined — guarda antes de usar.
             const tch = e.touches[0];
+            if (!tch) return;
             moveMic(tch.clientX, tch.clientY);
           }}
           onTouchEnd={(e) => {

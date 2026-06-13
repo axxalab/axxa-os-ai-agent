@@ -57,6 +57,9 @@ export function SegmentedRow({
     0,
     items.findIndex((it) => it.id === activeId)
   );
+  // Label do slot ATIVO — entra nas deps do useLayoutEffect porque a LARGURA
+  // medida do indicador depende do texto renderizado (não só do índice). v0.1.228
+  const activeLabel = items[activeIndex]?.label ?? "";
 
   // Indicador MEDIDO (só no modo label): os slots têm larguras diferentes, então
   // calculamos a posição/largura reais do botão ativo em vez de fração igual.
@@ -125,7 +128,8 @@ export function SegmentedRow({
       ro.observe(rowRef.current);
     }
     return () => ro?.disconnect();
-  }, [showActiveLabel, activeIndex, items.length]);
+    // activeLabel: re-mede quando o texto do slot ativo muda (largura ≠ índice). v0.1.228
+  }, [showActiveLabel, activeIndex, items.length, activeLabel]);
 
   // Posição de descanso (inline). O slide entre posições é o WAAPI acima — o CSS
   // do .axxa-seg-labeled .axxa-seg-ind tem transition:none pra não duplicar.

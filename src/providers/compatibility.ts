@@ -60,8 +60,9 @@ export function checkCompatibility(
     };
   }
 
-  // === 3. Modelo de generation em chat normal — sinaliza mas não bloqueia
-  //         (já roteia automaticamente em runGenerationTurn) ===
+  // === 3. Modelo de generation em Agent Mode — BLOQUEIA mesmo (por design):
+  //         geração não roda no loop de tools. Em chat normal não cai aqui —
+  //         runGenerationTurn roteia automaticamente. (comentário corrigido v0.1.228) ===
   if ((caps.imageGen || caps.audioGen || caps.videoGen) && mode === "agent") {
     return {
       ok: false,

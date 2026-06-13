@@ -6,6 +6,9 @@
 
 export const PT_BR = {
   composer: {
+    attachImageNoneValid: "Nenhuma imagem válida foi anexada.",
+    attachImageTooLarge: "Imagem muito grande (máx. 20MB).",
+    attachmentsLabel: "Anexos pendentes",
     placeholderChat: "Pergunte ao AXXA Agent...",
     placeholderVaultQa: "Pergunte sobre seu Vault...",
     placeholderAgent: "Peça pro Agent (ex: 'crie uma nota sobre X', 'organize a pasta Y')...",
@@ -94,6 +97,7 @@ export const PT_BR = {
   },
 
   projects: {
+    sourcesMissing: (names: string) => `Algumas fontes não foram encontradas e foram ignoradas: ${names}`,
     title: "Projetos",
     back: "Voltar",
     newProject: "Novo projeto",
@@ -181,6 +185,7 @@ export const PT_BR = {
   },
 
   header: {
+    copyConversationFailed: "Não foi possível copiar a conversa.",
     newChat: "Novo chat",
     newQa: "Novo Q&A",
     newAgent: "Novo Agente",
@@ -241,6 +246,7 @@ export const PT_BR = {
   },
 
   account: {
+    label: "Sua conta",
     badgeFree: "Free",
     badgePremium: "Premium",
     badgeFounder: "Founder",
@@ -249,6 +255,12 @@ export const PT_BR = {
   },
 
   chat: {
+    copyCode: "Copiar código",
+    upgradePro: "Assine o PRO",
+    variantNext: "Próxima versão",
+    variantPrev: "Versão anterior",
+    variantNav: "Versões da resposta",
+    readAloudUnsupported: "Leitura em voz alta não suportada neste dispositivo.",
     searchPlaceholder: "Buscar nesta conversa…",
     searchResults: (n: number) => `${n} resultado${n === 1 ? "" : "s"}`,
     searchNoResults: "Nenhum resultado nesta conversa.",
@@ -280,6 +292,8 @@ export const PT_BR = {
   },
 
   conversations: {
+    sortLabel: "Ordenar por",
+    clearSearch: "Limpar busca",
     title: "Todas as conversas",
     back: "Voltar",
     searchPlaceholder: "Buscar por título, modelo ou provider...",
@@ -327,6 +341,7 @@ export const PT_BR = {
   // Dashboard — starter virou home do plugin (v0.1.103): stats de uso,
   // atividade, setup de nova conversa e status de RAG/providers.
   dashboard: {
+    modelCardDialog: (model: string) => `Detalhes do modelo: ${model}`,
     greetingMorning: "Bom dia",
     greetingAfternoon: "Boa tarde",
     greetingEvening: "Boa noite",
@@ -409,6 +424,7 @@ export const PT_BR = {
   },
 
   agent: {
+    loopAborted: "O agente ficou repetindo a mesma ação e foi interrompido. Tente reformular a tarefa ou dar mais contexto.",
     thinking: "🤖 Agente pensando...",
     systemPrompt:
       "Você é o AXXA Agent, um assistente integrado ao Obsidian com acesso direto " +
@@ -523,6 +539,8 @@ export const PT_BR = {
 
   // Modal de geração de imagem (fallback manual) — v0.1.166
   imageGen: {
+    noneConnected: "Nenhum provider de imagem conectado. Configure uma chave em Configurações → Providers para gerar.",
+    inputImageDecodeFailed: "A imagem anexada não pôde ser decodificada — gerando só a partir do texto.",
     title: "Gerar imagem",
     editTitle: "Editar imagem",
     promptLabel: "Prompt",
@@ -632,6 +650,8 @@ export const PT_BR = {
   },
 
   settings: {
+    confirmCancel: "Cancelar",
+    confirmProceed: "Confirmar",
     title: "AXXA OS — AI Agent",
     topTabs: {
       providers: "Providers",

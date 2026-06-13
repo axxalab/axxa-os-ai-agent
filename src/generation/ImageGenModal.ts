@@ -40,6 +40,8 @@ export interface ImageGenStrings {
   cancel: string;
   connected: string;
   notConnected: string;
+  /** Nenhum provider de imagem conectado — orienta a configurar. */
+  noneConnected: string;
   noModels: string;
   free: string;
   useAttached: string;
@@ -63,6 +65,8 @@ export class ImageGenModal extends Modal {
   private prompt: string;
   private useInputImage: boolean;
   private generateBtn: HTMLButtonElement | null = null;
+  // genTitleEl (não titleEl): Modal já tem titleEl: HTMLElement na base. v0.1.228
+  private genTitleEl: HTMLElement | null = null;
 
   constructor(app: App, opts: Opts) {
     super(app);
@@ -95,7 +99,10 @@ export class ImageGenModal extends Modal {
     contentEl.addClass("axxa-imggen-modal");
 
     const editing = this.opts.hasInputImage && this.useInputImage;
-    contentEl.createEl("h2", { text: editing ? s.editTitle : s.title });
+    // v0.1.228: guarda ref do título p/ atualizar ao alternar IMG2IMG.
+    this.genTitleEl = contentEl.createEl("h2", {
+      text: editing ? s.editTitle : s.title,
+    });
 
     if (this.opts.options.length === 0) {
       contentEl.createEl("p", {
@@ -127,7 +134,8 @@ export class ImageGenModal extends Modal {
 
     // Imagem anexada (IMG2IMG) — checkbox quando há imagem + modelo edita.
     if (this.opts.hasInputImage) {
-      const editRow = contentEl.createDiv({ cls: "axxa-imggen-editrow" });
+      // v0.1.228: <label> envolve checkbox+texto p/ a11y (clique no texto + leitor).
+      const editRow = contentEl.createEl("label", { cls: "axxa-imggen-editrow" });
       const cb = editRow.createEl("input", {
         attr: { type: "checkbox" },
       }) as HTMLInputElement;
@@ -135,6 +143,10 @@ export class ImageGenModal extends Modal {
       editRow.createSpan({ text: s.useAttached });
       cb.onchange = () => {
         this.useInputImage = cb.checked;
+        // v0.1.228: atualiza o título (Editar imagem vs Gerar imagem) ao alternar.
+        if (this.genTitleEl) {
+          this.genTitleEl.setText(this.useInputImage ? s.editTitle : s.title);
+        }
         this.renderOptions(listEl); // re-render p/ refletir suporte a edição
         this.syncGenerate();
       };
@@ -142,8 +154,19 @@ export class ImageGenModal extends Modal {
 
     // Lista de modelos
     contentEl.createEl("label", { text: s.modelLabel, cls: "axxa-imggen-label" });
+    // v0.1.228: role=radiogroup p/ a11y (seleção de modelo por teclado/leitor).
     const listEl = contentEl.createDiv({ cls: "axxa-imggen-list" });
+    listEl.setAttr("role", "radiogroup");
+    listEl.setAttr("aria-label", s.modelLabel);
     this.renderOptions(listEl);
+
+    // v0.1.228: nenhum provider conectado → nota explícita (CTA fica desabilitado).
+    if (!this.opts.options.some((o) => o.connected)) {
+      contentEl.createEl("p", {
+        text: s.noneConnected,
+        cls: "axxa-imggen-noconn",
+      });
+    }
 
     // Footer
     const footer = contentEl.createDiv({ cls: "axxa-imggen-footer" });
@@ -179,12 +202,17 @@ export class ImageGenModal extends Modal {
     const s = this.opts.strings;
     listEl.empty();
     for (const opt of this.opts.options) {
+      const selected = this.selected === opt;
       const row = listEl.createDiv({
         cls:
           "axxa-imggen-opt" +
-          (this.selected === opt ? " is-selected" : "") +
+          (selected ? " is-selected" : "") +
           (opt.connected ? "" : " is-disconnected"),
       });
+      // v0.1.228: role=radio + tabindex p/ navegação por teclado/leitor de tela.
+      row.setAttr("role", "radio");
+      row.setAttr("aria-checked", selected ? "true" : "false");
+      row.setAttr("tabindex", selected ? "0" : "-1");
       const main = row.createDiv({ cls: "axxa-imggen-opt-main" });
       main.createSpan({ text: opt.model, cls: "axxa-imggen-opt-name" });
       const meta = main.createSpan({ cls: "axxa-imggen-opt-meta" });
@@ -207,10 +235,18 @@ export class ImageGenModal extends Modal {
         text: opt.connected ? s.connected : s.notConnected,
       });
       void badge;
-      row.onclick = () => {
+      const select = () => {
         this.selected = opt;
         this.renderOptions(listEl);
         this.syncGenerate();
+      };
+      row.onclick = select;
+      // v0.1.228: Enter/Space ativam a linha de opção (paridade com clique).
+      row.onkeydown = (ev: KeyboardEvent) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          select();
+        }
       };
     }
   }

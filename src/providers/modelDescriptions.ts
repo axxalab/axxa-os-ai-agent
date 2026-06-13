@@ -130,7 +130,7 @@ const NIM_CARDS: CardEntry[] = [
   // Chat
   { prefix: "meta/llama-3.3-70b", card: { category: "chat-text", description: "Llama 3.3 70B Instruct — chat open source via NIM.", contextWindow: 131_000, goodFor: "Coding rápido" } },
   { prefix: "meta/llama-3.1-405b", card: { category: "chat-text", description: "Llama 3.1 405B — maior open weight.", contextWindow: 131_000, goodFor: "Quality open" } },
-  { prefix: "meta/llama-3.1-70b", card: { category: "chat-text", description: "Llama 3.1 70B — populärst open.", contextWindow: 131_000, goodFor: "Daily open" } },
+  { prefix: "meta/llama-3.1-70b", card: { category: "chat-text", description: "Llama 3.1 70B — open source popular.", contextWindow: 131_000, goodFor: "Daily open" } }, // v0.1.228: corrige typo 'populärst'
   { prefix: "nvidia/llama-3.1-nemotron-70b", card: { category: "agent", description: "Nemotron 70B — fine-tuned pra agentic.", contextWindow: 131_000, goodFor: "Agent open" } },
   { prefix: "mistralai/mixtral-8x22b", card: { category: "chat-text", description: "Mixtral 8x22B — MoE da Mistral.", contextWindow: 65_000, goodFor: "Quality EU open" } },
   { prefix: "deepseek-ai/deepseek-r1", card: { category: "reasoning", description: "DeepSeek R1 via NIM — reasoning open.", contextWindow: 64_000, goodFor: "Reasoning open" } },
@@ -298,20 +298,24 @@ function curatedEn(model: string): string | undefined {
 
 /**
  * Descrição localizada do modelo, phrase-to-phrase:
- *   en → enriched (Fetch info) → EN curado → fallback no pt curado.
- *   pt → pt curado (baseline).
+ *   en  → enriched (Fetch info) → EN curado → fallback no pt curado.
+ *   pt  → pt curado (baseline).
+ *   outras langs → prefere EN (neutro) → fallback no pt curado.
  */
 export function localizedDescription(
   info: ModelFullInfo,
   model: string,
   lang: string
 ): string {
-  if (lang && lang.toLowerCase().startsWith("en")) {
-    return (
-      info.enriched?.descriptionEn ||
-      curatedEn(model) ||
-      info.card.description
-    );
+  const lower = (lang || "").toLowerCase();
+  // pt mantém o baseline curado em português.
+  if (lower.startsWith("pt")) {
+    return info.card.description;
   }
-  return info.card.description;
+  // v0.1.228: en e demais idiomas preferem o EN (neutro) antes de cair no pt.
+  return (
+    info.enriched?.descriptionEn ||
+    curatedEn(model) ||
+    info.card.description
+  );
 }

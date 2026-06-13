@@ -118,9 +118,38 @@ export interface ErrorMapOpts {
 
 function extractApiMessage(json: unknown): string | null {
   const j = json as
-    | { error?: { message?: string }; detail?: string; message?: string }
+    | {
+        error?: unknown;
+        errors?: unknown;
+        detail?: string;
+        message?: string;
+      }
     | undefined;
-  return j?.error?.message ?? j?.detail ?? j?.message ?? null;
+  // error pode vir como string crua, objeto { message } ou objeto/array
+  // aninhado (alguns hosts OpenAI-compat). v0.1.228: cobre os 3 casos.
+  if (typeof j?.error === "string") return j.error;
+  if (j?.error && typeof j.error === "object") {
+    const m = (j.error as { message?: unknown }).message;
+    if (typeof m === "string") return m;
+    if (m != null) return shortJson(m);
+  }
+  // Alguns provedores devolvem `errors: [...]` em vez de `error`.
+  if (Array.isArray(j?.errors) && j.errors.length > 0) {
+    const first = j.errors[0] as { message?: unknown };
+    if (typeof first?.message === "string") return first.message;
+    return shortJson(j.errors);
+  }
+  return j?.detail ?? j?.message ?? null;
+}
+
+/** Serializa um valor não-string em JSON curto (cap 200 chars) p/ detalhe de erro. */
+function shortJson(v: unknown): string {
+  try {
+    const s = JSON.stringify(v);
+    return s.length > 200 ? `${s.slice(0, 200)}…` : s;
+  } catch {
+    return String(v);
+  }
 }
 
 /** Retorna o ProviderError pra um status de erro, ou null se status é OK. */
@@ -140,6 +169,15 @@ export function mapHttpError(
       "rate-limit"
     );
   }
+  // Transientes/retryáveis: 5xx (inclui 529 "overloaded" do Anthropic), 408
+  // (timeout) e 409 (conflito). Mapeados em "rate-limit" porque é o único code
+  // transiente da union e a UI já o re-localiza como "tente de novo". v0.1.228.
+  if (status >= 500 || status === 408 || status === 409) {
+    return new ProviderError(
+      `Serviço ${opts.label} indisponível. Tente novamente.`,
+      "rate-limit"
+    );
+  }
   const detail = extractApiMessage(bodyJson) ?? `HTTP ${status}`;
   return new ProviderError(`${opts.label}: ${detail}`, "unknown");
 }
@@ -150,11 +188,20 @@ export async function ensureOkStream(
   opts: ErrorMapOpts
 ): Promise<void> {
   if (res.ok) return;
+  // Lê como texto e tenta parsear JSON: assim também capturamos detalhe em
+  // corpos text/plain (alguns gateways/proxies). v0.1.228.
   let json: unknown;
   try {
-    json = await res.json();
+    const raw = await res.text();
+    if (raw) {
+      try {
+        json = JSON.parse(raw);
+      } catch {
+        json = { message: raw };
+      }
+    }
   } catch {
-    /* sem corpo JSON — usa o status */
+    /* sem corpo legível — usa o status */
   }
   const err = mapHttpError(res.status, json, opts);
   if (err) throw err;
@@ -192,7 +239,18 @@ export function parseOpenAIChatMessage(message: {
         return { id: tc.id, name: tc.function.name, arguments: parsedArgs };
       });
   }
-  const content = typeof message.content === "string" ? message.content : "";
+  // content pode vir como string OU array de parts ({ type:"text", text }) em
+  // alguns hosts OpenAI-compat. v0.1.228: concatena os parts de texto; '' só
+  // quando content é realmente nulo/ausente.
+  const content =
+    typeof message.content === "string"
+      ? message.content
+      : Array.isArray(message.content)
+        ? (message.content as Array<{ type?: string; text?: unknown }>)
+            .filter((p) => p?.type === "text" && typeof p.text === "string")
+            .map((p) => p.text as string)
+            .join("")
+        : "";
   // Reasoning de resposta NÃO-stream (DeepSeek R1 e afins expõem
   // reasoning_content; alguns hosts usam "reasoning"). Auditoria v0.1.225.
   const reasoning =
@@ -238,7 +296,9 @@ export function finalizeOpenAIResponse(
       parsedArgs = { _raw: acc.argsBuf };
     }
     toolCalls.push({
-      id: acc.id || `${idPrefix}_${Date.now()}_${i}`,
+      // Fallback de id: randomUUID garante unicidade absoluta entre turnos
+      // (Date.now() podia colidir entre finalizes no mesmo ms). v0.1.228.
+      id: acc.id || `${idPrefix}_${crypto.randomUUID()}`,
       name: acc.name,
       arguments: parsedArgs,
     });
@@ -265,6 +325,11 @@ export async function parseOpenAICompatSSE(
   let buffer = "";
   let accumulatedText = "";
   const toolCallAccum: ToolAccum = {};
+  // Fallback p/ quando o chunk de tool_call vem SEM `index` (raro, mas alguns
+  // hosts OpenAI-compat omitem): em vez de cair sempre em 0 e fundir tools
+  // distintas, avança um contador no 1º chunk de cada tool (id/name presentes).
+  // v0.1.228.
+  let lastToolIdx = -1;
   let usage: { input: number; output: number } | undefined;
 
   while (true) {
@@ -305,12 +370,26 @@ export async function parseOpenAICompatSSE(
           }
           if (Array.isArray(delta.tool_calls)) {
             for (const tc of delta.tool_calls) {
-              const idx = tc.index ?? 0;
+              // `index` presente (caminho padrão OpenAI) é sempre respeitado;
+              // só usamos o contador quando ele falta. O 1º chunk de uma tool
+              // traz id/name, então é nele que avançamos o contador.
+              let idx: number;
+              if (typeof tc.index === "number") {
+                idx = tc.index;
+                if (idx > lastToolIdx) lastToolIdx = idx;
+              } else {
+                if (tc.id || tc.function?.name) lastToolIdx += 1;
+                idx = lastToolIdx < 0 ? 0 : lastToolIdx;
+              }
               if (!toolCallAccum[idx]) {
                 toolCallAccum[idx] = { id: "", name: "", argsBuf: "" };
               }
               if (tc.id) toolCallAccum[idx].id = tc.id;
-              if (tc.function?.name) toolCallAccum[idx].name = tc.function.name;
+              // name só é setado se ainda vazio: hosts mandam o name uma vez no
+              // 1º chunk; reescrever (ou concatenar) corromperia o nome.
+              if (tc.function?.name && !toolCallAccum[idx].name) {
+                toolCallAccum[idx].name = tc.function.name;
+              }
               if (typeof tc.function?.arguments === "string") {
                 toolCallAccum[idx].argsBuf += tc.function.arguments;
               }

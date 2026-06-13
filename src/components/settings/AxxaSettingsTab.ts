@@ -13,6 +13,7 @@
 
 import {
   App,
+  Modal,
   PluginSettingTab,
   Setting,
   Notice,
@@ -153,6 +154,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private cachedUsage: UsageAggregate | null = null;
   /** Controller usado pra cancelar uma indexação em andamento. */
   private indexAbortController: AbortController | null = null;
+  /** id do setTimeout que esconde o progress do RAG — limpo no hide(). v0.1.228 */
+  private hideProgressTimer: number | null = null;
 
   constructor(app: App, plugin: AxxaPlugin) {
     super(app, plugin);
@@ -465,7 +468,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
       attr: { type: "button" },
     });
     resetBtn.onclick = async () => {
-      if (!confirm(t.settings.effortResetConfirm)) return;
+      // v0.1.228: Modal do Obsidian no lugar de window.confirm (não roda no mobile)
+      if (!(await this.confirmAction(t.settings.effortResetConfirm, t))) return;
       delete this.plugin.settings.effortConfigs[level];
       await this.plugin.saveSettings();
       new Notice(t.settings.effortResetDone);
@@ -618,6 +622,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
           if (!isFinite(num)) return;
           // Clamp aos limites pra evitar valores absurdos
           const clamped = Math.max(opts.min, Math.min(opts.max, num));
+          // v0.1.228: reflete o valor clampado de volta no input quando saiu
+          // do range — antes salvava o clamp mas deixava o campo mostrando o
+          // valor fora-do-limite digitado (UI dessincronizada do estado).
+          if (clamped !== num) text.setValue(String(clamped));
           await opts.onSave(clamped);
         });
       });
@@ -626,6 +634,15 @@ export class AxxaSettingsTab extends PluginSettingTab {
   hide() {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
+    // v0.1.228: ao fechar as Settings, aborta indexação em andamento e limpa
+    // o timer que esconde o progress — senão os callbacks escrevem em DOM já
+    // destruído (memory leak / erro de elemento desconectado).
+    this.indexAbortController?.abort();
+    this.indexAbortController = null;
+    if (this.hideProgressTimer !== null) {
+      window.clearTimeout(this.hideProgressTimer);
+      this.hideProgressTimer = null;
+    }
   }
 
   /** Botão de top-tab (Providers / Outros) */
@@ -1568,7 +1585,11 @@ export class AxxaSettingsTab extends PluginSettingTab {
     folders.sort();
 
     const doc = inputEl.ownerDocument;
-    const id = `axxa-folder-list-${Math.random().toString(36).slice(2, 8)}`;
+    // v0.1.228: id garantidamente único (randomUUID) — slice de Math.random
+    // podia colidir entre vários inputs. Remove datalist antigo do mesmo
+    // parent antes de anexar pra não acumular em re-anexos.
+    const id = `axxa-folder-list-${crypto.randomUUID()}`;
+    inputEl.parentElement?.querySelector("datalist")?.remove();
     const datalist = doc.createElement("datalist");
     datalist.id = id;
     for (const path of folders) {
@@ -1839,6 +1860,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       });
 
       const toggle = async () => {
+        hapticTick(); // v0.1.228: feedback consistente com o resto da UI
         const list = (this.plugin.settings[settingKey] ?? []).slice();
         const idx = list.indexOf(id);
         if (cb.checked && idx < 0) {
@@ -2112,7 +2134,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
     indexBtn.onclick = () => this.runIndex(false, indexBtn, reindexBtn, clearBtn, progressEl, statsEl, t);
     reindexBtn.onclick = () => this.runIndex(true, indexBtn, reindexBtn, clearBtn, progressEl, statsEl, t);
     clearBtn.onclick = async () => {
-      if (!confirm(t.settings.ragClearConfirm)) return;
+      // v0.1.228: Modal do Obsidian no lugar de window.confirm (não roda no mobile)
+      if (!(await this.confirmAction(t.settings.ragClearConfirm, t))) return;
       try {
         await deleteIndex(this.plugin.app.vault.adapter, this.plugin.settings.ragIndexPath);
         this.plugin.vectorIndex = null;
@@ -2298,9 +2321,15 @@ export class AxxaSettingsTab extends PluginSettingTab {
       indexBtn.disabled = false;
       reindexBtn.disabled = false;
       clearBtn.disabled = false;
-      // Esconde progress depois de 2.5s pro user ler o status
-      window.setTimeout(() => {
-        progressEl.style.display = "none";
+      // Esconde progress depois de 2.5s pro user ler o status. v0.1.228:
+      // guarda o id (limpo no hide()) e checa isConnected — se as Settings
+      // fecharem nesse meio-tempo, o callback não toca em DOM destruído.
+      if (this.hideProgressTimer !== null) {
+        window.clearTimeout(this.hideProgressTimer);
+      }
+      this.hideProgressTimer = window.setTimeout(() => {
+        this.hideProgressTimer = null;
+        if (progressEl.isConnected) progressEl.style.display = "none";
       }, 2500);
     }
   }
@@ -2496,7 +2525,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
         const a = anchors[p] ?? { amount: 0, date: "" };
         const amt = row.createEl("input", {
           cls: "axxa-balance-amt",
-          attr: { type: "number", step: "0.01", placeholder: "$ âncora" },
+          // v0.1.228: min=0 — âncora de saldo negativa não faz sentido.
+          attr: { type: "number", step: "0.01", min: "0", placeholder: "$ âncora" },
         }) as HTMLInputElement;
         if (a.amount) amt.value = String(a.amount);
         const dt = row.createEl("input", {
@@ -2505,7 +2535,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
         }) as HTMLInputElement;
         if (a.date) dt.value = a.date;
         const save = async () => {
-          anchors[p] = { amount: parseFloat(amt.value) || 0, date: dt.value };
+          // v0.1.228: clampa amount em 0 e ignora data inválida (input date
+          // vazio/malformado vira string vazia, tratada como sem âncora).
+          const amount = Math.max(0, parseFloat(amt.value) || 0);
+          const date =
+            dt.value && Number.isFinite(Date.parse(dt.value)) ? dt.value : "";
+          anchors[p] = { amount, date };
           await this.plugin.saveSettings();
           recompute(p);
         };
@@ -2519,10 +2554,18 @@ export class AxxaSettingsTab extends PluginSettingTab {
     sec.createDiv({ cls: "axxa-balance-note", text: t.settings.balanceNote });
 
     refresh.onclick = async () => {
+      const orKey = this.plugin.settings.openrouterApiKey;
+      const oaAdmin = this.adminKeyFor("openai");
+      const antAdmin = this.adminKeyFor("anthropic");
+      // v0.1.228: sem nenhuma fonte de saldo REAL, "Atualizar" era um dead-end
+      // (não buscava nada). Avisa e sai, igual ao cross-check.
+      if (!(orKey && orKey.trim()) && !oaAdmin && !antAdmin) {
+        new Notice(t.settings.usageBillingNoLive);
+        return;
+      }
       refresh.disabled = true;
       refresh.setText(t.settings.usageBillingCrossing);
       const tasks: Promise<void>[] = [];
-      const orKey = this.plugin.settings.openrouterApiKey;
       if (orKey && orKey.trim()) {
         tasks.push(
           (async () => {
@@ -2538,9 +2581,15 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })()
         );
       }
-      const oaAdmin = this.adminKeyFor("openai");
       const oaA = anchors["openai"];
-      if (oaAdmin && oaA?.date && typeof oaA.amount === "number") {
+      // v0.1.228: valida a data da âncora antes de derivar `start` — Date.parse
+      // de uma data inválida vira NaN e iria para fetchOpenAICosts quebrado.
+      if (
+        oaAdmin &&
+        oaA?.date &&
+        typeof oaA.amount === "number" &&
+        Number.isFinite(Date.parse(oaA.date))
+      ) {
         tasks.push(
           (async () => {
             try {
@@ -2562,9 +2611,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
           })()
         );
       }
-      const antAdmin = this.adminKeyFor("anthropic");
       const antA = anchors["anthropic"];
-      if (antAdmin && antA?.date && typeof antA.amount === "number") {
+      if (
+        antAdmin &&
+        antA?.date &&
+        typeof antA.amount === "number" &&
+        Number.isFinite(Date.parse(antA.date))
+      ) {
         tasks.push(
           (async () => {
             try {
@@ -2645,6 +2698,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
           cls: "axxa-usage-xcheck-link",
         });
         a.setAttr("target", "_blank");
+        a.setAttr("rel", "noopener noreferrer"); // v0.1.228
       }
     }
 
@@ -2873,14 +2927,19 @@ export class AxxaSettingsTab extends PluginSettingTab {
     void heatSection;
     const heatRow = parent.createDiv({ cls: "axxa-usage-heatmap" });
     const days = lastNDays(agg.byDay, 30);
-    const maxCost = Math.max(...days.map((d) => d.bucket.cost), 0.0001);
+    // v0.1.228: reduce em vez de Math.max(...spread) — robusto se a janela crescer.
+    const maxCost = days.reduce((m, d) => Math.max(m, d.bucket.cost), 0.0001);
     for (const d of days) {
       const intensity = d.bucket.cost / maxCost;
+      // v0.1.228: mesma string no aria-label (a11y) — o heatmap codificava
+      // intensidade só por cor/opacidade, sem alternativa textual no DOM.
+      const cellLabel = `${d.day}: ${formatUsd(d.bucket.cost)} · ${d.bucket.chats} conversa${d.bucket.chats === 1 ? "" : "s"}`;
       const cell = heatRow.createDiv({
         cls: "axxa-usage-heatcell",
         attr: {
-          title:
-            `${d.day}: ${formatUsd(d.bucket.cost)} · ${d.bucket.chats} conversa${d.bucket.chats === 1 ? "" : "s"}`,
+          title: cellLabel,
+          "aria-label": cellLabel,
+          role: "img",
         },
       });
       // Opacidade visual baseada em intensidade
@@ -3053,6 +3112,72 @@ export class AxxaSettingsTab extends PluginSettingTab {
         cls: "axxa-usage-num axxa-usage-cost",
       });
     }
+  }
+
+  /**
+   * Confirmação via Modal do Obsidian — substitui window.confirm, que BLOQUEIA
+   * a UI e NÃO funciona no mobile do Obsidian (Capacitor). v0.1.228
+   */
+  private confirmAction(message: string, t: Translations): Promise<boolean> {
+    return new AxxaConfirmModal(this.app, message, t).openAndWait();
+  }
+}
+
+/**
+ * Modal genérico de confirmação (Sim/Cancelar). Resolve `true` se o user
+ * confirma, `false` se cancela ou fecha (X/Escape). v0.1.228
+ */
+class AxxaConfirmModal extends Modal {
+  private message: string;
+  private t: Translations;
+  private resolver: (v: boolean) => void = () => {};
+  private resolved = false;
+
+  constructor(app: App, message: string, t: Translations) {
+    super(app);
+    this.message = message;
+    this.t = t;
+  }
+
+  openAndWait(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      this.resolver = resolve;
+      this.open();
+    });
+  }
+
+  private resolveOnce(value: boolean) {
+    if (this.resolved) return;
+    this.resolved = true;
+    this.resolver(value);
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("axxa-confirm-modal");
+    contentEl.createEl("p", { text: this.message });
+    const setting = new Setting(contentEl);
+    setting.addButton((btn) => {
+      btn.setButtonText(this.t.settings.confirmCancel).onClick(() => {
+        this.resolveOnce(false);
+        this.close();
+      });
+    });
+    setting.addButton((btn) => {
+      btn
+        .setButtonText(this.t.settings.confirmProceed)
+        .setWarning()
+        .onClick(() => {
+          this.resolveOnce(true);
+          this.close();
+        });
+    });
+  }
+
+  onClose() {
+    this.contentEl.empty();
+    this.resolveOnce(false); // X / Escape = cancela
   }
 }
 

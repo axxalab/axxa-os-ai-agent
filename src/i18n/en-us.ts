@@ -6,6 +6,9 @@ import type { Translations } from "./pt-br";
 
 export const EN_US: Translations = {
   composer: {
+    attachImageNoneValid: "No valid image was attached.",
+    attachImageTooLarge: "Image too large (max 20MB).",
+    attachmentsLabel: "Pending attachments",
     placeholderChat: "Ask AXXA Agent...",
     placeholderVaultQa: "Ask about your Vault...",
     placeholderAgent: "Tell the Agent to organize your vault...",
@@ -94,6 +97,7 @@ export const EN_US: Translations = {
   },
 
   projects: {
+    sourcesMissing: (names: string) => `Some sources were not found and were skipped: ${names}`,
     title: "Projects",
     back: "Back",
     newProject: "New project",
@@ -181,6 +185,7 @@ export const EN_US: Translations = {
   },
 
   header: {
+    copyConversationFailed: "Could not copy the conversation.",
     newChat: "New chat",
     newQa: "New Q&A",
     newAgent: "New Agent",
@@ -241,6 +246,7 @@ export const EN_US: Translations = {
   },
 
   account: {
+    label: "Your account",
     badgeFree: "Free",
     badgePremium: "Premium",
     badgeFounder: "Founder",
@@ -249,6 +255,12 @@ export const EN_US: Translations = {
   },
 
   chat: {
+    copyCode: "Copy code",
+    upgradePro: "Upgrade to PRO",
+    variantNext: "Next version",
+    variantPrev: "Previous version",
+    variantNav: "Response versions",
+    readAloudUnsupported: "Read aloud isn't supported on this device.",
     searchPlaceholder: "Search this conversation…",
     searchResults: (n: number) => `${n} result${n === 1 ? "" : "s"}`,
     searchNoResults: "No results in this conversation.",
@@ -280,6 +292,8 @@ export const EN_US: Translations = {
   },
 
   conversations: {
+    sortLabel: "Sort by",
+    clearSearch: "Clear search",
     title: "All conversations",
     back: "Back",
     searchPlaceholder: "Search by title, model or provider...",
@@ -327,6 +341,7 @@ export const EN_US: Translations = {
   // Dashboard — starter became the plugin home (v0.1.103): usage stats,
   // activity, new-chat setup and RAG/provider status.
   dashboard: {
+    modelCardDialog: (model: string) => `Model details: ${model}`,
     greetingMorning: "Good morning",
     greetingAfternoon: "Good afternoon",
     greetingEvening: "Good evening",
@@ -409,6 +424,7 @@ export const EN_US: Translations = {
   },
 
   agent: {
+    loopAborted: "Agent kept repeating the same action and was stopped. Try rephrasing the task or giving more context.",
     thinking: "🤖 Agent thinking...",
     systemPrompt:
       "You are AXXA Agent, an assistant integrated into Obsidian with direct access " +
@@ -513,6 +529,8 @@ export const EN_US: Translations = {
   },
 
   imageGen: {
+    noneConnected: "No image provider connected. Add a key in Settings → Providers to generate.",
+    inputImageDecodeFailed: "The attached image could not be decoded — generating from text only.",
     title: "Generate image",
     editTitle: "Edit image",
     promptLabel: "Prompt",
@@ -619,6 +637,8 @@ export const EN_US: Translations = {
   },
 
   settings: {
+    confirmCancel: "Cancel",
+    confirmProceed: "Confirm",
     title: "AXXA OS — AI Agent",
     topTabs: {
       providers: "Providers",

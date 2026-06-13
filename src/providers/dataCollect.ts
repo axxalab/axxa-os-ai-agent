@@ -28,7 +28,18 @@ const HOT_BASELINE: [RegExp, number][] = (
         ["(^|/)gpt-(4o|5)", 0.9],
         ["gemini-(3|2\\.5)", 0.85],
       ] as [string, number][])
-).map(([pat, score]) => [new RegExp(pat), score] as [RegExp, number]);
+)
+  // v0.1.228: HOT_DATA é dado GERADO (semanal por script). Se um padrão vier
+  // malformado, new RegExp lança e derrubaria o módulo no import — então cada
+  // compilação fica num try/catch que descarta o padrão inválido (e loga).
+  .reduce<[RegExp, number][]>((acc, [pat, score]) => {
+    try {
+      acc.push([new RegExp(pat), score]);
+    } catch (e) {
+      console.warn(`[dataCollect] padrão de baseline inválido, ignorado: ${pat}`, e);
+    }
+    return acc;
+  }, []);
 
 /** Uso local normalizado (0..1) por model id lowercase. Vazio até o registro. */
 let LOCAL_USAGE: Record<string, number> = {};
@@ -56,12 +67,19 @@ export interface HotInfo {
   usedLocally: boolean;
 }
 
+// v0.1.228: o baseline depende SÓ do id (HOT_BASELINE é imutável após o import),
+// então memoiza por id — evita re-escanear os ~N padrões a cada render/linha.
+const BASELINE_CACHE = new Map<string, number>();
+
 function baselineFor(id: string): number {
+  const cached = BASELINE_CACHE.get(id);
+  if (cached !== undefined) return cached;
   // Maior score entre TODOS os padrões que casam (robusto à ordem da lista).
   let best = 0;
   for (const [re, s] of HOT_BASELINE) {
     if (s > best && re.test(id)) best = s;
   }
+  BASELINE_CACHE.set(id, best);
   return best;
 }
 

@@ -10,6 +10,7 @@
 // cai num <input type=file capture=environment> que dispara a câmera NATIVA
 // do sistema (sempre funciona no mobile, vira file dialog no desktop).
 
+import { Notice } from "obsidian";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../_shared/Icon";
 import { useT } from "../../i18n";
@@ -66,7 +67,11 @@ export function CameraModal({ onCapture, onClose }: CameraModalProps) {
         const v = videoRef.current;
         if (v) {
           v.srcObject = stream;
-          await v.play().catch(() => {});
+          // v0.1.228: não engole erro de autoplay — ao menos loga (alguns
+          // navegadores bloqueiam play() sem gesto). O preview ainda funciona.
+          await v.play().catch((err) =>
+            console.warn("[axxa] camera autoplay bloqueado:", err),
+          );
         }
         const track = stream.getVideoTracks()[0];
         const caps =
@@ -149,6 +154,11 @@ export function CameraModal({ onCapture, onClose }: CameraModalProps) {
     reader.onload = () => {
       onCapture(String(reader.result ?? ""), file.type || "image/jpeg");
       onClose();
+    };
+    // v0.1.228: falha de leitura não pode ser silenciosa — avisa e mantém o
+    // modal utilizável (o user pode tentar de novo).
+    reader.onerror = () => {
+      new Notice(t.composer.attachImageFailed);
     };
     reader.readAsDataURL(file);
   };

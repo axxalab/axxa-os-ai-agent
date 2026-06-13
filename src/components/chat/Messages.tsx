@@ -64,7 +64,7 @@ function AgentSteps({ steps }: { steps: AIToolStep[] }) {
         <ul className="axxa-agent-steps-list">
           {steps.map((s, i) => (
             <li
-              key={i}
+              key={`${s.name}-${i}`}
               className={"axxa-agent-step" + (s.ok ? "" : " is-fail")}
             >
               <Icon name={s.ok ? "check" : "x"} />
@@ -136,8 +136,10 @@ export function UserBubble({ msg }: { msg: UserMessage }) {
   const saveEdit = () => {
     const text = draft.trim();
     setEditing(false);
-    // Re-envia só se mudou de fato (trunca a conversa dali e regenera)
-    if (text && text !== msg.content) actions.editMessage(msg.id, text);
+    // Re-envia só se mudou de fato (trunca a conversa dali e regenera).
+    // Compara contra o conteúdo TRIMADO pra que mexer só em espaços (ou uma msg
+    // que já tinha whitespace nas pontas) não dispare um reenvio à toa. v0.1.228
+    if (text && text !== msg.content.trim()) actions.editMessage(msg.id, text);
   };
 
   const menuHandlers = useMessageContextMenu(() => {
@@ -253,7 +255,8 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   const resetSpeakingRef = useRef(() => setSpeaking(false));
   const handleReadAloud = () => {
     if (!("speechSynthesis" in window)) {
-      new Notice(t.chat.saveAsNoteFailed);
+      // v0.1.228 — mensagem dedicada (antes reusava saveAsNoteFailed, enganoso).
+      new Notice(t.chat.readAloudUnsupported);
       return;
     }
     if (speaking) {
@@ -350,17 +353,21 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
       {!isStreaming && (
         <div className="axxa-response-footer">
           {msg.variants && msg.variants.length > 1 && (
-            <div className="axxa-variant-nav" aria-label="Versões da resposta">
+            <div
+              className="axxa-variant-nav"
+              aria-label={t.chat.variantNav}
+            >
               <button
                 type="button"
                 className="axxa-variant-arrow"
                 onClick={() => navigateVariant(msg.id, -1)}
                 disabled={(msg.variantIndex ?? 0) <= 0}
-                aria-label="Versão anterior"
+                aria-label={t.chat.variantPrev}
               >
                 <Icon name="chevron-left" />
               </button>
-              <span className="axxa-variant-count">
+              {/* v0.1.228 — aria-live anuncia a troca de versão (X/N) ao leitor de tela. */}
+              <span className="axxa-variant-count" aria-live="polite">
                 {(msg.variantIndex ?? msg.variants.length - 1) + 1}/
                 {msg.variants.length}
               </span>
@@ -372,7 +379,7 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
                   (msg.variantIndex ?? msg.variants.length - 1) >=
                   msg.variants.length - 1
                 }
-                aria-label="Próxima versão"
+                aria-label={t.chat.variantNext}
               >
                 <Icon name="chevron-right" />
               </button>
@@ -432,7 +439,7 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
           >
             <Icon name="thumbs-down" />
           </button>
-          <span className="axxa-pro-pill" aria-label="Upgrade para PRO">PRO</span>
+          <span className="axxa-pro-pill" aria-label={t.chat.upgradePro}>PRO</span>
         </div>
       )}
       {!isStreaming && <Timestamp ts={msg.timestamp} />}
@@ -484,7 +491,12 @@ export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
             type="button"
             className="axxa-error-btn axxa-error-btn-primary"
             onClick={() =>
-              window.open("https://aistudio.google.com/apikey", "_blank")
+              // v0.1.228 — noopener,noreferrer explícito (não depende do Electron).
+              window.open(
+                "https://aistudio.google.com/apikey",
+                "_blank",
+                "noopener,noreferrer"
+              )
             }
           >
             <Icon name="credit-card" />

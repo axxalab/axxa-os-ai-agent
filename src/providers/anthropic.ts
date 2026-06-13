@@ -109,12 +109,22 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
     }
 
     if (m.role === "tool") {
+      // tool_use_id vazio garante 400 na Anthropic. Sem o id de correlação não
+      // dá pra emitir um tool_result válido → degrada pra texto (preserva o
+      // conteúdo da tool em vez de quebrar a request inteira). v0.1.228
+      if (!m.toolCallId) {
+        console.warn(
+          "[anthropic] tool message sem toolCallId — anexando como texto pra evitar 400"
+        );
+        converted.push({ role: "user", content: m.content || " " });
+        continue;
+      }
       converted.push({
         role: "user",
         content: [
           {
             type: "tool_result",
-            tool_use_id: m.toolCallId ?? "",
+            tool_use_id: m.toolCallId,
             content: m.content,
           },
         ],
@@ -204,7 +214,10 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
   for (const m of converted) {
     const last = merged[merged.length - 1];
     if (last && last.role === m.role) {
-      last.content = [...toBlocks(last.content), ...toBlocks(m.content)];
+      // Acumula in-place: garante array UMA vez e dá push (evita reconstruir o
+      // content[] a cada msg consecutiva — era O(n²) com o spread). v0.1.228
+      if (!Array.isArray(last.content)) last.content = toBlocks(last.content);
+      last.content.push(...toBlocks(m.content));
     } else {
       merged.push({ ...m });
     }
@@ -364,6 +377,10 @@ export class AnthropicProvider implements Provider {
     // Tool use accumulator por content_block_index
     const toolUseAccum: Record<number, { id: string; name: string; jsonBuf: string }> = {};
 
+    // try/finally garante que o reader seja liberado em QUALQUER saída do loop
+    // (break, return no message_stop, throw de ProviderError ou AbortError) —
+    // sem isso o stream vazava a cada abort/erro mid-stream. v0.1.228
+    try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -377,8 +394,14 @@ export class AnthropicProvider implements Provider {
         if (!trimmed.startsWith("data:")) continue;
         const data = trimmed.slice(5).trim();
         if (!data) continue;
+        let json: any;
         try {
-          const json = JSON.parse(data);
+          json = JSON.parse(data);
+        } catch {
+          // JSON inválido (linha SSE parcial/keep-alive) — pula
+          continue;
+        }
+        try {
           if (json.type === "content_block_start") {
             const block = json.content_block;
             if (block?.type === "tool_use") {
@@ -412,6 +435,13 @@ export class AnthropicProvider implements Provider {
           } else if (json.type === "message_delta") {
             outputTokens = json.usage?.output_tokens ?? outputTokens;
           } else if (json.type === "message_stop") {
+            // Alguns shapes só trazem o usage final aqui (não no message_delta)
+            // → lê o fallback e mantém o MAIOR visto pra não zerar. v0.1.228
+            const stopOut =
+              json.message?.usage?.output_tokens ??
+              json.usage?.output_tokens ??
+              0;
+            if (stopOut > outputTokens) outputTokens = stopOut;
             if (onUsage) onUsage({ input: inputTokens, output: outputTokens });
             return buildAnthropicStreamResponse(
               accumulatedText,
@@ -427,8 +457,19 @@ export class AnthropicProvider implements Provider {
           }
         } catch (err) {
           if (err instanceof ProviderError) throw err;
-          // JSON inválido — pula
+          // Erro inesperado no handler de um event conhecido (ex: TypeError de
+          // onToken/onReasoning) — re-lança em vez de engolir. O JSON.parse já
+          // foi isolado acima, então isto NÃO é mais erro de parse. v0.1.228
+          throw err;
         }
+      }
+    }
+    } finally {
+      // Libera o stream em toda saída — inclusive return/throw/abort. v0.1.228
+      try {
+        await reader.cancel();
+      } catch {
+        /* reader já fechado/cancelado — ignora */
       }
     }
 
@@ -510,7 +551,9 @@ function buildAnthropicStreamResponse(
       parsedArgs = { _raw: acc.jsonBuf };
     }
     toolCalls.push({
-      id: acc.id || `anthropic_call_${Date.now()}_${i}`,
+      // Fallback com UUID evita colisão entre calls no mesmo ms (Date.now()+i
+      // colidia se duas respostas caíssem no mesmo tick). v0.1.228
+      id: acc.id || `anthropic_call_${crypto.randomUUID()}`,
       name: acc.name,
       arguments: parsedArgs,
     });

@@ -137,6 +137,34 @@ function yamlString(s: string): string {
   return `"${escaped}"`;
 }
 
+/**
+ * Sanitiza uma chave de `meta.extra` pra entrar no frontmatter YAML (v0.1.228).
+ * Retorna "" pra pular a entrada (chave vazia ou que colide com uma chave fixa
+ * do sidecar). Chave trivial ([A-Za-z0-9_-]) entra crua; o resto é quotado.
+ */
+const RESERVED_KEYS = new Set([
+  "id",
+  "type",
+  "provider",
+  "model",
+  "prompt",
+  "created",
+  "size",
+  "mime",
+  "width",
+  "height",
+  "duration",
+  "seed",
+  "chat_id",
+  "tags",
+]);
+function yamlKey(k: string): string {
+  const trimmed = k.trim();
+  if (!trimmed || RESERVED_KEYS.has(trimmed)) return "";
+  if (/^[A-Za-z0-9_-]+$/.test(trimmed)) return trimmed;
+  return yamlString(trimmed);
+}
+
 /** Monta o frontmatter sidecar como string Markdown. */
 function buildSidecar(meta: GenerationMetadata, mediaPath: string): string {
   const fm: string[] = ["---"];
@@ -158,7 +186,12 @@ function buildSidecar(meta: GenerationMetadata, mediaPath: string): string {
   fm.push(`  - ${meta.type}-gen`);
   if (meta.extra) {
     for (const [k, v] of Object.entries(meta.extra)) {
-      fm.push(`${k}: ${typeof v === "string" ? yamlString(v) : v}`);
+      // v0.1.228: sanitiza a chave do extra antes do YAML — chave com caractere
+      // especial (`:`, espaço, etc) quebra o parse do frontmatter. Pula chaves
+      // que colidem com as fixas; quota chaves não-triviais; descarta vazias.
+      const key = yamlKey(k);
+      if (!key) continue;
+      fm.push(`${key}: ${typeof v === "string" ? yamlString(v) : v}`);
     }
   }
   fm.push("---");
@@ -224,15 +257,25 @@ export async function saveGeneration(
 
   const ext = extFromMime(meta.mime, meta.type);
   const slug = slugify(meta.prompt);
-  const stem = `${tsFileName()}-${slug}`;
+  // v0.1.228: sufixo curto do meta.id pra evitar colisão de nome quando duas
+  // gerações caem no mesmo segundo com o mesmo prompt (ts tem resolução de
+  // segundo + slug igual → mesmo stem). Cada meta.id é único por geração.
+  const uniq = (meta.id || "").replace(/[^a-z0-9]/gi, "").slice(0, 6) || "0";
+  const stem = `${tsFileName()}-${slug}-${uniq}`;
   const mediaPath = `${folder}/${stem}.${ext}`;
   const sidecarPath = `${folder}/${stem}.md`;
 
-  // Garante ArrayBuffer puro (não SharedArrayBuffer) — slice copia pro buffer regular
-  const buffer: ArrayBuffer =
-    data instanceof Uint8Array
-      ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
-      : (data as ArrayBuffer);
+  // Garante ArrayBuffer puro (não SharedArrayBuffer), independente da origem do
+  // Uint8Array — cópia explícita evita o caso de .buffer.slice() devolver um
+  // SharedArrayBuffer quando a view é sobre buffer compartilhado. (v0.1.228)
+  let buffer: ArrayBuffer;
+  if (data instanceof Uint8Array) {
+    const copy = new Uint8Array(data.byteLength);
+    copy.set(data);
+    buffer = copy.buffer;
+  } else {
+    buffer = data;
+  }
 
   // Escreve preferindo a Vault API: registra o arquivo no índice do Obsidian na
   // hora, então o ![[wikilink]] do sidecar resolve imediatamente. O

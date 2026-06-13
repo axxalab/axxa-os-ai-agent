@@ -95,18 +95,6 @@ function modelLogo(provider: string, model: string): string {
   return modelVendorLogoId(provider, model) ?? PROVIDER_LOGO[provider] ?? "logo-openai";
 }
 
-/** Linha de custo (números reais): tokens in/out, por imagem, ou por chars (TTS). */
-function buildCostLine(pricing: ReturnType<typeof getModelFullInfo>["pricing"]): string | null {
-  if (pricing.imagePerCall != null) return `${formatUsd(pricing.imagePerCall)} / imagem`;
-  if (pricing.charPerMillion != null) return `${formatUsd(pricing.charPerMillion)} / 1M chars`;
-  if (pricing.inputPerMillion != null || pricing.outputPerMillion != null) {
-    return `${formatUsd(pricing.inputPerMillion)} in · ${formatUsd(
-      pricing.outputPerMillion
-    )} out / 1M`;
-  }
-  return null;
-}
-
 /** Ícone Lucide por categoria do modelo. */
 export function categoryIcon(cat: string): string {
   switch (cat) {
@@ -263,7 +251,7 @@ export function ModelInfoCard({
   const [flipped, setFlipped] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [fetching, setFetching] = useState(false);
+  // setBump força re-render quando o auto-fetch traz specs novas. v0.1.228
   const [, setBump] = useState(0);
   const fieldRef = useRef<HTMLDivElement>(null);
   const autoFetchedRef = useRef<Set<string>>(new Set());
@@ -330,20 +318,9 @@ export function ModelInfoCard({
     ? modelOptions
     : [model, ...modelOptions];
 
-  const doFetch = async () => {
-    if (fetching) return;
-    setFetching(true);
-    hapticTick();
-    try {
-      const res = await plugin.fetchModelInfo(provider, model);
-      if (!res) new Notice(t.dashboard.modelFetchNone);
-      setBump((b) => b + 1);
-    } catch {
-      new Notice(t.dashboard.modelFetchErr);
-    } finally {
-      setFetching(false);
-    }
-  };
+  // doFetch (manual) vive só no ModelCardModal — aqui o auto-fetch preguiçoso
+  // já cuida das specs em background. Removido o doFetch morto que referenciava
+  // fetching/setFetching inexistentes neste escopo. v0.1.228
 
   return (
     <>
@@ -456,13 +433,41 @@ function ModelCardModal({
   const tier = enriched?.tier ?? pricing.tier ?? "unknown";
   const pills = cardPills(info);
   const desc = localizedDescription(info, model, lang);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
+  // a11y do dialog (v0.1.228): foca o botão de fechar ao montar, prende o foco
+  // dentro (loop de Tab/Shift+Tab) e devolve o foco ao elemento de origem no
+  // close. Escape também fecha.
   useEffect(() => {
+    const prevFocus = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !modalRef.current) return;
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      prevFocus?.focus?.();
+    };
   }, [onClose]);
 
   const doFetch = async () => {
@@ -485,9 +490,14 @@ function ModelCardModal({
       className="axxa-mc-modal-overlay"
       role="dialog"
       aria-modal="true"
+      aria-label={t.dashboard.modelCardDialog(model)}
       onClick={onClose}
     >
-      <div className="axxa-mc-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={modalRef}
+        className="axxa-mc-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="axxa-model-card-top">
           <span className="axxa-model-card-avatar">
             <ModelVendorLogo provider={provider} model={model} />
@@ -503,6 +513,7 @@ function ModelCardModal({
             {tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?"}
           </span>
           <button
+            ref={closeRef}
             type="button"
             className="axxa-mc-modal-close"
             onClick={onClose}
@@ -600,29 +611,6 @@ function ModelDropdown({
   );
 }
 
-/** Formato compacto do context window: 128000 → "128k", 2000000 → "2M" */
-function formatContextWindow(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1) + "M";
-  if (n >= 1_000) return Math.round(n / 1_000) + "k";
-  return String(n);
-}
-
-/** Tooltip por badge — texto explicativo do que cada flag significa. */
-function modelCapTooltip(
-  id: "vision" | "tools" | "stream" | "free" | "img-gen" | "audio-gen" | "video-gen",
-  t: ReturnType<typeof useT>
-): string {
-  switch (id) {
-    case "vision": return t.starter.capVisionTooltip;
-    case "tools": return t.starter.capToolsTooltip;
-    case "stream": return t.starter.capStreamTooltip;
-    case "free": return t.starter.capFreeTooltip;
-    case "img-gen": return t.starter.capImageGenTooltip;
-    case "audio-gen": return t.starter.capAudioGenTooltip;
-    case "video-gen": return t.starter.capVideoGenTooltip;
-  }
-}
-
 function modeChipIcon(mode: string): string {
   switch (mode) {
     case "agent": return "bot";
@@ -647,6 +635,10 @@ interface StarterScreenProps {
   model: string;
   effort: string;
   mode: string;
+  /** Contrato: ORDENADO por data DESC (mais recente primeiro). O AxxaApp passa
+   *  plugin.chatSummaries.slice(0,8), e tanto listAllChats quanto
+   *  upsertChatSummary fazem b.date.localeCompare(a.date) — então recentChats[0]
+   *  é sempre o mais recente (usado no botão "retomar"). v0.1.228 */
   recentChats: ChatSummary[];
   /** Todos os summaries da varredura que o AxxaApp já faz pros recentes —
    *  alimenta os stats do dashboard sem IO extra. null = carregando. */
@@ -963,10 +955,19 @@ function ActivityChart({ agg }: { agg: UsageAggregate | null }) {
         <div className="axxa-dash-activity-empty">{emptyMsg}</div>
       ) : (
         <div className="axxa-dash-wave-wrap">
+          {/* Série acessível (v0.1.228): o tooltip nativo das colunas é só
+              mouse/touch. Um <ul> sr-only espelha os pares dia/valor pro leitor
+              de tela ler a mesma informação da curva. */}
+          <ul className="axxa-sr-only" aria-label={label}>
+            {tooltips.map((tip, i) =>
+              tip ? <li key={i}>{tip}</li> : null
+            )}
+          </ul>
           <svg
             className="axxa-dash-wave"
             viewBox={`0 0 ${WAVE_W} ${WAVE_H}`}
             preserveAspectRatio="none"
+            role="img"
             aria-label={label}
           >
             <defs>
@@ -1153,7 +1154,8 @@ function EffortSlider({
   liveLabel: string;
 }) {
   const n = EFFORT_LEVELS.length;
-  const idx = Math.max(0, EFFORT_LEVELS.indexOf(effort as EffortLevel));
+  const rawIdx = EFFORT_LEVELS.indexOf(effort as EffortLevel);
+  const idx = Math.max(0, rawIdx);
   const [cur, setCur] = useState(idx);
   const [dragging, setDragging] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
@@ -1169,6 +1171,14 @@ function EffortSlider({
   const HOLD_MS = 130; // hold mínimo antes de poder armar
   const H_THRESH = 6; // px de deslocamento horizontal pra armar/arrastar
   const V_CANCEL = 8; // px vertical → é scroll, cancela
+
+  // Effort inválido cai em 0 (low) — sinaliza uma vez por valor corrompido em
+  // vez de virar "low" fantasma silencioso. v0.1.228
+  useEffect(() => {
+    if (rawIdx < 0) {
+      console.warn(`[AXXA] effort inválido "${effort}" — exibindo "low"`);
+    }
+  }, [rawIdx, effort]);
 
   // Sincroniza com mudança externa de effort (só quando NÃO está armado).
   useEffect(() => {
@@ -1216,8 +1226,11 @@ function EffortSlider({
     if (armedRef.current) return;
     armedRef.current = true;
     el.setPointerCapture?.(pointerId);
-    rootRef.current = el.closest(".axxa-root") as HTMLElement | null;
-    rootRef.current?.classList.add("axxa-eff-dragging");
+    // Fallback pro <body> quando não há .axxa-root (ex.: render fora do shell
+    // do plugin): sem destino, o scrim e o cleanup viravam no-op. v0.1.228
+    rootRef.current =
+      (el.closest(".axxa-root") as HTMLElement | null) ?? document.body;
+    rootRef.current.classList.add("axxa-eff-dragging");
     setDragging(true);
     hapticTick(18); // tick do "armou"
   };
@@ -1373,13 +1386,15 @@ function PromptStarters({
   const items =
     t.dashboard.starters[key as "chat" | "vaultQa" | "agent"] ??
     t.dashboard.starters.chat;
+  // Grupo de botões (não lista): role=list/listitem num <button> é ARIA inválida
+  // (listitem precisa ser filho direto de um list). key estável pelo texto do
+  // starter — cada prompt é distinto. v0.1.228
   return (
-    <div className="axxa-launcher" role="list">
-      {items.map((text, i) => (
+    <div className="axxa-launcher" role="group" aria-label={t.dashboard.newChatLabel}>
+      {items.map((text) => (
         <button
-          key={i}
+          key={text}
           type="button"
-          role="listitem"
           className="axxa-launch-chip"
           onClick={() => {
             hapticTick();
@@ -1483,13 +1498,23 @@ export function StarterScreen({
   // (Overview/usage saiu daqui — vive em Settings → Usage. v0.1.120)
   // (Effort agora é o componente EffortSlider, com estado próprio. v0.1.122)
   // (Picker de modelo agora vive DENTRO do ModelInfoCard. v0.1.125)
-  const hour = new Date().getHours();
+  // Relógio "vivo" (v0.1.228): a view fica montada por horas — sem um tick a
+  // saudação (manhã/tarde/noite) e o stat de HOJE congelavam na hora do mount e
+  // não viravam o dia. Um tick por minuto recalcula hour/todayKey.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const hour = new Date(now).getHours();
   const greeting = greetingFor(hour, t);
   const lastChat = recentChats[0];
 
   // Saudação VIVA (v0.1.133): estatística de hoje (nº de conversas + gasto)
   // calculada dos summaries já carregados. null = sem atividade hoje.
-  const todayKey = new Date().toISOString().slice(0, 10);
+  // todayKey é string YYYY-MM-DD: muda só na virada do dia, então o useMemo
+  // abaixo só re-filtra os summaries quando o dia vira (ou a lista muda). v0.1.228
+  const todayKey = new Date(now).toISOString().slice(0, 10);
   const todayAgg = useMemo(() => {
     const todays = (summaries ?? []).filter(
       (s) => (s.date ?? "").slice(0, 10) === todayKey

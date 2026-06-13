@@ -41,7 +41,9 @@ export function isReasoningModel(model: string): boolean {
   // OpenAI o-series (o1/o3/o4/o5…) — exige dígito após o "o" (não pega "opus").
   if (/^o[1-9]([-.]|$)/.test(tail)) return true;
   // GPT-5 reasoning — o gpt-5-chat (não-reasoning) AINDA aceita temperature.
-  if (/(^|[-/])gpt-5/.test(tail) && !tail.includes("chat")) return true;
+  // v0.1.228: 'chat' precisa ser segmento exato (split por '-'), senão um
+  // hipotético "gpt-5-chatty" cairia no `includes` e seria excluído por engano.
+  if (/(^|[-/])gpt-5/.test(tail) && !tail.split("-").includes("chat")) return true;
   // DeepSeek R1 / reasoner (via NIM / OpenRouter / Ollama).
   if (/deepseek-?(r1|reasoner)/.test(tail)) return true;
   // Qwen QwQ / Qwen3 "thinking", Magistral (Mistral reasoning).
@@ -90,7 +92,10 @@ export function maxOutputTokens(provider: string, model: string): number {
   const id = (model || "").toLowerCase();
   const tail = tailOf(model);
   // Anthropic
-  if (/claude-(fable|opus-4|sonnet-4|haiku-4)/.test(id)) return 128000;
+  // v0.1.228: versão 4+ via [4-9] cobre Claude 5.x futuro sem regredir o
+  // claude-3-* (que cai no ramo 8k abaixo). NÃO usar `/claude-(opus|sonnet)/`
+  // genérico — pegaria claude-3-opus indevidamente.
+  if (/claude-(fable|opus-[4-9]|sonnet-[4-9]|haiku-[4-9])/.test(id)) return 128000;
   if (/claude-3/.test(id)) return 8192;
   // OpenAI (direto ou via openrouter "openai/…")
   if (/(^|[-/])gpt-5/.test(tail)) return 128000;

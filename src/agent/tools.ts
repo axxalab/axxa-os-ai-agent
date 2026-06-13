@@ -39,7 +39,11 @@ export function normalizePath(path: string): string {
     .replace(/\\/g, "/")
     .replace(/\/+/g, "/")
     .replace(/^\//, "");
-  if (normalized.includes("..")) {
+  // v0.1.228: checa SEGMENTO === ".." (não substring) — assim um nome de
+  // arquivo legítimo com ".." embutido (ex: "relatorio..final.md") passa, mas
+  // o traversal real (segmento ".." ou ".") continua bloqueado.
+  const segs = normalized.split("/");
+  if (segs.some((s) => s === ".." || s === ".")) {
     throw new Error("Paths com '..' não são permitidos.");
   }
   if (normalized.includes(":")) {
@@ -71,7 +75,15 @@ export async function toolVaultList(app: App, args: ListArgs): Promise<string> {
   if (folder && !(await adapter.exists(folder))) {
     return `Pasta não existe: ${folder}`;
   }
-  const listing = await adapter.list(folder || "/");
+  // v0.1.228: adapter.list pode lançar (path é arquivo, permissão, etc.) —
+  // devolve mensagem amigável em vez de propagar erro cru pro agent.
+  let listing: Awaited<ReturnType<typeof adapter.list>>;
+  try {
+    listing = await adapter.list(folder || "/");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return `Não consegui listar ${folder || "/"}: ${msg}`;
+  }
   const folders = listing.folders.map((f) => `📁 ${f}`);
   const files = listing.files.map((f) => `📄 ${f}`);
   const all = [...folders, ...files];
@@ -89,7 +101,8 @@ interface ReadArgs {
   path: string;
 }
 
-const MAX_READ_BYTES = 200_000; // 200KB cap pra não estourar context
+// v0.1.228: medida em CHARS (UTF-16 .length), não bytes — nome honesto.
+const MAX_READ_CHARS = 200_000; // ~200K chars cap pra não estourar context
 
 export async function toolVaultRead(app: App, args: ReadArgs): Promise<string> {
   const path = normalizePath(args.path);
@@ -102,8 +115,13 @@ export async function toolVaultRead(app: App, args: ReadArgs): Promise<string> {
     throw new Error(`${path} não é um arquivo.`);
   }
   const content = await adapter.read(path);
-  if (content.length > MAX_READ_BYTES) {
-    return `(arquivo truncado em ${MAX_READ_BYTES} chars — original tinha ${content.length})\n\n${content.slice(0, MAX_READ_BYTES)}`;
+  if (content.length > MAX_READ_CHARS) {
+    // v0.1.228: evita cortar no meio de um surrogate pair (emoji etc.) —
+    // se o char no limite é high-surrogate, recua 1 pra não quebrar o grafema.
+    let cut = MAX_READ_CHARS;
+    const code = content.charCodeAt(cut - 1);
+    if (code >= 0xd800 && code <= 0xdbff) cut -= 1;
+    return `(arquivo truncado em ${cut} chars — original tinha ${content.length})\n\n${content.slice(0, cut)}`;
   }
   return content;
 }
@@ -193,6 +211,12 @@ export async function toolVaultMove(app: App, args: MoveArgs): Promise<string> {
   }
   if (await adapter.exists(to)) {
     throw new Error(`Destino já existe: ${to}. Não vou sobrescrever.`);
+  }
+  // v0.1.228: se a origem é pasta, bloqueia mover pra dentro dela mesma
+  // (to === from ou descendente) — rename de pasta nesse caso corromperia.
+  const fromStat = await adapter.stat(from);
+  if (fromStat?.type === "folder" && (to === from || to.startsWith(from + "/"))) {
+    throw new Error("Não dá pra mover uma pasta pra dentro dela mesma.");
   }
   const dir = dirOf(to);
   if (dir) await ensureFolder(adapter, dir);

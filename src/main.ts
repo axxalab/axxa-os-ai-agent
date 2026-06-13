@@ -122,6 +122,9 @@ interface AxxaSettings {
   /** Reindexa o RAG automaticamente quando notas mudam (debounced). Opt-in
    *  porque cada re-embed custa tokens/$. Só roda se já houver índice. v0.1.82. */
   ragAutoReindex: boolean;
+  /** No mobile, marca que já avisamos uma vez que o índice RAG é grande demais
+   *  (busca semântica desligada). Evita repetir o Notice a cada onload. v0.1.228 */
+  ragMobileSkipNoticeShown?: boolean;
   /** Code wrap em blocos de código markdown. Default false (scroll horizontal).
    *  Quando true, aplica `.axxa-code-wrap` na .axxa-root → pre quebra linha. */
   codeWrap: boolean;
@@ -268,6 +271,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragQuantProfile: "balanced",
   ragStreamShards: false,
   ragAutoReindex: false,
+  ragMobileSkipNoticeShown: false,
   codeWrap: false,
   agentPermissionLevel: "ask",
   agentDiffApproval: true,
@@ -339,19 +343,60 @@ export default class AxxaPlugin extends Plugin {
     const dir = this.manifest.dir ?? ".obsidian/plugins/axxa-os-ai-agent";
     return `${dir}/chatIndex.json`;
   }
+  /** Versão do schema do índice persistido. Caches de versão desconhecida são
+   *  descartados (cai pro walk, que reescreve no formato atual). v0.1.228 */
+  private static readonly CHAT_INDEX_VERSION = 1;
   private async readChatIndex(): Promise<ChatSummary[] | null> {
     try {
       const p = this.chatIndexPath();
       if (!(await this.app.vault.adapter.exists(p))) return null;
       const parsed = JSON.parse(await this.app.vault.adapter.read(p));
-      return Array.isArray(parsed) ? (parsed as ChatSummary[]) : null;
-    } catch {
+      // Aceita o envelope versionado { v, items } e, por retrocompat, o array
+      // cru de versões antigas. Versão desconhecida → descarta (volta pro walk).
+      let items: unknown;
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (
+        parsed &&
+        typeof parsed === "object" &&
+        parsed.v === AxxaPlugin.CHAT_INDEX_VERSION
+      ) {
+        items = parsed.items;
+      } else {
+        return null;
+      }
+      if (!Array.isArray(items)) return null;
+      // Valida o shape mínimo de cada item — descarta o cache se algo destoar
+      // (JSON corrompido / formato antigo) e força o walk pra reconstruir.
+      const valid = items.every(
+        (it): it is ChatSummary =>
+          !!it &&
+          typeof it === "object" &&
+          typeof (it as ChatSummary).id === "string" &&
+          typeof (it as ChatSummary).date === "string"
+      );
+      if (!valid) return null;
+      return items as ChatSummary[];
+    } catch (err) {
+      console.error("[axxa] readChatIndex falhou:", err);
       return null;
     }
   }
   private async writeChatIndex(arr: ChatSummary[]): Promise<void> {
+    // Toda escrita do índice passa por aqui — cancela um write debounced ainda
+    // pendente pra não disparar dois adapter.write concorrentes no mesmo path
+    // (o snapshot que escrevemos agora já é o mais fresco). v0.1.228
+    if (this.chatIndexWriteTimer !== null) {
+      window.clearTimeout(this.chatIndexWriteTimer);
+      this.chatIndexWriteTimer = null;
+    }
     try {
-      await this.app.vault.adapter.write(this.chatIndexPath(), JSON.stringify(arr));
+      // Envelope versionado pra detectar/descartar caches de schema antigo.
+      const envelope = { v: AxxaPlugin.CHAT_INDEX_VERSION, items: arr };
+      await this.app.vault.adapter.write(
+        this.chatIndexPath(),
+        JSON.stringify(envelope)
+      );
     } catch (err) {
       console.error("[axxa] writeChatIndex falhou:", err);
     }
@@ -362,6 +407,7 @@ export default class AxxaPlugin extends Plugin {
       window.clearTimeout(this.chatIndexWriteTimer);
     }
     this.chatIndexWriteTimer = window.setTimeout(() => {
+      this.chatIndexWriteTimer = null;
       if (this.chatSummaries) void this.writeChatIndex(this.chatSummaries);
     }, 800);
   }
@@ -408,8 +454,30 @@ export default class AxxaPlugin extends Plugin {
     this.reconcilingChats = true;
     try {
       const fresh = await listAllChats(this.app, this.settings.chatsPath, 100_000);
+      // Assinatura inclui os campos que aparecem na UI (não só id+date), senão
+      // uma edição externa de título/tokens/model com a mesma data passa batido
+      // e o cache nunca reconcilia. v0.1.228
       const sig = (arr: ChatSummary[]) =>
-        arr.length + ":" + arr.map((c) => c.id + c.date).join("|");
+        arr.length +
+        ":" +
+        arr
+          .map(
+            (c) =>
+              c.id +
+              "\x1f" +
+              c.date +
+              "\x1f" +
+              c.title +
+              "\x1f" +
+              c.messageCount +
+              "\x1f" +
+              c.tokensIn +
+              "\x1f" +
+              c.tokensOut +
+              "\x1f" +
+              c.model
+          )
+          .join("|");
       if (!this.chatSummaries || sig(fresh) !== sig(this.chatSummaries)) {
         this.chatSummaries = fresh;
         this.notifyChats();
@@ -630,11 +698,18 @@ export default class AxxaPlugin extends Plugin {
         ? {
             maxBytes: 16 * 1024 * 1024,
             onSkip: (mb: number) => {
+              // Só avisa UMA vez por dispositivo — senão o Notice volta a cada
+              // onload enquanto o índice continuar grande. v0.1.228
+              if (this.settings.ragMobileSkipNoticeShown) return;
               const en = this.settings.language === "en-us";
               new Notice(
                 en
                   ? `RAG index too large for mobile (${mb.toFixed(0)} MB) — semantic search is off here to avoid a crash. Use desktop or shrink the index.`
                   : `Índice RAG grande demais pro mobile (${mb.toFixed(0)} MB) — busca semântica desligada aqui pra evitar crash. Use no desktop ou reduza o índice.`
+              );
+              this.settings.ragMobileSkipNoticeShown = true;
+              void this.saveSettings().catch((err) =>
+                console.error("[axxa] não consegui persistir o flag do Notice RAG mobile:", err)
               );
             },
           }
@@ -686,6 +761,17 @@ export default class AxxaPlugin extends Plugin {
     // Limpa a variável CSS pra não vazar entre reloads
     document.documentElement.style.removeProperty("--axxa-status-bar-clearance");
     document.body.classList.remove("axxa-reduce-motion");
+    // Cancela timers/abort pendentes pra não vazar entre reloads (v0.1.228)
+    if (this.autoReindexTimer !== null) {
+      window.clearTimeout(this.autoReindexTimer);
+      this.autoReindexTimer = null;
+    }
+    if (this.chatIndexWriteTimer !== null) {
+      window.clearTimeout(this.chatIndexWriteTimer);
+      this.chatIndexWriteTimer = null;
+    }
+    this.autoReindexController?.abort();
+    this.autoReindexController = null;
   }
 
   /** Liga/desliga a classe `axxa-reduce-motion` no <body> conforme o TOGGLE do
@@ -798,11 +884,21 @@ export default class AxxaPlugin extends Plugin {
     if (leaves.length > 0) {
       leaf = leaves[0];
     } else {
-      leaf = workspace.getRightLeaf(false);
+      // getRightLeaf(false) pode retornar null (sem split direito disponível);
+      // força a criação como fallback pra view não falhar em silêncio. v0.1.228
+      leaf = workspace.getRightLeaf(false) ?? workspace.getRightLeaf(true);
       await leaf?.setViewState({ type: VIEW_TYPE_AXXA, active: true });
     }
 
     if (leaf) workspace.revealLeaf(leaf);
+    else {
+      const en = this.settings.language === "en-us";
+      new Notice(
+        en
+          ? "Couldn't open the AXXA panel — try toggling the right sidebar."
+          : "Não consegui abrir o painel do AXXA — tente abrir a barra lateral direita."
+      );
+    }
   }
 
   /** Campos de chave de API que NÃO ficam em plaintext no data.json — vão pro
@@ -858,8 +954,14 @@ export default class AxxaPlugin extends Plugin {
         migrated = true;
       }
     }
-    // Reescreve o data.json já sem as chaves em plaintext.
-    if (migrated) void this.saveData(this.persistableSettings());
+    // Reescreve o data.json já sem as chaves em plaintext. Fire-and-forget
+    // (não dá pra await aqui — loadSecrets é chamado no fim do loadSettings),
+    // mas encadeia um .catch pra não engolir falha de IO em silêncio. v0.1.228
+    if (migrated) {
+      void this.saveData(this.persistableSettings()).catch((err) =>
+        console.error("[axxa] migração de secrets (saveData) falhou:", err)
+      );
+    }
   }
 
   /** Cópia das settings com as chaves zeradas — é isso que vai pro data.json

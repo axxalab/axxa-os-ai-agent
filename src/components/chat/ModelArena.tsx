@@ -9,7 +9,7 @@
 //     Soldiers (descobertos no SCAN). Células tingidas pela cor da família.
 //   • SCAN busca o catálogo do provider e revela os NOVOS. CHOOSE confirma.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
@@ -126,10 +126,26 @@ export function ModelArena({
   const [discovered, setDiscovered] = useState<Record<string, string[]>>({});
   const [scanning, setScanning] = useState(false);
 
-  const statsOf = (p: string, m: string) =>
-    getModelStats(p, m, getModelFullInfo(p, m)).power;
+  // v0.1.228: ref vivo do provider atual — pro SCAN não notificar fora de contexto
+  // (usuário pode ter trocado de provider enquanto o scan resolvia).
+  const provRef = useRef(prov);
+  provRef.current = prov;
+
+  // v0.1.228: poder por (prov,model) memoizado por render — sortPower só lê do
+  // Map, sem recomputar getModelFullInfo+getModelStats a cada comparação do sort.
+  const powerCache = useRef(new Map<string, number>());
+  const powerOf = (p: string, m: string) => {
+    const cache = powerCache.current;
+    const key = p + "::" + m;
+    let v = cache.get(key);
+    if (v == null) {
+      v = getModelStats(p, m, getModelFullInfo(p, m)).power;
+      cache.set(key, v);
+    }
+    return v;
+  };
   const sortPower = (p: string, list: string[]) =>
-    [...new Set(list)].sort((a, b) => statsOf(p, b) - statsOf(p, a));
+    [...new Set(list)].sort((a, b) => powerOf(p, b) - powerOf(p, a));
 
   // Providers configurados (+ garante o atual) — pra navegação < >.
   const provList = useMemo(() => {
@@ -144,26 +160,33 @@ export function ModelArena({
   const active = plugin.settings.activeModels[prov] ?? [];
   const disc = discovered[prov] ?? [];
   const favKeys = plugin.settings.favoriteModels ?? [];
-  const favModels = favKeys
-    .filter((k) => k.startsWith(prov + "::"))
-    .map((k) => k.slice(prov.length + 2));
-  const favSet = new Set(favModels);
-  const activeSet = new Set(active);
 
-  const hall = sortPower(prov, favModels);
-  const creators = sortPower(
-    prov,
-    active.filter((m) => !favSet.has(m))
-  );
-  const soldiers = sortPower(
-    prov,
-    disc.filter((m) => !favSet.has(m) && !activeSet.has(m))
-  );
-  const flat = [...new Set([...hall, ...creators, ...soldiers])];
-  if (flat.length === 0) flat.push(cursor);
+  // v0.1.228: roster inteiro (sets, filtros, sort por power) memoizado —
+  // não recomputa a cada render, só quando prov/active/disc/favoritos mudam.
+  const { hall, creators, soldiers, flat, powerSorted } = useMemo(() => {
+    const favModels = favKeys
+      .filter((k) => k.startsWith(prov + "::"))
+      .map((k) => k.slice(prov.length + 2));
+    const favSet = new Set(favModels);
+    const activeSet = new Set(active);
+
+    const hall = sortPower(prov, favModels);
+    const creators = sortPower(
+      prov,
+      active.filter((m) => !favSet.has(m))
+    );
+    const soldiers = sortPower(
+      prov,
+      disc.filter((m) => !favSet.has(m) && !activeSet.has(m))
+    );
+    const flat = [...new Set([...hall, ...creators, ...soldiers])];
+    if (flat.length === 0) flat.push(cursor);
+    const powerSorted = sortPower(prov, flat);
+    return { hall, creators, soldiers, flat, powerSorted };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prov, active, disc, favKeys, cursor]);
 
   const cur = flat.includes(cursor) ? cursor : flat[0];
-  const powerSorted = sortPower(prov, flat);
   const rank = powerSorted.indexOf(cur) + 1;
   const isHot = rank <= 3 && flat.length > 3;
 
@@ -177,18 +200,21 @@ export function ModelArena({
   const outP = info.enriched?.outputPerMillion ?? info.pricing.outputPerMillion;
   const fav = plugin.isFavoriteModel(prov, cur);
 
+  // v0.1.228: ref vivo do handler de tecla — listener registrado UMA vez ([] deps),
+  // sem re-registrar a cada render (handler sempre lê o estado atual via ref).
+  const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  onKeyRef.current = (e: KeyboardEvent) => {
+    if (e.key === "Escape") onClose();
+    else if (e.key === "ArrowRight") moveModel(1);
+    else if (e.key === "ArrowLeft") moveModel(-1);
+    else if (e.key === "ArrowUp") moveProvider(-1);
+    else if (e.key === "ArrowDown") moveProvider(1);
+  };
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowRight") moveModel(1);
-      else if (e.key === "ArrowLeft") moveModel(-1);
-      else if (e.key === "ArrowUp") moveProvider(-1);
-      else if (e.key === "ArrowDown") moveProvider(1);
-    };
+    const onKey = (e: KeyboardEvent) => onKeyRef.current(e);
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  });
+  }, []);
 
   const moveModel = (dir: number) => {
     if (flat.length < 2) return;
@@ -204,25 +230,42 @@ export function ModelArena({
     const i = provList.indexOf(prov);
     const np = provList[(i + dir + provList.length) % provList.length];
     setProv(np);
-    const opts = plugin.settings.activeModels[np] ?? [];
-    setCursor(sortPower(np, opts)[0] ?? opts[0] ?? cur);
+    // v0.1.228: cursor do destino considera favoritos+ativos+descobertos
+    // (mesma composição do roster), não só activeModels.
+    const npFav = (plugin.settings.favoriteModels ?? [])
+      .filter((k) => k.startsWith(np + "::"))
+      .map((k) => k.slice(np.length + 2));
+    const npActive = plugin.settings.activeModels[np] ?? [];
+    const pool = sortPower(np, [...npFav, ...npActive, ...(discovered[np] ?? [])]);
+    setCursor(pool[0] ?? cur);
   };
 
   const doScan = async () => {
     if (scanning) return;
     setScanning(true);
     hapticTick();
+    const scanProv = prov; // v0.1.228: alvo capturado no início do scan
     try {
-      const all = await plugin.scanModels(prov);
-      const known = new Set([...active, ...(discovered[prov] ?? [])]);
+      const all = await plugin.scanModels(scanProv);
+      const known = new Set([
+        ...(plugin.settings.activeModels[scanProv] ?? []),
+        ...(discovered[scanProv] ?? []),
+      ]);
       const news = all.filter((m) => !known.has(m));
-      if (news.length === 0) new Notice(t.arena.scanNone);
-      else {
-        setDiscovered((d) => ({ ...d, [prov]: [...(d[prov] ?? []), ...news] }));
-        new Notice(t.arena.scanFound(news.length));
+      // resultado sempre gravado no provider escaneado (correto), mas só
+      // notifica/abre se o usuário ainda está nele.
+      if (news.length > 0) {
+        setDiscovered((d) => ({
+          ...d,
+          [scanProv]: [...(d[scanProv] ?? []), ...news],
+        }));
       }
-    } catch {
-      new Notice(t.arena.scanErr);
+      if (provRef.current === scanProv) {
+        new Notice(news.length === 0 ? t.arena.scanNone : t.arena.scanFound(news.length));
+      }
+    } catch (e) {
+      console.error("[arena] scan failed", e); // v0.1.228: não engole o erro
+      if (provRef.current === scanProv) new Notice(t.arena.scanErr);
     } finally {
       setScanning(false);
     }
@@ -250,6 +293,7 @@ export function ModelArena({
       className="axxa-arena-overlay"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="axxa-arena-name"
       onClick={onClose}
     >
       <div
@@ -345,7 +389,7 @@ export function ModelArena({
               </span>
             </div>
 
-            <h3 className="axxa-arena-name">{cur}</h3>
+            <h3 id="axxa-arena-name" className="axxa-arena-name">{cur}</h3>
             <div className="axxa-arena-meta">
               <span className="axxa-arena-fam-tag">
                 <Icon name={fam.icon} />

@@ -68,14 +68,14 @@ export function PlusModal({
   onAttachPicked,
   toggles = {},
   onToggle,
-  imageGenEnabled = false,
+  // imageGenEnabled: recebida do pai mas o gate real de "Criar imagem" é
+  // createImageAvailable (há modelo de imagem conectado). Não consumida aqui. v0.1.228
   createImageAvailable = false,
   onCreateImage,
   responseStyle = "normal",
   onSelectStyle,
   onExploreSkills,
 }: PlusModalProps) {
-  void imageGenEnabled;
   const t = useT();
   const app = useApp();
 
@@ -135,22 +135,23 @@ export function PlusModal({
 
   // ===== Anexar nota (vault) =====
   const handlePickNote = async () => {
-    // MVP: abre prompt simples com lista das primeiras 50 notas markdown.
-    // Futuro: SuggestModal nativo do Obsidian (quick switcher).
-    const files = app.vault.getMarkdownFiles().slice(0, 50);
-    if (files.length === 0) {
-      new Notice(t.plus.pickNoteEmpty);
-      return;
-    }
-    // Usa o quickSwitcher style — mais polished — via openFilePicker se disponível
+    // Picker fuzzy nativo (quick-switcher style) — openVaultNotePicker já trata
+    // o caso de vault vazio (Notice + null). v0.1.228
     try {
       const path = await openVaultNotePicker(app, t);
       if (!path) return;
-      const content = await app.vault.adapter.read(path);
+      // Resolve o TFile pra usar cachedRead (path vault-relative correto,
+      // robusto a subpastas/config). v0.1.228
+      const file = app.vault.getAbstractFileByPath(path);
+      if (!(file instanceof TFile)) {
+        new Notice(t.plus.pickNoteFailed("not found"));
+        return;
+      }
+      const content = await app.vault.cachedRead(file);
       onAttachPicked?.({
         type: "note",
-        name: path.split("/").pop() ?? path,
-        path,
+        name: file.name,
+        path: file.path,
         content,
       });
       onClose();
@@ -247,6 +248,8 @@ export function PlusModal({
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
+    // Conta anexos OK — só fecha se algo entrou; senão avisa. v0.1.228
+    let attached = 0;
     for (const file of files) {
       if (!file.type.startsWith("image/")) continue;
       try {
@@ -257,10 +260,15 @@ export function PlusModal({
           dataUrl,
           mimeType: file.type,
         });
+        attached++;
       } catch (err) {
         console.error("[axxa] pick image falhou:", err);
         new Notice(t.composer.attachImageFailed);
       }
+    }
+    if (attached === 0) {
+      if (files.length > 0) new Notice(t.composer.attachImageNoneValid);
+      return;
     }
     onClose();
   };
@@ -503,6 +511,7 @@ function PlusToggleRow({
           (checked ? " axxa-plus-row-switch-on" : "")
         }
         aria-checked={checked}
+        aria-disabled={disabled || undefined}
         role="switch"
       >
         <span className="axxa-plus-row-switch-thumb" />

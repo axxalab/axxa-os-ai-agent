@@ -62,7 +62,9 @@ const PROFILES: [RegExp, Partial6][] = [
   [/claude-3-5-haiku/, { coding: 64, thinking: 60, tooling: 66, research: 64, speed: 94, vision: 66 }],
   [/claude/, { coding: 78, thinking: 76, tooling: 80, research: 76, speed: 72, vision: 76 }],
   // ── OpenAI
-  [/(^|[^a-z])o[1-9](-|$|\b)/, { coding: 88, thinking: 96, tooling: 66, research: 86, speed: 38, vision: 48 }],
+  // v0.1.228: ancora a o-series ao início do segmento de modelo (início ou após "/")
+  // pra não casar um 'o'+dígito interno/após-versão de outros nomes (ex: ".../...o3" só vale como "o3" inicial).
+  [/(^|\/)o[1-9]([.-]|$)/, { coding: 88, thinking: 96, tooling: 66, research: 86, speed: 38, vision: 48 }],
   [/gpt-5[.\d]*-?codex/, { coding: 92, thinking: 90, tooling: 89, research: 88, speed: 58, vision: 82 }],
   [/gpt-5-(mini|nano)/, { coding: 74, thinking: 78, tooling: 76, research: 77, speed: 90, vision: 80 }],
   [/gpt-5/, { coding: 86, thinking: 94, tooling: 85, research: 91, speed: 64, vision: 88 }],
@@ -129,6 +131,8 @@ export function getModelStats(
   const id = (model || "").toLowerCase();
   const profile = PROFILES.find(([re]) => re.test(id))?.[1];
   const base = categoryBaseline(info);
+  // Perfis são Partial6 de propósito: chaves omitidas herdam o baseline da categoria.
+  // (profile pode ser undefined — spread de undefined é no-op.)
   const s: Omit<ModelStats, "power"> = { ...base, ...profile };
 
   // Ajustes pelas capabilities REAIS do modelo (a curadoria pode estar genérica).
@@ -139,13 +143,15 @@ export function getModelStats(
       s.vision = Math.min(s.vision, 34);
     }
   }
-  return {
+  // v0.1.228: clampa os 6 status ANTES de derivar o power, pra o poder geral
+  // ficar coerente com os números exibidos mesmo se um perfil sair do range 0-100.
+  const clamped: Omit<ModelStats, "power"> = {
     coding: clamp(s.coding),
     thinking: clamp(s.thinking),
     tooling: clamp(s.tooling),
     research: clamp(s.research),
     speed: clamp(s.speed),
     vision: clamp(s.vision),
-    power: powerOf(s),
   };
+  return { ...clamped, power: powerOf(clamped) };
 }

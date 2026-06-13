@@ -198,6 +198,10 @@ export function renderChatMarkdown(chat: ChatData): string {
 // Parse: Markdown → ChatData
 // ============================================================
 
+// Chaves do frontmatter que devem virar Number. Demais valores (id, title…)
+// ficam string — evita coagir um id numérico e perder zeros à esquerda. v0.1.228
+const NUMERIC_KEYS = new Set(["tokens_in", "tokens_out", "message_count"]);
+
 function parseSimpleYaml(text: string): Record<string, string | number | string[]> {
   const result: Record<string, string | number | string[]> = {};
   const lines = text.split("\n");
@@ -244,7 +248,10 @@ function parseSimpleYaml(text: string): Record<string, string | number | string[
       } catch {
         /* keep */
       }
-    } else if (/^-?\d+(\.\d+)?$/.test(value)) {
+    } else if (NUMERIC_KEYS.has(key) && /^-?\d+(\.\d+)?$/.test(value)) {
+      // v0.1.228: só coage chaves sabidamente numéricas. Antes coagia QUALQUER
+      // valor numérico → um `id` puramente numérico (hand-edit) perdia zeros à
+      // esquerda/precisão. id/title/etc ficam string (consumidos via String()).
       value = Number(value);
     }
     result[key] = value;
@@ -261,11 +268,17 @@ function extractAgentSteps(content: string): {
   content: string;
   agentSteps?: AIToolStep[];
 } {
-  const m = content.match(/\n*<!--\s*axxa-steps:\s*([A-Za-z0-9+/=]+)\s*-->\s*$/);
+  // v0.1.228: sem âncora `$` — o marcador `axxa-steps:` é único das nossas
+  // escritas, então achá-lo em qualquer posição é seguro e mais robusto a
+  // hand-edits (texto após o comentário não impede mais a detecção). Remove
+  // só o trecho do comentário, preservando o resto do content.
+  const re = /\n*<!--\s*axxa-steps:\s*([A-Za-z0-9+/=]+)\s*-->/;
+  const m = content.match(re);
   if (!m || m.index === undefined) return { content };
   try {
     const steps = JSON.parse(b64decode(m[1])) as AIToolStep[];
-    return { content: content.slice(0, m.index).trimEnd(), agentSteps: steps };
+    const cleaned = (content.slice(0, m.index) + content.slice(m.index + m[0].length)).trim();
+    return { content: cleaned, agentSteps: steps };
   } catch {
     return { content };
   }
@@ -440,13 +453,16 @@ export async function listAllChats(
   if (!(await app.vault.adapter.exists(chatsPath))) return [];
   // Cada subpasta do chatsPath é um "modo" (chat, vault-qa, agent, ...)
   const root = await app.vault.adapter.list(chatsPath);
-  const all: ChatSummary[] = [];
-  for (const subfolder of root.folders) {
-    // O último segmento do path é o nome do modo
-    const mode = subfolder.split("/").pop() ?? "chat";
-    const summaries = await listChats(app, chatsPath, mode, 10_000);
-    all.push(...summaries);
-  }
+  // v0.1.228: lista os modos em paralelo (antes era sequencial por subpasta —
+  // lento em vault com muitos chats). A ordenação/limite final é idempotente.
+  const perMode = await Promise.all(
+    root.folders.map((subfolder) => {
+      // O último segmento do path é o nome do modo
+      const mode = subfolder.split("/").pop() ?? "chat";
+      return listChats(app, chatsPath, mode, 10_000);
+    })
+  );
+  const all: ChatSummary[] = perMode.flat();
   return all
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, limit);
@@ -495,9 +511,12 @@ export async function renameChat(
     /^title:\s*.*$/m,
     `title: ${yamlString(clean)}`
   );
-  // Atualiza o primeiro `# ...` do body
+  // Atualiza o `# ...` do TÍTULO — que é sempre a 1ª linha do body (renderBody
+  // emite `# title` no topo). v0.1.228: ancora só na primeira linha pra não
+  // atingir um H1 dentro do conteúdo da conversa; replacement via função pra
+  // não interpretar `$` (ex: título com "$1").
   let body = match[2];
-  body = body.replace(/^# .+$/m, `# ${clean}`);
+  body = body.replace(/^# .+(?=\n|$)/, () => `# ${clean}`);
   const updated = `---\n${updatedFm}\n---\n${body}`;
   await app.vault.adapter.write(path, updated);
 }

@@ -194,6 +194,19 @@ export function Sidebar({
     scrollRecentsToTop();
   }, [modeFilter]);
 
+  // A11y: Escape fecha a gaveta enquanto aberta. O aside fica sempre montado
+  // (toggle por classe pra animar saída), então só escutamos quando open. Junto
+  // com inert={!open} no aside, os filhos saem do tab order/leitor ao fechar.
+  // v0.1.228
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   // Deletar via menu nativo (long-press mobile / right-click desktop) — sem
   // poluir a linha com um botão de lixeira, igual à referência.
   const openItemMenu = (e: React.MouseEvent, c: ChatSummary) => {
@@ -222,6 +235,12 @@ export function Sidebar({
         aria-modal="true"
         aria-label={t.header.conversations}
         aria-hidden={!open}
+        // Fechada: tira os filhos do tab order e do leitor de tela (a gaveta
+        // fica sempre montada pra animar). `inert` via ref pq nem todo @types/react
+        // tipa o atributo JSX; a propriedade DOM é tipada (lib.dom). v0.1.228
+        ref={(el) => {
+          if (el) el.inert = !open;
+        }}
       >
         {/* Tudo rola junto (brand + new + nav + recentes); só o rodapé fica
             fixo. v0.1.212 */}
@@ -402,10 +421,14 @@ export function Sidebar({
               onClose();
             }}
           >
-            <span className="axxa-sidebar-account-avatar">AL</span>
+            <span className="axxa-sidebar-account-avatar">
+              {t.account.label.trim().slice(0, 2).toUpperCase()}
+            </span>
             <span className="axxa-sidebar-account-main">
               <span className="axxa-sidebar-account-top">
-                <span className="axxa-sidebar-account-name">Axxa Lab</span>
+                <span className="axxa-sidebar-account-name">
+                  {t.account.label}
+                </span>
                 <span
                   className={"axxa-sidebar-badge axxa-sidebar-badge-" + badgeKind}
                 >

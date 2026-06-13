@@ -202,6 +202,22 @@ function makeId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// Campos comuns ao reset de "limpar mensagens" e "nova conversa" — single
+// source of truth pros dois (já tinham divergido antes). clearMessages preserva
+// a identidade do chat (currentChatId/Title); newChat sobrescreve pra zerar. v0.1.228
+const BASE_RESET = {
+  messages: [] as ChatMessage[],
+  isLoading: false,
+  tokensIn: 0,
+  tokensOut: 0,
+  lastPromptTokens: 0,
+  streamingMessageId: null as string | null,
+  sessionProvider: null as string | null,
+  sessionModel: null as string | null,
+  sessionMode: null as string | null,
+  sessionPersona: "",
+} as const;
+
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   isLoading: false,
@@ -318,10 +334,16 @@ export const useChatStore = create<ChatState>((set) => ({
       messages: state.messages.map((m) => {
         if (m.id !== id || m.type !== "ai-response" || !m.variants) return m;
         const n = m.variants.length;
-        let i = (m.variantIndex ?? n - 1) + dir;
+        const current = m.variantIndex ?? n - 1;
+        let i = current + dir;
         if (i < 0) i = 0;
         if (i > n - 1) i = n - 1;
-        return { ...m, variantIndex: i, content: m.variants[i] };
+        // Persiste o content exibido no slot vigente antes de trocar (como
+        // syncVariant), pra ida-e-volta entre variantes não descartar a versão
+        // atual. v0.1.228
+        const variants = [...m.variants];
+        variants[current] = m.content;
+        return { ...m, variants, variantIndex: i, content: variants[i] };
       }),
     })),
   selectOption: (messageId, optionIndex) =>
@@ -333,18 +355,8 @@ export const useChatStore = create<ChatState>((set) => ({
       ),
     })),
   clearMessages: () =>
-    set({
-      messages: [],
-      isLoading: false,
-      tokensIn: 0,
-      tokensOut: 0,
-      lastPromptTokens: 0,
-      streamingMessageId: null,
-      sessionProvider: null,
-      sessionModel: null,
-      sessionMode: null,
-      sessionPersona: "",
-    }),
+    // Preserva currentChatId/currentChatTitle (limpa só o conteúdo). v0.1.228
+    set({ ...BASE_RESET }),
   setLoading: (loading) => set({ isLoading: loading }),
   addUsage: (input, output) =>
     set((state) => ({
@@ -391,18 +403,6 @@ export const useChatStore = create<ChatState>((set) => ({
   setCurrentChatTitle: (title) => set({ currentChatTitle: title }),
   setMessages: (msgs) => set({ messages: msgs }),
   newChat: () =>
-    set({
-      messages: [],
-      isLoading: false,
-      tokensIn: 0,
-      tokensOut: 0,
-      lastPromptTokens: 0,
-      streamingMessageId: null,
-      sessionProvider: null,
-      sessionModel: null,
-      sessionMode: null,
-      sessionPersona: "",
-      currentChatId: null,
-      currentChatTitle: "",
-    }),
+    // Reset completo: BASE_RESET + zera a identidade do chat. v0.1.228
+    set({ ...BASE_RESET, currentChatId: null, currentChatTitle: "" }),
 }));

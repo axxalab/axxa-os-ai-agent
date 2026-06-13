@@ -172,15 +172,18 @@ export class GeminiProvider implements Provider {
     }
     // Billing primeiro (lê uma cópia do corpo; ensureOkStream ainda lê o original).
     if (!res.ok) {
-      let detail = "";
+      // v0.1.228: só aciona billing se houver mensagem de erro REAL. Antes,
+      // JSON.stringify(j ?? "") transformava um corpo sem .error.message em
+      // texto cru ("null"/objeto inteiro) — ruído inútil no detail.
       try {
         const j = await res.clone().json();
-        detail = j?.error?.message ?? JSON.stringify(j ?? "");
-      } catch {
+        const msg = j?.error?.message;
+        if (typeof msg === "string" && isGeminiBillingError(res.status, msg, "chat")) {
+          throw new ProviderError(`Gemini billing: ${msg}`, "billing");
+        }
+      } catch (err) {
+        if (err instanceof ProviderError) throw err;
         /* corpo não-JSON — segue pro mapeamento padrão */
-      }
-      if (isGeminiBillingError(res.status, detail, "chat")) {
-        throw new ProviderError(`Gemini billing: ${detail}`, "billing");
       }
     }
     await ensureOkStream(res, { label: "Gemini", authStatuses: [401, 403] });
@@ -223,7 +226,10 @@ export class GeminiProvider implements Provider {
     if (request.model.startsWith("imagen-")) {
       return this.generateWithImagen(request, apiKey);
     }
-    const url = `${GEMINI_NATIVE_BASE}/${request.model}:generateContent?key=${encodeURIComponent(apiKey.trim())}`;
+    // v0.1.228: chave vai no header x-goog-api-key (não na query string —
+    // evita vazar a key em logs/proxies), igual ao chat. Model id é
+    // URL-encoded no path por segurança.
+    const url = `${GEMINI_NATIVE_BASE}/${encodeURIComponent(request.model)}:generateContent`;
     // CRÍTICO: API v1beta exige snake_case nos campos.
     // Erro observado: "Unknown name 'responseModalities' at 'generation_config'"
     // → mudar pra response_modalities (snake_case) resolve.
@@ -252,6 +258,7 @@ export class GeminiProvider implements Provider {
         url,
         method: "POST",
         contentType: "application/json",
+        headers: { "x-goog-api-key": apiKey.trim() },
         body: JSON.stringify(body),
         throw: false,
       });
@@ -333,7 +340,9 @@ export class GeminiProvider implements Provider {
     request: MediaGenerationRequest,
     apiKey: string
   ): Promise<MediaGenerationItem[]> {
-    const url = `${GEMINI_NATIVE_BASE}/${request.model}:predict?key=${encodeURIComponent(apiKey.trim())}`;
+    // v0.1.228: chave no header x-goog-api-key (não na query string) + model id
+    // URL-encoded no path, igual ao generateContent.
+    const url = `${GEMINI_NATIVE_BASE}/${encodeURIComponent(request.model)}:predict`;
     const body = {
       instances: [{ prompt: request.prompt }],
       parameters: {
@@ -348,6 +357,7 @@ export class GeminiProvider implements Provider {
         url,
         method: "POST",
         contentType: "application/json",
+        headers: { "x-goog-api-key": apiKey.trim() },
         body: JSON.stringify(body),
         throw: false,
       });
@@ -415,7 +425,11 @@ export class GeminiProvider implements Provider {
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`Gemini: HTTP ${res.status}`, "unknown");
     }
-    const all: string[] = (res.json?.data ?? []).map((m: { id: string }) => m.id);
+    // v0.1.228: guarda contra id ausente/não-string antes do .startsWith/.slice
+    // (alinha com o padrão do anthropic.ts).
+    const all: string[] = (res.json?.data ?? [])
+      .map((m: { id?: unknown }) => m?.id)
+      .filter((id: unknown): id is string => typeof id === "string");
     return all
       .map((id) => (id.startsWith("models/") ? id.slice(7) : id))
       .filter(isRelevantGeminiModel)
@@ -433,7 +447,10 @@ export class GeminiProvider implements Provider {
         throw: false,
       });
       if (res.status < 200 || res.status >= 300) return [];
-      const all: string[] = (res.json?.data ?? []).map((m: { id: string }) => m.id);
+      // v0.1.228: mesma guarda de string do listModels.
+      const all: string[] = (res.json?.data ?? [])
+        .map((m: { id?: unknown }) => m?.id)
+        .filter((id: unknown): id is string => typeof id === "string");
       return all
         .map((id) => (id.startsWith("models/") ? id.slice(7) : id))
         .filter(isEmbeddingModelId)

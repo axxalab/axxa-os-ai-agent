@@ -137,7 +137,10 @@ function agentActivitySpec(
 } {
   const path = String(args.path ?? args.from ?? args.folder ?? "");
   // Encurta path long pra cabe na timeline (mantém basename)
-  const shortPath = path.length > 48 ? "…" + path.slice(-46) : path;
+  const shorten = (p: string) => (p.length > 48 ? "…" + p.slice(-46) : p);
+  const shortPath = shorten(path);
+  // v0.1.228: aplica o mesmo encurtamento ao destino do move (`to`).
+  const shortTo = args.to ? shorten(String(args.to)) : "?";
 
   switch (toolName) {
     case "vault_search":
@@ -179,8 +182,8 @@ function agentActivitySpec(
       return {
         iconPending: "move",
         iconDone: "check-circle-2",
-        pendingText: `Movendo ${shortPath} → ${String(args.to ?? "?")}`,
-        doneText: `Moveu ${shortPath} → ${String(args.to ?? "?")}`,
+        pendingText: `Movendo ${shortPath} → ${shortTo}`,
+        doneText: `Moveu ${shortPath} → ${shortTo}`,
       };
     case "vault_delete":
       return {
@@ -565,18 +568,29 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     useChatStore.getState().newChat();
     pendingProjectIdRef.current = project.id;
     // Pré-anexa as fontes do projeto como notas de contexto.
+    // v0.1.228: valida TFile antes de ler (evita ler pasta/path inválido) e
+    // junta as fontes que sumiram num Notice agregado, em vez de engolir cada erro.
     const entries: PendingAttachmentEntry[] = [];
+    const missing: string[] = [];
     for (const src of project.sources) {
+      const file = plugin.app.vault.getAbstractFileByPath(src);
+      if (!(file instanceof TFile)) {
+        missing.push(src.split("/").pop() ?? src);
+        continue;
+      }
       try {
-        const content = await plugin.app.vault.adapter.read(src);
+        const content = await plugin.app.vault.cachedRead(file);
         entries.push({
           id: makeAttachmentId(),
           attachment: { type: "note", path: src, content },
           name: src.split("/").pop() ?? src,
         });
       } catch {
-        /* fonte sumiu do vault — ignora */
+        missing.push(src.split("/").pop() ?? src);
       }
+    }
+    if (missing.length > 0) {
+      new Notice(t.projects.sourcesMissing(missing.join(", ")));
     }
     setPendingAttachments(entries);
     setSelectedProjectId(null);
@@ -619,7 +633,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // tela fazia seu próprio listAllChats → várias passadas = abrir lento. Aqui
   // só sincronizamos os estados locais com o cache (e a cada mudança dele).
   useEffect(() => {
+    // v0.1.228: guard `alive` evita setState após desmontar (loadChatSummaries
+    // resolve async; sem o guard o .then() podia bater num componente já morto).
+    let alive = true;
     const sync = () => {
+      if (!alive) return;
       const all = plugin.chatSummaries ?? [];
       setAllChats(all);
       setChatSummaries(all);
@@ -627,7 +645,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     };
     plugin.loadChatSummaries().then(sync);
     const unsub = plugin.onChatsChange(sync);
-    return unsub;
+    return () => {
+      alive = false;
+      unsub();
+    };
   }, [plugin]);
 
   // ============================================================
@@ -695,6 +716,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     messages,
     currentChatId,
     currentChatTitle,
+    activeMode, // v0.1.228: snapshot salvo refletia mode stale (faltava na dep array)
     activeProviderId,
     activeModel,
     effort,
@@ -1094,6 +1116,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // injeta uma msg "tool" forçada pedindo pra mudar de estratégia.
     const loopWindow = effortCfg.loopDetectionWindow;
     const recentCallSignatures: string[] = [];
+    // v0.1.228: contador de nudges que NÃO é zerado junto com o buffer — depois
+    // de MAX_LOOP_NUDGES tentativas de reconsideração seguidas, aborta de vez
+    // (antes o comentário prometia "aborta em 3 nudges" mas o while nunca cortava).
+    let loopNudges = 0;
+    const MAX_LOOP_NUDGES = 3;
     // Ações de tool do run inteiro — anexadas à resposta final p/ continuidade.
     const runSteps: import("../agent/types").AIToolStep[] = [];
 
@@ -1234,6 +1261,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 imgAtt.attachment.dataUrl
               );
               if (mm) inputImage = { mimeType: mm[1], data: mm[2] };
+              // v0.1.228: tinha imagem anexada mas o data URL não decodificou —
+              // avisa em vez de cair silenciosamente pra text2image (a opção
+              // IMG2IMG nem aparece no modal porque hasInputImage fica false).
+              else new Notice(t.imageGen.inputImageDecodeFailed);
             }
             const modal = new ImageGenModal(plugin.app, {
               options: buildImageModelOptions(),
@@ -1255,6 +1286,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 choice.useInputImage ? inputImage : undefined
               );
               ok = gen.ok;
+              // v0.1.228: imagem anexada CONSUMIDA com sucesso → limpa o
+              // pending pra não vazar pra próxima call (consistente com
+              // handleCreateImage, que também só limpa quando useInputImage).
+              if (gen.ok && choice.useInputImage && inputImage) {
+                setPendingAttachments([]);
+              }
               resultText = gen.ok
                 ? `Imagem gerada (${choice.model}) e já renderizada na conversa: ${gen.paths.join(", ")}. NÃO repita a geração; comente o resultado pro usuário.`
                 : `Falha ao gerar imagem: ${gen.error}`;
@@ -1420,9 +1457,32 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
         let results: CallResult[];
         if (effortCfg.parallelToolCalls && preparedCalls.length > 1) {
-          // Paralelo: roda todas ao mesmo tempo, espera todas terminarem.
-          // Cada call já tem seu próprio activity, não há disputa de UI.
-          results = await Promise.all(preparedCalls.map(execCall));
+          // Paralelo POR GRUPO de path (v0.1.228): calls que tocam o MESMO
+          // arquivo (path/from/to normalizado) rodam serializadas entre si pra
+          // evitar race read-modify-write; calls de paths distintos / read-only
+          // (sem path → chave única) seguem paralelas. Mantém a ordem original.
+          const indexed = preparedCalls.map((prep, idx) => ({ prep, idx }));
+          const groups = new Map<string, typeof indexed>();
+          for (const item of indexed) {
+            const a = item.prep.call.arguments as Record<string, unknown>;
+            const writeKey = [a.path, a.from, a.to]
+              .filter((v) => typeof v === "string" && v)
+              .map((v) => String(v).replace(/^\/+|\/+$/g, ""))
+              .join("→");
+            // Sem path de escrita → chave única por call (não serializa nada).
+            const key = writeKey || `__solo_${item.idx}`;
+            const bucket = groups.get(key);
+            if (bucket) bucket.push(item);
+            else groups.set(key, [item]);
+          }
+          results = new Array<CallResult>(preparedCalls.length);
+          await Promise.all(
+            [...groups.values()].map(async (bucket) => {
+              for (const { prep, idx } of bucket) {
+                results[idx] = await execCall(prep);
+              }
+            })
+          );
         } else {
           results = [];
           for (const prep of preparedCalls) {
@@ -1452,6 +1512,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         // insistir, dá outro turn e o próximo check vai cortar denovo.
         // Se o loop for muito persistente (3 nudges seguidos), aborta de vez.
         if (loopDetected) {
+          loopNudges++;
+          // v0.1.228: depois de MAX_LOOP_NUDGES reconsiderações seguidas, aborta
+          // de vez — o contador NÃO é zerado com o buffer, então insistência
+          // persistente quebra o while em vez de girar pra sempre.
+          if (loopNudges >= MAX_LOOP_NUDGES) {
+            const loopId = addMessage({
+              type: "ai-response",
+              content: t.agent.loopAborted,
+            });
+            if (runSteps.length > 0) setAgentSteps(loopId, runSteps);
+            return;
+          }
           history.push({
             role: "user",
             content:
@@ -1473,6 +1545,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             },
           });
           // Limpa o histórico de assinaturas pra dar chance limpa ao retry
+          // (mas NÃO o loopNudges — ele acumula pra forçar o abort acima).
           recentCallSignatures.length = 0;
         }
       }
@@ -1632,6 +1705,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     void newChat;
 
     setLoading(true);
+    // v0.1.228: registra um AbortController do turno de geração no abortRef pra
+    // o Stop não operar num controller STALE de um turno de chat anterior. (O
+    // sinal ainda não chega ao provider — generateImage/Audio/Video não aceitam
+    // signal na API atual — mas o lifecycle do abortRef fica correto e pronto
+    // pra propagar quando a base.ts ganhar o parâmetro.)
+    const controller = new AbortController();
+    abortRef.current = controller;
     const mediaType: GenerationMediaType = caps.imageGen
       ? "image"
       : caps.audioGen
@@ -1643,6 +1723,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // em vez de deixar estourar "Provider não implementa…". Auditoria v0.1.164.
     if (!generationSupported(activeProviderId, mediaType)) {
       setLoading(false);
+      if (abortRef.current === controller) abortRef.current = null;
       addMessage({
         type: "ai-response",
         content: `${t.ai.errorPrefix} ${t.ai.genUnsupported(mediaType, generationSupportSummary())}`,
@@ -1761,6 +1842,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       });
     } finally {
       setLoading(false);
+      // Só limpa se ainda for o NOSSO controller (não clobra um turno mais novo).
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
@@ -2051,6 +2134,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     );
     if (idx < 0) return;
 
+    // v0.1.228: mesmo pre-flight de chave do streamReply — sem API key nem
+    // adianta tentar continuar (evita marcar truncated e injetar espaço à toa).
+    if (
+      providerNeedsKey(activeProviderId) &&
+      !apiKeyFor(activeProviderId).trim()
+    ) {
+      new Notice(`${t.ai.errorPrefix} ${t.ai.err.noKey(activeProvider.name)}`);
+      return;
+    }
+
     const {
       appendToMessage,
       setTruncated,
@@ -2099,9 +2192,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // v0.1.228: emenda o espaço só QUANDO o primeiro token de continuação chega
+    // (antes era cego: se o stream falhava imediatamente, a bolha ficava com um
+    // espaço solto sem nenhuma continuação emendada).
+    let firstContinuationToken = true;
     try {
-      // Emenda um espaço antes pra não colar a continuação na última palavra
-      appendToMessage(aiMessageId, " ");
       startStreamTimer();
       await activeProvider.streamChat(
         {
@@ -2112,6 +2207,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         },
         apiKeyFor(activeProviderId),
         (token) => {
+          if (firstContinuationToken) {
+            // Espaço antes pra não colar a continuação na última palavra.
+            appendToMessage(aiMessageId, " ");
+            firstContinuationToken = false;
+          }
           appendToMessage(aiMessageId, token);
           tickStreamTokens(token);
         },
@@ -2297,8 +2397,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       // (ensureFolder escreve via adapter). Fallback pro adapter.write, igual
       // ao padrão de generation/save.ts. v0.1.195
       try {
+        // vault.create já falha se o arquivo existir → protege contra o TOCTOU
+        // do loop de exists acima (create-then-fail).
         await plugin.app.vault.create(path, content);
       } catch {
+        // v0.1.228: adapter.write clobra cego — re-checa exists imediatamente
+        // antes de escrever e, se colidiu na janela, desambigua com sufixo único.
+        if (await plugin.app.vault.adapter.exists(path)) {
+          path = `${folder}/${safeTitle} ${Date.now().toString(36)}.md`;
+        }
         await plugin.app.vault.adapter.write(path, content);
       }
       new Notice(t.chat.savedAsNote(path));
@@ -2352,6 +2459,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     try {
       await deleteChat(plugin.app, plugin.settings.chatsPath, mode, chatId);
       plugin.removeChatSummary(chatId);
+      // v0.1.228: limpa a referência do chat dos projetos (evita chatId órfão
+      // apontando pra uma conversa que já foi pra lixeira).
+      await persistProjects((prev) =>
+        prev.map((p) =>
+          p.chatIds.includes(chatId)
+            ? { ...p, chatIds: p.chatIds.filter((id) => id !== chatId) }
+            : p
+        )
+      );
       // Se era a conversa aberta, limpa a tela.
       if (currentChatId === chatId) {
         abortRef.current?.abort();
@@ -2478,11 +2594,31 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           `## ${m.type === "user" ? "Você" : "Assistente"}\n\n${(m as { content: string }).content}`
       )
       .join("\n\n");
+    const text = `# ${title}\n\n${body}\n`;
     try {
-      await navigator.clipboard.writeText(`# ${title}\n\n${body}\n`);
+      await navigator.clipboard.writeText(text);
       new Notice(t.header.copyConversationDone);
     } catch (err) {
       console.error("[axxa] copy conversation falhou:", err);
+      // v0.1.228: fallback p/ execCommand quando clipboard API falha (permissão
+      // negada / contexto inseguro) e, se mesmo assim falhar, avisa o usuário em
+      // vez de deixar o clique silencioso.
+      let copied = false;
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        copied = document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch {
+        copied = false;
+      }
+      new Notice(
+        copied ? t.header.copyConversationDone : t.header.copyConversationFailed
+      );
     }
   };
 
@@ -2633,8 +2769,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       addUsage(chat.tokensIn, chat.tokensOut);
       setEffort(chat.effort);
       setSessionPersona(chat.persona ?? "");
+      // v0.1.228: reidratação gera ids novos (makeId) p/ cada msg → um highlight
+      // pendente apontaria pra id inexistente. Reseta o destaque no load.
+      setSearchTarget(null);
     } catch (err) {
       console.error("[axxa] loadChat falhou:", err);
+      // v0.1.228: o clique não pode parecer no-op — avisa o usuário do erro.
+      new Notice(
+        `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`
+      );
     }
   };
 

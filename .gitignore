@@ -41,3 +41,9 @@ MASTER-PLAN.md
 PROMPT-MESTRE.md
 VIABILIDADE-FINANCEIRA.md
 
+
+# audit/reconcile scratch (não versionar)
+.audit-*.cjs
+.audit-*.mjs
+.recon-*.json
+.recon-*.cjs

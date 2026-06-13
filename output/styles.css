@@ -150,6 +150,17 @@ body.is-mobile
   font-size: var(--font-ui-medium);
 }
 
+/* [DS:a11y] v0.1.228: anel de foco de TECLADO global.
+   Centenas de botões customizados fazem `outline: none !important` no :focus,
+   o que apaga o foco também pra navegação por teclado. `:focus-visible` só
+   dispara em teclado (não no clique de mouse), então este anel reintroduz a
+   visibilidade sem poluir o hover/click. `!important` pra vencer os resets. */
+.axxa-root :focus-visible,
+.axxa-settings-root :focus-visible {
+  outline: 2px solid var(--interactive-accent) !important;
+  outline-offset: 2px !important;
+}
+
 /* =====================================================
  * Header
  * ===================================================== */
@@ -716,6 +727,10 @@ body.is-mobile
   background: color-mix(in srgb, var(--text-normal) 8%, transparent);
   color: var(--text-normal);
   font-size: var(--font-ui-medium);
+  /* A bolha do user renderiza o conteúdo como texto puro — sem pre-wrap as
+     quebras de linha da mensagem colapsam num parágrafo só. v0.1.228 */
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Edição inline da mensagem do usuário (editar & reenviar) */
@@ -1208,6 +1223,9 @@ body.is-mobile
   --axxa-pill-bg: color-mix(in srgb, var(--text-normal) 7%, transparent);
   --axxa-pill-bg-strong: color-mix(in srgb, var(--text-normal) 13%, transparent);
   --axxa-pill-blur: saturate(140%) blur(7px);
+  /* v0.1.228: token único de vermelho de gravação/perigo. Antes era #ef4444
+     cru repetido em ~6 lugares (botão recording, indicator, dot, timer). */
+  --axxa-danger: var(--text-error, #ef4444);
   /* tokens de DENSIDADE — defaults = NORMAL; [data-axxa-density] sobrescreve. */
   --axxa-list-row-py: 6px;
   --axxa-list-row-radius: 9px;
@@ -1890,6 +1908,15 @@ body.axxa-reduce-motion *::after {
   overflow: hidden;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
+  /* Virou <button> (era <a>) pra abrir via openLinkText — reset do UA pra manter
+     idêntico ao link anterior. v0.1.228 */
+  padding: 0;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  text-align: inherit;
+  font: inherit;
+  color: inherit;
 }
 .axxa-media-cell img {
   width: 100%;
@@ -3647,19 +3674,25 @@ body.axxa-reduce-motion *::after {
  * PRO pill agressivo
  * ===================================================== */
 
+/* [DS:pro] Pill "PRO" — laranja de marca (vibrante, fora do --color-orange do
+   tema de propósito). v0.1.228: centralizado em tokens locais documentados em
+   vez de hex espalhado no gradiente/sombra. Mesmas cores de antes. */
 .axxa-pro-pill {
+  --axxa-pro-grad-1: #ff5c1c;
+  --axxa-pro-grad-2: #ff9d00;
+  --axxa-pro-ink: #ffffff;
   display: inline-flex;
   align-items: center;
   margin-left: auto;
   padding: 3px 10px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #ff5c1c 0%, #ff9d00 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--axxa-pro-grad-1) 0%, var(--axxa-pro-grad-2) 100%);
+  color: var(--axxa-pro-ink);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  box-shadow: 0 1px 6px rgba(255, 92, 28, 0.35);
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--axxa-pro-grad-1) 35%, transparent);
   user-select: none;
 }
 
@@ -4033,9 +4066,10 @@ body.axxa-reduce-motion *::after {
   display: flex;
   align-items: center;
   gap: 4px;
-  /* v0.1.64: min-height 44 — minimo de toque tipico. Pill cresce com
-     o texto, mas nunca menor que 44 (igual altura do send button). */
-  min-height: 44px;
+  /* v0.1.228: min-height resolvido — o pill faz hug do conteúdo (min-height:0).
+     A declaração antiga de 44px era morta (sobrescrita logo abaixo) e o
+     comentário virou enganoso; mantido só o 0. */
+  min-height: 0;
   /* Background semi-transparente + backdrop blur agressivo (v0.1.50)
      pra elevar visualmente do chat por trás */
   background: color-mix(in srgb, var(--background-modifier-form-field) 80%, transparent);
@@ -4045,7 +4079,6 @@ body.axxa-reduce-motion *::after {
   border-radius: 22px;
   padding: 6px 14px 6px 6px;
   transition: border-color 0.15s, box-shadow 0.15s;
-  min-height: 0;
   /* v0.1.110: drop-shadow removida — era o "borrão" escuro atrás do composer.
      O glass (blur 20px + border) já dá a separação do chat/bg. */
 }
@@ -5005,9 +5038,10 @@ body.axxa-reduce-motion *::after {
   background: var(--text-muted) !important;
 }
 
-/* Estado "gravando" — vermelho pulsante (hold-to-record) */
+/* Estado "gravando" — vermelho pulsante (hold-to-record). v0.1.228: usa
+   --axxa-danger no lugar do #ef4444 cru. */
 .axxa-composer-send.axxa-composer-recording {
-  background: #ef4444 !important;
+  background: var(--axxa-danger) !important;
   color: #ffffff !important;
   animation: axxa-recording-pulse 0.9s ease-in-out infinite;
 }
@@ -5015,11 +5049,11 @@ body.axxa-reduce-motion *::after {
 @keyframes axxa-recording-pulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--axxa-danger) 55%, transparent);
   }
   50% {
     transform: scale(1.06);
-    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--axxa-danger) 0%, transparent);
   }
 }
 
@@ -5031,7 +5065,7 @@ body.axxa-reduce-motion *::after {
   margin-bottom: 6px;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(239, 68, 68, 0.12);
+  background: color-mix(in srgb, var(--axxa-danger) 12%, transparent);
   color: var(--text-normal);
   font-size: var(--font-ui-smaller);
   align-self: flex-start;
@@ -5039,14 +5073,14 @@ body.axxa-reduce-motion *::after {
 }
 
 body.theme-dark .axxa-recording-indicator {
-  background: rgba(239, 68, 68, 0.18);
+  background: color-mix(in srgb, var(--axxa-danger) 18%, transparent);
 }
 
 .axxa-recording-dot {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #ef4444;
+  background: var(--axxa-danger);
   flex-shrink: 0;
   animation: axxa-recording-dot-pulse 0.9s ease-in-out infinite;
 }
@@ -5059,7 +5093,7 @@ body.theme-dark .axxa-recording-indicator {
 .axxa-recording-timer {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: #ef4444;
+  color: var(--axxa-danger);
 }
 
 .axxa-recording-hint {
@@ -5827,10 +5861,10 @@ body.is-mobile .axxa-dash .axxa-launch-chip {
 
 .axxa-recent-item {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
-  padding: 6px 9px;
+  /* v0.1.228: flex-direction/align/gap/padding viviam aqui mas eram
+     100% sobrescritos pelo redesign (.axxa-recent-item @ ~9753: row +
+     border-left + padding 8/10). Removidos os perdedores; layout do
+     row fica só no bloco do redesign. */
   border-radius: 10px;
   border: 1px solid var(--background-modifier-border) !important;
   background: var(--background-secondary) !important;
@@ -7763,14 +7797,16 @@ body.theme-dark .axxa-bg-lagoon {
   overflow: auto;
   border-left: 3px solid transparent;
 }
+/* v0.1.228: deriva dos tokens DS (igual aos .axxa-confirm-path-* acima) em
+   vez de hex cru, pra respeitar o tema. Fallbacks: #ef4444 / #06d6a0. */
 .axxa-diff-del {
-  background: color-mix(in srgb, #ef4444 13%, transparent);
-  border-left-color: #ef4444;
+  background: color-mix(in srgb, var(--color-red, #ef4444) 13%, transparent);
+  border-left-color: var(--color-red, #ef4444);
   color: var(--text-normal);
 }
 .axxa-diff-add {
-  background: color-mix(in srgb, #22c55e 14%, transparent);
-  border-left-color: #22c55e;
+  background: color-mix(in srgb, var(--color-green, #06d6a0) 14%, transparent);
+  border-left-color: var(--color-green, #06d6a0);
   color: var(--text-normal);
 }
 .axxa-diff-ctx {
@@ -8630,14 +8666,16 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-eff-pip-on {
   opacity: 1;
 }
-/* RAIOS DOURADOS (v0.1.127): o ícone fixo + os pips ACESOS preenchem com
-   gradiente dourado (url(#axxa-eff-gold)) + borda escura + drop-shadow =
-   relevo fake-3D. lucide zap é stroke-only; o fill via CSS vence o
-   fill="none" do atributo de apresentação. */
+/* [DS:effort-gold] RAIOS DOURADOS (v0.1.127): o ícone fixo + os pips ACESOS
+   preenchem com gradiente dourado (url(#axxa-eff-gold)) + borda escura +
+   drop-shadow = relevo fake-3D. lucide zap é stroke-only; o fill via CSS vence
+   o fill="none" do atributo de apresentação. O stroke é um dourado escuro de
+   marca (borda "gravada"), NÃO segue tema — v0.1.228: exposto como
+   --axxa-eff-gold-stroke (fallback no mesmo valor) pra robustez/override. */
 .axxa-eff-ico svg,
 .axxa-eff-pip-on svg {
   fill: url(#axxa-eff-gold);
-  stroke: #7a4e07;
+  stroke: var(--axxa-eff-gold-stroke, #7a4e07);
   stroke-width: 1.4;
   filter: drop-shadow(0 1px 0.5px rgba(0, 0, 0, 0.5));
 }
@@ -9211,7 +9249,9 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   background: var(--background-secondary);
 }
 .axxa-imggen-opt-conn.is-on {
-  color: var(--color-green, #3ba55d);
+  /* v0.1.228: fallback de --color-green padronizado pra #06d6a0 (era #3ba55d,
+     único outlier no arquivo). */
+  color: var(--color-green, #06d6a0);
 }
 .axxa-imggen-opt-conn.is-off {
   color: var(--color-red, #e5534b);
@@ -9814,6 +9854,15 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 /* Botão "..." trailing nos itens da lista (menu Renomear/Deletar). v0.1.187
    Discreto: aparece no hover (desktop) e sempre no mobile (sem hover). */
 .axxa-recent-more {
+  /* Virou <button> (era <span>) — reset do UA pro icon-button redondo ficar
+     idêntico ao span anterior. v0.1.228 */
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
   flex: 0 0 auto;
   display: flex;
   align-self: center;
@@ -11387,13 +11436,19 @@ body.is-mobile .axxa-wave-area {
   background: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
   color: var(--text-accent);
 }
+/* [DS:founder] Badge "founder" — dourado de marca do tier. v0.1.228: cores
+   movidas pra tokens locais documentados (mesmos valores). Usa gradiente puro
+   (sem color-mix), então não precisa do fallback @supports abaixo. */
 .axxa-sidebar-badge-founder {
+  --axxa-founder-1: #e0a93c;
+  --axxa-founder-2: #f6d365;
+  --axxa-founder-ink: #3a2a06;
   background: linear-gradient(
     100deg,
-    #e0a93c,
-    #f6d365
+    var(--axxa-founder-1),
+    var(--axxa-founder-2)
   );
-  color: #3a2a06;
+  color: var(--axxa-founder-ink);
 }
 @supports not (color: color-mix(in srgb, red, blue)) {
   .axxa-sidebar-badge-free {
@@ -11751,9 +11806,14 @@ body.is-mobile .axxa-wave-area {
 
 
 /* ============================================================
- * ModelArena (v0.1.223) — seletor "Mortal Kombat" de modelo.
+ * [DS:arena] ModelArena (v0.1.223) — seletor "Mortal Kombat" de modelo.
  * Portalado pro <body> (fora da .axxa-root) — tokens de motion caem
  * no fallback; reduce-motion é coberto pelo reset global do body.
+ * NOTA (v0.1.228): paleta INTENCIONALMENTE hard-coded. É um "palco" escuro
+ * fixo (color:#fff + gradientes #15151d/#0b0b11) que NÃO segue o tema do
+ * Obsidian — é a identidade do componente. As cores de marca por provider
+ * vivem em --axxa-arena-glow; os neutros/overlays brancos são propositais.
+ * Não tokenizar/derivar de var(--background-*) sem revisão de design.
  * ============================================================ */
 .axxa-arena-overlay {
   position: fixed;
@@ -12504,4 +12564,38 @@ body.is-mobile .axxa-wave-area {
   bottom: auto !important;
   top: -5px !important;
   transform: none !important;
+}
+
+/* ============================================================
+   Reconciliação da auditoria v0.1.228 — regras pedidas por componentes
+   ============================================================ */
+
+/* Utilitário visually-hidden (sr-only): invisível na tela, lido por leitores
+   de tela. Usado pela <ul> acessível da série do wave chart. */
+.axxa-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Nota "nenhum provider de imagem conectado" no ImageGenModal. */
+.axxa-imggen-noconn {
+  margin: var(--size-4-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+/* Foco visível nas linhas de opção do ImageGenModal (agora navegáveis por
+   teclado: role=radio + tabindex). */
+.axxa-imggen-opt:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-s);
 }
