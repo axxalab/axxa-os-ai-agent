@@ -113,6 +113,7 @@ import {
   describeProviderError,
   providerNeedsKey,
 } from "./axxaApp.helpers";
+import { useProjectActions } from "./useProjectActions";
 
 interface AxxaAppProps {
   plugin: AxxaPlugin;
@@ -281,17 +282,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // chat↔projeto acontece no 1º send (quando o chat id é criado).
   const pendingProjectIdRef = useRef<string | null>(null);
 
-  // Updater funcional: lê a fonte da verdade (settings.projects, atualizada
-  // sincronamente) em vez do estado React do closure — evita que duas operações
-  // concorrentes (ex: add-source durante um await + rename) percam dados. v0.1.195
-  const persistProjects = async (
-    update: (prev: Project[]) => Project[]
-  ) => {
-    const next = update(plugin.settings.projects ?? []);
-    plugin.settings.projects = next;
-    setProjects(next);
-    await plugin.saveSettings();
-  };
+  // Ações de projeto extraídas → useProjectActions (Frente 2). persistProjects é
+  // retornado porque handleSend e a edição de mensagem também o reusam.
+  const {
+    persistProjects,
+    handleSaveProject,
+    handleDeleteProject,
+    handleAddProjectSource,
+    handleRemoveProjectSource,
+  } = useProjectActions(plugin, t, {
+    projectEditor,
+    setProjects,
+    setProjectEditor,
+    setSelectedProjectId,
+  });
 
   // Modo Voz (ref: ChatGPT iOS 133/140, Grok 63/66). v0.1.192
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -314,68 +318,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setVoiceIntroDone(true);
     plugin.settings.voiceIntroDone = true;
     await plugin.saveSettings();
-  };
-
-  const handleSaveProject = async (data: {
-    name: string;
-    icon: string;
-    color: string;
-  }) => {
-    const editing = projectEditor?.project;
-    if (editing) {
-      await persistProjects((prev) =>
-        prev.map((p) => (p.id === editing.id ? { ...p, ...data } : p))
-      );
-    } else {
-      const proj: Project = {
-        id: makeProjectId(),
-        name: data.name,
-        icon: data.icon,
-        color: data.color,
-        sources: [],
-        chatIds: [],
-        createdAt: new Date().toISOString(),
-      };
-      await persistProjects((prev) => [proj, ...prev]);
-      setSelectedProjectId(proj.id);
-      new Notice(t.projects.created(proj.name));
-    }
-    setProjectEditor(null);
-  };
-
-  const handleDeleteProject = async () => {
-    const editing = projectEditor?.project;
-    if (!editing) return;
-    await persistProjects((prev) => prev.filter((p) => p.id !== editing.id));
-    setProjectEditor(null);
-    setSelectedProjectId(null);
-    new Notice(t.projects.deleted);
-  };
-
-  const handleAddProjectSource = async (projectId: string) => {
-    const path = await openVaultNotePicker(plugin.app, t);
-    if (!path) return;
-    await persistProjects((prev) =>
-      prev.map((p) =>
-        p.id === projectId && !p.sources.includes(path)
-          ? { ...p, sources: [...p.sources, path] }
-          : p
-      )
-    );
-    new Notice(t.projects.sourceAdded);
-  };
-
-  const handleRemoveProjectSource = async (
-    projectId: string,
-    path: string
-  ) => {
-    await persistProjects((prev) =>
-      prev.map((p) =>
-        p.id === projectId
-          ? { ...p, sources: p.sources.filter((s) => s !== path) }
-          : p
-      )
-    );
   };
 
   const handleNewChatInProject = async (project: Project) => {
