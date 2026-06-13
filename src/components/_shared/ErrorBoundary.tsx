@@ -43,7 +43,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <h3 className="axxa-errboundary-title">⚠️ AXXA OS — erro de tela</h3>
           <p className="axxa-errboundary-sub">
             Algo quebrou ao renderizar. Copie o erro abaixo e mande pro dev — ele
-            diz exatamente onde foi.
+            diz exatamente onde foi. O texto pode conter caminhos de arquivos do
+            seu vault; confira antes de enviar. {/* v0.1.228: aviso de disclosure */}
           </p>
           <pre className="axxa-errboundary-msg">
             {error.name}: {error.message}

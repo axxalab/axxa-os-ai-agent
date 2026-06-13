@@ -1,33 +1,33 @@
 {
-  "name": "axxa-os-ai-agent",
-  "version": "0.1.227",
-  "description": "AXXA OS — AI Agent (Obsidian plugin).",
-  "private": true,
-  "scripts": {
-    "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "collect:hot": "node scripts/collect-hot.mjs",
-    "deploy:output": "node scripts/deploy.mjs"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zustand": "^4.5.5"
-  },
-  "devDependencies": {
-    "@codemirror/autocomplete": "^6.20.3",
-    "@codemirror/state": "^6.6.0",
-    "@codemirror/view": "^6.43.0",
-    "@types/node": "^16.18.108",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.0",
-    "builtin-modules": "^3.3.0",
-    "esbuild": "^0.20.2",
-    "obsidian": "latest",
-    "tslib": "^2.7.0",
-    "typescript": "^5.6.2",
-    "vitest": "^2.1.9"
-  }
+	"name": "axxa-os-ai-agent",
+	"version": "0.1.228",
+	"description": "AXXA OS — AI Agent (Obsidian plugin).",
+	"private": true,
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"collect:hot": "node scripts/collect-hot.mjs",
+		"deploy:output": "node scripts/deploy.mjs"
+	},
+	"dependencies": {
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"zustand": "^4.5.5"
+	},
+	"devDependencies": {
+		"@codemirror/autocomplete": "^6.20.3",
+		"@codemirror/state": "^6.6.0",
+		"@codemirror/view": "^6.43.0",
+		"@types/node": "^16.18.108",
+		"@types/react": "^18.3.11",
+		"@types/react-dom": "^18.3.0",
+		"builtin-modules": "^3.3.0",
+		"esbuild": "^0.20.2",
+		"obsidian": "latest",
+		"tslib": "^2.7.0",
+		"typescript": "^5.6.2",
+		"vitest": "^2.1.9"
+	}
 }

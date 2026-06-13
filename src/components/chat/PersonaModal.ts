@@ -17,6 +17,8 @@ export class PersonaModal extends Modal {
   private value: string;
   private readonly onSubmit: (persona: string) => void;
   private readonly texts: PersonaModalTexts;
+  // v0.1.228: guarda o timer do focus pra cancelar no onClose e não focar após o detach
+  private focusTimer: number | null = null;
 
   constructor(
     app: App,
@@ -69,7 +71,7 @@ export class PersonaModal extends Modal {
           .onClick(() => this.submit(this.value))
       );
 
-    window.setTimeout(() => ta.focus(), 50);
+    this.focusTimer = window.setTimeout(() => ta.focus(), 50);
   }
 
   private submit(value: string) {
@@ -78,6 +80,11 @@ export class PersonaModal extends Modal {
   }
 
   onClose() {
+    // v0.1.228: cancela o focus pendente pra não focar um textarea já desanexado
+    if (this.focusTimer !== null) {
+      window.clearTimeout(this.focusTimer);
+      this.focusTimer = null;
+    }
     this.contentEl.empty();
   }
 }

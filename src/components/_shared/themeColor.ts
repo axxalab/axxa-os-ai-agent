@@ -51,6 +51,11 @@ export const PRESET_THEME_COLORS: Record<string, ThemeColorPair | null> = {
 // já que só uma OS status bar existe.
 let savedThemeColor: string | null = null;
 let metaEl: HTMLMetaElement | null = null;
+// v0.1.228: lembra se NÓS criamos o meta (não existia antes). Nesse caso
+// o restore remove o tag em vez de devolver "" — assim o Obsidian/tema
+// reaplica o theme-color dele (inclusive após troca dark/light), em vez
+// de a gente fixar uma cor obsoleta capturada na 1ª chamada.
+let metaCreatedByUs = false;
 
 function findOrCreateMeta(doc: Document): HTMLMetaElement {
   if (metaEl && metaEl.isConnected && metaEl.ownerDocument === doc) {
@@ -63,6 +68,7 @@ function findOrCreateMeta(doc: Document): HTMLMetaElement {
     metaEl = doc.createElement("meta");
     metaEl.name = "theme-color";
     doc.head.appendChild(metaEl);
+    metaCreatedByUs = true; // v0.1.228: criado por nós → restore remove
   }
   return metaEl;
 }
@@ -93,10 +99,24 @@ export function applyThemeColor(
 /**
  * Restaura o theme-color que o Obsidian/tema tinha antes do AXXA mudar.
  * Idempotente — chamar duas vezes não quebra.
+ *
+ * v0.1.228: se o meta foi criado por nós (não existia antes), remove o
+ * tag em vez de devolver "". Se já existia, em vez de fixar a cor obsoleta
+ * capturada na 1ª chamada (que pode estar errada se o user trocou
+ * dark/light no meio), limpa o content e deixa o Obsidian/tema reaplicar
+ * o theme-color atual dele.
  */
 export function restoreThemeColor(): void {
-  if (metaEl && savedThemeColor !== null) {
-    metaEl.content = savedThemeColor;
+  if (metaEl) {
+    if (metaCreatedByUs) {
+      metaEl.remove();
+    } else {
+      // Devolve só se tínhamos um original não-vazio; senão limpa pro
+      // Obsidian reassumir a cor do tema vigente.
+      metaEl.content = savedThemeColor || "";
+    }
   }
+  metaEl = null;
   savedThemeColor = null;
+  metaCreatedByUs = false;
 }

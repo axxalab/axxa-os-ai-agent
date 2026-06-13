@@ -25,8 +25,12 @@ const WINDOWS: Record<string, number> = {
 export function getContextWindow(model: string): number {
   // Match exato primeiro
   if (WINDOWS[model] != null) return WINDOWS[model];
-  // Match por prefixo (ex: "gpt-4o-2024-08-06" → "gpt-4o")
-  for (const key of Object.keys(WINDOWS)) {
+  // Match por prefixo (ex: "gpt-4o-2024-08-06" → "gpt-4o").
+  // v0.1.228: ordena por comprimento decrescente pra escolher o prefixo mais
+  // longo (mais especifico) que casa — independente da ordem de iteracao das
+  // chaves (ex: "gpt-4o-mini-..." casa "gpt-4o-mini", nao "gpt-4o").
+  const keys = Object.keys(WINDOWS).sort((a, b) => b.length - a.length);
+  for (const key of keys) {
     if (model.startsWith(key)) return WINDOWS[key];
   }
   return 128_000;

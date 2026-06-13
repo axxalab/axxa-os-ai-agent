@@ -13,6 +13,9 @@ export interface ChatSearchHit {
 
 export class ChatSearchModal extends SuggestModal<ChatSearchHit> {
   private readonly hits: ChatSearchHit[];
+  // v0.1.228: textLower pre-computado por hit no construtor para nao
+  // re-lowercasing todo o texto a cada tecla em getSuggestions.
+  private readonly hitsLower: string[];
   private readonly onChoose: (id: string) => void;
 
   constructor(
@@ -24,6 +27,7 @@ export class ChatSearchModal extends SuggestModal<ChatSearchHit> {
   ) {
     super(app);
     this.hits = hits;
+    this.hitsLower = hits.map((h) => h.text.toLowerCase());
     this.onChoose = onChoose;
     this.setPlaceholder(placeholder);
     this.emptyStateText = emptyText;
@@ -32,7 +36,7 @@ export class ChatSearchModal extends SuggestModal<ChatSearchHit> {
   getSuggestions(query: string): ChatSearchHit[] {
     const q = query.toLowerCase().trim();
     if (!q) return this.hits;
-    return this.hits.filter((h) => h.text.toLowerCase().includes(q));
+    return this.hits.filter((_, i) => this.hitsLower[i].includes(q));
   }
 
   renderSuggestion(hit: ChatSearchHit, el: HTMLElement) {

@@ -3,12 +3,32 @@
 // MESMOS args N vezes seguidas (ex: re-lendo um arquivo que já falhou). Esta
 // lógica era inline no runAgentTurn — extraída pra cá pra ser pura e testável.
 
+/**
+ * Serializa um valor de forma determinística: ordena as chaves de TODO objeto
+ * (recursivamente) antes do stringify. v0.1.228: sem isso, args com a mesma
+ * informação mas ordem de chaves diferente (ex: {a,b} vs {b,a}) geravam
+ * assinaturas distintas e furavam a detecção de loop.
+ */
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, val) => {
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      return Object.keys(val as Record<string, unknown>)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, k) => {
+          acc[k] = (val as Record<string, unknown>)[k];
+          return acc;
+        }, {});
+    }
+    return val;
+  });
+}
+
 /** Assinatura única de uma tool call (name + args serializados). */
 export function makeCallSignature(
   name: string,
   args: Record<string, unknown>
 ): string {
-  return `${name}::${JSON.stringify(args)}`;
+  return `${name}::${stableStringify(args)}`;
 }
 
 /**

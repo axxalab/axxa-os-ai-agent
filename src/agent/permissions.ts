@@ -54,6 +54,13 @@ export type ToolGate = "auto" | "confirm";
  *   - diffApproval ON + ação destrutiva → "confirm" (preview do diff)…
  *     …a menos que "aprovar todas" já tenha sido marcado nesta sessão.
  *   - senão, segue o evaluatePermission (auto p/ não-destrutivo, etc).
+ *
+ * ATENÇÃO (v0.1.228): este gate trata apenas a dimensão DESTRUTIVA. Tools com
+ * "custo" mas não-destrutivas (ex: generate_image, destructive:false) NÃO são
+ * confirmadas aqui — elas têm fluxo PRÓPRIO de confirmação (modal de modelo +
+ * preço, fora do registry de vault) e são interceptadas no agent loop ANTES de
+ * chegar a decideToolGate. Ou seja: este gate não é a fonte única de verdade
+ * para "tem custo?". Ao adicionar uma tool com custo, garanta o gating no caller.
  */
 export function decideToolGate(
   tool: ToolDefinition,

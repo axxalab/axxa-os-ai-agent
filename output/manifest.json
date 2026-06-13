@@ -1,10 +1,10 @@
 {
-  "id": "axxa-os-ai-agent",
-  "name": "AXXA OS - AI Agent",
-  "version": "0.1.227",
-  "minAppVersion": "1.11.4",
-  "description": "Chat with AI, query your vault with local RAG, and let an agent read and edit your notes across six LLM providers. Bring your own API key.",
-  "author": "Axxa Lab",
-  "authorUrl": "https://github.com/axxalab",
-  "isDesktopOnly": false
+	"id": "axxa-os-ai-agent",
+	"name": "AXXA OS - AI Agent",
+	"version": "0.1.228",
+	"minAppVersion": "1.11.4",
+	"description": "Chat with AI, query your vault with local RAG, and let an agent read and edit your notes across six LLM providers. Bring your own API key.",
+	"author": "Axxa Lab",
+	"authorUrl": "https://github.com/axxalab",
+	"isDesktopOnly": false
 }

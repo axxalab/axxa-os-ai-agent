@@ -144,7 +144,15 @@ export function storeMessagesToProvider(
           })),
         });
         for (const s of m.agentSteps) {
-          out.push({ role: "tool", toolCallId: s.id, content: s.result });
+          // v0.1.228: garante content não-vazio (providers como Anthropic
+          // rejeitam tool_result vazio) e sinaliza falha no próprio texto —
+          // o shape do provider não tem flag isError pra role="tool".
+          const body = s.result?.trim() ? s.result : "(sem saída)";
+          out.push({
+            role: "tool",
+            toolCallId: s.id,
+            content: s.ok ? body : `ERRO: ${body}`,
+          });
         }
         if (m.content) out.push({ role: "assistant", content: m.content });
       } else {

@@ -2,7 +2,7 @@
 // Modal nativo do Obsidian pra renomear o título de uma conversa.
 // Usado pela ConversationsList (botão de lápis) e pelo Header (click no título).
 
-import { App, Modal, Setting } from "obsidian";
+import { App, Modal, Notice, Setting } from "obsidian";
 
 interface RenameOptions {
   currentTitle: string;
@@ -12,11 +12,16 @@ interface RenameOptions {
   inputLabel: string;
   submitLabel: string;
   cancelLabel: string;
+  /** Mensagem i18n exibida quando o rename falha (t.conversations.renameFailed) */
+  failureLabel?: string;
 }
 
 export class RenameChatModal extends Modal {
   private value: string;
   private opts: RenameOptions;
+  // v0.1.228: guard de in-flight + ref do botão pra evitar double submit
+  private submitting = false;
+  private submitBtn: HTMLButtonElement | null = null;
 
   constructor(app: App, opts: RenameOptions) {
     super(app);
@@ -63,6 +68,7 @@ export class RenameChatModal extends Modal {
       cls: "axxa-rename-submit mod-cta",
       attr: { type: "button" },
     });
+    this.submitBtn = submitBtn;
     submitBtn.onclick = () => void this.submit();
 
     // Foco no input com seleção do texto inteiro pra facilitar edição
@@ -75,11 +81,20 @@ export class RenameChatModal extends Modal {
   private async submit() {
     const clean = this.value.trim();
     if (!clean) return;
+    // v0.1.228: evita double submit (Enter repetido / Enter + clique) enquanto roda
+    if (this.submitting) return;
+    this.submitting = true;
+    if (this.submitBtn) this.submitBtn.disabled = true;
     try {
       await this.opts.onSubmit(clean);
       this.close();
     } catch (err) {
       console.error("[axxa] rename falhou:", err);
+      // v0.1.228: avisa o usuário (modal continua aberto pra nova tentativa)
+      if (this.opts.failureLabel) new Notice(this.opts.failureLabel);
+    } finally {
+      this.submitting = false;
+      if (this.submitBtn) this.submitBtn.disabled = false;
     }
   }
 

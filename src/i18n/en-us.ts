@@ -24,6 +24,8 @@ export const EN_US: Translations = {
       "Selected model doesn't accept images. Pick a vision-capable model (e.g. gpt-4o, claude, gemini).",
     attachImagePastedNotice: "Pasted image attached",
     attachImageFailed: "Failed to process the image.",
+    compatSwapTo: (model: string) => `Switch to ${model}`,
+    compatDismiss: "Dismiss",
   },
 
   recording: {
@@ -497,7 +499,8 @@ export const EN_US: Translations = {
     searching: (topK: number, effort: string) =>
       `Searching up to ${topK} notes in vault (effort: ${effort})...`,
     foundContext: (count: number) =>
-      `${count} note${count > 1 ? "s" : ""} found as context`,
+      // v0.1.228: plural por count !== 1 (inglês usa plural para 0: "0 notes")
+      `${count} note${count !== 1 ? "s" : ""} found as context`,
     notFound:
       "No relevant notes found — answering without vault context",
   },
@@ -522,9 +525,10 @@ export const EN_US: Translations = {
     retry: "Try again",
     openSettings: "Open Settings",
     openBilling: "Enable billing in AI Studio",
-    genUnsupported: (type: "image" | "audio" | "video", suportado: string) => {
-      const tipo = type === "image" ? "Image" : type === "audio" ? "Audio" : "Video";
-      return `${tipo} generation isn't supported in AXXA yet with this provider/model. Available today: ${suportado}.`;
+    genUnsupported: (type: "image" | "audio" | "video", supported: string) => {
+      // v0.1.228: identificadores em inglês na locale en-us
+      const label = type === "image" ? "Image" : type === "audio" ? "Audio" : "Video";
+      return `${label} generation isn't supported in AXXA yet with this provider/model. Available today: ${supported}.`;
     },
   },
 

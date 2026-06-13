@@ -6,6 +6,7 @@
 // Click no chip dispara onSwapModel(suggestion). Click no X dismiss.
 
 import { Icon } from "../_shared/Icon";
+import { useT } from "../../i18n";
 import {
   bannerStyleFor,
   type CompatibilityResult,
@@ -24,6 +25,8 @@ export function IncompatibleBanner({
   onSwapModel,
   onDismiss,
 }: IncompatibleBannerProps) {
+  // v0.1.228: labels via i18n (antes eram PT-BR hardcoded) — respeita o idioma nativo do Obsidian.
+  const t = useT();
   if (result.ok || !result.message) return null;
   const { icon, color } = bannerStyleFor(result.reason);
   const primary = result.suggestions?.[0];
@@ -43,7 +46,7 @@ export function IncompatibleBanner({
           type="button"
           className="axxa-incompat-action"
           onClick={() => onSwapModel(primary)}
-          title={`Trocar pra ${primary}`}
+          title={t.composer.compatSwapTo(primary)}
         >
           <Icon name="arrow-right" />
           <span className="axxa-incompat-action-label">{shortenModel(primary)}</span>
@@ -54,8 +57,8 @@ export function IncompatibleBanner({
           type="button"
           className="axxa-incompat-close"
           onClick={onDismiss}
-          aria-label="Dispensar"
-          title="Dispensar"
+          aria-label={t.composer.compatDismiss}
+          title={t.composer.compatDismiss}
         >
           <Icon name="x" />
         </button>

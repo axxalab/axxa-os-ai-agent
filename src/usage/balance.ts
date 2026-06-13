@@ -39,9 +39,15 @@ export function spentSinceFromRows(
   return total;
 }
 
-/** Âncora válida? (amount numérico + date preenchida). */
+/** Âncora válida? (amount finito + date ISO YYYY-MM-DD). */
 export function hasValidAnchor(a: BalanceAnchor | undefined): a is BalanceAnchor {
-  return !!a && typeof a.amount === "number" && !!a.date;
+  // v0.1.228: endurecido — NaN/Infinity (typeof "number") e date só-espaços
+  // passavam antes, vazando saldo NaN e filtro de gasto incorreto.
+  return (
+    !!a &&
+    Number.isFinite(a.amount) &&
+    /^\d{4}-\d{2}-\d{2}$/.test((a.date ?? "").trim())
+  );
 }
 
 /** saldo = âncora.amount − gasto. basis indica a confiança da fonte do gasto. */

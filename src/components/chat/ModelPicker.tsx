@@ -114,7 +114,20 @@ export function ModelPicker({
   );
   const cats: string[] = CATEGORY_ORDER.filter((c) => groups.has(c));
 
-  const favModels = opts.filter((m) => plugin.isFavoriteModel(provider, m));
+  // Set de modelos favoritos do provider atual (chave "provider::model"),
+  // montado uma vez por render em vez de varrer o array por modelo. v0.1.228
+  const favSet = useMemo(() => {
+    const prefix = provider + "::";
+    const s = new Set<string>();
+    for (const k of plugin.settings.favoriteModels ?? []) {
+      if (k.startsWith(prefix)) s.add(k.slice(prefix.length));
+    }
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider, plugin.settings.favoriteModels]);
+  const isFav = (m: string) => favSet.has(m);
+
+  const favModels = opts.filter(isFav);
   const hasFav = favModels.length > 0;
 
   const info = getModelFullInfo(provider, model);
@@ -222,7 +235,7 @@ export function ModelPicker({
               provider={provider}
               m={m}
               active={m === model}
-              fav={plugin.isFavoriteModel(provider, m)}
+              fav={isFav(m)}
               onPick={pick}
               onToggleFav={toggleFav}
               t={t}

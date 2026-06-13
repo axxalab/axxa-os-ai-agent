@@ -195,6 +195,9 @@ export function effortToMaxTokensSmart(
   const cfg = resolveEffortConfig(level, userConfigs);
   if (cfg.maxTokens === 0) {
     // Uncapped: usa % do context. Subtrai 1k pra reserva pra prompt+system.
+    // Piso de 2048 é contrato (ver tests): modelos reais têm window >= 4k, então
+    // o piso nunca estoura a janela na prática — um teto especulativo zerava o
+    // maxTokens em janelas sintéticas minúsculas. v0.1.228
     const pct = Math.max(10, Math.min(95, cfg.contextReservePercent)) / 100;
     return Math.max(2048, Math.floor(contextWindow * pct) - 1000);
   }

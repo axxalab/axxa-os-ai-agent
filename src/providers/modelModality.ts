@@ -111,7 +111,7 @@ export const ALL_MODALITIES: Modality[] = [
  * Lógica: ENTRADAS = sempre texto, + imagem se `vision`. SAÍDA depende do tipo:
  *   - imageGen → cada entrada vira `*2IMG` (TXT2IMG e, se aceita imagem, IMG2IMG)
  *   - audioGen → TXT2AUD
- *   - videoGen → TXT2VID (+ IMG2VID se aceita imagem OU é Veo/Sora, que animam img)
+ *   - videoGen → TXT2VID (+ IMG2VID se aceita imagem OU é um animador de img conhecido)
  *   - senão (chat/LLM) → cada entrada vira `*2TXT` (TXT2TXT e, se vision, IMG2TXT)
  */
 export function modelModalities(
@@ -128,7 +128,12 @@ export function modelModalities(
     out.push("TXT2AUD");
   } else if (caps.videoGen) {
     out.push("TXT2VID");
-    if (caps.vision || /veo|sora/i.test(modelId ?? "")) out.push("IMG2VID");
+    // v0.1.228: generaliza o IMG2VID — além do `vision`, reconhece os
+    // animadores de imagem conhecidos por prefixo (Veo/Sora/Kling/Runway/Luma/
+    // Pika) em vez de só Veo/Sora. Cosmos fica de fora: capacidade img2vid
+    // incerta e o catálogo o trata como TXT2VID genérico.
+    if (caps.vision || /veo|sora|kling|runway|luma|pika/i.test(modelId ?? ""))
+      out.push("IMG2VID");
   } else {
     for (const i of inputs) out.push((i + "2TXT") as Modality); // TXT2TXT, IMG2TXT
   }

@@ -311,7 +311,10 @@ export function ProjectDetailScreen({
                   </span>
                   <span className="axxa-recent-main">
                     <span className="axxa-recent-top">
-                      <span className="axxa-recent-title">{c.title}</span>
+                      {/* v0.1.228: fallback localizado pra título vazio/só-espaços */}
+                      <span className="axxa-recent-title">
+                        {c.title?.trim() || t.conversations.untitled}
+                      </span>
                     </span>
                   </span>
                   <span className="axxa-recent-chevron">

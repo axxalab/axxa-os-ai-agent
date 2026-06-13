@@ -56,8 +56,14 @@ export function ChatArea({
       setShowBackToBottom(false);
     }
     if (!shouldStickRef.current) return;
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    // v0.1.228: coalesce o scroll num único rAF pra evitar layout thrash —
+    // durante o stream esse efeito dispara a cada token; sem isso, lia
+    // scrollHeight e escrevia scrollTop por token.
+    const raf = window.requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(raf);
   }, [messages]);
 
   // Pula + destaca a mensagem escolhida na busca
@@ -66,8 +72,9 @@ export function ChatArea({
     if (!id) return;
     const root = scrollRef.current;
     if (!root) return;
+    // v0.1.228: CSS.escape pra não quebrar com ids contendo aspas/caracteres especiais
     const el = root.querySelector(
-      `[data-msg-id="${id}"]`
+      `[data-msg-id="${CSS.escape(id)}"]`
     ) as HTMLElement | null;
     if (!el) return;
     shouldStickRef.current = false;

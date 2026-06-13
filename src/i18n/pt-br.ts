@@ -24,6 +24,8 @@ export const PT_BR = {
       "O modelo selecionado não aceita imagens. Troque por um modelo com vision (ex: gpt-4o, claude, gemini).",
     attachImagePastedNotice: "Imagem colada anexada",
     attachImageFailed: "Falha ao processar a imagem.",
+    compatSwapTo: (model: string) => `Trocar pra ${model}`,
+    compatDismiss: "Dispensar",
   },
 
   recording: {

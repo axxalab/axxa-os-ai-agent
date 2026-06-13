@@ -32,6 +32,12 @@ export interface TierSettings {
  * Valida uma license key (SCAFFOLD #15). Formato `AXXA-PRO-XXXX-XXXX`.
  * Ex. de teste: `AXXA-PRO-TEST-2026`. Validação REAL (servidor/Gumroad) é o
  * próximo passo — aqui é só o checa-formato pra fechar o fluxo de UI.
+ *
+ * ATENÇÃO (v0.1.228): isto NÃO é autorização. Só confere o FORMATO da chave —
+ * qualquer string `AXXA-PRO-XXXX-XXXX` passa, então o gating de Pro é
+ * client-side e NÃO-enforced enquanto não houver billing real. Quando houver
+ * receita, validar a chave contra o servidor (Gumroad) ANTES de conceder "pro"
+ * e não confiar em `isLicensePro` como prova de pagamento.
  */
 export function isLicensePro(key: string | undefined): boolean {
   const k = (key || "").trim().toUpperCase();

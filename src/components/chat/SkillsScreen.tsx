@@ -44,7 +44,8 @@ export function SkillsScreen({
 
         {skills.length === 0 ? (
           <div className="axxa-screen-empty axxa-skills-empty">
-            <span className="axxa-skills-404">404</span>
+            {/* 404 é só decorativo; leitor usa emptyTitle/emptySub (v0.1.228) */}
+            <span className="axxa-skills-404" aria-hidden="true">404</span>
             <p className="axxa-screen-empty-title">{t.skills.emptyTitle}</p>
             <p className="axxa-screen-empty-sub">{t.skills.emptySub}</p>
           </div>
