@@ -980,8 +980,9 @@ layout no
   border: none;
   border-radius: 28px 28px 0 0;
   background: var(--background-primary);
-  /* sombra só EM CIMA (separa do conteúdo acima); embaixo ele encosta na base */
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+  /* sombra SÓ em cima: spread negativo (-4) faz a sombra não passar da borda de
+     baixo (offset+blur+spread = -6+8-4 = -2 ≤ 0), então embaixo fica a cor crua. */
+  box-shadow: 0 -6px 8px -4px rgba(0, 0, 0, 0.3);
 }
 /* o prompt manda no visual — texto/placeholder grande */
 .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor {
