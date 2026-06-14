@@ -822,12 +822,21 @@ layout no
   display: block;
   padding: 0;
 }
+/* superfície dos composers — leve/elevada; no dark clareia mais pra ficar visível
+   contra o fundo escuro. Fallback pro --background-secondary sem color-mix. */
+.axxa-root {
+  --axxa-composer-bg: var(--background-secondary);
+  --axxa-composer-bg: color-mix(in srgb, var(--background-secondary) 88%, white 12%);
+}
+.theme-dark .axxa-root {
+  --axxa-composer-bg: color-mix(in srgb, var(--background-secondary) 80%, white 20%);
+}
 .axxa-composer-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 14px 14px 12px;
-  background: var(--background-secondary);
+  background: var(--axxa-composer-bg);
   border: 1px solid var(--background-modifier-border);
   border-radius: 24px;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.16);
@@ -979,7 +988,7 @@ layout no
   padding: 18px 18px calc(10px + env(safe-area-inset-bottom, 0px));
   border: none;
   border-radius: 28px 28px 0 0;
-  background: var(--background-primary);
+  background: var(--axxa-composer-bg);
   /* sombra SÓ em cima: spread negativo (-4) faz a sombra não passar da borda de
      baixo (offset+blur+spread = -6+8-4 = -2 ≤ 0), então embaixo fica a cor crua. */
   box-shadow: 0 -6px 8px -4px rgba(0, 0, 0, 0.3);
@@ -1074,7 +1083,7 @@ layout no
   gap: 6px;
   padding: 5px 8px;
   border-radius: 999px;
-  background: var(--background-secondary);
+  background: var(--axxa-composer-bg);
   border: 1px solid var(--background-modifier-border);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
