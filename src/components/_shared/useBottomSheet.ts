@@ -76,27 +76,41 @@ export function useBottomSheet(onClose: () => void): BottomSheetControls {
     startY.current = null;
   };
 
-  // ── Corpo: pull-to-collapse. Puxar pra baixo COM o scroll no topo do corpo
-  // colapsa (expanded→opened) e, de novo, fecha (opened→onClose). NÃO captura o
-  // pointer (deixa o scroll nativo rolar normalmente quando não está no topo). ──
-  const bodyStart = useRef<{ y: number; atTop: boolean } | null>(null);
+  // ── Corpo: overscroll nas DUAS pontas (o slide vale no corpo inteiro). No TOPO
+  // (sem mais o que rolar) + puxa pra baixo → desce um nível (expanded→opened→fecha).
+  // No FIM do scroll + puxa pra cima → sobe um nível (opened→expanded). No meio, o
+  // scroll nativo rola normal (não captura o pointer). Conteúdo que cabe inteiro
+  // está em ambas as pontas → o corpo todo vira "alça". ──
+  const bodyStart = useRef<{ y: number; atTop: boolean; atBottom: boolean } | null>(
+    null
+  );
+  const isAtBottom = (el: HTMLElement) =>
+    el.scrollHeight - (el.scrollTop + el.clientHeight) <= 1;
 
   const onBodyPointerDown = (e: ReactPointerEvent) => {
     const el = e.currentTarget as HTMLElement;
-    bodyStart.current = { y: e.clientY, atTop: el.scrollTop <= 0 };
+    bodyStart.current = {
+      y: e.clientY,
+      atTop: el.scrollTop <= 0,
+      atBottom: isAtBottom(el),
+    };
   };
 
   const onBodyPointerUp = (e: ReactPointerEvent) => {
     if (!bodyStart.current) return;
     const el = e.currentTarget as HTMLElement;
     const dy = e.clientY - bodyStart.current.y;
-    const startedAtTop = bodyStart.current.atTop;
+    const { atTop, atBottom } = bodyStart.current;
     bodyStart.current = null;
-    // Só conta se começou e terminou no topo (scrollTop 0) e puxou pra baixo —
-    // assim não confunde com rolar o conteúdo.
-    if (startedAtTop && el.scrollTop <= 0 && dy > PULL_DISMISS) {
+    // Topo + puxa pra baixo → desce um nível.
+    if (atTop && el.scrollTop <= 0 && dy > PULL_DISMISS) {
       if (expanded) setExpanded(false);
       else onClose();
+      return;
+    }
+    // Fim + puxa pra cima → sobe um nível.
+    if (atBottom && isAtBottom(el) && dy < -PULL_DISMISS && !expanded) {
+      setExpanded(true);
     }
   };
 
