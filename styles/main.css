@@ -1098,10 +1098,116 @@ layout no
   padding: 2px 8px;
   border-radius: 999px;
 }
-.axxa-sheet-empty {
-  padding: 16px 8px;
-  color: var(--text-muted);
+/* estado vazio tappável (sem favorito / sem modelo adicionado) */
+.axxa-root .axxa-sheet-empty-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 18px 8px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.axxa-root .axxa-sheet-empty-btn:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-root .axxa-sheet-empty-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.axxa-sheet-empty-title {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+.axxa-sheet-empty-sub {
   font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+
+/* chips de categoria (More models) — scroll horizontal, aba Free no fim */
+.axxa-sheet-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 2px 0 10px;
+  padding-bottom: 2px;
+}
+.axxa-sheet-chips::-webkit-scrollbar {
+  display: none;
+}
+.axxa-root .axxa-sheet-chip {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.axxa-root .axxa-sheet-chip-on {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* estrela de favoritar (More models) — preenche no ativo, trava no teto de 5 */
+.axxa-root .axxa-sheet-star {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.axxa-root .axxa-sheet-star:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+}
+.axxa-root .axxa-sheet-star:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.axxa-sheet-star .svg-icon {
+  width: 20px;
+  height: 20px;
+}
+.axxa-sheet-star-on {
+  color: var(--interactive-accent);
+}
+.axxa-sheet-star-on .svg-icon {
+  fill: var(--interactive-accent);
+}
+
+/* linha "+ Add models" no ecrã de favoritos */
+.axxa-sheet-add-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.axxa-sheet-add-icon .svg-icon {
+  width: 18px;
+  height: 18px;
+}
+.axxa-sheet-add .axxa-sheet-row-name {
+  color: var(--text-muted);
 }
 
 @supports not (color: color-mix(in srgb, red, blue)) {

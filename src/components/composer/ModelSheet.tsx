@@ -1,12 +1,16 @@
 // src/components/composer/ModelSheet.tsx
-// Bottom sheet do seletor de modelo + effort (DS 1.0, ref: prints do Claude).
-// Dois "ecrãs" na MESMA folha (navegação interna):
-//   1. "Select model" — X · lista de modelos (nome + tagline EN, selecionado =
-//      accent + check) · linha "Effort ›" (abre o ecrã 2) · "More models ›".
-//   2. "Effort" — ‹ voltar · níveis low→max (Default badge no baseline, check no
-//      atual) · toggle "Thinking".
-// Reaproveita o shell do bottom-sheet do PlusModal (overlay/sheet/handle/divider/
-// switch) e o focus-trap; rows novas no tamanho de linha dos prints.
+// Bottom sheet do seletor de modelo (DS 1.0, ref: prints do Claude).
+// TRÊS ecrãs na MESMA folha (navegação interna):
+//   1. "Select model"  — só os FAVORITOS (≤5) do provider. Sem favorito → mensagem
+//      instrutiva (tap abre o ecrã 3). Com favorito → rows + "+ Add models" (ecrã 3).
+//      Sempre: linha "Effort ›" (ecrã 2).
+//   2. "Effort"        — níveis low→max (Default badge no baseline, check no atual)
+//      + toggle "Thinking".
+//   3. "More models"   — os modelos ADICIONADOS (activeModels) do provider, com
+//      chips por categoria (+ aba Free quando houver, categorias vazias ocultas).
+//      Cada row tem estrela: favoritar sobe pro topo; ao chegar a 5, trava o resto.
+//      Tap na row (fora da estrela) seleciona o modelo.
+// Reaproveita o shell .axxa-plus-overlay/-sheet/-handle/-divider + o focus-trap.
 
 import { useRef, useState } from "react";
 import { Icon } from "../_shared/Icon";
@@ -19,7 +23,14 @@ import {
 import {
   getModelFullInfo,
   localizedDescription,
+  groupModelsByCategory,
+  CATEGORY_ORDER,
+  type ModelCategory,
 } from "../../providers/modelDescriptions";
+import { getModelCapabilities } from "../../providers/modelCapabilities";
+
+/** Máximo de favoritos por provider. */
+const MAX_FAVORITES = 5;
 
 // Taglines limpas (estilo print) — uma frase por nível, sem jargão técnico.
 const EFFORT_TAGLINES: Record<EffortLevel, string> = {
@@ -30,9 +41,22 @@ const EFFORT_TAGLINES: Record<EffortLevel, string> = {
   max: "The hardest problems. Takes longest.",
 };
 
-// Nível marcado como "Default" — baseline fixo (fallback real do resolveEffortConfig),
-// independente da seleção atual pra o badge não colidir com o check.
+// Nível "Default" — baseline fixo (fallback do resolveEffortConfig), separado do
+// check da seleção atual pra os dois não colidirem.
 const DEFAULT_EFFORT: EffortLevel = "med";
+
+// Labels EN das categorias (CATEGORY_LABELS no core ainda é PT) — chips do More.
+const CAT_LABELS_EN: Record<ModelCategory, string> = {
+  "chat-vision": "Multimodal",
+  "chat-text": "Chat",
+  reasoning: "Reasoning",
+  agent: "Agent",
+  "image-gen": "Image",
+  "audio-gen": "Audio",
+  "video-gen": "Video",
+  embedding: "Embedding",
+  other: "Other",
+};
 
 /** Formata um id de modelo cru num nome apresentável (fallback). */
 function prettyModelName(id: string): string {
@@ -69,8 +93,12 @@ function modelBits(
 
 interface ModelSheetProps {
   provider: string;
-  /** IDs dos modelos ativos do provider atual. */
+  /** IDs dos modelos ADICIONADOS do provider atual (activeModels) — usados no More. */
   models: string[];
+  /** Favoritos globais — chaves "provider::model". */
+  favorites: string[];
+  /** Liga/desliga favorito do modelo no provider atual (respeita o teto de 5). */
+  onToggleFavorite: (model: string) => void;
   currentModel: string;
   onSelectModel: (model: string) => void;
   currentEffort: string;
@@ -78,8 +106,8 @@ interface ModelSheetProps {
   thinkingOn: boolean;
   onToggleThinking: (value: boolean) => void;
   onClose: () => void;
-  /** Abre a gestão completa de modelos (Settings). */
-  onMoreModels?: () => void;
+  /** Abre as Settings (quando não há modelo adicionado pra favoritar). */
+  onOpenSettings?: () => void;
   /** Locale pras descrições — app é EN-only hoje. */
   lang?: string;
 }
@@ -87,6 +115,8 @@ interface ModelSheetProps {
 export function ModelSheet({
   provider,
   models,
+  favorites,
+  onToggleFavorite,
   currentModel,
   onSelectModel,
   currentEffort,
@@ -94,15 +124,73 @@ export function ModelSheet({
   thinkingOn,
   onToggleThinking,
   onClose,
-  onMoreModels,
+  onOpenSettings,
   lang = "en-US",
 }: ModelSheetProps) {
-  const [view, setView] = useState<"model" | "effort">("model");
+  const [view, setView] = useState<"model" | "effort" | "more">("model");
+  const [chip, setChip] = useState<string>("all");
   const sheetRef = useRef<HTMLDivElement>(null);
   useFocusTrap(sheetRef, { onEscape: onClose });
 
+  const prefix = provider + "::";
+  const isFav = (m: string) => favorites.includes(prefix + m);
+  const favCount = favorites.filter((k) => k.startsWith(prefix)).length;
+  const favModels = favorites
+    .filter((k) => k.startsWith(prefix))
+    .map((k) => k.slice(prefix.length));
+
   const effortLabel =
     EFFORT_LABELS[currentEffort as EffortLevel] ?? currentEffort;
+
+  // ── Ecrã 3 (More): chips por categoria presente + Free, e lista filtrada. ──
+  const grouped = groupModelsByCategory(provider, models);
+  const presentCats = CATEGORY_ORDER.filter(
+    (c) => (grouped.get(c)?.length ?? 0) > 0
+  );
+  const freeModels = models.filter(
+    (m) => getModelCapabilities(provider, m).free
+  );
+  const chips: { id: string; label: string }[] = [
+    { id: "all", label: "All" },
+    ...presentCats.map((c) => ({ id: c, label: CAT_LABELS_EN[c] })),
+    ...(freeModels.length ? [{ id: "free", label: "Free" }] : []),
+  ];
+  const visibleModels =
+    chip === "all"
+      ? models
+      : chip === "free"
+        ? freeModels
+        : grouped.get(chip as ModelCategory) ?? [];
+  // Favoritos primeiro (sobem pro topo), resto na ordem original.
+  const sortedModels = [...visibleModels].sort(
+    (a, b) => (isFav(a) ? 0 : 1) - (isFav(b) ? 0 : 1)
+  );
+
+  function renderModelRow(m: string, withCheck: boolean) {
+    const { name, tagline } = modelBits(provider, m, lang);
+    const selected = m === currentModel;
+    return (
+      <button
+        key={m}
+        type="button"
+        className={"axxa-sheet-row" + (selected ? " axxa-sheet-row-on" : "")}
+        onClick={() => {
+          onSelectModel(m);
+          onClose();
+        }}
+      >
+        <span className="axxa-sheet-row-text">
+          <span className="axxa-sheet-row-name">{name}</span>
+          {tagline && <span className="axxa-sheet-row-desc">{tagline}</span>}
+        </span>
+        {withCheck && selected && (
+          <span className="axxa-sheet-row-check">
+            <Icon name="check" />
+          </span>
+        )}
+      </button>
+    );
+  }
 
   return (
     <div className="axxa-plus-overlay" onClick={onClose}>
@@ -113,11 +201,11 @@ export function ModelSheet({
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        aria-label={view === "model" ? "Select model" : "Effort"}
+        aria-label="Select model"
       >
         <div className="axxa-plus-handle" />
 
-        {view === "model" ? (
+        {view === "model" && (
           <>
             <div className="axxa-sheet-header">
               <button
@@ -132,43 +220,34 @@ export function ModelSheet({
               <span className="axxa-sheet-nav" aria-hidden="true" />
             </div>
 
-            <div className="axxa-sheet-list">
-              {models.length === 0 && (
-                <div className="axxa-sheet-empty">
-                  No models for this provider yet.
-                </div>
-              )}
-              {models.map((m) => {
-                const { name, tagline } = modelBits(provider, m, lang);
-                const selected = m === currentModel;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    className={
-                      "axxa-sheet-row" +
-                      (selected ? " axxa-sheet-row-on" : "")
-                    }
-                    onClick={() => {
-                      onSelectModel(m);
-                      onClose();
-                    }}
-                  >
-                    <span className="axxa-sheet-row-text">
-                      <span className="axxa-sheet-row-name">{name}</span>
-                      {tagline && (
-                        <span className="axxa-sheet-row-desc">{tagline}</span>
-                      )}
-                    </span>
-                    {selected && (
-                      <span className="axxa-sheet-row-check">
-                        <Icon name="check" />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {favModels.length === 0 ? (
+              <button
+                type="button"
+                className="axxa-sheet-empty-btn"
+                onClick={() => setView("more")}
+              >
+                <span className="axxa-sheet-empty-title">
+                  No favorite models yet
+                </span>
+                <span className="axxa-sheet-empty-sub">
+                  Tap to pick up to {MAX_FAVORITES} favorites
+                </span>
+              </button>
+            ) : (
+              <div className="axxa-sheet-list">
+                {favModels.map((m) => renderModelRow(m, true))}
+                <button
+                  type="button"
+                  className="axxa-sheet-row axxa-sheet-add"
+                  onClick={() => setView("more")}
+                >
+                  <span className="axxa-sheet-add-icon">
+                    <Icon name="plus" />
+                  </span>
+                  <span className="axxa-sheet-row-name">Add models</span>
+                </button>
+              </div>
+            )}
 
             <div className="axxa-plus-divider" />
             <button
@@ -184,29 +263,10 @@ export function ModelSheet({
                 <Icon name="chevron-right" />
               </span>
             </button>
-
-            {onMoreModels && (
-              <>
-                <div className="axxa-plus-divider" />
-                <button
-                  type="button"
-                  className="axxa-sheet-row"
-                  onClick={() => {
-                    onMoreModels();
-                    onClose();
-                  }}
-                >
-                  <span className="axxa-sheet-row-text">
-                    <span className="axxa-sheet-row-name">More models</span>
-                  </span>
-                  <span className="axxa-sheet-row-chevron">
-                    <Icon name="chevron-right" />
-                  </span>
-                </button>
-              </>
-            )}
           </>
-        ) : (
+        )}
+
+        {view === "effort" && (
           <>
             <div className="axxa-sheet-header">
               <button
@@ -229,8 +289,7 @@ export function ModelSheet({
                     key={lvl}
                     type="button"
                     className={
-                      "axxa-sheet-row" +
-                      (selected ? " axxa-sheet-row-on" : "")
+                      "axxa-sheet-row" + (selected ? " axxa-sheet-row-on" : "")
                     }
                     onClick={() => onSelectEffort(lvl)}
                   >
@@ -285,6 +344,119 @@ export function ModelSheet({
                 <span className="axxa-plus-row-switch-thumb" />
               </span>
             </div>
+          </>
+        )}
+
+        {view === "more" && (
+          <>
+            <div className="axxa-sheet-header">
+              <button
+                type="button"
+                className="axxa-sheet-nav"
+                onClick={() => setView("model")}
+                aria-label="Back"
+              >
+                <Icon name="arrow-left" />
+              </button>
+              <span className="axxa-sheet-title">More models</span>
+              <span className="axxa-sheet-nav" aria-hidden="true" />
+            </div>
+
+            {models.length === 0 ? (
+              <button
+                type="button"
+                className="axxa-sheet-empty-btn"
+                onClick={() => {
+                  onOpenSettings?.();
+                  onClose();
+                }}
+                disabled={!onOpenSettings}
+              >
+                <span className="axxa-sheet-empty-title">
+                  No models added yet
+                </span>
+                <span className="axxa-sheet-empty-sub">
+                  Add models in Settings to favorite them here
+                </span>
+              </button>
+            ) : (
+              <>
+                {chips.length > 1 && (
+                  <div className="axxa-sheet-chips">
+                    {chips.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={
+                          "axxa-sheet-chip" +
+                          (chip === c.id ? " axxa-sheet-chip-on" : "")
+                        }
+                        onClick={() => setChip(c.id)}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="axxa-sheet-list">
+                  {sortedModels.map((m) => {
+                    const { name, tagline } = modelBits(provider, m, lang);
+                    const fav = isFav(m);
+                    const locked = !fav && favCount >= MAX_FAVORITES;
+                    return (
+                      <div
+                        key={m}
+                        className="axxa-sheet-row"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          onSelectModel(m);
+                          onClose();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSelectModel(m);
+                            onClose();
+                          }
+                        }}
+                      >
+                        <span className="axxa-sheet-row-text">
+                          <span className="axxa-sheet-row-name">{name}</span>
+                          {tagline && (
+                            <span className="axxa-sheet-row-desc">
+                              {tagline}
+                            </span>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          className={
+                            "axxa-sheet-star" + (fav ? " axxa-sheet-star-on" : "")
+                          }
+                          disabled={locked}
+                          aria-pressed={fav}
+                          aria-label={fav ? "Unfavorite" : "Favorite"}
+                          title={
+                            locked
+                              ? `Max ${MAX_FAVORITES} favorites`
+                              : fav
+                                ? "Unfavorite"
+                                : "Favorite"
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleFavorite(m);
+                          }}
+                        >
+                          <Icon name="star" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

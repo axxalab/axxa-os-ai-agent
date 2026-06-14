@@ -282,6 +282,29 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // Modo Voz (ref: ChatGPT iOS 133/140, Grok 63/66). v0.1.192
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [modelSheetOpen, setModelSheetOpen] = useState(false);
+  // Favoritos do seletor de modelo — chaves "provider::model" (≤5 por provider).
+  // Só esses aparecem no bottom sheet; o resto vive no "More models". v0.1.236
+  const [favoriteModels, setFavoriteModels] = useState<string[]>(
+    plugin.settings.favoriteModels ?? []
+  );
+  const handleToggleFavorite = (model: string) => {
+    const key = `${activeProviderId}::${model}`;
+    setFavoriteModels((prev) => {
+      let next: string[];
+      if (prev.includes(key)) {
+        next = prev.filter((k) => k !== key);
+      } else {
+        const count = prev.filter((k) =>
+          k.startsWith(`${activeProviderId}::`)
+        ).length;
+        if (count >= 5) return prev; // teto de 5 por provider
+        next = [...prev, key];
+      }
+      plugin.settings.favoriteModels = next;
+      void plugin.saveSettings();
+      return next;
+    });
+  };
   const [voiceURI, setVoiceURI] = useState(plugin.settings.voiceURI);
   const [voiceRate, setVoiceRate] = useState(plugin.settings.voiceRate);
   const [voiceIntroDone, setVoiceIntroDone] = useState(
@@ -1823,6 +1846,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             <ModelSheet
               provider={activeProviderId}
               models={activeModelsList}
+              favorites={favoriteModels}
+              onToggleFavorite={handleToggleFavorite}
               currentModel={activeModel}
               onSelectModel={handleHeaderModelSelect}
               currentEffort={effort}
@@ -1831,7 +1856,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               onToggleThinking={(v) =>
                 setPlusToggles((prev) => ({ ...prev, extendedThinking: v }))
               }
-              onMoreModels={handleOpenSettings}
+              onOpenSettings={handleOpenSettings}
               onClose={() => setModelSheetOpen(false)}
             />
           )}
