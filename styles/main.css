@@ -4106,6 +4106,9 @@ layout no
   width: 100%;
   max-height: 75%;
   overflow-y: auto;
+  /* sem borda: o sheet é colado na base (laterais na borda da tela) — só o radius
+     do topo + a sombra/cover separam. Popovers/menus/dropdowns mantêm a deles. */
+  border: none;
   border-radius: 22px 22px 0 0;
   padding: 12px 16px 24px 16px;
 }
