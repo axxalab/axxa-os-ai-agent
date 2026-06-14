@@ -11,7 +11,6 @@ import { hapticTick } from "../_shared/haptics";
 import { useT } from "../../i18n";
 import type AxxaPlugin from "../../main";
 import { PROVIDERS, providerConfigured } from "./StarterScreen";
-import { ModelPicker } from "./ModelPicker";
 
 /** Ícone + textos por modo. chat | vault-qa | agent. */
 function modeBits(mode: string, t: ReturnType<typeof useT>) {
@@ -41,13 +40,7 @@ interface NewChatScreenProps {
   mode: string;
   plugin: AxxaPlugin;
   provider: string;
-  model: string;
-  /** Modelos ativos por provider — curado nas Settings (mesma fonte da starter). */
-  activeModels: Record<string, string[]>;
   onProviderChange: (provider: string) => void;
-  onModelChange: (model: string) => void;
-  /** Confirma provider + modelo juntos (a arena navega entre providers). */
-  onArenaConfirm: (provider: string, model: string) => void;
   /** "+" no provider / abrir Settings. */
   onOpenSettings: () => void;
 }
@@ -58,16 +51,11 @@ export function NewChatScreen({
   mode,
   plugin,
   provider,
-  model,
-  activeModels,
   onProviderChange,
-  onModelChange,
-  onArenaConfirm,
   onOpenSettings,
 }: NewChatScreenProps) {
   const t = useT();
   const { icon, title, sub } = modeBits(mode, t);
-  const modelOptions = activeModels[provider] ?? [];
 
   // Provider segmented: só os CONFIGURADOS (+ garante o atual) e um "+" no fim
   // que abre Settings — idêntico à StarterScreen. v0.1.220
@@ -113,18 +101,6 @@ export function NewChatScreen({
           />
         </div>
 
-        {/* Modelo — seletor redesenhado (tabs por categoria + modal + favoritos). */}
-        <div className="axxa-newchat-model">
-          <label className="axxa-starter-label">{t.starter.modelLabel}</label>
-          <ModelPicker
-            provider={provider}
-            model={model}
-            modelOptions={modelOptions}
-            onModelChange={onModelChange}
-            onArenaConfirm={onArenaConfirm}
-            plugin={plugin}
-          />
-        </div>
       </div>
     </div>
   );

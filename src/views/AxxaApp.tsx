@@ -1604,11 +1604,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             mode={activeMode}
             plugin={plugin}
             provider={providerSel}
-            model={starterModel}
-            activeModels={plugin.settings.activeModels}
             onProviderChange={handleStarterProvider}
-            onModelChange={handleStarterModel}
-            onArenaConfirm={handleArenaConfirm}
             onOpenSettings={handleOpenSettings}
           />
         ) : (
