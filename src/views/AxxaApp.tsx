@@ -21,7 +21,6 @@ import { Icon } from "../components/_shared/Icon";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
-import { StarterScreen } from "../components/chat/StarterScreen";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
 import { ConversationsList } from "../components/chat/ConversationsList";
 import {
@@ -57,30 +56,16 @@ import { ProviderError, type ProviderMessage, type MessageAttachment } from "../
 import { getModelCapabilities, isGenerationModel } from "../providers/modelCapabilities";
 import {
   buildChatSystemPrompt,
-  buildAgentSystemPrompt,
   storeMessagesToProvider,
 } from "../agent/conversation";
-import {
-  makeCallSignature,
-  isLooping,
-  trimSignatures,
-} from "../agent/loopDetection";
 import { checkCompatibility } from "../providers/compatibility";
 import { IncompatibleBanner } from "../components/composer/IncompatibleBanner";
-import {
-  saveGeneration,
-  generationSupported,
-  generationSupportSummary,
-  type GenerationMediaType,
-} from "../generation/save";
 import {
   ImageGenModal,
   type ImageModelOption,
 } from "../generation/ImageGenModal";
-import { getPricing } from "../usage/pricing";
 import {
   effortToMaxTokensSmart,
-  effortToVaultLookup,
   resolveEffortConfig,
   type EffortLevel,
 } from "../components/_shared/effort";
@@ -97,22 +82,19 @@ import {
 } from "../components/_shared/chatPersistence";
 import { Notice, TFile } from "obsidian";
 import { ensureFolder } from "../components/_shared/chatPersistence";
-import { hybridSearch } from "../rag/hybrid";
 import type { AxxaCommand } from "../components/composer/completions";
-import { TOOL_DEFINITIONS, getToolDefinition } from "../agent/toolSchemas";
-import { TOOL_REGISTRY, isTransientError } from "../agent/tools";
-import { decideToolGate } from "../agent/permissions";
-import { ConfirmationModal } from "../agent/ConfirmationModal";
-import type { PermissionLevel } from "../agent/types";
 import type { ChatMessage, UserMessage, AIResponseMessage, AIErrorCode } from "../store/chat";
 import {
   makeId,
-  agentActivitySpec,
-  summarizeToolResult,
   placeholderForMode,
   describeProviderError,
   providerNeedsKey,
 } from "./axxaApp.helpers";
+import { useProjectActions } from "./useProjectActions";
+import { useGeneration } from "./useGeneration";
+import { useChatEngine } from "./useChatEngine";
+import { runAgentTurnImpl } from "./runAgentTurn";
+import type { PendingAttachmentEntry } from "./chatTypes";
 
 interface AxxaAppProps {
   plugin: AxxaPlugin;
@@ -281,17 +263,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // chat↔projeto acontece no 1º send (quando o chat id é criado).
   const pendingProjectIdRef = useRef<string | null>(null);
 
-  // Updater funcional: lê a fonte da verdade (settings.projects, atualizada
-  // sincronamente) em vez do estado React do closure — evita que duas operações
-  // concorrentes (ex: add-source durante um await + rename) percam dados. v0.1.195
-  const persistProjects = async (
-    update: (prev: Project[]) => Project[]
-  ) => {
-    const next = update(plugin.settings.projects ?? []);
-    plugin.settings.projects = next;
-    setProjects(next);
-    await plugin.saveSettings();
-  };
+  // Ações de projeto extraídas → useProjectActions (Frente 2). persistProjects é
+  // retornado porque handleSend e a edição de mensagem também o reusam.
+  const {
+    persistProjects,
+    handleSaveProject,
+    handleDeleteProject,
+    handleAddProjectSource,
+    handleRemoveProjectSource,
+  } = useProjectActions(plugin, t, {
+    projectEditor,
+    setProjects,
+    setProjectEditor,
+    setSelectedProjectId,
+  });
 
   // Modo Voz (ref: ChatGPT iOS 133/140, Grok 63/66). v0.1.192
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -314,68 +299,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setVoiceIntroDone(true);
     plugin.settings.voiceIntroDone = true;
     await plugin.saveSettings();
-  };
-
-  const handleSaveProject = async (data: {
-    name: string;
-    icon: string;
-    color: string;
-  }) => {
-    const editing = projectEditor?.project;
-    if (editing) {
-      await persistProjects((prev) =>
-        prev.map((p) => (p.id === editing.id ? { ...p, ...data } : p))
-      );
-    } else {
-      const proj: Project = {
-        id: makeProjectId(),
-        name: data.name,
-        icon: data.icon,
-        color: data.color,
-        sources: [],
-        chatIds: [],
-        createdAt: new Date().toISOString(),
-      };
-      await persistProjects((prev) => [proj, ...prev]);
-      setSelectedProjectId(proj.id);
-      new Notice(t.projects.created(proj.name));
-    }
-    setProjectEditor(null);
-  };
-
-  const handleDeleteProject = async () => {
-    const editing = projectEditor?.project;
-    if (!editing) return;
-    await persistProjects((prev) => prev.filter((p) => p.id !== editing.id));
-    setProjectEditor(null);
-    setSelectedProjectId(null);
-    new Notice(t.projects.deleted);
-  };
-
-  const handleAddProjectSource = async (projectId: string) => {
-    const path = await openVaultNotePicker(plugin.app, t);
-    if (!path) return;
-    await persistProjects((prev) =>
-      prev.map((p) =>
-        p.id === projectId && !p.sources.includes(path)
-          ? { ...p, sources: [...p.sources, path] }
-          : p
-      )
-    );
-    new Notice(t.projects.sourceAdded);
-  };
-
-  const handleRemoveProjectSource = async (
-    projectId: string,
-    path: string
-  ) => {
-    await persistProjects((prev) =>
-      prev.map((p) =>
-        p.id === projectId
-          ? { ...p, sources: p.sources.filter((s) => s !== path) }
-          : p
-      )
-    );
   };
 
   const handleNewChatInProject = async (project: Project) => {
@@ -546,270 +469,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // Handlers
   // ============================================================
 
-  // streamReply: parte reusável do fluxo de envio — vault search → comment
-  // "Pensando..." → streamChat → trata erro/abort.
-  // Lê a história ATUAL do store (não captura via closure) pra funcionar
-  // tanto no handleSend quanto no handleRegenerate (que mutou o array antes).
-  // userAttachments: imagens anexadas pela UI — propagadas pra última msg user
-  // do history quando o modelo suporta vision.
-  const streamReply = async (
-    userText: string,
-    userAttachments?: import("../providers/base").MessageAttachment[]
-  ) => {
-    const {
-      addMessage,
-      removeMessage,
-      appendToMessage,
-      updateActivity,
-      setLoading,
-      setStreamingMessageId,
-      setAgentSteps,
-      addUsage,
-      startStreamTimer,
-      tickStreamTokens,
-      endStreamTimer,
-    } = useChatStore.getState();
-
-    // Pre-flight cold-start: sem API key não adianta nem mostrar "Pensando..." —
-    // emite direto a bolha de erro ACIONÁVEL (com "Abrir Configurações"). v0.1.147
-    if (
-      providerNeedsKey(activeProviderId) &&
-      !apiKeyFor(activeProviderId).trim()
-    ) {
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(activeProvider.name)}`,
-        isError: true,
-        errorCode: "no-key",
-      });
-      return;
-    }
-
-    // Resolve config completo do effort atual (com overrides do usuário).
-    // Centraliza todos os params escaláveis em um objeto só.
-    const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
-
-    // Modo Vault Q&A: busca notas relevantes ANTES da chamada
-    // topK e excerptChars escalam com effort (low=3×300 ... max=12×2000)
-    // Se índice RAG existe → busca semântica (cosine sim sobre embeddings).
-    // Senão → fallback pra busca keyword (busca por título + ocorrências).
-    let vaultContextBlock = "";
-    if (activeMode === "vault-qa") {
-      const { topK } = effortToVaultLookup(effort, plugin.settings.effortConfigs);
-
-      // Activity de busca — pulsa enquanto procura, vira check com resumo
-      const searchActivityId = addMessage({
-        type: "ai-comment",
-        content: "",
-        activity: {
-          phase: "pending",
-          iconPending: "radar",
-          iconDone: "check",
-          pendingText: `Buscando até ${topK} trechos (híbrido)`,
-          doneText: `Busca concluída`,
-        },
-      });
-
-      try {
-        // Busca híbrida: semantic (RAG) + keyword fundidos via RRF, re-rankeados
-        // pelo grafo de links. Funciona com ou sem índice (cai pra keyword).
-        const hits = await hybridSearch({
-          app: plugin.app,
-          index: plugin.vectorIndex,
-          creds: {
-            openaiApiKey: plugin.settings.openaiApiKey,
-            openrouterApiKey: plugin.settings.openrouterApiKey,
-            geminiApiKey: plugin.settings.geminiApiKey,
-            nimApiKey: plugin.settings.nimApiKey,
-          },
-          query: userText,
-          topK,
-        });
-        if (hits.length > 0) {
-          // Cabeçalho com o título CITÁVEL ([[basename]]) + path de referência,
-          // pra IA citar a fonte exata e o link abrir a nota no clique. v0.1.137
-          vaultContextBlock = hits
-            .map((h) => {
-              const base = h.path.replace(/\.md$/i, "").split("/").pop() ?? h.path;
-              return `### [[${base}]]\n_(${h.path})_\n\n${h.text}`;
-            })
-            .join("\n\n---\n\n");
-          updateActivity(searchActivityId, {
-            phase: "done",
-            doneText: `${hits.length} trecho${hits.length > 1 ? "s" : ""} encontrado${hits.length > 1 ? "s" : ""}`,
-          });
-        } else {
-          updateActivity(searchActivityId, {
-            phase: "done",
-            iconDone: "circle-slash",
-            doneText: t.vault.notFound,
-          });
-        }
-      } catch (err) {
-        console.error("[axxa] vault search falhou:", err);
-        updateActivity(searchActivityId, {
-          phase: "failed",
-          iconFailed: "x-circle",
-          failedText: `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`,
-        });
-      }
-    }
-
-    // Activity de "Pensando..." estilo Claude chat (sparkles pulsando).
-    // Vira done quando o primeiro token chega (em vez de ser removido) —
-    // mostra visualmente que o LLM começou a responder.
-    const commentId = addMessage({
-      type: "ai-comment",
-      content: "",
-      activity: {
-        phase: "pending",
-        iconPending: "sparkles",
-        iconDone: "check",
-        pendingText: t.ai.thinking,
-        doneText: t.ai.thinking,
-      },
-    });
-    setLoading(true);
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    let responseId: string | null = null;
-    let reasoningBuf = "";
-
-    try {
-      // Inlina notes anexadas no system prompt — não vão pro wire visual,
-      // mas o LLM "vê" o conteúdo das notas marcadas pra esta turn.
-      let noteContextBlock = "";
-      if (userAttachments) {
-        const noteAtts = userAttachments.filter(
-          (a): a is import("../providers/base").NoteAttachment =>
-            a.type === "note"
-        );
-        if (noteAtts.length > 0) {
-          noteContextBlock =
-            "\n\n[Notas anexadas pelo usuário]\n\n" +
-            noteAtts.map((n) => `### ${n.path}\n\n${n.content}`).join("\n\n---\n\n");
-        }
-      }
-      // System prompt + history centralizados em agent/conversation.ts.
-      const fullSystem = buildChatSystemPrompt({
-        persona: useChatStore.getState().sessionPersona,
-        base: t.systemPrompt.base,
-        vaultSuffix: t.systemPrompt.vaultQaSuffix,
-        vaultBlock: vaultContextBlock,
-        noteBlock: noteContextBlock,
-        styleInstruction: resolveStyleInstruction(),
-      });
-      const history: ProviderMessage[] = [
-        { role: "system", content: fullSystem },
-        ...storeMessagesToProvider(
-          useChatStore.getState().messages,
-          userAttachments
-        ),
-      ];
-
-      const apiKey = apiKeyFor(activeProviderId);
-
-      const maxTokens = effortToMaxTokensSmart(
-        effort,
-        getContextWindow(activeModel),
-        plugin.settings.effortConfigs
-      );
-      let lastOutputTokens = 0;
-
-      startStreamTimer();
-      await activeProvider.streamChat(
-        {
-          model: activeModel,
-          messages: history,
-          maxTokens,
-          temperature: effortCfg.temperature,
-        },
-        apiKey,
-        (token) => {
-          if (responseId === null) {
-            // Primeiro token: marca "Pensando..." como done (ícone pop pra check)
-            // em vez de remover — fica registrado na timeline da conversa.
-            updateActivity(commentId, { phase: "done" });
-            responseId = addMessage({ type: "ai-response", content: token });
-            setStreamingMessageId(responseId);
-            // Flush do raciocínio bufferizado antes do 1º token de conteúdo.
-            // Limpa o buffer: a partir daqui os deltas vão direto pra mensagem.
-            if (reasoningBuf) {
-              useChatStore.getState().appendReasoning(responseId, reasoningBuf);
-              reasoningBuf = "";
-            }
-          } else {
-            appendToMessage(responseId, token);
-          }
-          tickStreamTokens(token);
-        },
-        (usage) => {
-          lastOutputTokens = usage.output;
-          addUsage(usage.input, usage.output);
-        },
-        controller.signal,
-        (reasoningDelta) => {
-          // Reasoning costuma vir ANTES do conteúdo (R1). Buffera até a
-          // ai-response existir; depois acumula direto na mensagem.
-          reasoningBuf += reasoningDelta;
-          if (responseId !== null) {
-            useChatStore.getState().appendReasoning(responseId, reasoningDelta);
-          }
-        }
-      );
-      endStreamTimer();
-
-      // Heurística de truncamento: se o output bateu ~o teto de tokens, a
-      // resposta provavelmente foi cortada → habilita o botão "Continuar".
-      if (
-        responseId !== null &&
-        lastOutputTokens > 0 &&
-        lastOutputTokens >= maxTokens * 0.95
-      ) {
-        useChatStore.getState().setTruncated(responseId, true);
-      }
-
-      if (responseId === null) {
-        updateActivity(commentId, { phase: "done" });
-        addMessage({ type: "ai-response", content: t.ai.emptyResponse });
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        if (responseId === null) {
-          updateActivity(commentId, {
-            phase: "failed",
-            iconFailed: "circle-stop",
-            failedText: t.ai.interrupted,
-          });
-        }
-      } else {
-        if (responseId === null) {
-          updateActivity(commentId, {
-            phase: "failed",
-            iconFailed: "x-circle",
-            failedText: t.ai.failed,
-          });
-        }
-        const { message, code } = describeProviderError(
-          err,
-          t,
-          activeProvider.name
-        );
-        addMessage({
-          type: "ai-response",
-          content: `${t.ai.errorPrefix} ${message}`,
-          isError: true,
-          errorCode: code,
-        });
-      }
-    } finally {
-      setLoading(false);
-      setStreamingMessageId(null);
-      abortRef.current = null;
-    }
-  };
+  // Motor de chat (stream) extraído → useChatEngine (Frente 2).
+  const { streamReply } = useChatEngine({
+    plugin,
+    t,
+    abortRef,
+    activeProviderId,
+    activeProvider,
+    activeModel,
+    activeMode,
+    apiKeyFor,
+    effort,
+    resolveStyleInstruction,
+  });
 
   // ============================================================
   // Agent loop — STREAMING + tool calls (v0.1.40)
@@ -829,594 +501,34 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   //   - Provider sem streaming real (NIM) cai num pseudo-stream que ainda
   //     emite onToken — UX consistente
   // ============================================================
-  const runAgentTurn = async (
+  const runAgentTurn = (
     userText: string,
     userAttachments?: import("../providers/base").MessageAttachment[]
-  ) => {
-    const {
-      addMessage,
-      removeMessage,
-      appendToMessage,
-      updateActivity,
-      setLoading,
-      setStreamingMessageId,
-      setAgentSteps,
-      addUsage,
-      startStreamTimer,
-      tickStreamTokens,
-      endStreamTimer,
-    } = useChatStore.getState();
-
-    // Pre-flight cold-start: sem API key, erro acionável direto. v0.1.147
-    if (
-      providerNeedsKey(activeProviderId) &&
-      !apiKeyFor(activeProviderId).trim()
-    ) {
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(activeProvider.name)}`,
-        isError: true,
-        errorCode: "no-key",
-      });
-      return;
-    }
-
-    if (!activeProvider.supportsTools) {
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} O provider "${activeProvider.name}" não suporta tool calling. Use OpenAI (que tem function calling) pro Agent Mode.`,
-      });
-      return;
-    }
-
-    setLoading(true);
-    // Activity inicial "Pensando" — pulsa enquanto LLM processa, vira check
-    // quando o stream começa (primeiro token).
-    const commentId = addMessage({
-      type: "ai-comment",
-      content: "",
-      activity: {
-        phase: "pending",
-        iconPending: "sparkles",
-        iconDone: "check",
-        pendingText: t.agent.thinking,
-        doneText: t.agent.thinking,
-      },
-    });
-
-    const permissionLevel: PermissionLevel = (plugin.settings.agentPermissionLevel ||
-      "ask") as PermissionLevel;
-    // Diff-approval (aposta #2): toda ação que ESCREVE passa por preview/diff
-    // antes de gravar (default ON). "Aprovar todas" reseta a cada rodada.
-    const diffApproval = plugin.settings.agentDiffApproval !== false;
-    agentApproveAllRef.current = false;
-
-    // Config do effort atual — agentMaxTurns, retry, loop detection, etc.
-    const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
-
-    // System prompt + history do agent (persona é PREPENDIDA no agent) —
-    // centralizados em agent/conversation.ts.
-    const history: ProviderMessage[] = [
+  ) =>
+    runAgentTurnImpl(
       {
-        role: "system",
-        content: buildAgentSystemPrompt(
-          useChatStore.getState().sessionPersona,
-          t.agent.systemPrompt
-        ),
+        plugin,
+        t,
+        abortRef,
+        agentApproveAllRef,
+        activeProviderId,
+        activeProvider,
+        activeModel,
+        activeMode,
+        apiKeyFor,
+        effort,
+        resolveStyleInstruction,
+        pendingAttachments,
+        setPendingAttachments,
+        buildImageModelOptions,
+        runImageGeneration,
       },
-      // toolMode=true → o agent declara tools, então agentSteps são expandidos
-      // pro shape wire (replay PRECISO). Nos demais modos fica false (achata).
-      ...storeMessagesToProvider(
-        useChatStore.getState().messages,
-        userAttachments,
-        true
-      ),
-    ];
-
-    const tools = TOOL_DEFINITIONS.map((td) => ({
-      name: td.name,
-      description: td.description,
-      parameters: td.parameters,
-    }));
-
-    const apiKey = apiKeyFor(activeProviderId);
-
-    // MAX_TURNS agora vem do effort config — low=5, med=12, high=25,
-    // xhigh=60, max=200. User pode override via Settings → Effort.
-    // 0 = uncapped (loop detection é o único limite).
-    const MAX_TURNS = effortCfg.agentMaxTurns;
-    const isUncapped = MAX_TURNS === 0;
-    // Loop detection: guarda assinatura das últimas N tool calls pra detectar
-    // o LLM ficar batendo a mesma chamada em loop infinito. Quando detecta,
-    // injeta uma msg "tool" forçada pedindo pra mudar de estratégia.
-    const loopWindow = effortCfg.loopDetectionWindow;
-    const recentCallSignatures: string[] = [];
-    // v0.1.228: contador de nudges que NÃO é zerado junto com o buffer — depois
-    // de MAX_LOOP_NUDGES tentativas de reconsideração seguidas, aborta de vez
-    // (antes o comentário prometia "aborta em 3 nudges" mas o while nunca cortava).
-    let loopNudges = 0;
-    const MAX_LOOP_NUDGES = 3;
-    // Ações de tool do run inteiro — anexadas à resposta final p/ continuidade.
-    const runSteps: import("../agent/types").AIToolStep[] = [];
-
-    let turn = 0;
-    let firstTurn = true;
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      while (isUncapped || turn < MAX_TURNS) {
-        turn++;
-
-        // Cria msg ai-response que vai ser preenchida token-a-token.
-        // Cada turno é um message separado pra ficar claro qual tokens
-        // pertencem a qual round de tool execution.
-        let responseId: string | null = null;
-        const onToken = (token: string) => {
-          if (responseId === null) {
-            // Primeiro token do primeiro turno: marca a activity de "Pensando"
-            // como done (ícone vira check com pop animation) e inicia a resposta.
-            if (firstTurn) {
-              updateActivity(commentId, { phase: "done" });
-              firstTurn = false;
-            }
-            responseId = addMessage({ type: "ai-response", content: token });
-            setStreamingMessageId(responseId);
-          } else {
-            appendToMessage(responseId, token);
-          }
-          tickStreamTokens(token);
-        };
-
-        startStreamTimer();
-        const response = await activeProvider.streamChat(
-          {
-            model: activeModel,
-            messages: history,
-            maxTokens: effortToMaxTokensSmart(
-              effort,
-              getContextWindow(activeModel),
-              plugin.settings.effortConfigs
-            ),
-            temperature: effortCfg.temperature,
-            tools,
-          },
-          apiKey,
-          onToken,
-          (usage) => addUsage(usage.input, usage.output),
-          controller.signal
-        );
-        endStreamTimer();
-        setStreamingMessageId(null);
-
-        // Caso 1: stream terminou sem tool_calls = resposta final
-        if (!response.toolCalls || response.toolCalls.length === 0) {
-          // Se não veio nem um token (raro), insere uma resposta vazia
-          if (responseId === null) {
-            if (firstTurn) {
-              updateActivity(commentId, { phase: "done" });
-              firstTurn = false;
-            }
-            responseId = addMessage({
-              type: "ai-response",
-              content: response.content || t.ai.emptyResponse,
-            });
-          }
-          // Anexa as ações do run à resposta final → continuidade ao reabrir.
-          if (runSteps.length > 0 && responseId) {
-            setAgentSteps(responseId, runSteps);
-          }
-          return;
-        }
-
-        // Caso 2: tool_calls — finaliza mensagem do turno (se já criada) e
-        // adiciona msg do assistant na history pra próximo loop.
-        if (firstTurn) {
-          updateActivity(commentId, { phase: "done" });
-          firstTurn = false;
-        }
-        history.push({
-          role: "assistant",
-          content: response.content ?? "",
-          toolCalls: response.toolCalls,
-        });
-
-        // Loop detection: assinatura = name + JSON(args). Se a mesma assinatura
-        // aparecer `loopWindow` vezes consecutivas, injetamos um nudge na
-        // history e cortamos o loop. Evita o LLM "ficar girando" sem entender
-        // que tá repetindo a mesma chamada que já falhou.
-        let loopDetected = false;
-        if (loopWindow > 0) {
-          for (const call of response.toolCalls) {
-            recentCallSignatures.push(
-              makeCallSignature(call.name, call.arguments)
-            );
-          }
-          trimSignatures(recentCallSignatures, loopWindow * 4);
-          loopDetected = isLooping(recentCallSignatures, loopWindow);
-        }
-
-        // Executa as tool calls — em paralelo se effort permite e há >1 call,
-        // senão sequencial. Modais de confirmação são SEMPRE sequenciais
-        // (não dá pra abrir 2 ConfirmationModal ao mesmo tempo).
-        type CallResult = {
-          callId: string;
-          content: string;
-          activityId: string;
-          spec: ReturnType<typeof agentActivitySpec>;
-          meta: string;
-          ok: boolean;
-        };
-
-        // Pre-check de permissão (sequencial) e cria placeholders de activity.
-        // Isso garante que o usuário vê os modais um por vez e a ordem do
-        // resultado preserva a ordem em que o LLM pediu.
-        const preparedCalls: Array<{
-          call: typeof response.toolCalls[number];
-          def: ReturnType<typeof getToolDefinition>;
-          approved: boolean;
-          activityId: string;
-          spec: ReturnType<typeof agentActivitySpec>;
-        }> = [];
-        for (const call of response.toolCalls) {
-          // generate_image: fluxo PRÓPRIO (modal de confirmação modelo+preço+
-          // conectado + render inline), fora do registry de tools de vault. O
-          // usuário confirma o modelo; a imagem entra na conversa. v0.1.167
-          if (call.name === "generate_image") {
-            const genPrompt =
-              typeof call.arguments.prompt === "string"
-                ? call.arguments.prompt
-                : "";
-            const imgAtt = pendingAttachments.find(
-              (p) => p.attachment.type === "image"
-            );
-            let inputImage: { data: string; mimeType: string } | undefined;
-            if (imgAtt && imgAtt.attachment.type === "image") {
-              const mm = /^data:([^;]+);base64,(.+)$/.exec(
-                imgAtt.attachment.dataUrl
-              );
-              if (mm) inputImage = { mimeType: mm[1], data: mm[2] };
-              // v0.1.228: tinha imagem anexada mas o data URL não decodificou —
-              // avisa em vez de cair silenciosamente pra text2image (a opção
-              // IMG2IMG nem aparece no modal porque hasInputImage fica false).
-              else new Notice(t.imageGen.inputImageDecodeFailed);
-            }
-            const modal = new ImageGenModal(plugin.app, {
-              options: buildImageModelOptions(),
-              initialPrompt: genPrompt,
-              hasInputImage: !!inputImage,
-              strings: t.imageGen,
-            });
-            const choice = await modal.openAndWait();
-            let resultText: string;
-            let ok = false;
-            if (!choice) {
-              resultText =
-                "Usuário cancelou a geração da imagem. NÃO tente de novo automaticamente — pergunte o que ele prefere.";
-            } else {
-              const gen = await runImageGeneration(
-                choice.prompt,
-                choice.providerId,
-                choice.model,
-                choice.useInputImage ? inputImage : undefined
-              );
-              ok = gen.ok;
-              // v0.1.228: imagem anexada CONSUMIDA com sucesso → limpa o
-              // pending pra não vazar pra próxima call (consistente com
-              // handleCreateImage, que também só limpa quando useInputImage).
-              if (gen.ok && choice.useInputImage && inputImage) {
-                setPendingAttachments([]);
-              }
-              resultText = gen.ok
-                ? `Imagem gerada (${choice.model}) e já renderizada na conversa: ${gen.paths.join(", ")}. NÃO repita a geração; comente o resultado pro usuário.`
-                : `Falha ao gerar imagem: ${gen.error}`;
-            }
-            history.push({
-              role: "tool",
-              toolCallId: call.id,
-              content: resultText,
-            });
-            runSteps.push({
-              id: call.id,
-              name: "generate_image",
-              arguments: call.arguments,
-              result: resultText.slice(0, 1200),
-              ok,
-            });
-            continue;
-          }
-          const def = getToolDefinition(call.name);
-          if (!def) {
-            addMessage({
-              type: "ai-comment",
-              content: "",
-              activity: {
-                phase: "failed",
-                iconPending: "wrench",
-                iconFailed: "alert-triangle",
-                pendingText: `Tool desconhecida: ${call.name}`,
-                failedText: `Tool desconhecida: ${call.name}`,
-              },
-            });
-            history.push({
-              role: "tool",
-              toolCallId: call.id,
-              content: `Tool "${call.name}" não existe. Use uma das tools disponíveis.`,
-            });
-            continue;
-          }
-
-          // Gate: roda direto ("auto") ou abre o preview de confirmação.
-          // Lógica (permissão + diff-approval + irreversível) em permissions.ts.
-          const gate = decideToolGate(def, permissionLevel, {
-            diffApproval,
-            approveAll: agentApproveAllRef.current,
-          });
-          let approved = gate === "auto";
-          if (gate === "confirm") {
-            const modal = new ConfirmationModal(plugin.app, {
-              toolCall: call,
-              definition: def,
-            });
-            const res = await modal.openAndWait();
-            approved = res.approved;
-            if (res.approveAll) agentApproveAllRef.current = true;
-          }
-
-          if (!approved) {
-            addMessage({
-              type: "ai-comment",
-              content: "",
-              activity: {
-                phase: "failed",
-                iconPending: "shield",
-                iconFailed: "ban",
-                pendingText: `Negado: ${call.name}`,
-                failedText: `Negado: ${call.name}`,
-              },
-            });
-            history.push({
-              role: "tool",
-              toolCallId: call.id,
-              content:
-                "User negou esta ação. NÃO tente repetir essa mesma chamada — considere outra abordagem ou pergunte ao user.",
-            });
-            continue;
-          }
-
-          const spec = agentActivitySpec(call.name, call.arguments);
-          const activityId = addMessage({
-            type: "ai-comment",
-            content: "",
-            activity: {
-              phase: "pending",
-              iconPending: spec.iconPending,
-              iconDone: spec.iconDone,
-              pendingText: spec.pendingText,
-              doneText: spec.doneText,
-            },
-          });
-          preparedCalls.push({ call, def, approved, activityId, spec });
-        }
-
-        // Executor com retry pra cada call individual.
-        const execCall = async (
-          prep: (typeof preparedCalls)[number]
-        ): Promise<CallResult> => {
-          const { call, activityId, spec } = prep;
-          const executor = TOOL_REGISTRY[call.name];
-          const maxAttempts = 1 + Math.max(0, effortCfg.toolRetryOnError);
-          let lastErr: unknown = null;
-          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            try {
-              const result = await executor(
-                {
-                  app: plugin.app,
-                  vectorIndex: plugin.vectorIndex,
-                  embed: {
-                    openaiApiKey: plugin.settings.openaiApiKey,
-                    openrouterApiKey: plugin.settings.openrouterApiKey,
-                    geminiApiKey: plugin.settings.geminiApiKey,
-                    nimApiKey: plugin.settings.nimApiKey,
-                  },
-                },
-                call.arguments
-              );
-              const meta = summarizeToolResult(call.name, result);
-              // Detalhe expansível do chip (estilo Claude Code) — snippet do
-              // resultado, truncado pra não estourar a timeline.
-              const detail =
-                result && result.length > 800
-                  ? result.slice(0, 800).trimEnd() + "\n…"
-                  : result || undefined;
-              updateActivity(activityId, { phase: "done", detail }, meta);
-              return {
-                callId: call.id,
-                content: result,
-                activityId,
-                spec,
-                meta,
-                ok: true,
-              };
-            } catch (err) {
-              lastErr = err;
-              // Só retenta erros transitórios (network / fs lock). Path errado
-              // ou arg inválido não vão dar certo no retry — cai direto.
-              const msg = err instanceof Error ? err.message : "";
-              if (!isTransientError(msg) || attempt === maxAttempts) break;
-            }
-          }
-          const msg =
-            lastErr instanceof Error ? lastErr.message : "Erro desconhecido.";
-          updateActivity(
-            activityId,
-            {
-              phase: "failed",
-              iconFailed: "x-circle",
-              failedText: spec.pendingText.replace(
-                /^(Lendo|Editando|Criando|Movendo|Deletando|Listando|Executando)/,
-                "Falhou em"
-              ),
-            },
-            msg
-          );
-          return {
-            callId: call.id,
-            content: `ERRO: ${msg}. NÃO repita essa mesma chamada — ajuste path/args ou tente outra abordagem.`,
-            activityId,
-            spec,
-            meta: "",
-            ok: false,
-          };
-        };
-
-        let results: CallResult[];
-        if (effortCfg.parallelToolCalls && preparedCalls.length > 1) {
-          // Paralelo POR GRUPO de path (v0.1.228): calls que tocam o MESMO
-          // arquivo (path/from/to normalizado) rodam serializadas entre si pra
-          // evitar race read-modify-write; calls de paths distintos / read-only
-          // (sem path → chave única) seguem paralelas. Mantém a ordem original.
-          const indexed = preparedCalls.map((prep, idx) => ({ prep, idx }));
-          const groups = new Map<string, typeof indexed>();
-          for (const item of indexed) {
-            const a = item.prep.call.arguments as Record<string, unknown>;
-            const writeKey = [a.path, a.from, a.to]
-              .filter((v) => typeof v === "string" && v)
-              .map((v) => String(v).replace(/^\/+|\/+$/g, ""))
-              .join("→");
-            // Sem path de escrita → chave única por call (não serializa nada).
-            const key = writeKey || `__solo_${item.idx}`;
-            const bucket = groups.get(key);
-            if (bucket) bucket.push(item);
-            else groups.set(key, [item]);
-          }
-          results = new Array<CallResult>(preparedCalls.length);
-          await Promise.all(
-            [...groups.values()].map(async (bucket) => {
-              for (const { prep, idx } of bucket) {
-                results[idx] = await execCall(prep);
-              }
-            })
-          );
-        } else {
-          results = [];
-          for (const prep of preparedCalls) {
-            results.push(await execCall(prep));
-          }
-        }
-        for (const r of results) {
-          history.push({
-            role: "tool",
-            toolCallId: r.callId,
-            content: r.content,
-          });
-          // Acumula pra persistência (result truncado p/ não inchar o .md).
-          const call = response.toolCalls.find((c) => c.id === r.callId);
-          if (call) {
-            runSteps.push({
-              id: r.callId,
-              name: call.name,
-              arguments: call.arguments,
-              result: r.content.slice(0, 1200),
-              ok: r.ok,
-            });
-          }
-        }
-
-        // Se detectou loop, injeta nudge pro LLM e segue um turn — se ele
-        // insistir, dá outro turn e o próximo check vai cortar denovo.
-        // Se o loop for muito persistente (3 nudges seguidos), aborta de vez.
-        if (loopDetected) {
-          loopNudges++;
-          // v0.1.228: depois de MAX_LOOP_NUDGES reconsiderações seguidas, aborta
-          // de vez — o contador NÃO é zerado com o buffer, então insistência
-          // persistente quebra o while em vez de girar pra sempre.
-          if (loopNudges >= MAX_LOOP_NUDGES) {
-            const loopId = addMessage({
-              type: "ai-response",
-              content: t.agent.loopAborted,
-            });
-            if (runSteps.length > 0) setAgentSteps(loopId, runSteps);
-            return;
-          }
-          history.push({
-            role: "user",
-            content:
-              "⚠️ Detectei que você repetiu a mesma tool call exata várias vezes. " +
-              "Isso indica que sua abordagem atual não está funcionando. " +
-              "PARE de repetir, RECONSIDERE a estratégia (talvez você precise " +
-              "de informação adicional — tente vault_list/vault_read em outro path) " +
-              "OU pergunte ao usuário pra ele esclarecer. Não repita a mesma chamada.",
-          });
-          addMessage({
-            type: "ai-comment",
-            content: "",
-            activity: {
-              phase: "failed",
-              iconPending: "rotate-cw",
-              iconFailed: "alert-triangle",
-              pendingText: "Loop detectado — pedindo reconsideração",
-              failedText: "Loop detectado — pedi reconsideração ao agent",
-            },
-          });
-          // Limpa o histórico de assinaturas pra dar chance limpa ao retry
-          // (mas NÃO o loopNudges — ele acumula pra forçar o abort acima).
-          recentCallSignatures.length = 0;
-        }
-      }
-      const maxId = addMessage({
-        type: "ai-response",
-        content: t.agent.maxTurnsReached(MAX_TURNS),
-      });
-      if (runSteps.length > 0) setAgentSteps(maxId, runSteps);
-    } catch (err) {
-      if (firstTurn) {
-        // Em caso de erro antes do primeiro token, marca o "Pensando..." como
-        // failed (ícone vira X) em vez de remover — dá feedback claro do que aconteceu.
-        if (err instanceof DOMException && err.name === "AbortError") {
-          updateActivity(commentId, {
-            phase: "failed",
-            iconFailed: "circle-stop",
-            failedText: t.ai.interrupted,
-          });
-        } else {
-          updateActivity(commentId, {
-            phase: "failed",
-            iconFailed: "x-circle",
-            failedText: t.ai.failed,
-          });
-        }
-      }
-      if (err instanceof DOMException && err.name === "AbortError") {
-        // Abort silencioso — usuário clicou em parar
-      } else {
-        const { message, code } = describeProviderError(
-          err,
-          t,
-          activeProvider.name
-        );
-        addMessage({
-          type: "ai-response",
-          content: `${t.ai.errorPrefix} ${message}`,
-          isError: true,
-          errorCode: code,
-        });
-      }
-    } finally {
-      setLoading(false);
-      setStreamingMessageId(null);
-      endStreamTimer();
-      abortRef.current = null;
-    }
-  };
+      userText,
+      userAttachments
+    );
 
   // Anexos pendentes (multi-tipo) — limpa após envio.
   // Cada attachment ganha id estável pra UI tracking — não persiste no .md.
-  interface PendingAttachmentEntry {
-    id: string;
-    attachment: MessageAttachment;
-    name: string;
-  }
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachmentEntry[]>([]);
   const makeAttachmentId = () =>
     `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1507,344 +619,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // do modelo, salva o resultado em axxa-ai/generation/{type}/ + sidecar .md
   // com frontmatter, e renderiza a mídia inline na conversa.
   // ============================================================
-  const runGenerationTurn = async (
-    prompt: string,
-    caps: ReturnType<typeof getModelCapabilities>
-  ) => {
-    const {
-      addMessage,
-      updateActivity,
-      setLoading,
-      newChat,
-    } = useChatStore.getState();
-    void newChat;
-
-    setLoading(true);
-    // v0.1.228: registra um AbortController do turno de geração no abortRef pra
-    // o Stop não operar num controller STALE de um turno de chat anterior. (O
-    // sinal ainda não chega ao provider — generateImage/Audio/Video não aceitam
-    // signal na API atual — mas o lifecycle do abortRef fica correto e pronto
-    // pra propagar quando a base.ts ganhar o parâmetro.)
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const mediaType: GenerationMediaType = caps.imageGen
-      ? "image"
-      : caps.audioGen
-        ? "audio"
-        : "video";
-
-    // Pre-flight HONESTO: o modelo tem a cap, mas o provider implementa de fato?
-    // (ex: Veo/Sora flagam videoGen, mas não há generateVideo). Avisa com clareza
-    // em vez de deixar estourar "Provider não implementa…". Auditoria v0.1.164.
-    if (!generationSupported(activeProviderId, mediaType)) {
-      setLoading(false);
-      if (abortRef.current === controller) abortRef.current = null;
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${t.ai.genUnsupported(mediaType, generationSupportSummary())}`,
-        isError: true,
-        errorCode: "unknown",
-      });
-      return;
-    }
-
-    const activityId = addMessage({
-      type: "ai-comment",
-      content: "",
-      activity: {
-        phase: "pending",
-        iconPending: mediaType === "image" ? "image-plus" : mediaType === "audio" ? "volume-2" : "video",
-        iconDone: "check",
-        pendingText: mediaType === "image"
-          ? "Gerando imagem..."
-          : mediaType === "audio"
-            ? "Gerando áudio..."
-            : "Gerando vídeo...",
-        doneText: "",
-      },
-    });
-
-    try {
-      const provider = activeProvider;
-      const apiKey = apiKeyFor(activeProviderId);
-      let items;
-      if (mediaType === "image") {
-        if (!provider.generateImage) {
-          throw new Error(`Provider "${provider.name}" não implementa generateImage.`);
-        }
-        items = await provider.generateImage(
-          { model: activeModel, prompt, size: "1024x1024" },
-          apiKey
-        );
-      } else if (mediaType === "audio") {
-        if (!provider.generateAudio) {
-          throw new Error(`Provider "${provider.name}" não implementa generateAudio.`);
-        }
-        items = await provider.generateAudio(
-          { model: activeModel, prompt },
-          apiKey
-        );
-      } else {
-        if (!provider.generateVideo) {
-          throw new Error(`Provider "${provider.name}" não implementa generateVideo.`);
-        }
-        items = await provider.generateVideo(
-          { model: activeModel, prompt },
-          apiKey
-        );
-      }
-
-      // Salva cada item gerado no vault com sidecar de metadata
-      const savedPaths: string[] = [];
-      for (const item of items) {
-        const result = await saveGeneration(
-          plugin.app,
-          plugin.settings.generationPath,
-          item.data,
-          {
-            id: makeId(),
-            type: mediaType,
-            provider: activeProviderId,
-            model: activeModel,
-            prompt,
-            created: new Date().toISOString(),
-            size: item.data.byteLength,
-            mime: item.mime,
-            width: item.width,
-            height: item.height,
-            duration: item.duration,
-            seed: item.seed,
-            chatId: useChatStore.getState().currentChatId ?? undefined,
-          }
-        );
-        savedPaths.push(result.mediaPath);
-      }
-
-      updateActivity(
-        activityId,
-        {
-          phase: "done",
-          doneText: `${items.length} ${mediaType === "image" ? "imagem" : mediaType === "audio" ? "áudio" : "vídeo"}${items.length > 1 ? "s" : ""} gerado${items.length > 1 ? "s" : ""}`,
-        },
-        savedPaths[0]
-      );
-
-      // Resposta com wikilinks pra cada mídia salva (renderizado como embed pelo Obsidian)
-      const responseContent = savedPaths
-        .map((p) => mediaType === "image" ? `![[${p}]]` : `[[${p}]]`)
-        .join("\n\n");
-      addMessage({ type: "ai-response", content: responseContent });
-    } catch (err) {
-      const { message, code } = describeProviderError(
-        err,
-        t,
-        activeProvider.name
-      );
-      updateActivity(
-        activityId,
-        {
-          phase: "failed",
-          iconFailed: "x-circle",
-          failedText: t.ai.failed,
-        },
-        message
-      );
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${message}`,
-        isError: true,
-        errorCode: code,
-      });
-    } finally {
-      setLoading(false);
-      // Só limpa se ainda for o NOSSO controller (não clobra um turno mais novo).
-      if (abortRef.current === controller) abortRef.current = null;
-    }
-  };
-
-  // ============================================================
-  // Geração de imagem IN-CHAT (sem trocar de modelo) — v0.1.166
-  // O fallback que o user pediu: abre um modal de confirmação (modelo + preço +
-  // conectado), gera com o modelo escolhido e injeta a imagem NA CONVERSA ATUAL.
-  // Suporta IMG2IMG quando há imagem anexada e o modelo edita (Nano Banana).
-  // ============================================================
-
-  /** Enumera os modelos de imagem ATIVOS (que o plugin gera de fato) com preço
-   *  por imagem + se o provider está conectado (first-user case). */
-  const buildImageModelOptions = (): ImageModelOption[] => {
-    const opts: ImageModelOption[] = [];
-    const active = plugin.settings.activeModels ?? {};
-    for (const providerId of Object.keys(active)) {
-      if (!generationSupported(providerId, "image")) continue;
-      for (const model of active[providerId] ?? []) {
-        if (!getModelCapabilities(providerId, model).imageGen) continue;
-        const pricing = getPricing(providerId, model);
-        opts.push({
-          providerId,
-          providerLabel: getProvider(providerId).name,
-          model,
-          pricePerImage: pricing.imagePerCall ?? undefined,
-          connected:
-            providerId === "ollama" ? true : apiKeyFor(providerId).trim().length > 0,
-          // Edição (IMG2IMG) hoje só no Nano Banana.
-          supportsEdit:
-            providerId === "gemini" && model.startsWith("gemini-2.5-flash-image"),
-        });
-      }
-    }
-    return opts;
-  };
-
-  /** Gera UMA imagem com provider/modelo explícitos e injeta na conversa atual.
-   *  Retorna o resultado (pra tool do agente reportar). NÃO mexe no loading
-   *  global — quem chama gerencia. */
-  const runImageGeneration = async (
-    prompt: string,
-    providerId: string,
-    model: string,
-    inputImage?: { data: string; mimeType: string }
-  ): Promise<{ ok: boolean; paths: string[]; error?: string }> => {
-    const { addMessage, updateActivity } = useChatStore.getState();
-    const provider = getProvider(providerId);
-    const apiKey = apiKeyFor(providerId);
-    if (providerNeedsKey(providerId) && !apiKey.trim()) {
-      const msg = t.ai.err.noKey(provider.name);
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${msg}`,
-        isError: true,
-        errorCode: "no-key",
-      });
-      return { ok: false, paths: [], error: msg };
-    }
-    if (!generationSupported(providerId, "image") || !provider.generateImage) {
-      const msg = t.ai.genUnsupported("image", generationSupportSummary());
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${msg}`,
-        isError: true,
-        errorCode: "unknown",
-      });
-      return { ok: false, paths: [], error: msg };
-    }
-    const activityId = addMessage({
-      type: "ai-comment",
-      content: "",
-      activity: {
-        phase: "pending",
-        iconPending: inputImage ? "wand-2" : "image-plus",
-        iconDone: "check",
-        pendingText: inputImage ? "Editando imagem..." : "Gerando imagem...",
-        doneText: "",
-        placeholder: "image",
-      },
-    });
-    try {
-      const items = await provider.generateImage(
-        {
-          model,
-          prompt,
-          size: "1024x1024",
-          ...(inputImage ? { image: inputImage } : {}),
-        },
-        apiKey
-      );
-      const savedPaths: string[] = [];
-      for (const item of items) {
-        const r = await saveGeneration(
-          plugin.app,
-          plugin.settings.generationPath,
-          item.data,
-          {
-            id: makeId(),
-            type: "image",
-            provider: providerId,
-            model,
-            prompt,
-            created: new Date().toISOString(),
-            size: item.data.byteLength,
-            mime: item.mime,
-            width: item.width,
-            height: item.height,
-            seed: item.seed,
-            chatId: useChatStore.getState().currentChatId ?? undefined,
-          }
-        );
-        savedPaths.push(r.mediaPath);
-      }
-      updateActivity(
-        activityId,
-        {
-          phase: "done",
-          doneText: `${items.length} imagem${items.length > 1 ? "ns" : ""} gerada${items.length > 1 ? "s" : ""}`,
-        },
-        savedPaths[0]
-      );
-      addMessage({
-        type: "ai-response",
-        content: savedPaths.map((p) => `![[${p}]]`).join("\n\n"),
-      });
-      return { ok: true, paths: savedPaths };
-    } catch (err) {
-      const { message, code } = describeProviderError(err, t, provider.name);
-      updateActivity(
-        activityId,
-        { phase: "failed", iconFailed: "x-circle", failedText: t.ai.failed },
-        message
-      );
-      addMessage({
-        type: "ai-response",
-        content: `${t.ai.errorPrefix} ${message}`,
-        isError: true,
-        errorCode: code,
-      });
-      return { ok: false, paths: [], error: message };
-    }
-  };
-
-  /** Abre o modal de confirmação (fallback do + → Criar imagem). */
-  const handleCreateImage = async () => {
-    // Imagem anexada vira candidata a IMG2IMG.
-    const imgAtt = pendingAttachments.find(
-      (p) => p.attachment.type === "image"
-    );
-    let inputImage: { data: string; mimeType: string } | undefined;
-    if (imgAtt && imgAtt.attachment.type === "image") {
-      const m = /^data:([^;]+);base64,(.+)$/.exec(imgAtt.attachment.dataUrl);
-      if (m) inputImage = { mimeType: m[1], data: m[2] };
-    }
-    const modal = new ImageGenModal(plugin.app, {
-      options: buildImageModelOptions(),
-      // Prefill com o que o user já digitou no composer (#9).
-      initialPrompt: composerDraftRef.current.trim(),
-      hasInputImage: !!inputImage,
-      strings: t.imageGen,
-    });
-    const choice = await modal.openAndWait();
-    if (!choice) return;
-    const store = useChatStore.getState();
-    if (store.messages.length === 0) {
-      const newId = makeId();
-      store.setCurrentChatId(newId);
-      store.setCurrentChatTitle(generateTitle(choice.prompt));
-      store.lockSession(activeProviderId, activeModel, activeMode);
-    }
-    store.addMessage({ type: "user", content: `🖼️ ${choice.prompt}` });
-    if (choice.useInputImage && inputImage) {
-      setPendingAttachments([]);
-    }
-    store.setLoading(true);
-    try {
-      await runImageGeneration(
-        choice.prompt,
-        choice.providerId,
-        choice.model,
-        choice.useInputImage ? inputImage : undefined
-      );
-    } finally {
-      store.setLoading(false);
-    }
-  };
+  // Geração de mídia (img/áudio/vídeo) extraída → useGeneration (Frente 2).
+  // runGenerationTurn é retornado porque handleSend/regenerate/retry o reusam.
+  const {
+    runGenerationTurn,
+    buildImageModelOptions,
+    runImageGeneration,
+    handleCreateImage,
+  } = useGeneration({
+    plugin,
+    t,
+    abortRef,
+    composerDraftRef,
+    activeProviderId,
+    activeModel,
+    activeMode,
+    apiKeyFor,
+    pendingAttachments,
+    setPendingAttachments,
+  });
 
   // Regenerar: remove o ai-response (e qualquer msg posterior) e re-roda
   // streamReply usando a user-msg que precedia. Ignora se já tá streamando.
@@ -2806,7 +1599,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onOpenSettings={() => finishOnboarding(true)}
             onDismiss={() => finishOnboarding(false)}
           />
-        ) : isEmpty && cleanChat ? (
+        ) : isEmpty ? (
           <NewChatScreen
             mode={activeMode}
             plugin={plugin}
@@ -2817,26 +1610,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onModelChange={handleStarterModel}
             onArenaConfirm={handleArenaConfirm}
             onOpenSettings={handleOpenSettings}
-          />
-        ) : isEmpty ? (
-          <StarterScreen
-            plugin={plugin}
-            provider={providerSel}
-            model={starterModel}
-            effort={effort}
-            mode={mode}
-            recentChats={recentChats}
-            summaries={chatSummaries}
-            activeModels={plugin.settings.activeModels}
-            onProviderChange={handleStarterProvider}
-            onModelChange={handleStarterModel}
-            onEffortChange={handleSelectEffort}
-            onModeChange={handleStarterMode}
-            onLoadChat={handleLoadChat}
-            onOpenConversations={handleOpenConversations}
-            onOpenSettings={handleOpenSettings}
-            onPromptStarter={handlePromptStarter}
-            visibleChips={plugin.settings.listChips}
           />
         ) : (
           <ChatArea highlightTarget={searchTarget} />

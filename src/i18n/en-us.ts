@@ -1,10 +1,8 @@
 // src/i18n/en-us.ts
-// English (US) strings. Mirror of pt-br.ts — TypeScript enforces shape match
-// via `Translations` type, so any divergence breaks the build.
+// English (US) strings — fonte CANÔNICA do shape Translations (typeof EN_US).
+// PT-BR removido (base 1.0); i18n será refeito depois.
 
-import type { Translations } from "./pt-br";
-
-export const EN_US: Translations = {
+export const EN_US = {
   composer: {
     attachImageNoneValid: "No valid image was attached.",
     attachImageTooLarge: "Image too large (max 20MB).",
@@ -1039,3 +1037,5 @@ export const EN_US: Translations = {
     usageExportFailed: "Failed to export",
   },
 };
+
+export type Translations = typeof EN_US;

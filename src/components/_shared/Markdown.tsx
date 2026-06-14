@@ -11,7 +11,7 @@
 // <pre> e anexamos um botão "copiar código" no canto superior direito. UX
 // padrão de IA (ChatGPT/Claude) — usuário quase sempre quer o código puro.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type App, Component, MarkdownRenderer, setIcon } from "obsidian";
 import { useApp } from "./AppContext";
 import { useT } from "../../i18n";
@@ -21,10 +21,49 @@ interface MarkdownProps {
   content: string;
 }
 
+// Throttle do conteúdo. Durante o streaming `content` muda a cada token; renderizar
+// o MarkdownRenderer inteiro (com el.empty()) a cada token é O(n²). Aqui agrupamos
+// em frames de ~64ms: renderiza na hora se já passou o intervalo, senão garante UM
+// timer pendente que pinta o valor MAIS RECENTE (via ref). O conteúdo final sempre
+// é renderizado (o trailing timer dispara após o último token). Visual igual, custo
+// muito menor. Conteúdo estático passa direto (1º frame já satisfaz o intervalo).
+function useThrottled(value: string, ms: number): string {
+  const [shown, setShown] = useState(value);
+  const latestRef = useRef(value);
+  latestRef.current = value;
+  const lastRef = useRef(0);
+  const timerRef = useRef<number | null>(null);
+  useEffect(() => {
+    const now = Date.now();
+    const elapsed = now - lastRef.current;
+    if (elapsed >= ms) {
+      lastRef.current = now;
+      setShown(latestRef.current);
+    } else if (timerRef.current === null) {
+      timerRef.current = window.setTimeout(() => {
+        timerRef.current = null;
+        lastRef.current = Date.now();
+        setShown(latestRef.current);
+      }, ms - elapsed);
+    }
+  }, [value, ms]);
+  // Limpa o timer pendente só no unmount (não a cada token — senão o periódico
+  // nunca dispara durante streaming contínuo).
+  useEffect(
+    () => () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    },
+    []
+  );
+  return shown;
+}
+
 export function Markdown({ content }: MarkdownProps) {
   const ref = useRef<HTMLDivElement>(null);
   const app = useApp();
   const t = useT();
+  // Renderiza o conteúdo agrupado (~64ms) em vez de a cada token. v0.1.234
+  const shown = useThrottled(content, 64);
 
   useEffect(() => {
     const el = ref.current;
@@ -42,7 +81,7 @@ export function Markdown({ content }: MarkdownProps) {
     // antes de scan dos <pre>. Promise.resolve() lida com APIs antigas
     // que poderiam retornar void.
     Promise.resolve(
-      MarkdownRenderer.render(app, content, el, "", component)
+      MarkdownRenderer.render(app, shown, el, "", component)
     ).then(() => {
       if (cancelled) return;
       enhanceCodeBlocks(el, t.chat.copyCode);
@@ -63,7 +102,7 @@ export function Markdown({ content }: MarkdownProps) {
       disposeLinks?.();
       component.unload();
     };
-  }, [app, content, t]);
+  }, [app, shown, t]);
 
   return <div ref={ref} className="axxa-markdown" />;
 }

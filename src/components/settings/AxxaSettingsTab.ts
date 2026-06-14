@@ -31,6 +31,8 @@ import { nimProvider } from "../../providers/nim";
 import { ollamaProvider } from "../../providers/ollama";
 import { getTranslations, type Translations } from "../../i18n";
 import { hapticTick } from "../_shared/haptics";
+import { formatTokens } from "../_shared/contextWindows";
+import { AxxaConfirmModal } from "./ConfirmModal";
 import {
   DEFAULT_EFFORT_CONFIGS,
   EFFORT_LEVELS,
@@ -1618,7 +1620,6 @@ export class AxxaSettingsTab extends PluginSettingTab {
       .setDesc(t.settings.languageDesc)
       .addDropdown((dropdown) =>
         dropdown
-          .addOption("pt-br", t.settings.languagePtBr)
           .addOption("en-us", t.settings.languageEnUs)
           .setValue(this.plugin.settings.language)
           .onChange(async (value) => {
@@ -3172,69 +3173,4 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private confirmAction(message: string, t: Translations): Promise<boolean> {
     return new AxxaConfirmModal(this.app, message, t).openAndWait();
   }
-}
-
-/**
- * Modal genérico de confirmação (Sim/Cancelar). Resolve `true` se o user
- * confirma, `false` se cancela ou fecha (X/Escape). v0.1.228
- */
-class AxxaConfirmModal extends Modal {
-  private message: string;
-  private t: Translations;
-  private resolver: (v: boolean) => void = () => {};
-  private resolved = false;
-
-  constructor(app: App, message: string, t: Translations) {
-    super(app);
-    this.message = message;
-    this.t = t;
-  }
-
-  openAndWait(): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      this.resolver = resolve;
-      this.open();
-    });
-  }
-
-  private resolveOnce(value: boolean) {
-    if (this.resolved) return;
-    this.resolved = true;
-    this.resolver(value);
-  }
-
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("axxa-confirm-modal");
-    contentEl.createEl("p", { text: this.message });
-    const setting = new Setting(contentEl);
-    setting.addButton((btn) => {
-      btn.setButtonText(this.t.settings.confirmCancel).onClick(() => {
-        this.resolveOnce(false);
-        this.close();
-      });
-    });
-    setting.addButton((btn) => {
-      btn
-        .setButtonText(this.t.settings.confirmProceed)
-        .setWarning()
-        .onClick(() => {
-          this.resolveOnce(true);
-          this.close();
-        });
-    });
-  }
-
-  onClose() {
-    this.contentEl.empty();
-    this.resolveOnce(false); // X / Escape = cancela
-  }
-}
-
-/** Helper local — formato compacto de tokens. Duplica formatTokens do _shared. */
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + "k";
-  return String(n);
 }
