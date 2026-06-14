@@ -171,9 +171,9 @@ export function ModelSheet({
   const favModels = favorites
     .filter((k) => k.startsWith(prefix))
     .map((k) => k.slice(prefix.length));
-  // Candidatos = adicionados ainda não favoritados. Somem quando os 5 estão cheios.
+  // Candidatos = adicionados ainda não favoritados. No ecrã de favoritos só
+  // aparecem o suficiente pra completar 5 slots (somem quando os 5 estão cheios).
   const candidates = models.filter((m) => !isFav(m));
-  const atMax = favCount >= MAX_FAVORITES;
 
   const effortLabel =
     EFFORT_LABELS[currentEffort as EffortLevel] ?? currentEffort;
@@ -311,12 +311,15 @@ export function ModelSheet({
                 Add favorite
               </button>
             ) : (
-              <div className="axxa-sheet-list">
+              <div className="axxa-sheet-list axxa-sheet-list-compact">
                 {favCount === 0 && (
                   <span className="axxa-sheet-addfav-label">Add favorite</span>
                 )}
                 {favModels.map((m) => favRow(m))}
-                {!atMax && candidates.map((m) => favRow(m))}
+                {/* completa até no máx 5 slots com candidatos (estrela vazia) */}
+                {candidates
+                  .slice(0, Math.max(0, MAX_FAVORITES - favModels.length))
+                  .map((m) => favRow(m))}
               </div>
             )}
 
@@ -475,7 +478,7 @@ export function ModelSheet({
                     />
                   </div>
                 )}
-                <div className="axxa-sheet-list axxa-sheet-list-compact">
+                <div className="axxa-sheet-list axxa-sheet-list-compact axxa-sheet-list-more">
                   {visibleModels.map((m) => selectRow(m))}
                 </div>
               </>

@@ -1133,24 +1133,24 @@ layout no
   font-size: var(--font-ui-small);
 }
 
-/* seletor segmentado (mesmo da sidebar) nos chips do More — altura máx 24px */
+/* seletor segmentado (mesmo da sidebar) nos chips do More — altura 28px */
 .axxa-sheet-seg {
   margin: 2px 0 12px;
 }
 .axxa-sheet-seg .axxa-seg {
-  padding: 2px;
+  padding: 3px;
 }
 .axxa-sheet-seg .axxa-seg-ind {
-  top: 2px;
-  bottom: 2px;
-  left: 2px;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
 }
 .axxa-sheet-seg .axxa-seg-btn {
-  padding: 2px 8px;
+  padding: 3px 9px;
 }
 .axxa-sheet-seg .axxa-seg-btn .axxa-icon svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
 }
 .axxa-sheet-seg .axxa-seg-btn-label {
   font-size: var(--font-ui-smaller);
@@ -1204,6 +1204,13 @@ layout no
 .axxa-sheet-list-compact .axxa-sheet-star {
   width: 32px;
   height: 32px;
+}
+/* More models: altura FIXA pra ~5 modelos por vez (mesmo faltando modelo pra
+   encher) — scroll interno; título+seletor ficam acima, parados. Density-aware:
+   ~5 × (row-py×2 + ~35px de conteúdo). */
+.axxa-sheet-list-more {
+  height: calc(var(--axxa-row-py, 9px) * 10 + 175px);
+  overflow-y: auto;
 }
 
 @supports not (color: color-mix(in srgb, red, blue)) {
