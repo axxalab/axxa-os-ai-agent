@@ -841,8 +841,8 @@ layout no
   padding: 14px 14px 12px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 26px;
-  box-shadow: var(--shadow-s, 0 2px 10px rgba(0, 0, 0, 0.18));
+  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 .axxa-root .axxa-composer-editor {
   font-size: var(--font-ui-medium);
@@ -864,8 +864,9 @@ layout no
 }
 .axxa-root .axxa-composer-plus {
   flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
+  box-shadow: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -883,8 +884,8 @@ layout no
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 44px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 14px;
   min-width: 0;
   border-radius: 999px;
   background: var(--background-modifier-hover);
@@ -908,8 +909,8 @@ layout no
   flex: 0 0 auto;
 }
 .axxa-root .axxa-composer-send {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -927,6 +928,28 @@ layout no
 }
 .axxa-root .axxa-composer-send.axxa-composer-recording {
   background: var(--text-error, #e5484d);
+}
+/* botão de voz (movido do header) — círculo neutro ao lado do send */
+.axxa-root .axxa-composer-voice {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border: none;
+  cursor: pointer;
+}
+.axxa-root .axxa-composer-voice:hover {
+  background: var(--background-modifier-border);
+}
+/* ícones dentro da bar de 32px — proporção certa */
+.axxa-composer-bar .svg-icon {
+  width: 18px;
+  height: 18px;
 }
 @supports not (color: color-mix(in srgb, red, blue)) {
   .axxa-root {

@@ -1632,6 +1632,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onSend={handleSend}
             onStop={handleStop}
             onPlusClick={handlePlusClick}
+            onOpenVoice={() => setVoiceOpen(true)}
             onDraftChange={(text) => (composerDraftRef.current = text)}
             injectText={composerInject}
             streaming={isLoading}

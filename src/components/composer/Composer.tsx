@@ -78,6 +78,8 @@ interface ComposerProps {
   onPlusClick?: () => void;
   /** Abre o seletor de modelo (sheet estilo Claude) — passo seguinte do DS. */
   onOpenModel?: () => void;
+  /** Abre o modo Voz (movido do header pro composer — ref Claude). */
+  onOpenVoice?: () => void;
   streaming?: boolean;
   providerName: string;
   modelName: string;
@@ -216,6 +218,7 @@ export function Composer({
   onStop,
   onPlusClick,
   onOpenModel,
+  onOpenVoice,
   streaming = false,
   providerName,
   modelName,
@@ -965,6 +968,17 @@ export function Composer({
           >
             <Icon name={iconName} />
           </button>
+          {onOpenVoice && (
+            <button
+              type="button"
+              className="axxa-composer-voice"
+              onClick={onOpenVoice}
+              aria-label={t.voice.title}
+              title={t.voice.title}
+            >
+              <Icon name="audio-lines" />
+            </button>
+          )}
         </div>
       </div>
     </div>
