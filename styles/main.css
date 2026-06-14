@@ -4103,12 +4103,18 @@ layout no
 .axxa-plus-sheet {
   width: 100%;
   height: 34vh; /* estado OPENED (abre menor) */
+  /* Com o teclado ABERTO o overlay sobe o sheet (padding-bottom = --keyboard-height);
+     este max-height garante que ele CABE acima do teclado (senão o 70vh estoura o
+     topo e some o handle/header). Teclado fechado → --keyboard-height = 0, sem efeito
+     nos 34/70vh → continua igual. */
+  max-height: calc(100vh - var(--keyboard-height, 0px) - 16px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border: none;
   border-radius: 22px 22px 0 0;
-  transition: height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: height 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    max-height 0.24s ease;
 }
 .axxa-plus-sheet-full {
   height: 70vh; /* estado EXPANDED (aumenta o modal, não full screen) */
