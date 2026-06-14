@@ -343,8 +343,8 @@ export function ModelSheet({
           </div>
         )}
 
-        {/* CORPO ROLÁVEL — overscroll nas 2 pontas (bodyProps) */}
-        <div className="axxa-sheet-body" {...sheet.bodyProps}>
+        {/* CORPO ROLÁVEL — overscroll nas 2 pontas (touch, via bodyRef) */}
+        <div className="axxa-sheet-body" ref={sheet.bodyRef}>
           {view === "model" && (
             <>
               {models.length === 0 && favModels.length === 0 ? (

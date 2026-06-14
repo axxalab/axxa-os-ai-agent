@@ -287,7 +287,7 @@ export function PlusModal({
           <div className="axxa-plus-handle" />
           <div className="axxa-plus-title">{t.plus.addToChat}</div>
         </div>
-        <div className="axxa-sheet-body" {...sheet.bodyProps}>
+        <div className="axxa-sheet-body" ref={sheet.bodyRef}>
         {/* Tiles grandes monocromáticos — estrutura "Add to Chat" (Claude iOS 23) */}
         <div className="axxa-plus-tiles">
           <PlusTile
