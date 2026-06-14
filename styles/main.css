@@ -1011,6 +1011,7 @@ layout no
   border-radius: 999px;
   background: transparent;
   border: none;
+  box-shadow: none;
   color: var(--text-normal);
   cursor: pointer;
 }
@@ -1040,6 +1041,7 @@ layout no
   padding: 14px 8px;
   background: transparent;
   border: none;
+  box-shadow: none;
   text-align: left;
   cursor: pointer;
   color: var(--text-normal);
@@ -1103,64 +1105,55 @@ layout no
   padding: 2px 8px;
   border-radius: 999px;
 }
-/* estado vazio tappável (sem favorito / sem modelo adicionado) */
-.axxa-root .axxa-sheet-empty-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+/* "Add favorite" — sempre alinhado à esquerda, em letra secondary */
+.axxa-root .axxa-sheet-addfav {
+  display: block;
   width: 100%;
-  padding: 18px 8px;
+  padding: 14px 8px;
   background: transparent;
   border: none;
+  box-shadow: none;
   text-align: left;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
   cursor: pointer;
-  border-radius: 12px;
 }
-.axxa-root .axxa-sheet-empty-btn:hover {
-  background: var(--background-modifier-hover);
+.axxa-root .axxa-sheet-addfav:hover:not(:disabled) {
+  color: var(--text-normal);
 }
-.axxa-root .axxa-sheet-empty-btn:disabled {
+.axxa-root .axxa-sheet-addfav:disabled {
   cursor: default;
   opacity: 0.7;
 }
-.axxa-sheet-empty-title {
-  font-size: var(--font-ui-medium);
-  font-weight: 600;
-  color: var(--text-normal);
-}
-.axxa-sheet-empty-sub {
-  font-size: var(--font-ui-small);
+.axxa-sheet-addfav-label {
+  display: block;
+  padding: 4px 8px 2px;
+  text-align: left;
   color: var(--text-muted);
+  font-size: var(--font-ui-small);
 }
 
-/* chips de categoria (More models) — scroll horizontal, aba Free no fim */
-.axxa-sheet-chips {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin: 2px 0 10px;
-  padding-bottom: 2px;
+/* seletor segmentado (mesmo da sidebar) nos chips do More — altura máx 24px */
+.axxa-sheet-seg {
+  margin: 2px 0 12px;
 }
-.axxa-sheet-chips::-webkit-scrollbar {
-  display: none;
+.axxa-sheet-seg .axxa-seg {
+  padding: 2px;
 }
-.axxa-root .axxa-sheet-chip {
-  flex: 0 0 auto;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: none;
-  background: var(--background-modifier-hover);
-  color: var(--text-muted);
+.axxa-sheet-seg .axxa-seg-ind {
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+}
+.axxa-sheet-seg .axxa-seg-btn {
+  padding: 2px 8px;
+}
+.axxa-sheet-seg .axxa-seg-btn .axxa-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.axxa-sheet-seg .axxa-seg-btn-label {
   font-size: var(--font-ui-smaller);
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.axxa-root .axxa-sheet-chip-on {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
 }
 
 /* estrela de favoritar (More models) — preenche no ativo, trava no teto de 5 */
@@ -1173,6 +1166,7 @@ layout no
   justify-content: center;
   border-radius: 999px;
   border: none;
+  box-shadow: none;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -1195,25 +1189,6 @@ layout no
   fill: var(--interactive-accent);
 }
 
-/* linha "+ Add models" no ecrã de favoritos */
-.axxa-sheet-add-icon {
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
-.axxa-sheet-add-icon .svg-icon {
-  width: 18px;
-  height: 18px;
-}
-.axxa-sheet-add .axxa-sheet-row-name {
-  color: var(--text-muted);
-}
 
 /* More models = compacto: rows na densidade da sidebar, nome/desc menores */
 .axxa-sheet-list-compact .axxa-sheet-row {
@@ -3947,6 +3922,15 @@ layout no
   height: 4px;
   border-radius: 999px;
   margin: 0 auto 16px auto;
+  /* a "barra característica" do bottom sheet — sem cor ela ficava invisível */
+  background: var(--background-modifier-border);
+}
+/* sheet de modelo: barra colada no topo + título logo abaixo */
+.axxa-sheet.axxa-plus-sheet {
+  padding-top: 8px;
+}
+.axxa-sheet .axxa-plus-handle {
+  margin-bottom: 10px;
 }
 .axxa-plus-title {
   margin: 0 0 16px 0;

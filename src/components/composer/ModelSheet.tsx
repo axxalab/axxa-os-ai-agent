@@ -1,19 +1,21 @@
 // src/components/composer/ModelSheet.tsx
 // Bottom sheet do seletor de modelo (DS 1.0, ref: prints do Claude).
 // TRÊS ecrãs na MESMA folha (navegação interna):
-//   1. "Select model"  — só os FAVORITOS (≤5) do provider. Sem favorito → mensagem
-//      instrutiva (tap abre o ecrã 3). Com favorito → rows + "+ Add models" (ecrã 3).
-//      Sempre: linha "Effort ›" (ecrã 2).
-//   2. "Effort"        — níveis low→max (Default badge no baseline, check no atual)
-//      + toggle "Thinking".
-//   3. "More models"   — os modelos ADICIONADOS (activeModels) do provider, com
-//      chips por categoria (+ aba Free quando houver, categorias vazias ocultas).
-//      Cada row tem estrela: favoritar sobe pro topo; ao chegar a 5, trava o resto.
-//      Tap na row (fora da estrela) seleciona o modelo.
+//   1. "Select model" (FAVORITOS) — é AQUI que se favorita. Lista os favoritos
+//      (estrela cheia, no topo) + os candidatos (added, estrela vazia). Ao chegar
+//      a 5 favoritos, os OUTROS somem (fica só os 5). Sem favorito → "Add favorite"
+//      em letra secondary, alinhado à esquerda. Tap na row seleciona; tap na
+//      estrela (de)favorita. Sempre: "More models ›" e "Effort ›".
+//   2. "Effort" — níveis low→max (Default badge no baseline, check no atual) +
+//      toggle "Thinking" (só pra modelos com a capacidade).
+//   3. "More models" — TODOS os modelos adicionados, SEM estrela, COM o seletor
+//      segmentado (mesmo da sidebar) por categoria (+ Free quando houver). Tap
+//      seleciona.
 // Reaproveita o shell .axxa-plus-overlay/-sheet/-handle/-divider + o focus-trap.
 
 import { useRef, useState } from "react";
 import { Icon } from "../_shared/Icon";
+import { SegmentedRow, type SegmentedItem } from "../_shared/SegmentedRow";
 import { useFocusTrap } from "../_shared/useFocusTrap";
 import {
   EFFORT_LEVELS,
@@ -58,6 +60,21 @@ const CAT_LABELS_EN: Record<ModelCategory, string> = {
   other: "Other",
 };
 
+// Ícone por chip (o seletor segmentado é icon-céntrico, mostra o label só no ativo).
+const CHIP_ICON: Record<string, string> = {
+  all: "layers",
+  free: "gift",
+  "chat-vision": "image",
+  "chat-text": "message-square",
+  reasoning: "brain",
+  agent: "bot",
+  "image-gen": "image",
+  "audio-gen": "audio-lines",
+  "video-gen": "clapperboard",
+  embedding: "boxes",
+  other: "sparkles",
+};
+
 /** Formata um id de modelo cru num nome apresentável (fallback). */
 function prettyModelName(id: string): string {
   let s = id || "";
@@ -76,8 +93,7 @@ function prettyModelName(id: string): string {
 }
 
 /** Encurta pra uma frase breve: corta na 1ª frase; se ainda longa, na 1ª vírgula.
- *  O texto secundário é sempre uma linha (nowrap+ellipsis no CSS), então isto só
- *  garante que o conteúdo já seja conciso. */
+ *  O texto secundário é sempre uma linha (nowrap+ellipsis no CSS). */
 function briefen(s: string): string {
   let t = s.trim();
   const dot = t.indexOf(". ");
@@ -90,8 +106,7 @@ function briefen(s: string): string {
   return t.trim();
 }
 
-/** Nome + tagline (frase breve) de um modelo: extrai do "Nome — desc" curado em
- *  EN, senão prettifica o id e usa a descrição. */
+/** Nome + tagline (frase breve) de um modelo. */
 function modelBits(
   provider: string,
   model: string,
@@ -108,7 +123,7 @@ function modelBits(
 
 interface ModelSheetProps {
   provider: string;
-  /** IDs dos modelos ADICIONADOS do provider atual (activeModels) — usados no More. */
+  /** IDs dos modelos ADICIONADOS do provider atual (activeModels). */
   models: string[];
   /** Favoritos globais — chaves "provider::model". */
   favorites: string[];
@@ -121,7 +136,7 @@ interface ModelSheetProps {
   thinkingOn: boolean;
   onToggleThinking: (value: boolean) => void;
   onClose: () => void;
-  /** Abre as Settings (quando não há modelo adicionado pra favoritar). */
+  /** Abre as Settings (quando não há modelo adicionado). */
   onOpenSettings?: () => void;
   /** Modelo atual suporta o toggle Thinking — esconde a linha quando não. */
   thinkingCapable?: boolean;
@@ -156,11 +171,14 @@ export function ModelSheet({
   const favModels = favorites
     .filter((k) => k.startsWith(prefix))
     .map((k) => k.slice(prefix.length));
+  // Candidatos = adicionados ainda não favoritados. Somem quando os 5 estão cheios.
+  const candidates = models.filter((m) => !isFav(m));
+  const atMax = favCount >= MAX_FAVORITES;
 
   const effortLabel =
     EFFORT_LABELS[currentEffort as EffortLevel] ?? currentEffort;
 
-  // ── Ecrã 3 (More): chips por categoria presente + Free, e lista filtrada. ──
+  // ── More: chips por categoria presente + Free, e lista filtrada. ──
   const grouped = groupModelsByCategory(provider, models);
   const presentCats = CATEGORY_ORDER.filter(
     (c) => (grouped.get(c)?.length ?? 0) > 0
@@ -168,10 +186,12 @@ export function ModelSheet({
   const freeModels = models.filter(
     (m) => getModelCapabilities(provider, m).free
   );
-  const chips: { id: string; label: string }[] = [
-    { id: "all", label: "All" },
-    ...presentCats.map((c) => ({ id: c, label: CAT_LABELS_EN[c] })),
-    ...(freeModels.length ? [{ id: "free", label: "Free" }] : []),
+  const chipItems: SegmentedItem[] = [
+    { id: "all", icon: CHIP_ICON.all, label: "All", iconOnly: true },
+    ...presentCats.map((c) => ({ id: c, icon: CHIP_ICON[c], label: CAT_LABELS_EN[c] })),
+    ...(freeModels.length
+      ? [{ id: "free", icon: CHIP_ICON.free, label: "Free" }]
+      : []),
   ];
   const visibleModels =
     chip === "all"
@@ -179,12 +199,52 @@ export function ModelSheet({
       : chip === "free"
         ? freeModels
         : grouped.get(chip as ModelCategory) ?? [];
-  // Favoritos primeiro (sobem pro topo), resto na ordem original.
-  const sortedModels = [...visibleModels].sort(
-    (a, b) => (isFav(a) ? 0 : 1) - (isFav(b) ? 0 : 1)
-  );
 
-  function renderModelRow(m: string, withCheck: boolean) {
+  // Row com estrela (ecrã de favoritos): tap = seleciona, estrela = (de)favorita.
+  function favRow(m: string) {
+    const { name, tagline } = modelBits(provider, m, lang);
+    const fav = isFav(m);
+    return (
+      <div
+        key={m}
+        className="axxa-sheet-row"
+        role="button"
+        tabIndex={0}
+        onClick={() => {
+          onSelectModel(m);
+          onClose();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelectModel(m);
+            onClose();
+          }
+        }}
+      >
+        <span className="axxa-sheet-row-text">
+          <span className="axxa-sheet-row-name">{name}</span>
+          {tagline && <span className="axxa-sheet-row-desc">{tagline}</span>}
+        </span>
+        <button
+          type="button"
+          className={"axxa-sheet-star" + (fav ? " axxa-sheet-star-on" : "")}
+          aria-pressed={fav}
+          aria-label={fav ? "Unfavorite" : "Favorite"}
+          title={fav ? "Unfavorite" : "Favorite"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(m);
+          }}
+        >
+          <Icon name="star" />
+        </button>
+      </div>
+    );
+  }
+
+  // Row de seleção pura (More / Effort): tap = seleciona, check no ativo.
+  function selectRow(m: string) {
     const { name, tagline } = modelBits(provider, m, lang);
     const selected = m === currentModel;
     return (
@@ -201,7 +261,7 @@ export function ModelSheet({
           <span className="axxa-sheet-row-name">{name}</span>
           {tagline && <span className="axxa-sheet-row-desc">{tagline}</span>}
         </span>
-        {withCheck && selected && (
+        {selected && (
           <span className="axxa-sheet-row-check">
             <Icon name="check" />
           </span>
@@ -238,24 +298,41 @@ export function ModelSheet({
               <span className="axxa-sheet-nav" aria-hidden="true" />
             </div>
 
-            {/* Sem favorito → "no lugar do modelo" aparece só "Add favorite" em
-                letra secondary; com favorito → as rows + "Add models". Ambos abrem
-                o More. */}
-            <div className="axxa-sheet-list">
-              {favModels.map((m) => renderModelRow(m, true))}
+            {models.length === 0 && favModels.length === 0 ? (
               <button
                 type="button"
-                className="axxa-sheet-row axxa-sheet-add"
-                onClick={() => setView("more")}
+                className="axxa-sheet-addfav"
+                onClick={() => {
+                  onOpenSettings?.();
+                  onClose();
+                }}
+                disabled={!onOpenSettings}
               >
-                <span className="axxa-sheet-add-icon">
-                  <Icon name="plus" />
-                </span>
-                <span className="axxa-sheet-row-name">
-                  {favModels.length === 0 ? "Add favorite" : "Add models"}
-                </span>
+                Add favorite
               </button>
-            </div>
+            ) : (
+              <div className="axxa-sheet-list">
+                {favCount === 0 && (
+                  <span className="axxa-sheet-addfav-label">Add favorite</span>
+                )}
+                {favModels.map((m) => favRow(m))}
+                {!atMax && candidates.map((m) => favRow(m))}
+              </div>
+            )}
+
+            <div className="axxa-plus-divider" />
+            <button
+              type="button"
+              className="axxa-sheet-row"
+              onClick={() => setView("more")}
+            >
+              <span className="axxa-sheet-row-text">
+                <span className="axxa-sheet-row-name">More models</span>
+              </span>
+              <span className="axxa-sheet-row-chevron">
+                <Icon name="chevron-right" />
+              </span>
+            </button>
 
             <div className="axxa-plus-divider" />
             <button
@@ -322,8 +399,6 @@ export function ModelSheet({
               })}
             </div>
 
-            {/* Thinking só pra modelos com a capacidade (extended thinking /
-                reasoning) — senão a linha some inteira. */}
             {thinkingCapable && (
               <>
                 <div className="axxa-plus-divider" />
@@ -379,95 +454,29 @@ export function ModelSheet({
             {models.length === 0 ? (
               <button
                 type="button"
-                className="axxa-sheet-empty-btn"
+                className="axxa-sheet-addfav"
                 onClick={() => {
                   onOpenSettings?.();
                   onClose();
                 }}
                 disabled={!onOpenSettings}
               >
-                <span className="axxa-sheet-empty-title">
-                  No models added yet
-                </span>
-                <span className="axxa-sheet-empty-sub">
-                  Add models in Settings to favorite them here
-                </span>
+                Add models in Settings
               </button>
             ) : (
               <>
-                {chips.length > 1 && (
-                  <div className="axxa-sheet-chips">
-                    {chips.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className={
-                          "axxa-sheet-chip" +
-                          (chip === c.id ? " axxa-sheet-chip-on" : "")
-                        }
-                        onClick={() => setChip(c.id)}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
+                {chipItems.length > 1 && (
+                  <div className="axxa-sheet-seg">
+                    <SegmentedRow
+                      items={chipItems}
+                      activeId={chip}
+                      onSelect={setChip}
+                      showActiveLabel
+                    />
                   </div>
                 )}
                 <div className="axxa-sheet-list axxa-sheet-list-compact">
-                  {sortedModels.map((m) => {
-                    const { name, tagline } = modelBits(provider, m, lang);
-                    const fav = isFav(m);
-                    const locked = !fav && favCount >= MAX_FAVORITES;
-                    return (
-                      <div
-                        key={m}
-                        className="axxa-sheet-row"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          onSelectModel(m);
-                          onClose();
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onSelectModel(m);
-                            onClose();
-                          }
-                        }}
-                      >
-                        <span className="axxa-sheet-row-text">
-                          <span className="axxa-sheet-row-name">{name}</span>
-                          {tagline && (
-                            <span className="axxa-sheet-row-desc">
-                              {tagline}
-                            </span>
-                          )}
-                        </span>
-                        <button
-                          type="button"
-                          className={
-                            "axxa-sheet-star" + (fav ? " axxa-sheet-star-on" : "")
-                          }
-                          disabled={locked}
-                          aria-pressed={fav}
-                          aria-label={fav ? "Unfavorite" : "Favorite"}
-                          title={
-                            locked
-                              ? `Max ${MAX_FAVORITES} favorites`
-                              : fav
-                                ? "Unfavorite"
-                                : "Favorite"
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleFavorite(m);
-                          }}
-                        >
-                          <Icon name="star" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                  {visibleModels.map((m) => selectRow(m))}
                 </div>
               </>
             )}
