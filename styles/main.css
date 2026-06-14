@@ -3904,7 +3904,11 @@ layout no
   min-width: 0;
 }
 .axxa-plus-overlay {
-  position: absolute;
+  /* fixed (não absolute): o .view-content da AXXA tem padding-bottom de clearance
+     da navbar mobile, então o .axxa-root (ancestral posicionado) NÃO chega ao fundo
+     real → o sheet parava acima e abria um vão. fixed cobre o viewport inteiro e
+     encosta no fundo, igual os modais nativos do Obsidian (e a CameraModal). */
+  position: fixed;
   inset: 0;
   display: flex;
   align-items: flex-end;
