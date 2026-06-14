@@ -1069,6 +1069,11 @@ layout no
   font-size: var(--font-ui-small);
   line-height: 1.3;
   color: var(--text-muted);
+  /* texto secundário: sempre 1 linha, sem wrap e sem scroll lateral */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .axxa-sheet-row-on .axxa-sheet-row-name,
 .axxa-sheet-row-on .axxa-sheet-row-desc {
@@ -1208,6 +1213,22 @@ layout no
 }
 .axxa-sheet-add .axxa-sheet-row-name {
   color: var(--text-muted);
+}
+
+/* More models = compacto: rows na densidade da sidebar, nome/desc menores */
+.axxa-sheet-list-compact .axxa-sheet-row {
+  padding: var(--axxa-row-py) 8px;
+  gap: 10px;
+}
+.axxa-sheet-list-compact .axxa-sheet-row-name {
+  font-size: var(--font-ui-small);
+}
+.axxa-sheet-list-compact .axxa-sheet-row-desc {
+  font-size: var(--font-ui-smaller);
+}
+.axxa-sheet-list-compact .axxa-sheet-star {
+  width: 32px;
+  height: 32px;
 }
 
 @supports not (color: color-mix(in srgb, red, blue)) {
@@ -4175,7 +4196,11 @@ layout no
   height: 26px;
   border-radius: 999px;
   position: relative;
+  background: var(--background-modifier-border);
   transition: background 0.18s ease;
+}
+.axxa-plus-row-switch-on {
+  background: var(--interactive-accent);
 }
 .axxa-plus-row-switch-thumb {
   position: absolute;
@@ -4184,6 +4209,8 @@ layout no
   width: 20px;
   height: 20px;
   border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .axxa-plus-row-switch-on .axxa-plus-row-switch-thumb {

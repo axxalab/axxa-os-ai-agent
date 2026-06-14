@@ -75,8 +75,23 @@ function prettyModelName(id: string): string {
     .join(" ");
 }
 
-/** Nome + tagline de um modelo: extrai do "Nome — desc" curado em EN, senão
- *  prettifica o id e usa a descrição inteira. */
+/** Encurta pra uma frase breve: corta na 1ª frase; se ainda longa, na 1ª vírgula.
+ *  O texto secundário é sempre uma linha (nowrap+ellipsis no CSS), então isto só
+ *  garante que o conteúdo já seja conciso. */
+function briefen(s: string): string {
+  let t = s.trim();
+  const dot = t.indexOf(". ");
+  if (dot > 0) t = t.slice(0, dot);
+  t = t.replace(/\.$/, "");
+  if (t.length > 46) {
+    const comma = t.indexOf(", ");
+    if (comma > 0) t = t.slice(0, comma);
+  }
+  return t.trim();
+}
+
+/** Nome + tagline (frase breve) de um modelo: extrai do "Nome — desc" curado em
+ *  EN, senão prettifica o id e usa a descrição. */
 function modelBits(
   provider: string,
   model: string,
@@ -86,9 +101,9 @@ function modelBits(
   const desc = localizedDescription(info, model, lang) || "";
   const m = desc.match(/^(.{1,26}?)\s+[—–-]\s+(.+)$/);
   if (m && m[1] && m[2]) {
-    return { name: m[1].trim(), tagline: m[2].trim() };
+    return { name: m[1].trim(), tagline: briefen(m[2]) };
   }
-  return { name: prettyModelName(model), tagline: desc };
+  return { name: prettyModelName(model), tagline: briefen(desc) };
 }
 
 interface ModelSheetProps {
@@ -108,6 +123,8 @@ interface ModelSheetProps {
   onClose: () => void;
   /** Abre as Settings (quando não há modelo adicionado pra favoritar). */
   onOpenSettings?: () => void;
+  /** Modelo atual suporta o toggle Thinking — esconde a linha quando não. */
+  thinkingCapable?: boolean;
   /** Locale pras descrições — app é EN-only hoje. */
   lang?: string;
 }
@@ -125,6 +142,7 @@ export function ModelSheet({
   onToggleThinking,
   onClose,
   onOpenSettings,
+  thinkingCapable = false,
   lang = "en-US",
 }: ModelSheetProps) {
   const [view, setView] = useState<"model" | "effort" | "more">("model");
@@ -220,34 +238,24 @@ export function ModelSheet({
               <span className="axxa-sheet-nav" aria-hidden="true" />
             </div>
 
-            {favModels.length === 0 ? (
+            {/* Sem favorito → "no lugar do modelo" aparece só "Add favorite" em
+                letra secondary; com favorito → as rows + "Add models". Ambos abrem
+                o More. */}
+            <div className="axxa-sheet-list">
+              {favModels.map((m) => renderModelRow(m, true))}
               <button
                 type="button"
-                className="axxa-sheet-empty-btn"
+                className="axxa-sheet-row axxa-sheet-add"
                 onClick={() => setView("more")}
               >
-                <span className="axxa-sheet-empty-title">
-                  No favorite models yet
+                <span className="axxa-sheet-add-icon">
+                  <Icon name="plus" />
                 </span>
-                <span className="axxa-sheet-empty-sub">
-                  Tap to pick up to {MAX_FAVORITES} favorites
+                <span className="axxa-sheet-row-name">
+                  {favModels.length === 0 ? "Add favorite" : "Add models"}
                 </span>
               </button>
-            ) : (
-              <div className="axxa-sheet-list">
-                {favModels.map((m) => renderModelRow(m, true))}
-                <button
-                  type="button"
-                  className="axxa-sheet-row axxa-sheet-add"
-                  onClick={() => setView("more")}
-                >
-                  <span className="axxa-sheet-add-icon">
-                    <Icon name="plus" />
-                  </span>
-                  <span className="axxa-sheet-row-name">Add models</span>
-                </button>
-              </div>
-            )}
+            </div>
 
             <div className="axxa-plus-divider" />
             <button
@@ -314,36 +322,42 @@ export function ModelSheet({
               })}
             </div>
 
-            <div className="axxa-plus-divider" />
-            <div
-              className="axxa-sheet-row"
-              role="button"
-              tabIndex={0}
-              onClick={() => onToggleThinking(!thinkingOn)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onToggleThinking(!thinkingOn);
-                }
-              }}
-            >
-              <span className="axxa-sheet-row-text">
-                <span className="axxa-sheet-row-name">Thinking</span>
-                <span className="axxa-sheet-row-desc">
-                  Can think for more complex tasks
-                </span>
-              </span>
-              <span
-                className={
-                  "axxa-plus-row-switch" +
-                  (thinkingOn ? " axxa-plus-row-switch-on" : "")
-                }
-                role="switch"
-                aria-checked={thinkingOn}
-              >
-                <span className="axxa-plus-row-switch-thumb" />
-              </span>
-            </div>
+            {/* Thinking só pra modelos com a capacidade (extended thinking /
+                reasoning) — senão a linha some inteira. */}
+            {thinkingCapable && (
+              <>
+                <div className="axxa-plus-divider" />
+                <div
+                  className="axxa-sheet-row"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onToggleThinking(!thinkingOn)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onToggleThinking(!thinkingOn);
+                    }
+                  }}
+                >
+                  <span className="axxa-sheet-row-text">
+                    <span className="axxa-sheet-row-name">Thinking</span>
+                    <span className="axxa-sheet-row-desc">
+                      Can think for more complex tasks
+                    </span>
+                  </span>
+                  <span
+                    className={
+                      "axxa-plus-row-switch" +
+                      (thinkingOn ? " axxa-plus-row-switch-on" : "")
+                    }
+                    role="switch"
+                    aria-checked={thinkingOn}
+                  >
+                    <span className="axxa-plus-row-switch-thumb" />
+                  </span>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -398,7 +412,7 @@ export function ModelSheet({
                     ))}
                   </div>
                 )}
-                <div className="axxa-sheet-list">
+                <div className="axxa-sheet-list axxa-sheet-list-compact">
                   {sortedModels.map((m) => {
                     const { name, tagline } = modelBits(provider, m, lang);
                     const fav = isFav(m);

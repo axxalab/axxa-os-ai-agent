@@ -54,7 +54,11 @@ import { TranslationsContext, getTranslations } from "../i18n";
 import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage, type MessageAttachment } from "../providers/base";
-import { getModelCapabilities, isGenerationModel } from "../providers/modelCapabilities";
+import {
+  getModelCapabilities,
+  isGenerationModel,
+  supportsThinking,
+} from "../providers/modelCapabilities";
 import {
   buildChatSystemPrompt,
   storeMessagesToProvider,
@@ -1857,6 +1861,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 setPlusToggles((prev) => ({ ...prev, extendedThinking: v }))
               }
               onOpenSettings={handleOpenSettings}
+              thinkingCapable={supportsThinking(activeModel)}
               onClose={() => setModelSheetOpen(false)}
             />
           )}

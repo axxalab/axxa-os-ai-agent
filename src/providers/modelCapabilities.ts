@@ -289,6 +289,23 @@ export function getModelCapabilities(
   return caps;
 }
 
+/**
+ * Modelo suporta o toggle "Thinking" (extended thinking / reasoning)? Usado pra
+ * mostrar o toggle só onde faz sentido. Heurística por prefixo (o catálogo não
+ * carrega flag dedicada): o-series + gpt-5, Claude 3.7+/4.x/Fable, Gemini 2.5+,
+ * DeepSeek R1, Qwen3. Em ids tipo "vendor/model" (OpenRouter) testa o último seg.
+ */
+export function supportsThinking(model: string): boolean {
+  let id = (model || "").toLowerCase();
+  if (id.includes("/")) id = id.slice(id.lastIndexOf("/") + 1);
+  if (/^(o1|o3|o4|gpt-5)/.test(id)) return true;
+  if (/^claude-(3-7|opus-4|sonnet-4|haiku-4|fable)/.test(id)) return true;
+  if (/^gemini-(2\.5|3)/.test(id)) return true;
+  if (id.includes("deepseek-r1") || id.includes("deepseek-reasoner")) return true;
+  if (/^qwen3/.test(id)) return true;
+  return false;
+}
+
 export type CapabilityBadgeId =
   | "vision"
   | "tools"
