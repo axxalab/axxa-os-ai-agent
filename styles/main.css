@@ -952,18 +952,28 @@ layout no
 
 /* ============================================================
  * COMPOSER — VARIANTE VAULT Q/A (ref: print Flow).
- * Mesmo componente, data-mode="vault-qa" no card. Só o VISUAL muda: card glassy,
- * placeholder GRANDE no topo, botões FLAT (sem círculo), pill de anexo inline,
- * handle embaixo. Sem pill de modelo nem voz. A lógica interna é a mesma.
+ * Mesmo componente, data-mode="vault-qa". Só o VISUAL muda: FAKE BOTTOM SHEET —
+ * colado na base (mesmo esquema position:fixed dos sheets, cobre o vão da navbar),
+ * full-width, radius só no topo, sem padding/fundo externo. Card glassy, placeholder
+ * GRANDE, botões FLAT, pill de anexo inline, handle. Sem pill de modelo nem voz.
  * ============================================================ */
+.axxa-root .axxa-composer[data-mode="vault-qa"] {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0;
+}
 .axxa-composer-card[data-mode="vault-qa"] {
   gap: 16px;
-  padding: 18px 18px 8px;
-  border-radius: 28px;
+  padding: 18px 18px calc(10px + env(safe-area-inset-bottom, 0px));
+  border: none;
+  border-radius: 28px 28px 0 0;
   background: var(--background-secondary);
-  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 92%, transparent);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
+  box-shadow: 0 -4px 22px rgba(0, 0, 0, 0.16);
 }
 /* o prompt manda no visual — texto/placeholder grande */
 .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor {

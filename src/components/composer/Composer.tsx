@@ -981,7 +981,7 @@ export function Composer({
     ) : null;
 
   return (
-    <div className="axxa-composer" ref={composerRef}>
+    <div className="axxa-composer" data-mode={mode} ref={composerRef}>
       {isRecording && (
         <div className="axxa-recording-indicator" aria-live="polite">
           <span className="axxa-recording-dot" aria-hidden="true" />
