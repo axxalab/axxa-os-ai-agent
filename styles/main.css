@@ -932,6 +932,18 @@ layout no
 .axxa-root .axxa-composer-voice:hover {
   background: var(--background-modifier-border);
 }
+/* transição + feedback de press, compartilhado pelos botões da bar */
+.axxa-root .axxa-composer-plus,
+.axxa-root .axxa-composer-model,
+.axxa-root .axxa-composer-send,
+.axxa-root .axxa-composer-voice {
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.axxa-root .axxa-composer-plus:active,
+.axxa-root .axxa-composer-send:active,
+.axxa-root .axxa-composer-voice:active {
+  transform: scale(0.94);
+}
 /* ícones dentro da bar de 32px — proporção certa */
 .axxa-composer-bar .svg-icon {
   width: 18px;
@@ -2415,14 +2427,6 @@ layout no
   font-size: var(--font-ui-small);
   cursor: pointer;
 }
-.axxa-composer-disclaimer {
-  text-align: center;
-  font-size: var(--font-ui-smaller);
-  line-height: 1.3;
-  padding: 5px 12px 2px 12px;
-  opacity: 0.85;
-  user-select: none;
-}
 .axxa-continue-btn {
   display: inline-flex;
   align-items: center;
@@ -2780,153 +2784,6 @@ layout no
 .axxa-incompat-close .axxa-icon .svg-icon {
   width: 12px;
   height: 12px;
-}
-.axxa-composer {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 4px 6px;
-  z-index: 900;
-  transition: bottom 0.18s ease;
-  pointer-events: auto;
-}
-.axxa-composer-row,
-.axxa-composer-info,
-.axxa-composer-attachments {
-  position: relative;
-  z-index: 1;
-}
-.axxa-composer-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  min-height: 0;
-  flex-wrap: nowrap;
-  width: 100%;
-  box-sizing: border-box;
-}
-.axxa-composer-pill {
-  flex: 1 1 0 !important;
-  min-width: 0;
-}
-.axxa-composer-info {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 3px 10px;
-  padding: 6px 12px;
-  margin: 0 4px;
-  font-size: 10px;
-  line-height: 1.3;
-  user-select: none;
-  max-width: 100%;
-  min-width: 0;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
-  position: relative;
-  isolation: isolate;
-}
-@supports not (color: color-mix(in srgb, red, blue)) {
-  .axxa-composer-info {
-    opacity: 0.97;
-  }
-}
-.axxa-info-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-  font-weight: 500;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-}
-.axxa-info-chip > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.axxa-info-chip .axxa-icon {
-  flex-shrink: 0;
-}
-.axxa-info-chip .axxa-icon .svg-icon {
-  width: 11px;
-  height: 11px;
-}
-.axxa-composer-pill {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 0;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  border-radius: 22px;
-  padding: 6px 14px 6px 6px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.axxa-composer-plus,
-.axxa-composer-plus:hover,
-.axxa-composer-plus:focus,
-.axxa-composer-plus:active,
-.axxa-composer-plus:disabled {
-  appearance: none;
-  -webkit-appearance: none;
-  border: none !important;
-}
-.axxa-composer-plus {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: color 0.15s;
-}
-.axxa-composer-plus:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.axxa-composer-attach,
-.axxa-composer-attach:hover,
-.axxa-composer-attach:focus,
-.axxa-composer-attach:active {
-  appearance: none;
-  -webkit-appearance: none;
-  border: none !important;
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-.axxa-composer-attach .axxa-icon .svg-icon {
-  width: 16px;
-  height: 16px;
-}
-.axxa-composer-pill .axxa-composer-attach {
-  transition: width 0.2s ease, opacity 0.15s ease, margin 0.2s ease,
-              padding 0.2s ease, transform 0.2s ease;
-  overflow: hidden;
-}
-.axxa-composer-pill-typing .axxa-composer-attach {
-  width: 0 !important;
-  min-width: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  opacity: 0;
-  transform: scale(0.5);
-  pointer-events: none;
 }
 .axxa-composer-attachments {
   display: flex;
@@ -3448,30 +3305,6 @@ layout no
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.axxa-composer-send,
-.axxa-composer-send:hover,
-.axxa-composer-send:focus,
-.axxa-composer-send:active {
-  appearance: none;
-  -webkit-appearance: none;
-  border: none !important;
-}
-.axxa-composer-send {
-  flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  align-self: flex-end;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, transform 0.1s;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
-}
-.axxa-composer-send:active {
-  transform: scale(0.95);
-}
 .axxa-recording-indicator {
   display: flex;
   align-items: center;
@@ -3833,13 +3666,6 @@ layout no
   text-overflow: ellipsis;
   width: 100%;
   min-width: 0;
-}
-.axxa-recent-meta.axxa-composer-info {
-  padding: 0;
-  gap: 1px 8px;
-  font-size: 9px;
-  flex-wrap: nowrap;
-  overflow: hidden;
 }
 .axxa-plus-overlay {
   position: absolute;
