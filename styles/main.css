@@ -817,6 +817,32 @@ layout no
 .axxa-header {
   background: var(--background-primary);
 }
+
+/* ============================================================
+ * COMPOSER — DS 1.0 pass 1 (ref: Claude Agent composer)
+ * Send vira CÍRCULO ACCENT (o ↑ terracota do Claude = --interactive-accent).
+ * Especificidade .axxa-root .x vence o button-ghost do tema SEM !important.
+ * ============================================================ */
+.axxa-root .axxa-composer-send {
+  height: 44px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+}
+.axxa-root .axxa-composer-send:hover {
+  background: var(--interactive-accent-hover);
+}
+.axxa-root .axxa-composer-send .svg-icon {
+  color: var(--text-on-accent);
+}
+/* gravando (hold-mic) → vermelho de gravação, não o accent */
+.axxa-root .axxa-composer-send.axxa-composer-recording {
+  background: var(--text-error, #e5484d);
+}
 @supports not (color: color-mix(in srgb, red, blue)) {
   .axxa-root {
     --axxa-pill-bg: var(--background-modifier-hover);
