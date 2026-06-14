@@ -819,19 +819,105 @@ layout no
 }
 
 /* ============================================================
- * COMPOSER — DS 1.0 pass 1 (ref: Claude Agent composer)
- * Send vira CÍRCULO ACCENT (o ↑ terracota do Claude = --interactive-accent).
- * Especificidade .axxa-root .x vence o button-ghost do tema SEM !important.
+ * COMPOSER — DS 1.0 (ref: print do Claude Agent composer)
+ * Card arredondado · editor em cima · bar embaixo (+ · modelo·effort · send).
+ * Vars nativas do Obsidian, sem !important. .axxa-root .x vence o button-ghost.
+ * Regras antigas (composer-pill/info/attach/row) ficam órfãs → sweep.
  * ============================================================ */
-.axxa-root .axxa-composer-send {
+.axxa-root .axxa-composer {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 900;
+  pointer-events: auto;
+  display: block;
+  padding: 0;
+}
+.axxa-composer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 26px;
+  box-shadow: var(--shadow-s, 0 2px 10px rgba(0, 0, 0, 0.18));
+}
+.axxa-root .axxa-composer-editor {
+  font-size: var(--font-ui-medium);
+  line-height: 1.45;
+  color: var(--text-normal);
+  padding: 4px 6px;
+  max-height: 38vh;
+  overflow-y: auto;
+  background: transparent;
+  border: none;
+}
+.axxa-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.axxa-composer-bar-spacer {
+  flex: 1 1 auto;
+}
+.axxa-root .axxa-composer-plus {
+  flex: 0 0 auto;
+  width: 44px;
   height: 44px;
-  border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border: none;
+  cursor: pointer;
+}
+.axxa-root .axxa-composer-plus:hover {
+  background: var(--background-modifier-border);
+}
+.axxa-root .axxa-composer-model {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 16px;
+  min-width: 0;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  border: none;
+  cursor: pointer;
+}
+.axxa-root .axxa-composer-model:hover {
+  background: var(--background-modifier-border);
+}
+.axxa-composer-model-name {
+  font-weight: 600;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.axxa-composer-model-effort {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  flex: 0 0 auto;
+}
+.axxa-root .axxa-composer-send {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border: none;
+  cursor: pointer;
 }
 .axxa-root .axxa-composer-send:hover {
   background: var(--interactive-accent-hover);
@@ -839,7 +925,6 @@ layout no
 .axxa-root .axxa-composer-send .svg-icon {
   color: var(--text-on-accent);
 }
-/* gravando (hold-mic) → vermelho de gravação, não o accent */
 .axxa-root .axxa-composer-send.axxa-composer-recording {
   background: var(--text-error, #e5484d);
 }

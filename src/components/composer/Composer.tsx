@@ -76,6 +76,8 @@ interface ComposerProps {
   onSend: (text: string) => void;
   onStop?: () => void;
   onPlusClick?: () => void;
+  /** Abre o seletor de modelo (sheet estilo Claude) — passo seguinte do DS. */
+  onOpenModel?: () => void;
   streaming?: boolean;
   providerName: string;
   modelName: string;
@@ -213,6 +215,7 @@ export function Composer({
   onSend,
   onStop,
   onPlusClick,
+  onOpenModel,
   streaming = false,
   providerName,
   modelName,
@@ -891,13 +894,11 @@ export function Composer({
           })}
         </div>
       )}
-      <div className="axxa-composer-row">
-        <div
-          className={
-            "axxa-composer-pill" +
-            (isEmpty ? "" : " axxa-composer-pill-typing")
-          }
-        >
+      {/* DS 1.0 — composer do Agent (ref print do Claude): card · editor em cima
+          · bar embaixo (+ · pill modelo·effort · send accent). Attach foi pro +. */}
+      <div className="axxa-composer-card">
+        <div ref={editorRef} className="axxa-composer-editor" />
+        <div className="axxa-composer-bar">
           <button
             type="button"
             className="axxa-composer-plus"
@@ -907,137 +908,65 @@ export function Composer({
           >
             <Icon name="plus" />
           </button>
-          <div ref={editorRef} className="axxa-composer-editor" />
-          {/* Attach buttons (paperclip + image) — APENAS quando isEmpty
-              (composer vazio). Quando user comeca a digitar, somem e cedem
-              espaco pro texto. Pra anexar depois, user vai no + (PlusModal). */}
           <button
             type="button"
-            className="axxa-composer-attach axxa-composer-attach-file"
-            aria-label={t.composer.plusLabel}
-            title={t.composer.plusLabel}
-            onClick={onPlusClick}
+            className="axxa-composer-model"
+            onClick={onOpenModel}
+            aria-label="Select model"
+            title={modelName}
           >
-            <Icon name="paperclip" />
+            <span className="axxa-composer-model-name">{modelName}</span>
+            <span className="axxa-composer-model-effort">{effort}</span>
           </button>
-          {visionEnabled && (
-            <button
-              type="button"
-              className="axxa-composer-attach"
-              aria-label={t.composer.attachImageLabel}
-              title={t.composer.attachImageLabel}
-              onClick={handleAttachClick}
-            >
-              <Icon name="image" />
-            </button>
-          )}
-        </div>
-        <button
-          type="button"
-          className={
-            "axxa-composer-send" +
-            (streaming ? " axxa-composer-stop" : "") +
-            (isRecording ? " axxa-composer-recording" : "")
-          }
-          onClick={onClick}
-          onMouseDown={(e) => {
-            if (isMicMode) armMic(e.clientX, e.clientY);
-          }}
-          onMouseMove={(e) => {
-            if (isMicMode) moveMic(e.clientX, e.clientY);
-          }}
-          onMouseUp={() => {
-            if (isMicMode) endMic();
-          }}
-          onMouseLeave={() => {
-            if (isMicMode) cancelMicArm();
-          }}
-          onTouchStart={(e) => {
-            if (!isMicMode) return;
-            // Previne click sintético depois (mobile)
-            e.preventDefault();
-            // v0.1.228: touches[0] pode ser undefined em eventos raros — guarda.
-            const tch = e.touches[0];
-            if (!tch) return;
-            armMic(tch.clientX, tch.clientY);
-          }}
-          onTouchMove={(e) => {
-            if (!isMicMode) return;
-            // v0.1.228: touches[0] pode ser undefined — guarda antes de usar.
-            const tch = e.touches[0];
-            if (!tch) return;
-            moveMic(tch.clientX, tch.clientY);
-          }}
-          onTouchEnd={(e) => {
-            if (!isMicMode) return;
-            e.preventDefault();
-            endMic();
-          }}
-          onTouchCancel={() => {
-            if (isMicMode) endMic();
-          }}
-          aria-label={label}
-          title={label}
-        >
-          <Icon name={iconName} />
-        </button>
-      </div>
-
-      {/* Status row abaixo do pill — micro-ícones coloridos
-          SINGLE LINE (v0.1.38): flex-wrap:nowrap no CSS. User curated
-          chips via Settings → Outros → Chips. */}
-      <div className="axxa-composer-info">
-        {visibleChips.includes("mode") && mode !== "chat" && (
-          <InfoChip icon="library" color="var(--color-pink, #f472b6)">
-            {mode === "vault-qa" ? "vault" : mode}
-          </InfoChip>
-        )}
-        {visibleChips.includes("model") && (
-          <InfoChip
-            icon={locked ? "lock" : "cpu"}
-            color="var(--color-purple, #a370f7)"
+          <span className="axxa-composer-bar-spacer" />
+          <button
+            type="button"
+            className={
+              "axxa-composer-send" +
+              (streaming ? " axxa-composer-stop" : "") +
+              (isRecording ? " axxa-composer-recording" : "")
+            }
+            onClick={onClick}
+            onMouseDown={(e) => {
+              if (isMicMode) armMic(e.clientX, e.clientY);
+            }}
+            onMouseMove={(e) => {
+              if (isMicMode) moveMic(e.clientX, e.clientY);
+            }}
+            onMouseUp={() => {
+              if (isMicMode) endMic();
+            }}
+            onMouseLeave={() => {
+              if (isMicMode) cancelMicArm();
+            }}
+            onTouchStart={(e) => {
+              if (!isMicMode) return;
+              e.preventDefault();
+              const tch = e.touches[0];
+              if (!tch) return;
+              armMic(tch.clientX, tch.clientY);
+            }}
+            onTouchMove={(e) => {
+              if (!isMicMode) return;
+              const tch = e.touches[0];
+              if (!tch) return;
+              moveMic(tch.clientX, tch.clientY);
+            }}
+            onTouchEnd={(e) => {
+              if (!isMicMode) return;
+              e.preventDefault();
+              endMic();
+            }}
+            onTouchCancel={() => {
+              if (isMicMode) endMic();
+            }}
+            aria-label={label}
+            title={label}
           >
-            {modelName}
-          </InfoChip>
-        )}
-        {visibleChips.includes("effort") && (
-          <InfoChip icon="zap" color="var(--color-orange, #ec7b3e)">
-            {effort}
-          </InfoChip>
-        )}
-        {visibleChips.includes("context") && (
-          <InfoChip icon="gauge" color="var(--color-cyan, #4cc9f0)">
-            {formatTokens(contextUsed)}/{formatTokens(contextTotal)}
-          </InfoChip>
-        )}
-        {visibleChips.includes("in") && (
-          <InfoChip icon="arrow-down" color="var(--color-blue, #4361ee)">
-            {tokensIn}
-          </InfoChip>
-        )}
-        {visibleChips.includes("out") && (
-          <InfoChip icon="arrow-up" color="var(--color-green, #06d6a0)">
-            {tokensOut}
-          </InfoChip>
-        )}
-        {visibleChips.includes("total") && (
-          <InfoChip icon="sigma" color="var(--text-muted)">
-            {tokensTotal}
-          </InfoChip>
-        )}
-        {visibleChips.includes("speed") && tokensPerSec > 0 && (
-          <InfoChip icon="activity" color="var(--color-yellow, #facc15)">
-            {tokensPerSec >= 10
-              ? Math.round(tokensPerSec)
-              : tokensPerSec.toFixed(1)}
-            {" t/s"}
-          </InfoChip>
-        )}
+            <Icon name={iconName} />
+          </button>
+        </div>
       </div>
-
-      {/* Disclaimer discreto — "a IA pode errar" (refs: Claude iOS 17,
-          ChatGPT iOS 133). Uma linha só, abaixo do composer. */}
-      <div className="axxa-composer-disclaimer">{t.chat.disclaimer}</div>
     </div>
   );
 }
