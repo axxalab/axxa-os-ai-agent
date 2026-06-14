@@ -330,7 +330,20 @@ export function ModelSheet({
           )}
         </div>
 
-        {/* CORPO ROLÁVEL — pull-to-collapse no topo do scroll (bodyProps) */}
+        {/* Seletor de categoria FIXO (fora do corpo rolável) — só no More. Fica
+            entre o topo e o corpo, sem os handlers de drag pra não conflitar. */}
+        {view === "more" && models.length > 0 && chipItems.length > 1 && (
+          <div className="axxa-sheet-seg">
+            <SegmentedRow
+              items={chipItems}
+              activeId={chip}
+              onSelect={setChip}
+              showActiveLabel
+            />
+          </div>
+        )}
+
+        {/* CORPO ROLÁVEL — overscroll nas 2 pontas (bodyProps) */}
         <div className="axxa-sheet-body" {...sheet.bodyProps}>
           {view === "model" && (
             <>
@@ -477,21 +490,9 @@ export function ModelSheet({
                   Add models in Settings
                 </button>
               ) : (
-                <>
-                  {chipItems.length > 1 && (
-                    <div className="axxa-sheet-seg">
-                      <SegmentedRow
-                        items={chipItems}
-                        activeId={chip}
-                        onSelect={setChip}
-                        showActiveLabel
-                      />
-                    </div>
-                  )}
-                  <div className="axxa-sheet-list axxa-sheet-list-compact">
-                    {visibleModels.map((m) => selectRow(m))}
-                  </div>
-                </>
+                <div className="axxa-sheet-list axxa-sheet-list-compact">
+                  {visibleModels.map((m) => selectRow(m))}
+                </div>
               )}
             </>
           )}

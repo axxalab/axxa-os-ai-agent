@@ -1316,7 +1316,8 @@ layout no
 
 /* seletor segmentado (mesmo da sidebar) nos chips do More — altura 28px */
 .axxa-sheet-seg {
-  margin: 2px 0 12px;
+  flex: 0 0 auto; /* faixa FIXA entre o topo e o corpo (não rola) */
+  padding: 2px 16px 12px;
 }
 .axxa-sheet-seg .axxa-seg {
   padding: 3px;
