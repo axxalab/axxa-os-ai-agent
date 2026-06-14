@@ -21,6 +21,7 @@ import { Icon } from "../components/_shared/Icon";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
 import { PlusModal } from "../components/composer/PlusModal";
+import { ModelSheet } from "../components/composer/ModelSheet";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
 import { ConversationsList } from "../components/chat/ConversationsList";
 import {
@@ -280,6 +281,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Modo Voz (ref: ChatGPT iOS 133/140, Grok 63/66). v0.1.192
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [modelSheetOpen, setModelSheetOpen] = useState(false);
   const [voiceURI, setVoiceURI] = useState(plugin.settings.voiceURI);
   const [voiceRate, setVoiceRate] = useState(plugin.settings.voiceRate);
   const [voiceIntroDone, setVoiceIntroDone] = useState(
@@ -1633,6 +1635,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onStop={handleStop}
             onPlusClick={handlePlusClick}
             onOpenVoice={() => setVoiceOpen(true)}
+            onOpenModel={() => setModelSheetOpen(true)}
             onDraftChange={(text) => (composerDraftRef.current = text)}
             injectText={composerInject}
             streaming={isLoading}
@@ -1814,6 +1817,22 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 })();
                 setPendingAttachments((prev) => [...prev, entry]);
               }}
+            />
+          )}
+          {modelSheetOpen && (
+            <ModelSheet
+              provider={activeProviderId}
+              models={activeModelsList}
+              currentModel={activeModel}
+              onSelectModel={handleHeaderModelSelect}
+              currentEffort={effort}
+              onSelectEffort={handleSelectEffort}
+              thinkingOn={Boolean(plusToggles.extendedThinking)}
+              onToggleThinking={(v) =>
+                setPlusToggles((prev) => ({ ...prev, extendedThinking: v }))
+              }
+              onMoreModels={handleOpenSettings}
+              onClose={() => setModelSheetOpen(false)}
             />
           )}
           {projectEditor && (

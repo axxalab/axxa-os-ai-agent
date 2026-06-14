@@ -828,7 +828,7 @@ layout no
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.16);
 }
 .axxa-root .axxa-composer-editor {
   font-size: var(--font-ui-medium);
@@ -949,6 +949,161 @@ layout no
   width: 18px;
   height: 18px;
 }
+
+/* indicador de gravação (mic hold-to-talk) — rebuild no DS */
+.axxa-recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  align-self: flex-start;
+  max-width: max-content;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-normal);
+  background: var(--background-secondary);
+  background: color-mix(in srgb, var(--text-error, #e5484d) 14%, var(--background-secondary));
+}
+.axxa-recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--text-error, #e5484d);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .axxa-recording-dot {
+    animation: axxa-rec-pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes axxa-rec-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.78); }
+}
+.axxa-recording-timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.axxa-recording-hint {
+  color: var(--text-muted);
+}
+
+/* ============================================================
+ * BOTTOM SHEET — Select model / Effort (DS 1.0, ref prints Claude).
+ * Reaproveita o shell .axxa-plus-overlay/-sheet/-handle/-divider e o
+ * switch .axxa-plus-row-switch. Header (nav + título) + rows no tamanho
+ * de linha dos prints (nome + tagline · selecionado = accent + check).
+ * ============================================================ */
+.axxa-sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.axxa-root .axxa-sheet-nav {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  color: var(--text-normal);
+  cursor: pointer;
+}
+.axxa-root .axxa-sheet-nav:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-sheet-nav .svg-icon {
+  width: 20px;
+  height: 20px;
+}
+.axxa-sheet-title {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+.axxa-sheet-list {
+  display: flex;
+  flex-direction: column;
+}
+.axxa-root .axxa-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 8px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-normal);
+  transition: background 0.12s ease;
+}
+.axxa-root .axxa-sheet-row:hover {
+  background: var(--background-modifier-hover);
+  border-radius: 12px;
+}
+.axxa-sheet-row-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.axxa-sheet-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-normal);
+}
+.axxa-sheet-row-desc {
+  font-size: var(--font-ui-small);
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+.axxa-sheet-row-on .axxa-sheet-row-name,
+.axxa-sheet-row-on .axxa-sheet-row-desc {
+  color: var(--interactive-accent);
+}
+.axxa-sheet-row-check,
+.axxa-sheet-row-chevron {
+  flex: 0 0 auto;
+  display: inline-flex;
+}
+.axxa-sheet-row-check {
+  color: var(--interactive-accent);
+}
+.axxa-sheet-row-chevron {
+  color: var(--text-muted);
+}
+.axxa-sheet-row-check .svg-icon,
+.axxa-sheet-row-chevron .svg-icon {
+  width: 20px;
+  height: 20px;
+}
+.axxa-sheet-badge {
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--background-modifier-hover);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.axxa-sheet-empty {
+  padding: 16px 8px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
 @supports not (color: color-mix(in srgb, red, blue)) {
   .axxa-root {
     --axxa-pill-bg: var(--background-modifier-hover);
@@ -3304,27 +3459,6 @@ layout no
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.axxa-recording-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: var(--font-ui-smaller);
-  align-self: flex-start;
-  max-width: max-content;
-}
-.axxa-recording-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-.axxa-recording-timer {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
 }
 .axxa-starter {
   flex: 1 1 auto;

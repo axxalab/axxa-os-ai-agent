@@ -968,7 +968,9 @@ export function Composer({
           >
             <Icon name={iconName} />
           </button>
-          {onOpenVoice && (
+          {/* Voz só aparece quando o botão à direita é o mic (campo vazio, sem
+              streaming). Com texto, só fica o send; durante streaming, só o stop. */}
+          {onOpenVoice && isMicMode && (
             <button
               type="button"
               className="axxa-composer-voice"
