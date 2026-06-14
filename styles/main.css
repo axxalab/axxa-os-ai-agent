@@ -4101,7 +4101,7 @@ layout no
    cover já separam. */
 .axxa-plus-sheet {
   width: 100%;
-  height: 42vh; /* estado OPENED (abre menor) */
+  height: 34vh; /* estado OPENED (abre menor) */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -4110,7 +4110,7 @@ layout no
   transition: height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .axxa-plus-sheet-full {
-  height: 50vh; /* estado EXPANDED = metade da tela (não full screen) */
+  height: 70vh; /* estado EXPANDED (aumenta o modal, não full screen) */
 }
 /* TOPO fixo = o toggle (tap/drag). Não rola. */
 .axxa-sheet-top {

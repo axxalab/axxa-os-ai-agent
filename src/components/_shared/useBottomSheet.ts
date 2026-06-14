@@ -1,6 +1,6 @@
 // src/components/_shared/useBottomSheet.ts
-// Lei dos bottom sheets do AXXA: 2 estados — "opened" (abre menor) e "expanded"
-// (metade da tela, ~50vh; classe .axxa-plus-sheet-full). A ação é basicamente só
+// Lei dos bottom sheets do AXXA: 2 estados — "opened" (abre menor, ~34vh) e
+// "expanded" (~70vh; classe .axxa-plus-sheet-full). A ação é basicamente só
 // AUMENTAR o modal. O TOPO (handle/header) é o toggle, igual os apps: TAP alterna;
 // arrastar pra CIMA = expanded, pra BAIXO = opened (ou fecha se já estava opened).
 // O topo fica FIXO (não rola) e só o corpo (.axxa-sheet-body) rola — ver CSS.
