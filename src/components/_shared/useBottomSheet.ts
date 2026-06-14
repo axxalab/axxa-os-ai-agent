@@ -1,8 +1,9 @@
 // src/components/_shared/useBottomSheet.ts
-// Lei dos bottom sheets do AXXA: 2 estados — "opened" (peek) e "full" (full screen).
-// O TOPO (handle/header) é o toggle, igual os apps: TAP alterna; arrastar pra CIMA
-// = full, pra BAIXO = opened (ou fecha se já estava opened). O topo fica FIXO
-// (não rola) e só o corpo (.axxa-sheet-body) rola — ver CSS .axxa-plus-sheet.
+// Lei dos bottom sheets do AXXA: 2 estados — "opened" (abre menor) e "expanded"
+// (metade da tela, ~50vh; classe .axxa-plus-sheet-full). A ação é basicamente só
+// AUMENTAR o modal. O TOPO (handle/header) é o toggle, igual os apps: TAP alterna;
+// arrastar pra CIMA = expanded, pra BAIXO = opened (ou fecha se já estava opened).
+// O topo fica FIXO (não rola) e só o corpo (.axxa-sheet-body) rola — ver CSS.
 
 import { useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
