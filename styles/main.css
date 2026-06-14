@@ -950,6 +950,100 @@ layout no
   height: 18px;
 }
 
+/* ============================================================
+ * COMPOSER — VARIANTE VAULT Q/A (ref: print Flow).
+ * Mesmo componente, data-mode="vault-qa" no card. Só o VISUAL muda: card glassy,
+ * placeholder GRANDE no topo, botões FLAT (sem círculo), pill de anexo inline,
+ * handle embaixo. Sem pill de modelo nem voz. A lógica interna é a mesma.
+ * ============================================================ */
+.axxa-composer-card[data-mode="vault-qa"] {
+  gap: 16px;
+  padding: 18px 18px 8px;
+  border-radius: 28px;
+  background: var(--background-secondary);
+  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+/* o prompt manda no visual — texto/placeholder grande */
+.axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor {
+  font-size: 1.45rem;
+  line-height: 1.3;
+  padding: 6px 4px;
+  min-height: 1.9em;
+  max-height: 30vh;
+}
+.axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor .cm-placeholder {
+  color: var(--text-muted);
+}
+/* botões flat: sem círculo, só o ícone (branco) — igual o print */
+.axxa-root .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-plus,
+.axxa-root .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-send {
+  background: transparent;
+  color: var(--text-normal);
+  width: 36px;
+  height: 36px;
+}
+.axxa-root .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-plus:hover,
+.axxa-root .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-send:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-composer-card[data-mode="vault-qa"] .axxa-composer-send .svg-icon {
+  color: var(--text-normal);
+}
+/* ícones maiores na variante */
+.axxa-composer-card[data-mode="vault-qa"] .axxa-composer-bar .svg-icon {
+  width: 24px;
+  height: 24px;
+}
+/* pill de anexo inline "Label · ícone · ×N" */
+.axxa-composer-attach-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+.axxa-root .axxa-composer-attach-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+  max-width: 100%;
+}
+.axxa-composer-attach-pill-label {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.axxa-composer-attach-pill-count {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+.axxa-composer-attach-pill .svg-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+/* handle do card (barra característica embaixo) */
+.axxa-composer-handle {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+  margin: 4px auto 2px;
+}
+
 /* indicador de gravação (mic hold-to-talk) — rebuild no DS */
 .axxa-recording-indicator {
   display: flex;

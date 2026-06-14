@@ -37,6 +37,20 @@ function formatRecordingDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// Vault Q/A: anexos como pill compacto "Label · ícone · ×N" por tipo (ref Flow).
+const ATTACH_LABEL: Record<string, string> = {
+  image: "Image",
+  note: "Note",
+  pdf: "PDF",
+  audio: "Audio",
+};
+const ATTACH_ICON: Record<string, string> = {
+  image: "image",
+  note: "file-text",
+  pdf: "file",
+  audio: "mic",
+};
+
 /** Entry de anexo no Composer — tipo discriminado por kind. */
 interface PendingImage {
   id: string;
@@ -744,7 +758,8 @@ export function Composer({
   // O botão à direita tem 3 modos: send (texto digitado) / stop (streaming) / mic (vazio).
   // Em "mic", o press inicia gravação e release para (hold-to-record).
   // Em "send" e "stop", click normal.
-  const isMicMode = !streaming && isEmpty;
+  // Vault Q/A não tem voz/mic — lá o botão é send puro (seta), nunca microfone.
+  const isMicMode = !streaming && isEmpty && mode !== "vault-qa";
 
   let iconName: string;
   let label: string;
@@ -754,12 +769,13 @@ export function Composer({
     iconName = "square";
     label = t.composer.stopLabel;
     onClick = handleStopClick;
-  } else if (isEmpty) {
+  } else if (isMicMode) {
     iconName = "mic";
     label = isRecording ? t.composer.micRecording : t.composer.micLabel;
     onClick = undefined; // mic é controlado por press/release, não click
   } else {
-    iconName = "arrow-up";
+    // Vault Q/A usa seta pra direita (ref print Flow); Agent/chat, seta pra cima.
+    iconName = mode === "vault-qa" ? "arrow-right" : "arrow-up";
     label = t.composer.sendLabel;
     onClick = handleSendClick;
   }
@@ -867,8 +883,9 @@ export function Composer({
       />
       {/* Anexos pendentes (preview chips antes do envio).
           Multi-tipo: image (thumbnail+shimmer), note (ícone file-text),
-          pdf (ícone file), audio (ícone mic). */}
-      {pendingAttachments.length > 0 && (
+          pdf (ícone file), audio (ícone mic). No Vault Q/A NÃO ficam aqui —
+          viram um pill compacto inline na barra (ref print Flow). */}
+      {mode !== "vault-qa" && pendingAttachments.length > 0 && (
         <div
           className="axxa-composer-attachments"
           aria-label={t.composer.attachmentsLabel}
@@ -897,9 +914,9 @@ export function Composer({
           })}
         </div>
       )}
-      {/* DS 1.0 — composer do Agent (ref print do Claude): card · editor em cima
-          · bar embaixo (+ · pill modelo·effort · send accent). Attach foi pro +. */}
-      <div className="axxa-composer-card">
+      {/* Card do composer. data-mode troca só o VISUAL (Agent/chat = card Claude;
+          vault-qa = card glassy do print Flow) — a lógica interna é a mesma. */}
+      <div className="axxa-composer-card" data-mode={mode}>
         <div ref={editorRef} className="axxa-composer-editor" />
         <div className="axxa-composer-bar">
           <button
@@ -911,17 +928,49 @@ export function Composer({
           >
             <Icon name="plus" />
           </button>
-          <button
-            type="button"
-            className="axxa-composer-model"
-            onClick={onOpenModel}
-            aria-label="Select model"
-            title={modelName}
-          >
-            <span className="axxa-composer-model-name">{modelName}</span>
-            <span className="axxa-composer-model-effort">{effort}</span>
-          </button>
+          {mode !== "vault-qa" && (
+            <button
+              type="button"
+              className="axxa-composer-model"
+              onClick={onOpenModel}
+              aria-label="Select model"
+              title={modelName}
+            >
+              <span className="axxa-composer-model-name">{modelName}</span>
+              <span className="axxa-composer-model-effort">{effort}</span>
+            </button>
+          )}
           <span className="axxa-composer-bar-spacer" />
+          {/* Vault Q/A: anexos como pill compacto inline por tipo (ref print Flow). */}
+          {mode === "vault-qa" && pendingAttachments.length > 0 && (
+            <div className="axxa-composer-attach-pills">
+              {Object.entries(
+                pendingAttachments.reduce<Record<string, number>>((acc, a) => {
+                  acc[a.kind] = (acc[a.kind] ?? 0) + 1;
+                  return acc;
+                }, {})
+              ).map(([kind, count]) => (
+                <button
+                  key={kind}
+                  type="button"
+                  className="axxa-composer-attach-pill"
+                  onClick={() =>
+                    pendingAttachments
+                      .filter((a) => a.kind === kind)
+                      .forEach((a) => onRemoveAttachment?.(a.id))
+                  }
+                  aria-label={`${ATTACH_LABEL[kind] ?? kind} ×${count}`}
+                  title={t.composer.attachImageRemoveLabel}
+                >
+                  <span className="axxa-composer-attach-pill-label">
+                    {ATTACH_LABEL[kind] ?? kind}
+                  </span>
+                  <Icon name={ATTACH_ICON[kind] ?? "paperclip"} />
+                  <span className="axxa-composer-attach-pill-count">×{count}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             className={
@@ -968,8 +1017,8 @@ export function Composer({
           >
             <Icon name={iconName} />
           </button>
-          {/* Voz só aparece quando o botão à direita é o mic (campo vazio, sem
-              streaming). Com texto, só fica o send; durante streaming, só o stop. */}
+          {/* Voz só quando o botão à direita é o mic (campo vazio, sem streaming).
+              isMicMode já exclui o Vault Q/A (sem voz lá). */}
           {onOpenVoice && isMicMode && (
             <button
               type="button"
@@ -982,6 +1031,10 @@ export function Composer({
             </button>
           )}
         </div>
+        {/* handle do card (ref print Flow) — só no Vault Q/A */}
+        {mode === "vault-qa" && (
+          <div className="axxa-composer-handle" aria-hidden="true" />
+        )}
       </div>
     </div>
   );
