@@ -984,7 +984,9 @@ layout no
 .axxa-composer-card[data-mode="vault-qa"] {
   gap: 16px;
   padding: 18px 18px calc(10px + env(safe-area-inset-bottom, 0px));
-  border: 1px solid var(--background-modifier-border);
+  /* sem borda: é um sheet colado na base (laterais na borda da tela, fundo no
+     viewport) — a sombra só de cima já faz a separação. */
+  border: none;
   border-radius: 28px 28px 0 0;
   background: var(--axxa-composer-bg);
   /* sombra SÓ em cima: spread negativo (-4) faz a sombra não passar da borda de
