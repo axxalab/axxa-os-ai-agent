@@ -973,7 +973,9 @@ layout no
   background: color-mix(in srgb, var(--background-secondary) 92%, transparent);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  box-shadow: 0 -4px 22px rgba(0, 0, 0, 0.16);
+  /* sem box-shadow: num sheet glassy colado na base a sombra ficava com "padding"
+     na lateral (não chegava à borda); o glass + o radius do topo já separam. */
+  box-shadow: none;
 }
 /* o prompt manda no visual — texto/placeholder grande */
 .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor {
