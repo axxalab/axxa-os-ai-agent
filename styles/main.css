@@ -966,17 +966,19 @@ layout no
 
 /* ============================================================
  * COMPOSER — VARIANTE VAULT Q/A (ref: print Flow + snippet do Inspector).
- * Mesmo componente, data-mode="vault-qa". FAKE BOTTOM SHEET colado na base do
- * .axxa-root, full-width, radius só no topo. Card SÓLIDO (--background-primary) +
- * sombra normal (snippet); a view-content da AXXA sobe de z-index pra ficar na
- * frente da leaf nativa de baixo. position:ABSOLUTE (não fixed): assim ele se solta
- * da base e sobe junto com o teclado, igual os outros composers (a view encolhe).
+ * Mesmo componente, data-mode="vault-qa". FAKE BOTTOM SHEET full-width, radius só
+ * no topo, card primary + borda + sombra só em cima. Usa o MESMO esquema do bottom
+ * sheet: `position: fixed` → encosta no fundo REAL do viewport (o absolute parava
+ * na base do .axxa-root, acima do clearance da navbar, e não alcançava onde o sheet
+ * alcança). O teclado é tratado por `bottom: var(--keyboard-height)` — o Obsidian
+ * expõe essa var no <html> (ver AxxaView keyboardObserver), então ele sobe junto
+ * com o teclado sem precisar do absolute.
  * ============================================================ */
 .axxa-root .axxa-composer[data-mode="vault-qa"] {
-  position: absolute;
+  position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--keyboard-height, 0px);
   padding: 0;
 }
 .axxa-composer-card[data-mode="vault-qa"] {
