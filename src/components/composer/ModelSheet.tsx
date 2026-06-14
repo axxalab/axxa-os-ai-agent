@@ -330,8 +330,8 @@ export function ModelSheet({
           )}
         </div>
 
-        {/* CORPO ROLÁVEL */}
-        <div className="axxa-sheet-body">
+        {/* CORPO ROLÁVEL — pull-to-collapse no topo do scroll (bodyProps) */}
+        <div className="axxa-sheet-body" {...sheet.bodyProps}>
           {view === "model" && (
             <>
               {models.length === 0 && favModels.length === 0 ? (

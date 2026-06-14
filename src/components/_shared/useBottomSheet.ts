@@ -9,7 +9,7 @@ import { useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 
 export interface BottomSheetControls {
-  /** True = full screen; false = opened (peek). */
+  /** True = expanded (~70vh); false = opened (~34vh). */
   expanded: boolean;
   /** Sufixo de classe pra folha (`.axxa-plus-sheet` + isto). */
   sheetClass: string;
@@ -20,12 +20,21 @@ export interface BottomSheetControls {
     onPointerUp: (e: ReactPointerEvent) => void;
     onPointerCancel: () => void;
   };
+  /** Handlers pra grudar no `.axxa-sheet-body` — puxar pra baixo COM o scroll no
+   *  topo colapsa (expanded→opened, opened→fecha). */
+  bodyProps: {
+    onPointerDown: (e: ReactPointerEvent) => void;
+    onPointerUp: (e: ReactPointerEvent) => void;
+    onPointerCancel: () => void;
+  };
 }
 
 /** Distância (px) que conta como swipe deliberado (vs tap). */
 const SWIPE_THRESHOLD = 48;
 /** Movimento (px) acima do qual deixa de ser tap. */
 const TAP_SLOP = 6;
+/** Puxão pra baixo (px) no topo do corpo que colapsa/fecha o sheet. */
+const PULL_DISMISS = 64;
 
 export function useBottomSheet(onClose: () => void): BottomSheetControls {
   const [expanded, setExpanded] = useState(false);
@@ -67,9 +76,42 @@ export function useBottomSheet(onClose: () => void): BottomSheetControls {
     startY.current = null;
   };
 
+  // ── Corpo: pull-to-collapse. Puxar pra baixo COM o scroll no topo do corpo
+  // colapsa (expanded→opened) e, de novo, fecha (opened→onClose). NÃO captura o
+  // pointer (deixa o scroll nativo rolar normalmente quando não está no topo). ──
+  const bodyStart = useRef<{ y: number; atTop: boolean } | null>(null);
+
+  const onBodyPointerDown = (e: ReactPointerEvent) => {
+    const el = e.currentTarget as HTMLElement;
+    bodyStart.current = { y: e.clientY, atTop: el.scrollTop <= 0 };
+  };
+
+  const onBodyPointerUp = (e: ReactPointerEvent) => {
+    if (!bodyStart.current) return;
+    const el = e.currentTarget as HTMLElement;
+    const dy = e.clientY - bodyStart.current.y;
+    const startedAtTop = bodyStart.current.atTop;
+    bodyStart.current = null;
+    // Só conta se começou e terminou no topo (scrollTop 0) e puxou pra baixo —
+    // assim não confunde com rolar o conteúdo.
+    if (startedAtTop && el.scrollTop <= 0 && dy > PULL_DISMISS) {
+      if (expanded) setExpanded(false);
+      else onClose();
+    }
+  };
+
+  const onBodyPointerCancel = () => {
+    bodyStart.current = null;
+  };
+
   return {
     expanded,
     sheetClass: expanded ? " axxa-plus-sheet-full" : "",
     topProps: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel },
+    bodyProps: {
+      onPointerDown: onBodyPointerDown,
+      onPointerUp: onBodyPointerUp,
+      onPointerCancel: onBodyPointerCancel,
+    },
   };
 }
