@@ -4,8 +4,8 @@ remove cor,
    background, sombra, glass, animação. Re-rodar: node scripts/strip-css.mjs */
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
   padding-top: 0 !important;
   padding-bottom: calc(
         var(--safe-area-inset-bottom, 0px) +
