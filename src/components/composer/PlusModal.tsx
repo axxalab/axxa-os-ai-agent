@@ -9,6 +9,7 @@
 import { useRef, useState } from "react";
 import { FuzzySuggestModal, Menu, Notice, Platform, TFile } from "obsidian";
 import { useFocusTrap } from "../_shared/useFocusTrap";
+import { useBottomSheet } from "../_shared/useBottomSheet";
 import type { App } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { CameraModal } from "./CameraModal";
@@ -119,6 +120,7 @@ export function PlusModal({
   // Focus-trap + Escape + devolve foco ao fechar (a11y, padrão WAI-ARIA dialog).
   const sheetRef = useRef<HTMLDivElement>(null);
   useFocusTrap(sheetRef, { onEscape: onClose });
+  const sheet = useBottomSheet(onClose);
 
   // Helper: blob → dataUrl via FileReader
   const blobToDataUrl = (blob: Blob): Promise<string> =>
@@ -273,16 +275,19 @@ export function PlusModal({
     <div className="axxa-plus-overlay" onClick={onClose}>
       <div
         ref={sheetRef}
-        className="axxa-plus-sheet"
+        className={"axxa-plus-sheet" + sheet.sheetClass}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
         aria-label={t.plus.dialogLabel}
       >
-        <div className="axxa-plus-handle" />
-        <div className="axxa-plus-title">{t.plus.addToChat}</div>
-
+        {/* TOPO FIXO (handle + título) — toggle: tap/drag alterna opened↔full. */}
+        <div className="axxa-sheet-top" {...sheet.topProps}>
+          <div className="axxa-plus-handle" />
+          <div className="axxa-plus-title">{t.plus.addToChat}</div>
+        </div>
+        <div className="axxa-sheet-body">
         {/* Tiles grandes monocromáticos — estrutura "Add to Chat" (Claude iOS 23) */}
         <div className="axxa-plus-tiles">
           <PlusTile
@@ -447,6 +452,7 @@ export function PlusModal({
               );
             })}
           </div>
+        </div>
         </div>
       </div>
 

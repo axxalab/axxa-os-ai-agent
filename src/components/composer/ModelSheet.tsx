@@ -17,6 +17,7 @@ import { useRef, useState } from "react";
 import { Icon } from "../_shared/Icon";
 import { SegmentedRow, type SegmentedItem } from "../_shared/SegmentedRow";
 import { useFocusTrap } from "../_shared/useFocusTrap";
+import { useBottomSheet } from "../_shared/useBottomSheet";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
@@ -164,6 +165,7 @@ export function ModelSheet({
   const [chip, setChip] = useState<string>("all");
   const sheetRef = useRef<HTMLDivElement>(null);
   useFocusTrap(sheetRef, { onEscape: onClose });
+  const sheet = useBottomSheet(onClose);
 
   const prefix = provider + "::";
   const isFav = (m: string) => favorites.includes(prefix + m);
@@ -274,17 +276,17 @@ export function ModelSheet({
     <div className="axxa-plus-overlay" onClick={onClose}>
       <div
         ref={sheetRef}
-        className="axxa-plus-sheet axxa-sheet"
+        className={"axxa-plus-sheet axxa-sheet" + sheet.sheetClass}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
         aria-label="Select model"
       >
-        <div className="axxa-plus-handle" />
-
-        {view === "model" && (
-          <>
+        {/* TOPO FIXO (handle + header) — é o toggle: tap/drag alterna opened↔full. */}
+        <div className="axxa-sheet-top" {...sheet.topProps}>
+          <div className="axxa-plus-handle" />
+          {view === "model" && (
             <div className="axxa-sheet-header">
               <button
                 type="button"
@@ -297,65 +299,8 @@ export function ModelSheet({
               <span className="axxa-sheet-title">Select model</span>
               <span className="axxa-sheet-nav" aria-hidden="true" />
             </div>
-
-            {models.length === 0 && favModels.length === 0 ? (
-              <button
-                type="button"
-                className="axxa-sheet-addfav"
-                onClick={() => {
-                  onOpenSettings?.();
-                  onClose();
-                }}
-                disabled={!onOpenSettings}
-              >
-                Add favorite
-              </button>
-            ) : (
-              <div className="axxa-sheet-list axxa-sheet-list-compact">
-                {favCount === 0 && (
-                  <span className="axxa-sheet-addfav-label">Add favorite</span>
-                )}
-                {favModels.map((m) => favRow(m))}
-                {/* completa até no máx 5 slots com candidatos (estrela vazia) */}
-                {candidates
-                  .slice(0, Math.max(0, MAX_FAVORITES - favModels.length))
-                  .map((m) => favRow(m))}
-              </div>
-            )}
-
-            <div className="axxa-plus-divider" />
-            <button
-              type="button"
-              className="axxa-sheet-row"
-              onClick={() => setView("more")}
-            >
-              <span className="axxa-sheet-row-text">
-                <span className="axxa-sheet-row-name">More models</span>
-              </span>
-              <span className="axxa-sheet-row-chevron">
-                <Icon name="chevron-right" />
-              </span>
-            </button>
-
-            <div className="axxa-plus-divider" />
-            <button
-              type="button"
-              className="axxa-sheet-row"
-              onClick={() => setView("effort")}
-            >
-              <span className="axxa-sheet-row-text">
-                <span className="axxa-sheet-row-name">Effort</span>
-                <span className="axxa-sheet-row-desc">{effortLabel}</span>
-              </span>
-              <span className="axxa-sheet-row-chevron">
-                <Icon name="chevron-right" />
-              </span>
-            </button>
-          </>
-        )}
-
-        {view === "effort" && (
-          <>
+          )}
+          {view === "effort" && (
             <div className="axxa-sheet-header">
               <button
                 type="button"
@@ -368,79 +313,8 @@ export function ModelSheet({
               <span className="axxa-sheet-title">Effort</span>
               <span className="axxa-sheet-nav" aria-hidden="true" />
             </div>
-
-            <div className="axxa-sheet-list">
-              {EFFORT_LEVELS.map((lvl) => {
-                const selected = lvl === currentEffort;
-                return (
-                  <button
-                    key={lvl}
-                    type="button"
-                    className={
-                      "axxa-sheet-row" + (selected ? " axxa-sheet-row-on" : "")
-                    }
-                    onClick={() => onSelectEffort(lvl)}
-                  >
-                    <span className="axxa-sheet-row-text">
-                      <span className="axxa-sheet-row-name">
-                        {EFFORT_LABELS[lvl]}
-                        {lvl === DEFAULT_EFFORT && (
-                          <span className="axxa-sheet-badge">Default</span>
-                        )}
-                      </span>
-                      <span className="axxa-sheet-row-desc">
-                        {EFFORT_TAGLINES[lvl]}
-                      </span>
-                    </span>
-                    {selected && (
-                      <span className="axxa-sheet-row-check">
-                        <Icon name="check" />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {thinkingCapable && (
-              <>
-                <div className="axxa-plus-divider" />
-                <div
-                  className="axxa-sheet-row"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => onToggleThinking(!thinkingOn)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onToggleThinking(!thinkingOn);
-                    }
-                  }}
-                >
-                  <span className="axxa-sheet-row-text">
-                    <span className="axxa-sheet-row-name">Thinking</span>
-                    <span className="axxa-sheet-row-desc">
-                      Can think for more complex tasks
-                    </span>
-                  </span>
-                  <span
-                    className={
-                      "axxa-plus-row-switch" +
-                      (thinkingOn ? " axxa-plus-row-switch-on" : "")
-                    }
-                    role="switch"
-                    aria-checked={thinkingOn}
-                  >
-                    <span className="axxa-plus-row-switch-thumb" />
-                  </span>
-                </div>
-              </>
-            )}
-          </>
-        )}
-
-        {view === "more" && (
-          <>
+          )}
+          {view === "more" && (
             <div className="axxa-sheet-header">
               <button
                 type="button"
@@ -453,38 +327,175 @@ export function ModelSheet({
               <span className="axxa-sheet-title">More models</span>
               <span className="axxa-sheet-nav" aria-hidden="true" />
             </div>
+          )}
+        </div>
 
-            {models.length === 0 ? (
+        {/* CORPO ROLÁVEL */}
+        <div className="axxa-sheet-body">
+          {view === "model" && (
+            <>
+              {models.length === 0 && favModels.length === 0 ? (
+                <button
+                  type="button"
+                  className="axxa-sheet-addfav"
+                  onClick={() => {
+                    onOpenSettings?.();
+                    onClose();
+                  }}
+                  disabled={!onOpenSettings}
+                >
+                  Add favorite
+                </button>
+              ) : (
+                <div className="axxa-sheet-list axxa-sheet-list-compact">
+                  {favCount === 0 && (
+                    <span className="axxa-sheet-addfav-label">Add favorite</span>
+                  )}
+                  {favModels.map((m) => favRow(m))}
+                  {/* completa até no máx 5 slots com candidatos (estrela vazia) */}
+                  {candidates
+                    .slice(0, Math.max(0, MAX_FAVORITES - favModels.length))
+                    .map((m) => favRow(m))}
+                </div>
+              )}
+
+              <div className="axxa-plus-divider" />
               <button
                 type="button"
-                className="axxa-sheet-addfav"
-                onClick={() => {
-                  onOpenSettings?.();
-                  onClose();
-                }}
-                disabled={!onOpenSettings}
+                className="axxa-sheet-row"
+                onClick={() => setView("more")}
               >
-                Add models in Settings
+                <span className="axxa-sheet-row-text">
+                  <span className="axxa-sheet-row-name">More models</span>
+                </span>
+                <span className="axxa-sheet-row-chevron">
+                  <Icon name="chevron-right" />
+                </span>
               </button>
-            ) : (
-              <>
-                {chipItems.length > 1 && (
-                  <div className="axxa-sheet-seg">
-                    <SegmentedRow
-                      items={chipItems}
-                      activeId={chip}
-                      onSelect={setChip}
-                      showActiveLabel
-                    />
+
+              <div className="axxa-plus-divider" />
+              <button
+                type="button"
+                className="axxa-sheet-row"
+                onClick={() => setView("effort")}
+              >
+                <span className="axxa-sheet-row-text">
+                  <span className="axxa-sheet-row-name">Effort</span>
+                  <span className="axxa-sheet-row-desc">{effortLabel}</span>
+                </span>
+                <span className="axxa-sheet-row-chevron">
+                  <Icon name="chevron-right" />
+                </span>
+              </button>
+            </>
+          )}
+
+          {view === "effort" && (
+            <>
+              <div className="axxa-sheet-list">
+                {EFFORT_LEVELS.map((lvl) => {
+                  const selected = lvl === currentEffort;
+                  return (
+                    <button
+                      key={lvl}
+                      type="button"
+                      className={
+                        "axxa-sheet-row" + (selected ? " axxa-sheet-row-on" : "")
+                      }
+                      onClick={() => onSelectEffort(lvl)}
+                    >
+                      <span className="axxa-sheet-row-text">
+                        <span className="axxa-sheet-row-name">
+                          {EFFORT_LABELS[lvl]}
+                          {lvl === DEFAULT_EFFORT && (
+                            <span className="axxa-sheet-badge">Default</span>
+                          )}
+                        </span>
+                        <span className="axxa-sheet-row-desc">
+                          {EFFORT_TAGLINES[lvl]}
+                        </span>
+                      </span>
+                      {selected && (
+                        <span className="axxa-sheet-row-check">
+                          <Icon name="check" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {thinkingCapable && (
+                <>
+                  <div className="axxa-plus-divider" />
+                  <div
+                    className="axxa-sheet-row"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onToggleThinking(!thinkingOn)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onToggleThinking(!thinkingOn);
+                      }
+                    }}
+                  >
+                    <span className="axxa-sheet-row-text">
+                      <span className="axxa-sheet-row-name">Thinking</span>
+                      <span className="axxa-sheet-row-desc">
+                        Can think for more complex tasks
+                      </span>
+                    </span>
+                    <span
+                      className={
+                        "axxa-plus-row-switch" +
+                        (thinkingOn ? " axxa-plus-row-switch-on" : "")
+                      }
+                      role="switch"
+                      aria-checked={thinkingOn}
+                    >
+                      <span className="axxa-plus-row-switch-thumb" />
+                    </span>
                   </div>
-                )}
-                <div className="axxa-sheet-list axxa-sheet-list-compact axxa-sheet-list-more">
-                  {visibleModels.map((m) => selectRow(m))}
-                </div>
-              </>
-            )}
-          </>
-        )}
+                </>
+              )}
+            </>
+          )}
+
+          {view === "more" && (
+            <>
+              {models.length === 0 ? (
+                <button
+                  type="button"
+                  className="axxa-sheet-addfav"
+                  onClick={() => {
+                    onOpenSettings?.();
+                    onClose();
+                  }}
+                  disabled={!onOpenSettings}
+                >
+                  Add models in Settings
+                </button>
+              ) : (
+                <>
+                  {chipItems.length > 1 && (
+                    <div className="axxa-sheet-seg">
+                      <SegmentedRow
+                        items={chipItems}
+                        activeId={chip}
+                        onSelect={setChip}
+                        showActiveLabel
+                      />
+                    </div>
+                  )}
+                  <div className="axxa-sheet-list axxa-sheet-list-compact">
+                    {visibleModels.map((m) => selectRow(m))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

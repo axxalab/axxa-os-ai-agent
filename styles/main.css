@@ -1386,13 +1386,6 @@ layout no
   width: 32px;
   height: 32px;
 }
-/* More models: altura FIXA pra ~5 modelos por vez (mesmo faltando modelo pra
-   encher) — scroll interno; título+seletor ficam acima, parados. Density-aware:
-   ~5 × (row-py×2 + ~35px de conteúdo). */
-.axxa-sheet-list-more {
-  height: calc(var(--axxa-row-py, 9px) * 10 + 175px);
-  overflow-y: auto;
-}
 
 @supports not (color: color-mix(in srgb, red, blue)) {
   .axxa-root {
@@ -4102,15 +4095,41 @@ layout no
   align-items: flex-end;
   z-index: 1000;
 }
+/* Bottom sheet com 2 estados (opened / full) — lei do AXXA. O sheet NÃO rola;
+   o topo (.axxa-sheet-top) fica fixo e só o corpo (.axxa-sheet-body) rola.
+   sem borda: colado na base (laterais na borda da tela) — radius do topo +
+   cover já separam. */
 .axxa-plus-sheet {
   width: 100%;
-  max-height: 75%;
-  overflow-y: auto;
-  /* sem borda: o sheet é colado na base (laterais na borda da tela) — só o radius
-     do topo + a sombra/cover separam. Popovers/menus/dropdowns mantêm a deles. */
+  height: 68vh; /* estado OPENED (peek) */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: none;
   border-radius: 22px 22px 0 0;
-  padding: 12px 16px 24px 16px;
+  transition: height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.axxa-plus-sheet-full {
+  height: 96vh; /* estado FULL SCREEN */
+}
+/* TOPO fixo = o toggle (tap/drag). Não rola. */
+.axxa-sheet-top {
+  flex: 0 0 auto;
+  padding: 8px 16px 0 16px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.axxa-sheet-top:active {
+  cursor: grabbing;
+}
+/* CORPO rolável */
+.axxa-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px 24px 16px;
 }
 .axxa-plus-handle {
   width: 40px;
@@ -4119,10 +4138,6 @@ layout no
   margin: 0 auto 16px auto;
   /* a "barra característica" do bottom sheet — sem cor ela ficava invisível */
   background: var(--background-modifier-border);
-}
-/* sheet de modelo: barra colada no topo + título logo abaixo */
-.axxa-sheet.axxa-plus-sheet {
-  padding-top: 8px;
 }
 .axxa-sheet .axxa-plus-handle {
   margin-bottom: 10px;
