@@ -40,7 +40,9 @@ body.is-mobile
 }
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
   position: relative;
-  z-index: 0;
+  /* z-index 10 (snippet do Inspector): põe a view da AXXA na frente da leaf
+     nativa de baixo (o "No file") pra o composer não ficar atrás dela. */
+  z-index: 10;
   height: 100%;
   width: 100%;
   box-sizing: border-box;
@@ -951,14 +953,15 @@ layout no
 }
 
 /* ============================================================
- * COMPOSER — VARIANTE VAULT Q/A (ref: print Flow).
- * Mesmo componente, data-mode="vault-qa". Só o VISUAL muda: FAKE BOTTOM SHEET —
- * colado na base (mesmo esquema position:fixed dos sheets, cobre o vão da navbar),
- * full-width, radius só no topo, sem padding/fundo externo. Card glassy, placeholder
- * GRANDE, botões FLAT, pill de anexo inline, handle. Sem pill de modelo nem voz.
+ * COMPOSER — VARIANTE VAULT Q/A (ref: print Flow + snippet do Inspector).
+ * Mesmo componente, data-mode="vault-qa". FAKE BOTTOM SHEET colado na base do
+ * .axxa-root, full-width, radius só no topo. Card SÓLIDO (--background-primary) +
+ * sombra normal (snippet); a view-content da AXXA sobe de z-index pra ficar na
+ * frente da leaf nativa de baixo. position:ABSOLUTE (não fixed): assim ele se solta
+ * da base e sobe junto com o teclado, igual os outros composers (a view encolhe).
  * ============================================================ */
 .axxa-root .axxa-composer[data-mode="vault-qa"] {
-  position: fixed;
+  position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
@@ -969,13 +972,8 @@ layout no
   padding: 18px 18px calc(10px + env(safe-area-inset-bottom, 0px));
   border: none;
   border-radius: 28px 28px 0 0;
-  background: var(--background-secondary);
-  background: color-mix(in srgb, var(--background-secondary) 92%, transparent);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  /* sem box-shadow: num sheet glassy colado na base a sombra ficava com "padding"
-     na lateral (não chegava à borda); o glass + o radius do topo já separam. */
-  box-shadow: none;
+  background: var(--background-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 /* o prompt manda no visual — texto/placeholder grande */
 .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor {
