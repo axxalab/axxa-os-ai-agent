@@ -791,20 +791,6 @@ layout no
 }
 /* superfícies-chave visíveis (pass 1.1) — evita containers transparentes no teste.
    Se algum elemento ainda aparecer "sem pele", é só apontar e a gente veste. */
-.axxa-composer {
-  background: var(--background-primary);
-  border-top: 1px solid var(--background-modifier-border);
-}
-.axxa-composer-editor {
-  background: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-l, 12px);
-}
-.axxa-composer-row {
-  background: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-l, 12px);
-}
 .axxa-bubble-user {
   background: var(--background-modifier-hover);
 }
@@ -2827,11 +2813,6 @@ layout no
   flex: 1 1 0 !important;
   min-width: 0;
 }
-.axxa-composer-send {
-  flex: 0 0 44px !important;
-  width: 44px !important;
-  box-sizing: border-box;
-}
 .axxa-composer-info {
   display: flex;
   flex-wrap: wrap;
@@ -4356,14 +4337,6 @@ layout no
 .axxa-bubble-ai .axxa-icon .svg-icon {
   width: 14px;
   height: 14px;
-}
-.axxa-composer-plus .axxa-icon .svg-icon {
-  width: 20px;
-  height: 20px;
-}
-.axxa-composer-send .axxa-icon .svg-icon {
-  width: 22px;
-  height: 22px;
 }
 .axxa-markdown pre.axxa-code-block {
   position: relative;
@@ -7325,13 +7298,6 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 .axxa-newchat .axxa-seg-block .axxa-seg {
   height: 48px;
-}
-.axxa-newchat-active .axxa-composer-info,
-.axxa-newchat-active .axxa-composer-disclaimer {
-  display: none;
-}
-.axxa-newchat-active .axxa-composer-send {
-  padding: 24px;
 }
 .axxa-newchat-icon {
   display: inline-flex;
