@@ -822,14 +822,10 @@ layout no
   display: block;
   padding: 0;
 }
-/* superfície dos composers — leve/elevada; no dark clareia mais pra ficar visível
-   contra o fundo escuro. Fallback pro --background-secondary sem color-mix. */
+/* superfície dos 3 composers — a COR é a primary (igual o fundo); a separação
+   visual vem da BORDA + SOMBRA, não de um tom diferente. */
 .axxa-root {
-  --axxa-composer-bg: var(--background-secondary);
-  --axxa-composer-bg: color-mix(in srgb, var(--background-secondary) 88%, white 12%);
-}
-.theme-dark .axxa-root {
-  --axxa-composer-bg: color-mix(in srgb, var(--background-secondary) 80%, white 20%);
+  --axxa-composer-bg: var(--background-primary);
 }
 .axxa-composer-card {
   display: flex;
@@ -986,7 +982,7 @@ layout no
 .axxa-composer-card[data-mode="vault-qa"] {
   gap: 16px;
   padding: 18px 18px calc(10px + env(safe-area-inset-bottom, 0px));
-  border: none;
+  border: 1px solid var(--background-modifier-border);
   border-radius: 28px 28px 0 0;
   background: var(--axxa-composer-bg);
   /* sombra SÓ em cima: spread negativo (-4) faz a sombra não passar da borda de
