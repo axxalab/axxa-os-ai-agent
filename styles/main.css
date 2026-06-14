@@ -951,6 +951,13 @@ layout no
   width: 18px;
   height: 18px;
 }
+/* sem outline accent ao focar/digitar no editor — o cursor já indica o foco.
+   Vence a regra global .axxa-root :focus-visible (que é !important). */
+.axxa-root .axxa-composer-editor .cm-editor:focus-visible,
+.axxa-root .axxa-composer-editor .cm-content:focus-visible,
+.axxa-root .axxa-composer-editor .cm-editor.cm-focused {
+  outline: none !important;
+}
 
 /* ============================================================
  * COMPOSER — VARIANTE VAULT Q/A (ref: print Flow + snippet do Inspector).
@@ -973,7 +980,8 @@ layout no
   border: none;
   border-radius: 28px 28px 0 0;
   background: var(--background-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  /* sombra só EM CIMA (separa do conteúdo acima); embaixo ele encosta na base */
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
 }
 /* o prompt manda no visual — texto/placeholder grande */
 .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor {
