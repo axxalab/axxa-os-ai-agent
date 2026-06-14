@@ -1658,6 +1658,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         )}
         {view === "chat" && (
           <Composer
+            key={activeMode}
             onSend={handleSend}
             onStop={handleStop}
             onPlusClick={handlePlusClick}

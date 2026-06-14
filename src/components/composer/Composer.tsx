@@ -861,6 +861,125 @@ export function Composer({
     };
   }, []);
 
+  // Elementos compartilhados pelos 3 layouts (Agent card / Vault glassy / Chat
+  // pill). A LÓGICA é idêntica — só muda onde cada um entra no JSX (ver branch).
+  const editorEl = <div ref={editorRef} className="axxa-composer-editor" />;
+  const plusEl = (
+    <button
+      type="button"
+      className="axxa-composer-plus"
+      aria-label={t.composer.plusLabel}
+      title={t.composer.plusLabel}
+      onClick={onPlusClick}
+    >
+      <Icon name="plus" />
+    </button>
+  );
+  const modelEl = (
+    <button
+      type="button"
+      className="axxa-composer-model"
+      onClick={onOpenModel}
+      aria-label="Select model"
+      title={modelName}
+    >
+      <span className="axxa-composer-model-name">{modelName}</span>
+      <span className="axxa-composer-model-effort">{effort}</span>
+    </button>
+  );
+  const sendEl = (
+    <button
+      type="button"
+      className={
+        "axxa-composer-send" +
+        (streaming ? " axxa-composer-stop" : "") +
+        (isRecording ? " axxa-composer-recording" : "") +
+        (isMicMode ? " axxa-composer-mic" : "")
+      }
+      onClick={onClick}
+      onMouseDown={(e) => {
+        if (isMicMode) armMic(e.clientX, e.clientY);
+      }}
+      onMouseMove={(e) => {
+        if (isMicMode) moveMic(e.clientX, e.clientY);
+      }}
+      onMouseUp={() => {
+        if (isMicMode) endMic();
+      }}
+      onMouseLeave={() => {
+        if (isMicMode) cancelMicArm();
+      }}
+      onTouchStart={(e) => {
+        if (!isMicMode) return;
+        e.preventDefault();
+        const tch = e.touches[0];
+        if (!tch) return;
+        armMic(tch.clientX, tch.clientY);
+      }}
+      onTouchMove={(e) => {
+        if (!isMicMode) return;
+        const tch = e.touches[0];
+        if (!tch) return;
+        moveMic(tch.clientX, tch.clientY);
+      }}
+      onTouchEnd={(e) => {
+        if (!isMicMode) return;
+        e.preventDefault();
+        endMic();
+      }}
+      onTouchCancel={() => {
+        if (isMicMode) endMic();
+      }}
+      aria-label={label}
+      title={label}
+    >
+      <Icon name={iconName} />
+    </button>
+  );
+  const voiceEl =
+    onOpenVoice && isMicMode ? (
+      <button
+        type="button"
+        className="axxa-composer-voice"
+        onClick={onOpenVoice}
+        aria-label={t.voice.title}
+        title={t.voice.title}
+      >
+        <Icon name="audio-lines" />
+      </button>
+    ) : null;
+  // Vault Q/A: anexos como pill compacto inline por tipo (ref print Flow).
+  const vaultPills =
+    pendingAttachments.length > 0 ? (
+      <div className="axxa-composer-attach-pills">
+        {Object.entries(
+          pendingAttachments.reduce<Record<string, number>>((acc, a) => {
+            acc[a.kind] = (acc[a.kind] ?? 0) + 1;
+            return acc;
+          }, {})
+        ).map(([kind, count]) => (
+          <button
+            key={kind}
+            type="button"
+            className="axxa-composer-attach-pill"
+            onClick={() =>
+              pendingAttachments
+                .filter((a) => a.kind === kind)
+                .forEach((a) => onRemoveAttachment?.(a.id))
+            }
+            aria-label={`${ATTACH_LABEL[kind] ?? kind} ×${count}`}
+            title={t.composer.attachImageRemoveLabel}
+          >
+            <span className="axxa-composer-attach-pill-label">
+              {ATTACH_LABEL[kind] ?? kind}
+            </span>
+            <Icon name={ATTACH_ICON[kind] ?? "paperclip"} />
+            <span className="axxa-composer-attach-pill-count">×{count}</span>
+          </button>
+        ))}
+      </div>
+    ) : null;
+
   return (
     <div className="axxa-composer" ref={composerRef}>
       {isRecording && (
@@ -914,128 +1033,34 @@ export function Composer({
           })}
         </div>
       )}
-      {/* Card do composer. data-mode troca só o VISUAL (Agent/chat = card Claude;
-          vault-qa = card glassy do print Flow) — a lógica interna é a mesma. */}
-      <div className="axxa-composer-card" data-mode={mode}>
-        <div ref={editorRef} className="axxa-composer-editor" />
-        <div className="axxa-composer-bar">
-          <button
-            type="button"
-            className="axxa-composer-plus"
-            aria-label={t.composer.plusLabel}
-            title={t.composer.plusLabel}
-            onClick={onPlusClick}
-          >
-            <Icon name="plus" />
-          </button>
-          {mode !== "vault-qa" && (
-            <button
-              type="button"
-              className="axxa-composer-model"
-              onClick={onOpenModel}
-              aria-label="Select model"
-              title={modelName}
-            >
-              <span className="axxa-composer-model-name">{modelName}</span>
-              <span className="axxa-composer-model-effort">{effort}</span>
-            </button>
-          )}
-          <span className="axxa-composer-bar-spacer" />
-          {/* Vault Q/A: anexos como pill compacto inline por tipo (ref print Flow). */}
-          {mode === "vault-qa" && pendingAttachments.length > 0 && (
-            <div className="axxa-composer-attach-pills">
-              {Object.entries(
-                pendingAttachments.reduce<Record<string, number>>((acc, a) => {
-                  acc[a.kind] = (acc[a.kind] ?? 0) + 1;
-                  return acc;
-                }, {})
-              ).map(([kind, count]) => (
-                <button
-                  key={kind}
-                  type="button"
-                  className="axxa-composer-attach-pill"
-                  onClick={() =>
-                    pendingAttachments
-                      .filter((a) => a.kind === kind)
-                      .forEach((a) => onRemoveAttachment?.(a.id))
-                  }
-                  aria-label={`${ATTACH_LABEL[kind] ?? kind} ×${count}`}
-                  title={t.composer.attachImageRemoveLabel}
-                >
-                  <span className="axxa-composer-attach-pill-label">
-                    {ATTACH_LABEL[kind] ?? kind}
-                  </span>
-                  <Icon name={ATTACH_ICON[kind] ?? "paperclip"} />
-                  <span className="axxa-composer-attach-pill-count">×{count}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          <button
-            type="button"
-            className={
-              "axxa-composer-send" +
-              (streaming ? " axxa-composer-stop" : "") +
-              (isRecording ? " axxa-composer-recording" : "")
-            }
-            onClick={onClick}
-            onMouseDown={(e) => {
-              if (isMicMode) armMic(e.clientX, e.clientY);
-            }}
-            onMouseMove={(e) => {
-              if (isMicMode) moveMic(e.clientX, e.clientY);
-            }}
-            onMouseUp={() => {
-              if (isMicMode) endMic();
-            }}
-            onMouseLeave={() => {
-              if (isMicMode) cancelMicArm();
-            }}
-            onTouchStart={(e) => {
-              if (!isMicMode) return;
-              e.preventDefault();
-              const tch = e.touches[0];
-              if (!tch) return;
-              armMic(tch.clientX, tch.clientY);
-            }}
-            onTouchMove={(e) => {
-              if (!isMicMode) return;
-              const tch = e.touches[0];
-              if (!tch) return;
-              moveMic(tch.clientX, tch.clientY);
-            }}
-            onTouchEnd={(e) => {
-              if (!isMicMode) return;
-              e.preventDefault();
-              endMic();
-            }}
-            onTouchCancel={() => {
-              if (isMicMode) endMic();
-            }}
-            aria-label={label}
-            title={label}
-          >
-            <Icon name={iconName} />
-          </button>
-          {/* Voz só quando o botão à direita é o mic (campo vazio, sem streaming).
-              isMicMode já exclui o Vault Q/A (sem voz lá). */}
-          {onOpenVoice && isMicMode && (
-            <button
-              type="button"
-              className="axxa-composer-voice"
-              onClick={onOpenVoice}
-              aria-label={t.voice.title}
-              title={t.voice.title}
-            >
-              <Icon name="audio-lines" />
-            </button>
+      {mode === "chat" ? (
+        /* Chat: pill ÚNICO numa linha (ref print ChatGPT) — + · editor · mic · voz.
+           Sem card de 2 linhas; o editor é inline entre o + e os botões. */
+        <div className="axxa-composer-pill" data-mode="chat">
+          {plusEl}
+          {editorEl}
+          {sendEl}
+          {voiceEl}
+        </div>
+      ) : (
+        /* Agent (card Claude) e Vault Q/A (card glassy): editor em cima, bar embaixo.
+           data-mode troca só o visual; a lógica é a mesma. */
+        <div className="axxa-composer-card" data-mode={mode}>
+          {editorEl}
+          <div className="axxa-composer-bar">
+            {plusEl}
+            {mode !== "vault-qa" && modelEl}
+            <span className="axxa-composer-bar-spacer" />
+            {mode === "vault-qa" && vaultPills}
+            {sendEl}
+            {voiceEl}
+          </div>
+          {/* handle do card (ref print Flow) — só no Vault Q/A */}
+          {mode === "vault-qa" && (
+            <div className="axxa-composer-handle" aria-hidden="true" />
           )}
         </div>
-        {/* handle do card (ref print Flow) — só no Vault Q/A */}
-        {mode === "vault-qa" && (
-          <div className="axxa-composer-handle" aria-hidden="true" />
-        )}
-      </div>
+      )}
     </div>
   );
 }

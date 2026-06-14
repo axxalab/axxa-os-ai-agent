@@ -1044,6 +1044,65 @@ layout no
   margin: 4px auto 2px;
 }
 
+/* ============================================================
+ * COMPOSER — VARIANTE CHAT (ref: print ChatGPT).
+ * Pill ÚNICO numa linha: + flat · editor inline · mic flat · voz (círculo accent).
+ * Sem card de 2 linhas, sem pill de modelo. A lógica é a mesma do Agent.
+ * ============================================================ */
+.axxa-composer-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+.axxa-root .axxa-composer-pill .axxa-composer-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-ui-medium);
+  line-height: 1.4;
+  padding: 6px;
+  max-height: 28vh;
+  background: transparent;
+  border: none;
+}
+/* + e mic = flat (sem círculo, ícone na cor do texto) */
+.axxa-root .axxa-composer-pill .axxa-composer-plus,
+.axxa-root .axxa-composer-pill .axxa-composer-send.axxa-composer-mic {
+  background: transparent;
+  color: var(--text-normal);
+  width: 38px;
+  height: 38px;
+}
+.axxa-root .axxa-composer-pill .axxa-composer-plus:hover,
+.axxa-root .axxa-composer-pill .axxa-composer-send.axxa-composer-mic:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-composer-pill .axxa-composer-send.axxa-composer-mic .svg-icon {
+  color: var(--text-normal);
+}
+/* send (texto/stop) e voz = círculo accent */
+.axxa-root .axxa-composer-pill .axxa-composer-send,
+.axxa-root .axxa-composer-pill .axxa-composer-voice {
+  width: 38px;
+  height: 38px;
+}
+.axxa-root .axxa-composer-pill .axxa-composer-voice {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.axxa-composer-pill .axxa-composer-voice .svg-icon {
+  color: var(--text-on-accent);
+}
+/* ícones da pill ~22px */
+.axxa-composer-pill .svg-icon {
+  width: 22px;
+  height: 22px;
+}
+
 /* indicador de gravação (mic hold-to-talk) — rebuild no DS */
 .axxa-recording-indicator {
   display: flex;
