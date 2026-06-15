@@ -1348,14 +1348,19 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   font-size: var(--font-ui-medium);
   line-height: 1.2;
 }
-/* snippet: zero contorno nos elementos internos (card do Agent + linhas do Chat)
-   e nos containers */
-.axxa-suggest-card-ico,
-.axxa-suggest-card-label,
-.axxa-suggest-cards,
-.axxa-suggest-row-ico,
-.axxa-suggest-row-label,
-.axxa-suggest-rows {
+/* RAIZ do "bloco fantasma" do Agent: o curinga `.axxa-root :is([class*="-card"])`
+   (~L747) dá bg+borda+radius a QUALQUER classe que contenha "-card" — e isso pega
+   o CONTAINER (axxa-suggest-CARDs) e os spans internos (axxa-suggest-CARD-ico/-label),
+   não só o tile. Os snippets de border:none falhavam por especificidade (0,1,0 < 0,2,0).
+   Aqui, na MESMA especificidade (0,2,0) e depois → zera bg+borda nesses elementos.
+   Só `.axxa-suggest-card` (o tile) mantém o outline próprio. */
+.axxa-root .axxa-suggest-cards,
+.axxa-root .axxa-suggest-card-ico,
+.axxa-root .axxa-suggest-card-label,
+.axxa-root .axxa-suggest-rows,
+.axxa-root .axxa-suggest-row-ico,
+.axxa-root .axxa-suggest-row-label {
+  background: transparent;
   border: none;
 }
 
