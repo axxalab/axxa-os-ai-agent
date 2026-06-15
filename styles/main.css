@@ -1171,6 +1171,179 @@ layout no
 }
 
 /* ============================================================
+ * COMPOSER — texto 100% nativo. Garante que o texto digitado herde a cor dos
+ * elementos do Obsidian (white/dark) e que o -webkit-text-fill-color do WebView
+ * mobile não sobrescreva o color. Tudo via --text-normal (a cor nativa).
+ * ============================================================ */
+.axxa-root .axxa-composer-editor,
+.axxa-root .axxa-composer-editor .cm-editor,
+.axxa-root .axxa-composer-editor .cm-content,
+.axxa-root .axxa-composer-editor .cm-line {
+  color: var(--text-normal);
+  -webkit-text-fill-color: var(--text-normal);
+}
+
+/* ============================================================
+ * BALÕES DE SUGESTÃO acima do composer (chat vazio) — ref prints 2026-06-15.
+ * Um estilo por modo (cada print tinha o nome do modo em azul):
+ *   chat → linhas ícone+label · agent → cards h · vault-qa → cards de 2 linhas.
+ * Vivem DENTRO do .axxa-composer (que cresce pra cima ancorado no bottom), logo
+ * ficam colados acima do input. Cor = primary/secondary nativos.
+ * ============================================================ */
+.axxa-suggest {
+  pointer-events: auto;
+}
+
+/* — CHAT: linhas verticais (ícone + label), sem fundo de card (ref ChatGPT) — */
+.axxa-suggest-rows {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 6px 4px 12px;
+}
+.axxa-root .axxa-suggest-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 11px 10px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 12px;
+  text-align: left;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.axxa-root .axxa-suggest-row:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-root .axxa-suggest-row:active {
+  background: var(--background-modifier-border);
+}
+.axxa-suggest-row-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-normal);
+}
+.axxa-suggest-row-ico .svg-icon {
+  width: 24px;
+  height: 24px;
+}
+.axxa-suggest-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* — AGENT: cards horizontais (ícone em cima, label embaixo) (ref Gemini) — */
+.axxa-suggest-cards {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  padding: 4px 2px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.axxa-suggest-cards::-webkit-scrollbar {
+  display: none;
+}
+.axxa-root .axxa-suggest-card {
+  flex: 0 0 auto;
+  width: 142px;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  background: var(--background-secondary);
+  border: none;
+  box-shadow: none;
+  border-radius: 16px;
+  text-align: left;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.axxa-root .axxa-suggest-card:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-root .axxa-suggest-card:active {
+  transform: scale(0.97);
+}
+.axxa-suggest-card-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-normal);
+}
+.axxa-suggest-card-ico .svg-icon {
+  width: 24px;
+  height: 24px;
+}
+.axxa-suggest-card-label {
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+  line-height: 1.2;
+}
+
+/* — VAULT QA: cards de 2 linhas (título + subtítulo), sem ícone (ref ChatGPT) —
+   ficam logo acima do pill; o card do composer (opaco) cobre o tuck inferior. */
+.axxa-suggest-cards2 {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  padding: 4px 12px 0;
+  margin-bottom: -14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.axxa-suggest-cards2::-webkit-scrollbar {
+  display: none;
+}
+.axxa-root .axxa-suggest-card2 {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 16px 22px;
+  background: var(--background-secondary);
+  border: none;
+  box-shadow: none;
+  border-radius: 16px 16px 0 0;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.axxa-root .axxa-suggest-card2:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-suggest-card2-title {
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.axxa-suggest-card2-sub {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ============================================================
  * BOTTOM SHEET — Select model / Effort (DS 1.0, ref prints Claude).
  * Reaproveita o shell .axxa-plus-overlay/-sheet/-handle/-divider e o
  * switch .axxa-plus-row-switch. Header (nav + título) + rows no tamanho
@@ -7327,6 +7500,13 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
 }
 .axxa-sidebar-seg {
   padding: 0 10px 8px 10px;
+}
+/* seletor de chats da sidebar = track OPACO. O .axxa-seg base é translúcido
+   (color-mix ...55%, transparent) e sumia sobre o --background-secondary da
+   sidebar. Aqui vira uma superfície sólida (primary + leve tint da borda). */
+.axxa-sidebar-seg .axxa-seg {
+  background: var(--background-primary);
+  background: color-mix(in srgb, var(--background-modifier-border) 40%, var(--background-primary));
 }
 :is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg {
   max-width: 100%;

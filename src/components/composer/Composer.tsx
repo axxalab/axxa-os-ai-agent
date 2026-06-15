@@ -30,6 +30,7 @@ import {
   extractWikilinks,
   type AxxaCommand,
 } from "./completions";
+import { ComposerSuggestions } from "./ComposerSuggestions";
 
 function formatRecordingDuration(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -137,6 +138,9 @@ interface ComposerProps {
   /** Texto pra injetar no editor (prompt starters da StarterScreen). Cada
    *  mudança de `nonce` reescreve o doc + foca. v0.1.131 */
   injectText?: { text: string; nonce: number };
+  /** Mostra os "balões" de sugestão acima do composer (chat vazio / nova
+   *  conversa). Um estilo por modo. Some quando o editor deixa de estar vazio. */
+  showSuggestions?: boolean;
 }
 
 export type { PendingImage };
@@ -255,6 +259,7 @@ export function Composer({
   onPickNote,
   onAddAudio,
   injectText,
+  showSuggestions = false,
   onDraftChange,
 }: ComposerProps) {
   const t = useT();
@@ -609,6 +614,19 @@ export function Composer({
     view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [injectText?.nonce]);
+
+  // Injeta um prompt-starter (balão de sugestão) no editor e mantém o foco.
+  // Reescreve o doc + cursor no fim — o editor deixa de estar vazio, então as
+  // sugestões somem na hora (isEmpty vira false).
+  const injectIntoEditor = (text: string) => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: text },
+      selection: { anchor: text.length },
+    });
+    view.focus();
+  };
 
   const handleSendClick = () => {
     if (streaming) return;
@@ -990,6 +1008,15 @@ export function Composer({
 
   return (
     <div className="axxa-composer" data-mode={mode} ref={composerRef}>
+      {/* Balões de sugestão (chat vazio): acima do input, um estilo por modo.
+          Somem assim que o editor recebe texto (isEmpty=false) ou durante stream. */}
+      {showSuggestions && isEmpty && !streaming && !isRecording && (
+        <ComposerSuggestions
+          mode={mode}
+          onPick={injectIntoEditor}
+          onVoice={onOpenVoice}
+        />
+      )}
       {isRecording && (
         <div className="axxa-recording-indicator" aria-live="polite">
           <span className="axxa-recording-dot" aria-hidden="true" />

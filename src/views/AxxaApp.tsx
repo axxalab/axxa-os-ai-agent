@@ -1666,6 +1666,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onOpenModel={() => setModelSheetOpen(true)}
             onDraftChange={(text) => (composerDraftRef.current = text)}
             injectText={composerInject}
+            showSuggestions={isEmpty}
             streaming={isLoading}
             providerName={activeProvider.name}
             modelName={activeModel}
