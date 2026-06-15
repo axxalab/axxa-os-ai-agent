@@ -1092,6 +1092,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // da gaveta). Mesma lógica do handleNewChat + fixa o modo da sessão. v0.1.219
   const handleNewChatWithMode = (newMode: string) => {
     abortRef.current?.abort();
+    // Limpa um prompt-starter pendente ANTES do remount do Composer (key=mode):
+    // sem isso o editor recém-montado re-injeta o texto da sugestão antiga.
+    setComposerInject(undefined);
     setMode(newMode);
     useChatStore.getState().newChat();
     setCleanChat(true);
@@ -1305,6 +1308,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   };
 
   const handleStarterMode = async (newMode: string) => {
+    // Limpa o prompt-starter pendente antes do remount do Composer (key=mode) —
+    // senão trocar de modo re-injeta a sugestão que já tinha sido apagada.
+    setComposerInject(undefined);
     setMode(newMode);
     plugin.settings.defaultMode = newMode;
     await plugin.saveSettings();
