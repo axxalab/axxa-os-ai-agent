@@ -60,27 +60,27 @@ export function SuggestionsSheet({ mode, onPick, onClose }: SuggestionsSheetProp
           </div>
         </div>
 
-        {/* CORPO ROLÁVEL — overscroll nas 2 pontas (touch, via bodyRef). */}
+        {/* CORPO ROLÁVEL — overscroll nas 2 pontas (touch, via bodyRef).
+            Grid 2×2 bem espaçado: cada sugestão é uma IDEIA (pode virar um plano),
+            então ganha card próprio — ícone + título + hint, com presença. */}
         <div className="axxa-sheet-body" ref={sheet.bodyRef}>
-          <div className="axxa-sheet-list axxa-sheet-list-compact">
+          <div className="axxa-suggest-grid">
             {items.map((s, i) => (
               <button
                 key={i}
                 type="button"
-                className="axxa-sheet-row"
+                className="axxa-suggest-grid-card"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   onPick(s.prompt);
                   onClose();
                 }}
               >
-                <span className="axxa-suggest-sheet-ico">
+                <span className="axxa-suggest-grid-ico">
                   <Icon name={s.icon} />
                 </span>
-                <span className="axxa-sheet-row-text">
-                  <span className="axxa-sheet-row-name">{s.label}</span>
-                  <span className="axxa-sheet-row-desc">{s.hint}</span>
-                </span>
+                <span className="axxa-suggest-grid-label">{s.label}</span>
+                <span className="axxa-suggest-grid-hint">{s.hint}</span>
               </button>
             ))}
           </div>
