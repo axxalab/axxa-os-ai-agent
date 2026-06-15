@@ -1219,7 +1219,7 @@ layout no
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 14px 8px;
+  padding: var(--axxa-row-py) 8px;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -1237,7 +1237,7 @@ layout no
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--axxa-stack-gap);
 }
 .axxa-sheet-row-name {
   display: flex;
@@ -1372,9 +1372,10 @@ layout no
 }
 
 
-/* More models = compacto: rows na densidade da sidebar, nome/desc menores */
+/* Listas de modelos (favoritos + More) = compactas: densidade de LISTA
+   (--axxa-list-row-py, mais apertada que --axxa-row-py das nav rows) + fontes menores */
 .axxa-sheet-list-compact .axxa-sheet-row {
-  padding: var(--axxa-row-py) 8px;
+  padding: var(--axxa-list-row-py) 8px;
   gap: 10px;
 }
 .axxa-sheet-list-compact .axxa-sheet-row-name {

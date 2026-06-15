@@ -187,6 +187,9 @@ export function ModelSheet({
       : chip === "free"
         ? freeModels
         : grouped.get(chip as ModelCategory) ?? [];
+  // Seletor só faz sentido com 2+ "classes" pra filtrar: várias categorias, ou
+  // 1 categoria + Free. Uma só (só "all" + ela) é redundante → some.
+  const showCategorySeg = presentCats.length > 1 || freeModels.length > 0;
 
   // Row com estrela (ecrã de favoritos): tap = seleciona, estrela = (de)favorita.
   function favRow(m: string) {
@@ -318,7 +321,7 @@ export function ModelSheet({
 
         {/* Seletor de categoria FIXO (fora do corpo rolável) — só no More. Fica
             entre o topo e o corpo, sem os handlers de drag pra não conflitar. */}
-        {view === "more" && models.length > 0 && chipItems.length > 1 && (
+        {view === "more" && models.length > 0 && showCategorySeg && (
           <div className="axxa-sheet-seg">
             <SegmentedRow
               items={chipItems}
