@@ -27,6 +27,7 @@ import {
   getModelFullInfo,
   localizedDescription,
   groupModelsByCategory,
+  prettyModelName,
   CATEGORY_ORDER,
   type ModelCategory,
 } from "../../providers/modelDescriptions";
@@ -75,23 +76,6 @@ const CHIP_ICON: Record<string, string> = {
   embedding: "boxes",
   other: "sparkles",
 };
-
-/** Formata um id de modelo cru num nome apresentável (fallback). */
-function prettyModelName(id: string): string {
-  let s = id || "";
-  if (s.includes("/")) s = s.slice(s.lastIndexOf("/") + 1);
-  s = s.replace(/^(claude-|models-)/, "");
-  s = s.replace(/(\d)-(\d)/g, "$1.$2"); // versões: 4-8 → 4.8
-  s = s.replace(/[-_]/g, " ").trim();
-  return s
-    .split(/\s+/)
-    .map((w) => {
-      if (/^gpt$/i.test(w)) return "GPT";
-      if (/^\d/.test(w)) return w; // números de versão / 4o
-      return w.charAt(0).toUpperCase() + w.slice(1);
-    })
-    .join(" ");
-}
 
 /** Encurta pra uma frase breve: corta na 1ª frase; se ainda longa, na 1ª vírgula.
  *  O texto secundário é sempre uma linha (nowrap+ellipsis no CSS). */
@@ -164,7 +148,9 @@ export function ModelSheet({
   const [view, setView] = useState<"model" | "effort" | "more">("model");
   const [chip, setChip] = useState<string>("all");
   const sheetRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(sheetRef, { onEscape: onClose });
+  // autoFocus:false → não rouba o foco do editor ao abrir; com o teclado aberto ele
+  // continua aberto (sheet por cima) e ao fechar o foco volta pro editor.
+  useFocusTrap(sheetRef, { onEscape: onClose, autoFocus: false });
   const sheet = useBottomSheet(onClose);
 
   const prefix = provider + "::";

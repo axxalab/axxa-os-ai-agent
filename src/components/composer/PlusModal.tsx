@@ -119,7 +119,9 @@ export function PlusModal({
 
   // Focus-trap + Escape + devolve foco ao fechar (a11y, padrão WAI-ARIA dialog).
   const sheetRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(sheetRef, { onEscape: onClose });
+  // autoFocus:false → não rouba o foco do editor ao abrir; teclado segue aberto
+  // (sheet por cima) e ao fechar o foco volta pro editor.
+  useFocusTrap(sheetRef, { onEscape: onClose, autoFocus: false });
   const sheet = useBottomSheet(onClose);
 
   // Helper: blob → dataUrl via FileReader

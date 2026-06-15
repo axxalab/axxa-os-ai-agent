@@ -21,6 +21,7 @@ import { Notice, Platform } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
 import { formatTokens, getContextWindow } from "../_shared/contextWindows";
+import { prettyModelName } from "../../providers/modelDescriptions";
 import { useT } from "../../i18n";
 import { useApp } from "../_shared/AppContext";
 import {
@@ -870,6 +871,9 @@ export function Composer({
       className="axxa-composer-plus"
       aria-label={t.composer.plusLabel}
       title={t.composer.plusLabel}
+      // Não rouba o foco do editor (mantém o teclado aberto ao abrir o sheet, e
+      // ao fechar o foco volta pro editor → o teclado reativa). v0.1.x
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onPlusClick}
     >
       <Icon name="plus" />
@@ -879,11 +883,15 @@ export function Composer({
     <button
       type="button"
       className="axxa-composer-model"
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onOpenModel}
       aria-label="Select model"
       title={modelName}
     >
-      <span className="axxa-composer-model-name">{modelName}</span>
+      {/* nome CURTO no pill, mesmo quando o id/API vem grande; title= mantém o full */}
+      <span className="axxa-composer-model-name">
+        {prettyModelName(modelName)}
+      </span>
       <span className="axxa-composer-model-effort">{effort}</span>
     </button>
   );
@@ -1052,8 +1060,9 @@ export function Composer({
             {mode !== "vault-qa" && modelEl}
             <span className="axxa-composer-bar-spacer" />
             {mode === "vault-qa" && vaultPills}
-            {sendEl}
+            {/* voz à esquerda, mic/send à direita (send é a ação primária na ponta) */}
             {voiceEl}
+            {sendEl}
           </div>
           {/* handle do card (ref print Flow) — só no Vault Q/A */}
           {mode === "vault-qa" && (
