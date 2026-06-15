@@ -20,6 +20,7 @@ import { SkillsScreen } from "../components/chat/SkillsScreen";
 import { Icon } from "../components/_shared/Icon";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
+import { ComposerSuggestions } from "../components/composer/ComposerSuggestions";
 import { PlusModal } from "../components/composer/PlusModal";
 import { ModelSheet } from "../components/composer/ModelSheet";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
@@ -388,6 +389,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [composerInject, setComposerInject] = useState<
     { text: string; nonce: number } | undefined
   >(undefined);
+  // Editor do composer vazio? Gateia os balões de sugestão (somem ao digitar).
+  // Flip-guarded: só re-renderiza quando cruza a fronteira vazio↔texto (não a
+  // cada tecla — o rascunho em si continua num ref pra não re-renderizar tudo).
+  const [composerEmpty, setComposerEmpty] = useState(true);
 
   // Gaveta lateral (avatar do header) com as conversas. v0.1.145
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1656,6 +1661,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onDismiss={() => setDismissedBannerKey(bannerKey)}
           />
         )}
+        {/* Balões de sugestão da NOVA conversa — no corpo, flutuando acima do
+            composer (seguem o teclado, mesmo esquema de posição do composer).
+            Só na NewChatScreen (não no onboarding) e com o editor ainda vazio. */}
+        {view === "chat" &&
+          isEmpty &&
+          composerEmpty &&
+          (plugin.settings.onboardingDone || hasAnyKey) && (
+            <ComposerSuggestions
+              mode={activeMode}
+              onPick={handlePromptStarter}
+              onVoice={() => setVoiceOpen(true)}
+            />
+          )}
         {view === "chat" && (
           <Composer
             key={activeMode}
@@ -1664,9 +1682,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onPlusClick={handlePlusClick}
             onOpenVoice={() => setVoiceOpen(true)}
             onOpenModel={() => setModelSheetOpen(true)}
-            onDraftChange={(text) => (composerDraftRef.current = text)}
+            onDraftChange={(text) => {
+              composerDraftRef.current = text;
+              const empty = text.trim().length === 0;
+              setComposerEmpty((prev) => (prev === empty ? prev : empty));
+            }}
             injectText={composerInject}
-            showSuggestions={isEmpty}
             streaming={isLoading}
             providerName={activeProvider.name}
             modelName={activeModel}

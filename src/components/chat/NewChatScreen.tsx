@@ -71,15 +71,7 @@ export function NewChatScreen({
   return (
     <div className="axxa-newchat" data-mode={mode}>
       <div className="axxa-newchat-inner">
-        <div className="axxa-newchat-head">
-          <span className="axxa-newchat-icon">
-            <Icon name={icon} />
-          </span>
-          <h2 className="axxa-newchat-title">{title}</h2>
-          <p className="axxa-newchat-sub">{sub}</p>
-        </div>
-
-        {/* Provider — mesmo seg-block da StarterScreen (ícone-only + label). */}
+        {/* Provider ACIMA da saudação — mesmo seg-block da StarterScreen. */}
         <div className="axxa-seg-block">
           <span className="axxa-seg-head">
             {t.starter.providerLabel}
@@ -101,6 +93,13 @@ export function NewChatScreen({
           />
         </div>
 
+        <div className="axxa-newchat-head">
+          <span className="axxa-newchat-icon">
+            <Icon name={icon} />
+          </span>
+          <h2 className="axxa-newchat-title">{title}</h2>
+          <p className="axxa-newchat-sub">{sub}</p>
+        </div>
       </div>
     </div>
   );
