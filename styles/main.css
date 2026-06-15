@@ -835,7 +835,7 @@ layout no
   padding: 14px 14px 12px;
   background: var(--axxa-composer-bg);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 24px;
+  border-radius: 28px;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.16);
 }
 /* NENHUM composer muda de cor ao focar — ficam SEMPRE secondary (--axxa-composer-bg).
@@ -1323,7 +1323,7 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   /* borda LITERALMENTE igual à do composer do Agent (mesma cor/largura/estilo) */
   border: 1px solid var(--background-modifier-border);
   box-shadow: none;
-  border-radius: 16px;
+  border-radius: 24px;
   text-align: left;
   color: var(--text-normal);
   cursor: pointer;
