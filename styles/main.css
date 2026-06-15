@@ -822,10 +822,14 @@ layout no
   display: block;
   padding: 0;
 }
-/* superfície dos 3 composers — a COR é a primary (igual o fundo); a separação
-   visual vem da BORDA + SOMBRA, não de um tom diferente. */
+/* superfície dos 3 composers (e campos de texto): bloco ÚNICO, cor por TEMA —
+   primary no light, secondary no dark. No dark o secondary destaca o bloco do
+   fundo (primary) sem precisar de borda forte; no light o primary já contrasta. */
 .axxa-root {
   --axxa-composer-bg: var(--background-primary);
+}
+body.theme-dark .axxa-root {
+  --axxa-composer-bg: var(--background-secondary);
 }
 .axxa-composer-card {
   display: flex;
@@ -1192,7 +1196,9 @@ layout no
  * junto (composer absolute/fixed sempre na borda da view encolhida). Cor nativa.
  * ============================================================ */
 .axxa-suggest {
-  margin-top: auto; /* empurra os balões pro fundo do corpo, acima do composer */
+  /* a saudação (.axxa-newchat-head) tem margin:auto, então ELA centraliza e
+     empurra os balões pro fundo. Aqui margin-top:0 pra não competir pelos autos. */
+  margin-top: 0;
   width: 100%;
   pointer-events: auto;
 }
@@ -1366,6 +1372,48 @@ layout no
 }
 .axxa-suggest-bubble-label {
   white-space: nowrap;
+}
+
+/* — "See more" (abre o bottom sheet): afordância discreta, texto/ícone muted.
+   Nos cards/pills vira tracejado e sem preenchimento pra ler como "+ ver todos". */
+.axxa-suggest-more .axxa-suggest-row-label,
+.axxa-suggest-more .axxa-suggest-card-label,
+.axxa-suggest-more .axxa-suggest-bubble-label,
+.axxa-suggest-more .axxa-suggest-row-ico,
+.axxa-suggest-more .axxa-suggest-card-ico,
+.axxa-suggest-more .axxa-suggest-bubble-ico {
+  color: var(--text-muted);
+}
+.axxa-root .axxa-suggest-card.axxa-suggest-more,
+.axxa-root .axxa-suggest-bubble.axxa-suggest-more {
+  background: transparent;
+  border-style: dashed;
+  box-shadow: none;
+}
+.axxa-root .axxa-suggest-card.axxa-suggest-more:hover,
+.axxa-root .axxa-suggest-bubble.axxa-suggest-more:hover {
+  background: var(--background-modifier-hover);
+}
+/* See-more card mais estreito (só ícone + "See more", não precisa da largura cheia) */
+.axxa-root .axxa-suggest-card.axxa-suggest-more {
+  width: 96px;
+}
+
+/* — Ícone das rows do bottom sheet "See more" (lista completa): avatar arredondado */
+.axxa-suggest-sheet-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.axxa-suggest-sheet-ico .svg-icon {
+  width: 18px;
+  height: 18px;
 }
 
 /* ============================================================
@@ -7778,22 +7826,23 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
      balões (margin-top:auto) param logo acima dele, sem sobrepor a saudação. */
   padding: 24px 16px calc(var(--axxa-composer-h, 80px) + 16px);
 }
-.axxa-newchat-inner {
+/* zona 1 — provider no TOPO */
+.axxa-newchat-provider {
   width: 100%;
   max-width: 460px;
-  /* margin-top auto: a saudação respira do topo; o resto do espaço vai pros
-     balões lá embaixo (que têm margin-top:auto). Sem centralizar no meio. */
-  margin: 32px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  flex: 0 0 auto;
 }
+/* zona 2 — saudação CENTRADA (margin auto come o espaço livre dos 2 lados, então
+   ela fica no meio entre o provider e os balões). */
 .axxa-newchat-head {
+  margin: auto 0;
+  width: 100%;
+  max-width: 460px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 8px;
+  gap: 10px;
 }
 .axxa-newchat-model {
   display: flex;
@@ -7803,28 +7852,35 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
 .axxa-newchat .axxa-seg-block .axxa-seg {
   height: 48px;
 }
+/* avatar do modo — círculo com leve tinta da cor accent (intuitivo: "é a IA") */
 .axxa-newchat-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  width: 60px;
+  height: 60px;
   border-radius: 999px;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  background: var(--background-secondary);
+  background: color-mix(in srgb, var(--interactive-accent) 13%, transparent);
+  color: var(--interactive-accent);
 }
 .axxa-newchat-icon .svg-icon {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 .axxa-newchat-title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.4rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .axxa-newchat-sub {
   margin: 0;
+  max-width: 30ch;
   font-size: var(--font-ui-small);
   line-height: 1.45;
+  color: var(--text-muted);
 }
 .axxa-mpick {
   display: flex;

@@ -46,6 +46,8 @@ interface NewChatScreenProps {
   onOpenSettings: () => void;
   /** Injeta o prompt do balão de sugestão no composer. */
   onPickSuggestion: (text: string) => void;
+  /** Abre o bottom sheet "See more" com a lista completa do modo. */
+  onSeeMoreSuggestions: () => void;
   /** Mostra os balões (chat vazio + editor do composer ainda vazio). */
   showSuggestions: boolean;
 }
@@ -59,6 +61,7 @@ export function NewChatScreen({
   onProviderChange,
   onOpenSettings,
   onPickSuggestion,
+  onSeeMoreSuggestions,
   showSuggestions,
 }: NewChatScreenProps) {
   const t = useT();
@@ -77,8 +80,9 @@ export function NewChatScreen({
 
   return (
     <div className="axxa-newchat" data-mode={mode}>
-      <div className="axxa-newchat-inner">
-        {/* Provider ACIMA da saudação — mesmo seg-block da StarterScreen. */}
+      {/* Disposição em 3 zonas: provider no TOPO · saudação CENTRADA · balões no
+          FUNDO (acima do composer). Mais intuitivo e arejado. */}
+      <div className="axxa-newchat-provider">
         <div className="axxa-seg-block">
           <span className="axxa-seg-head">
             {t.starter.providerLabel}
@@ -99,21 +103,24 @@ export function NewChatScreen({
             }}
           />
         </div>
-
-        <div className="axxa-newchat-head">
-          <span className="axxa-newchat-icon">
-            <Icon name={icon} />
-          </span>
-          <h2 className="axxa-newchat-title">{title}</h2>
-          <p className="axxa-newchat-sub">{sub}</p>
-        </div>
       </div>
 
-      {/* Balões de sugestão — no CORPO, ancorados no fundo (margin-top:auto), logo
-          acima do composer (o .axxa-newchat reserva a altura dele). Não flutuam
-          mais por cima da saudação. */}
+      <div className="axxa-newchat-head">
+        <span className="axxa-newchat-icon">
+          <Icon name={icon} />
+        </span>
+        <h2 className="axxa-newchat-title">{title}</h2>
+        <p className="axxa-newchat-sub">{sub}</p>
+      </div>
+
+      {/* Balões — no fundo, acima do composer (o .axxa-newchat reserva a altura
+          dele). 3 visíveis + "See more" → bottom sheet com a lista completa. */}
       {showSuggestions && (
-        <ComposerSuggestions mode={mode} onPick={onPickSuggestion} />
+        <ComposerSuggestions
+          mode={mode}
+          onPick={onPickSuggestion}
+          onSeeMore={onSeeMoreSuggestions}
+        />
       )}
     </div>
   );

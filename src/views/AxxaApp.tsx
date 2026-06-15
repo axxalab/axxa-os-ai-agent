@@ -20,6 +20,7 @@ import { SkillsScreen } from "../components/chat/SkillsScreen";
 import { Icon } from "../components/_shared/Icon";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
+import { SuggestionsSheet } from "../components/composer/SuggestionsSheet";
 import { PlusModal } from "../components/composer/PlusModal";
 import { ModelSheet } from "../components/composer/ModelSheet";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
@@ -392,6 +393,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // Flip-guarded: só re-renderiza quando cruza a fronteira vazio↔texto (não a
   // cada tecla — o rascunho em si continua num ref pra não re-renderizar tudo).
   const [composerEmpty, setComposerEmpty] = useState(true);
+  // "See more" dos balões → bottom sheet com a lista completa do modo (ou null).
+  const [suggestSheetOpen, setSuggestSheetOpen] = useState(false);
 
   // Gaveta lateral (avatar do header) com as conversas. v0.1.145
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1640,6 +1643,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onProviderChange={handleStarterProvider}
             onOpenSettings={handleOpenSettings}
             onPickSuggestion={handlePromptStarter}
+            onSeeMoreSuggestions={() => setSuggestSheetOpen(true)}
             showSuggestions={composerEmpty}
           />
         ) : (
@@ -1874,6 +1878,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               onOpenSettings={handleOpenSettings}
               thinkingCapable={supportsThinking(activeModel)}
               onClose={() => setModelSheetOpen(false)}
+            />
+          )}
+          {suggestSheetOpen && (
+            <SuggestionsSheet
+              mode={activeMode}
+              onPick={handlePromptStarter}
+              onClose={() => setSuggestSheetOpen(false)}
             />
           )}
           {projectEditor && (
