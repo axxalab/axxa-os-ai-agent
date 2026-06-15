@@ -848,6 +848,11 @@ layout no
 .axxa-root .axxa-composer-pill:focus-within {
   background: var(--background-primary);
 }
+/* Vault Q/A: o card tem regra de bg própria ([data-mode]) — precisa do focus-within
+   explícito (mais específico) pra também clarear pra primary quando selecionado. */
+.axxa-root .axxa-composer-card[data-mode="vault-qa"]:focus-within {
+  background: var(--background-primary);
+}
 .axxa-root .axxa-composer-editor {
   font-size: var(--font-ui-medium);
   line-height: 1.45;
@@ -1356,6 +1361,12 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   font-size: var(--font-ui-medium);
   line-height: 1.2;
 }
+/* snippet: zero contorno nos elementos internos do card e no container */
+.axxa-suggest-card-ico,
+.axxa-suggest-card-label,
+.axxa-suggest-cards {
+  border: none;
+}
 
 /* — VAULT QA: balões SIMPLES e separados — pill com borda + sombra, ícone +
    título numa linha. Fundo primary (a borda + sombra é que destacam). Embrulham
@@ -1372,7 +1383,7 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   align-items: center;
   gap: 8px;
   padding: 9px 15px;
-  background: var(--background-primary);
+  background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border-radius: 999px;
