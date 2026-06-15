@@ -536,6 +536,11 @@ export function Composer({
           },
           ".cm-content": {
             caretColor: "var(--text-normal)",
+            color: "var(--text-normal)",
+            // -webkit-text-fill-color: no WebView mobile o sistema às vezes
+            // sobrescreve o `color`; fixar aqui garante o texto nativo (light no
+            // dark, dark no light) em TODOS os composers, inclusive o chat.
+            "-webkit-text-fill-color": "var(--text-normal)",
             // Padding 0 — texto começa EXATAMENTE no left edge do editor
             // (offset horizontal vem só do flex parent: composer-pill padding)
             padding: "0",
