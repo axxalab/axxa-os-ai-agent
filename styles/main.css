@@ -1320,7 +1320,8 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   gap: 16px;
   padding: 12px;
   background: transparent;
-  border: 1px solid var(--text-faint);
+  /* borda LITERALMENTE igual à do composer do Agent (mesma cor/largura/estilo) */
+  border: 1px solid var(--background-modifier-border);
   box-shadow: none;
   border-radius: 16px;
   text-align: left;
@@ -4424,6 +4425,8 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   flex-direction: column;
   overflow: hidden;
   border: none;
+  /* todo bottom sheet sobe em bg secondary (vence o .axxa-plus-sheet,... primary) */
+  background: var(--background-secondary);
   border-radius: 22px 22px 0 0;
   transition: height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
