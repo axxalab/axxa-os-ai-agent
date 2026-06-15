@@ -1242,19 +1242,19 @@ layout no
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
-  padding: 6px 4px 12px;
+  gap: 4px;
+  padding: 4px 4px 14px;
 }
 .axxa-root .axxa-suggest-row {
   display: flex;
   align-items: center;
   gap: 16px;
   width: 100%;
-  padding: 11px 10px;
+  padding: 12px 12px;
   background: transparent;
   border: none;
   box-shadow: none;
-  border-radius: 12px;
+  border-radius: 14px;
   text-align: left;
   color: var(--text-normal);
   font-size: var(--font-ui-medium);
@@ -1297,7 +1297,7 @@ layout no
 }
 .axxa-root .axxa-suggest-card {
   flex: 0 0 auto;
-  width: 142px;
+  width: 150px;
   min-height: 96px;
   display: flex;
   flex-direction: column;
@@ -1331,60 +1331,52 @@ layout no
 }
 .axxa-suggest-card-label {
   font-weight: 600;
-  font-size: var(--font-ui-small);
+  font-size: var(--font-ui-medium);
   line-height: 1.2;
 }
 
-/* — VAULT QA: cards de 2 linhas (título + subtítulo), sem ícone (ref ChatGPT) — */
-.axxa-suggest-cards2 {
+/* — VAULT QA: balões SIMPLES e separados — pill com borda + sombra, ícone +
+   título numa linha. Fundo primary (a borda + sombra é que destacam). Embrulham
+   centralizados acima do composer. */
+.axxa-suggest-bubbles {
   display: flex;
-  flex-direction: row;
-  gap: 10px;
+  flex-flow: row wrap;
+  justify-content: center;
+  gap: 8px;
   padding: 0 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.axxa-suggest-cards2::-webkit-scrollbar {
-  display: none;
-}
-.axxa-root .axxa-suggest-card2 {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 12px 16px;
-  background: var(--background-secondary);
-  border: none;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  border-radius: 16px;
-  text-align: left;
+.axxa-root .axxa-suggest-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 999px;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease;
 }
-.axxa-root .axxa-suggest-card2:active {
-  transform: scale(0.98);
-}
-.axxa-root .axxa-suggest-card2:hover {
+.axxa-root .axxa-suggest-bubble:hover {
   background: var(--background-modifier-hover);
 }
-.axxa-suggest-card2-title {
-  font-weight: 600;
-  font-size: var(--font-ui-small);
-  color: var(--text-normal);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+.axxa-root .axxa-suggest-bubble:active {
+  transform: scale(0.96);
 }
-.axxa-suggest-card2-sub {
-  font-size: var(--font-ui-smaller);
+.axxa-suggest-bubble-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
   color: var(--text-muted);
+}
+.axxa-suggest-bubble-ico .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-suggest-bubble-label {
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
 }
 
 /* ============================================================

@@ -1668,11 +1668,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           isEmpty &&
           composerEmpty &&
           (plugin.settings.onboardingDone || hasAnyKey) && (
-            <ComposerSuggestions
-              mode={activeMode}
-              onPick={handlePromptStarter}
-              onVoice={() => setVoiceOpen(true)}
-            />
+            <ComposerSuggestions mode={activeMode} onPick={handlePromptStarter} />
           )}
         {view === "chat" && (
           <Composer
