@@ -7,6 +7,7 @@
 
 import { Icon } from "../_shared/Icon";
 import { SegmentedRow } from "../_shared/SegmentedRow";
+import { ComposerSuggestions } from "../composer/ComposerSuggestions";
 import { hapticTick } from "../_shared/haptics";
 import { useT } from "../../i18n";
 import type AxxaPlugin from "../../main";
@@ -43,6 +44,10 @@ interface NewChatScreenProps {
   onProviderChange: (provider: string) => void;
   /** "+" no provider / abrir Settings. */
   onOpenSettings: () => void;
+  /** Injeta o prompt do balão de sugestão no composer. */
+  onPickSuggestion: (text: string) => void;
+  /** Mostra os balões (chat vazio + editor do composer ainda vazio). */
+  showSuggestions: boolean;
 }
 
 const PROVIDER_ADD = "__add__";
@@ -53,6 +58,8 @@ export function NewChatScreen({
   provider,
   onProviderChange,
   onOpenSettings,
+  onPickSuggestion,
+  showSuggestions,
 }: NewChatScreenProps) {
   const t = useT();
   const { icon, title, sub } = modeBits(mode, t);
@@ -101,6 +108,13 @@ export function NewChatScreen({
           <p className="axxa-newchat-sub">{sub}</p>
         </div>
       </div>
+
+      {/* Balões de sugestão — no CORPO, ancorados no fundo (margin-top:auto), logo
+          acima do composer (o .axxa-newchat reserva a altura dele). Não flutuam
+          mais por cima da saudação. */}
+      {showSuggestions && (
+        <ComposerSuggestions mode={mode} onPick={onPickSuggestion} />
+      )}
     </div>
   );
 }

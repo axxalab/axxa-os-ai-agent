@@ -1185,34 +1185,23 @@ layout no
 
 /* ============================================================
  * BALÕES DE SUGESTÃO da NOVA conversa — ref prints 2026-06-15.
- * Um estilo por modo (cada print tinha o nome do modo em azul):
- *   chat → linhas ícone+label · agent → cards h · vault-qa → cards de 2 linhas.
- * NÃO ficam dentro do composer: são um elemento do CORPO, flutuando logo acima
- * do input. Posicionam IGUAL ao composer por modo, então SEGUEM o teclado:
- *   chat/agent = absolute @ bottom 10px (a view encolhe c/ o teclado)
- *   vault-qa   = fixed   @ bottom var(--keyboard-height)
- * Ancorados pelo --axxa-composer-h (altura medida do composer). Cor nativa.
+ * Um estilo por modo: chat → linhas · agent → cards h · vault-qa → pills.
+ * VIVEM NO CORPO (dentro da .axxa-newchat), ancorados no FUNDO (margin-top:auto)
+ * logo acima do composer — a .axxa-newchat reserva a altura dele no padding-bottom.
+ * NÃO flutuam mais por cima da saudação. Seguem o teclado porque a view encolhe
+ * junto (composer absolute/fixed sempre na borda da view encolhida). Cor nativa.
  * ============================================================ */
 .axxa-suggest {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: calc(var(--axxa-composer-h, 80px) + 20px);
-  z-index: 899; /* logo abaixo do composer (900) */
+  margin-top: auto; /* empurra os balões pro fundo do corpo, acima do composer */
+  width: 100%;
   pointer-events: auto;
-}
-.axxa-suggest[data-mode="vault-qa"] {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--keyboard-height, 0px) + var(--axxa-composer-h, 80px) + 6px);
 }
 /* entrada com stagger leve (cada balão entra logo após o anterior) — backwards
    segura o estado inicial durante o delay. Desliga em reduce-motion. */
 @media (prefers-reduced-motion: no-preference) {
   .axxa-suggest-row,
   .axxa-suggest-card,
-  .axxa-suggest-card2 {
+  .axxa-suggest-bubble {
     animation: axxa-suggest-in var(--axxa-motion-dur, 0.32s)
       cubic-bezier(0.32, 0.72, 0, 1) backwards;
   }
@@ -1306,7 +1295,7 @@ layout no
   gap: 16px;
   padding: 14px;
   background: var(--background-secondary);
-  border: none;
+  border: 1px solid var(--background-modifier-border);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   border-radius: 16px;
   text-align: left;
@@ -7785,12 +7774,16 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 16px;
+  /* padding-bottom reserva a altura do composer (que flutua absolute/fixed) — os
+     balões (margin-top:auto) param logo acima dele, sem sobrepor a saudação. */
+  padding: 24px 16px calc(var(--axxa-composer-h, 80px) + 16px);
 }
 .axxa-newchat-inner {
   width: 100%;
   max-width: 460px;
-  margin: auto 0;
+  /* margin-top auto: a saudação respira do topo; o resto do espaço vai pros
+     balões lá embaixo (que têm margin-top:auto). Sem centralizar no meio. */
+  margin: 32px 0 0;
   display: flex;
   flex-direction: column;
   gap: 18px;

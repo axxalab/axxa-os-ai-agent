@@ -20,7 +20,6 @@ import { SkillsScreen } from "../components/chat/SkillsScreen";
 import { Icon } from "../components/_shared/Icon";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
-import { ComposerSuggestions } from "../components/composer/ComposerSuggestions";
 import { PlusModal } from "../components/composer/PlusModal";
 import { ModelSheet } from "../components/composer/ModelSheet";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
@@ -1640,6 +1639,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             provider={providerSel}
             onProviderChange={handleStarterProvider}
             onOpenSettings={handleOpenSettings}
+            onPickSuggestion={handlePromptStarter}
+            showSuggestions={composerEmpty}
           />
         ) : (
           <ChatArea highlightTarget={searchTarget} />
@@ -1661,15 +1662,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onDismiss={() => setDismissedBannerKey(bannerKey)}
           />
         )}
-        {/* Balões de sugestão da NOVA conversa — no corpo, flutuando acima do
-            composer (seguem o teclado, mesmo esquema de posição do composer).
-            Só na NewChatScreen (não no onboarding) e com o editor ainda vazio. */}
-        {view === "chat" &&
-          isEmpty &&
-          composerEmpty &&
-          (plugin.settings.onboardingDone || hasAnyKey) && (
-            <ComposerSuggestions mode={activeMode} onPick={handlePromptStarter} />
-          )}
         {view === "chat" && (
           <Composer
             key={activeMode}
