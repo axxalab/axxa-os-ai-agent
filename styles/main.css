@@ -1322,8 +1322,8 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   background: transparent;
   /* borda LITERALMENTE igual à do composer do Agent (mesma cor/largura/estilo) */
   border: 1px solid var(--background-modifier-border);
-  box-shadow: none;
-  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
   text-align: left;
   color: var(--text-normal);
   cursor: pointer;
