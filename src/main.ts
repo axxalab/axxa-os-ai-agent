@@ -33,6 +33,7 @@ import type {
   EffortConfig,
   EffortLevel,
 } from "./components/_shared/effort";
+import type { RoleId, RoleModelEntry } from "./providers/modelRoles";
 
 interface AxxaSettings {
   openaiApiKey: string;
@@ -61,6 +62,13 @@ interface AxxaSettings {
   /** Modelos favoritados pelo user (ícone de salvar) — chaves "provider::model".
    *  Aparecem numa aba "favoritos" do seletor de modelo. v0.1.222 */
   favoriteModels: string[];
+  /** Modelo-padrão por PAPEL (★ de cada seção em Connections → Models). Unifica
+   *  os defaults espalhados (defaultModel/anthropicModel/…/ragEmbeddingModel).
+   *  Papéis: chat/reasoning/image/video/tts/embedding/other. v0.1.236 */
+  roleModels: Partial<Record<RoleId, RoleModelEntry>>;
+  /** Provider preferido quando o MESMO modelo existe em 2+ providers ativos
+   *  (dedup da lista de Models). modelID → providerId. v0.1.236 */
+  modelProvider: Record<string, string>;
   /** Modelos de embedding descobertos via fetch da API, por provider. Alimentam
    *  o seletor de embedding do RAG com info inferida. v0.1.151 */
   discoveredEmbeddings: Record<string, string[]>;
@@ -250,6 +258,8 @@ const DEFAULT_SETTINGS: AxxaSettings = {
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },
   favoriteModels: [],
+  roleModels: {},
+  modelProvider: {},
   discoveredEmbeddings: {},
   defaultMode: "chat",
   defaultEffort: "med",
@@ -935,12 +945,56 @@ export default class AxxaPlugin extends Plugin {
       ...(saved.activeModels ?? {}),
     };
     this.settings.discoveredEmbeddings = saved.discoveredEmbeddings ?? {};
+    // roleModels: ★ por papel (chat/reasoning/image/video/tts/embedding). Quando
+    // ainda não há nada salvo, semeia dos defaults espalhados (default do provider
+    // ativo → chat; ragEmbeddingModel → embedding). Migração única. v0.1.236
+    this.settings.modelProvider = saved.modelProvider ?? {};
+    this.settings.roleModels =
+      saved.roleModels && Object.keys(saved.roleModels).length
+        ? saved.roleModels
+        : this.seedRoleModels();
     // Same pra effortConfigs — preserva overrides salvos do usuário.
     this.settings.effortConfigs = saved.effortConfigs ?? {};
 
     // Chaves de API: carrega do SecretStorage do SO (keychain), não do
     // data.json. Migra chaves legadas que ainda estejam em plaintext.
     this.loadSecrets(saved);
+  }
+
+  /** Semeia roleModels a partir dos defaults legados (migração única): o default
+   *  do provider ativo vira o ★ de chat; o modelo do RAG vira o ★ de embedding. */
+  private seedRoleModels(): Partial<Record<RoleId, RoleModelEntry>> {
+    const s = this.settings;
+    const roles: Partial<Record<RoleId, RoleModelEntry>> = {};
+    const prov = s.defaultProvider || "openai";
+    const chat = this.providerDefaultModel(prov);
+    if (chat) roles.chat = { model: chat, provider: prov };
+    if (s.ragEmbeddingModel) {
+      roles.embedding = {
+        model: s.ragEmbeddingModel,
+        provider: s.ragEmbeddingProvider || "openai",
+      };
+    }
+    return roles;
+  }
+
+  /** Modelo-padrão atual de um provider (lê os campos legados por provider). */
+  private providerDefaultModel(provider: string): string {
+    const s = this.settings;
+    switch (provider) {
+      case "anthropic":
+        return s.anthropicModel;
+      case "gemini":
+        return s.geminiModel;
+      case "openrouter":
+        return s.openrouterModel;
+      case "nim":
+        return s.nimModel;
+      case "ollama":
+        return s.ollamaModel;
+      default:
+        return s.defaultModel;
+    }
   }
 
   /** Popula as chaves em memória a partir do SecretStorage e migra o legado
