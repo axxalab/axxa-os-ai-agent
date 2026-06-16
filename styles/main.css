@@ -317,10 +317,9 @@ body.is-mobile
 }
 /* a conversa entra com um fade suave — disfarça o corte secondary→primary quando
    sai do new-chat (que é secondary) pra área de chat (primary). Off em reduce-motion. */
-@media (prefers-reduced-motion: no-preference) {
-  .axxa-chat-area {
-    animation: axxa-chat-in 0.28s ease;
-  }
+/* motion básico — sempre toca (sem gate de reduce-motion, por decisão de design) */
+.axxa-chat-area {
+  animation: axxa-chat-in 0.28s ease;
 }
 @keyframes axxa-chat-in {
   from {
@@ -598,10 +597,8 @@ body.is-mobile
   border-radius: 1px;
   background: currentColor;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .axxa-typing-caret {
-    animation: axxa-caret-blink 1s step-end infinite;
-  }
+.axxa-typing-caret {
+  animation: axxa-caret-blink 1s step-end infinite;
 }
 @keyframes axxa-caret-blink {
   50% {
@@ -627,10 +624,8 @@ body.is-mobile
     transparent
   );
 }
-@media (prefers-reduced-motion: no-preference) {
-  .axxa-skeleton::after {
-    animation: axxa-shimmer 1.4s ease-in-out infinite;
-  }
+.axxa-skeleton::after {
+  animation: axxa-shimmer 1.4s ease-in-out infinite;
 }
 @keyframes axxa-shimmer {
   100% {
@@ -896,6 +891,97 @@ layout no
   overflow-y: auto;
   background: transparent;
   border: none;
+}
+/* ============================================================
+ * PLACEHOLDER ROTATIVO (ticker) — frase cicla as sugestões do modo (~6s),
+ * desliza de baixo + fade. Só com editor VAZIO e SEM foco. "+ Add" injeta a
+ * frase (igual os banners); tocar no texto foca e abre o campo vazio.
+ * O field embrulha o editor pra ancorar o overlay (assume o flex do editor).
+ * ============================================================ */
+.axxa-composer-field {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+.axxa-composer-field > .axxa-composer-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.axxa-composer-pill .axxa-composer-field {
+  flex: 1 1 auto;
+}
+/* esconde o placeholder nativo do CM quando desfocado (quem mostra é o ticker);
+   focado → o placeholder normal volta. */
+.axxa-root .axxa-composer:not(:focus-within) .cm-placeholder {
+  opacity: 0;
+}
+.axxa-composer-ticker {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: text;
+}
+.axxa-root .axxa-ticker-add {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  padding: 0 10px 0 7px;
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.axxa-root .axxa-ticker-add:hover {
+  background: var(--background-modifier-border);
+}
+.axxa-root .axxa-ticker-add:active {
+  transform: scale(0.94);
+}
+.axxa-ticker-add .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+.axxa-ticker-clip {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+}
+.axxa-ticker-phrase {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-faint);
+  font-size: var(--font-ui-medium);
+  /* motion BÁSICO — toca SEMPRE (sem gate de reduce-motion) */
+  animation: axxa-ticker-in 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@keyframes axxa-ticker-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.axxa-composer-card[data-mode="vault-qa"] .axxa-ticker-phrase {
+  font-size: 1.45rem;
 }
 .axxa-composer-bar {
   display: flex;
@@ -1209,10 +1295,8 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   flex-shrink: 0;
   background: var(--text-error, #e5484d);
 }
-@media (prefers-reduced-motion: no-preference) {
-  .axxa-recording-dot {
-    animation: axxa-rec-pulse 1.2s ease-in-out infinite;
-  }
+.axxa-recording-dot {
+  animation: axxa-rec-pulse 1.2s ease-in-out infinite;
 }
 @keyframes axxa-rec-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -1264,23 +1348,21 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   -webkit-appearance: none;
 }
 /* entrada com stagger leve (cada balão entra logo após o anterior) — backwards
-   segura o estado inicial durante o delay. Desliga em reduce-motion. */
-@media (prefers-reduced-motion: no-preference) {
-  .axxa-suggest-row,
-  .axxa-suggest-card,
-  .axxa-suggest-bubble {
-    animation: axxa-suggest-in var(--axxa-motion-dur, 0.32s)
-      cubic-bezier(0.32, 0.72, 0, 1) backwards;
-  }
-  .axxa-suggest > *:nth-child(1) {
-    animation-delay: 0.02s;
-  }
-  .axxa-suggest > *:nth-child(2) {
-    animation-delay: 0.07s;
-  }
-  .axxa-suggest > *:nth-child(3) {
-    animation-delay: 0.12s;
-  }
+   segura o estado inicial durante o delay. Motion básico: toca SEMPRE. */
+.axxa-suggest-row,
+.axxa-suggest-card,
+.axxa-suggest-bubble {
+  animation: axxa-suggest-in var(--axxa-motion-dur, 0.32s)
+    cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+.axxa-suggest > *:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.axxa-suggest > *:nth-child(2) {
+  animation-delay: 0.07s;
+}
+.axxa-suggest > *:nth-child(3) {
+  animation-delay: 0.12s;
 }
 @keyframes axxa-suggest-in {
   from {

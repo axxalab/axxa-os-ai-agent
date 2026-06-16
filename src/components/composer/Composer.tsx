@@ -30,6 +30,7 @@ import {
   extractWikilinks,
   type AxxaCommand,
 } from "./completions";
+import { SUGGESTIONS } from "./ComposerSuggestions";
 
 function formatRecordingDuration(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -278,6 +279,10 @@ export function Composer({
   const [placeholderCompartment] = useState(() => new Compartment());
 
   const [isEmpty, setIsEmpty] = useState(true);
+  // Foco do editor — gateia o ticker (placeholder rotativo só aparece desfocado).
+  const [isFocused, setIsFocused] = useState(false);
+  // Índice da frase rotativa do placeholder (cicla as sugestões do modo, ~6s).
+  const [tickerIndex, setTickerIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Refs vivas pros handlers da imagem — evita reapegar listeners no editor
@@ -454,6 +459,9 @@ export function Composer({
             setIsEmpty(text.length === 0);
             onDraftChangeRef.current?.(text);
           }
+          if (update.focusChanged) {
+            setIsFocused(update.view.hasFocus);
+          }
         }),
         // Paste handlers:
         //  1. Imagem do clipboard → vira anexo (quando modelo suporta vision)
@@ -614,6 +622,29 @@ export function Composer({
     view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [injectText?.nonce]);
+
+  // Ticker do placeholder: cicla a frase a cada ~6s pelas sugestões do modo.
+  // Motion BÁSICO — toca sempre (sem gate de reduce-motion, por decisão de design).
+  const tickerItems = SUGGESTIONS[mode] ?? SUGGESTIONS.chat;
+  useEffect(() => {
+    if (tickerItems.length <= 1) return;
+    const id = window.setInterval(() => {
+      setTickerIndex((i) => (i + 1) % tickerItems.length);
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, [tickerItems.length]);
+
+  // Injeta o prompt no editor (ticker "+ Add") e foca — mesmo comportamento dos
+  // banners/balões. Some o ticker na hora (isEmpty=false + isFocused=true).
+  const injectIntoEditor = (text: string) => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: text },
+      selection: { anchor: text.length },
+    });
+    view.focus();
+  };
 
   const handleSendClick = () => {
     if (streaming) return;
@@ -869,7 +900,54 @@ export function Composer({
 
   // Elementos compartilhados pelos 3 layouts (Agent card / Vault glassy / Chat
   // pill). A LÓGICA é idêntica — só muda onde cada um entra no JSX (ver branch).
-  const editorEl = <div ref={editorRef} className="axxa-composer-editor" />;
+  // Ticker (placeholder rotativo): só com o editor VAZIO e SEM foco (e fora de
+  // stream/gravação/anexos). Toco no texto → foca → some (campo normal vazio).
+  const tickerItem = tickerItems[tickerIndex % tickerItems.length];
+  const tickerPhrase = tickerItem.prompt.replace(/\s+/g, " ").trim();
+  const tickerVisible =
+    isEmpty &&
+    !isFocused &&
+    !streaming &&
+    !isRecording &&
+    pendingAttachments.length === 0;
+  const editorEl = (
+    <div className="axxa-composer-field">
+      <div ref={editorRef} className="axxa-composer-editor" />
+      {tickerVisible && (
+        <div
+          className="axxa-composer-ticker"
+          // tocar no texto = focar o editor (abre o campo normal e vazio)
+          onMouseDown={(e) => {
+            e.preventDefault();
+            viewRef.current?.focus();
+          }}
+        >
+          <button
+            type="button"
+            className="axxa-ticker-add"
+            aria-label={t.composer.tickerAdd}
+            // não rouba foco nem dispara o focar do container; só injeta a frase
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              injectIntoEditor(tickerItem.prompt);
+            }}
+          >
+            <Icon name="plus" />
+            <span>{t.composer.tickerAdd}</span>
+          </button>
+          <span className="axxa-ticker-clip">
+            <span className="axxa-ticker-phrase" key={tickerIndex}>
+              {tickerPhrase}
+            </span>
+          </span>
+        </div>
+      )}
+    </div>
+  );
   const plusEl = (
     <button
       type="button"
