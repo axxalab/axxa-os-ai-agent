@@ -309,7 +309,7 @@ body.is-mobile
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 12px calc(var(--axxa-composer-h, 80px) + 16px) 12px;
+  padding: 16px 12px calc(var(--axxa-composer-h, 80px) + 24px) 12px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -344,7 +344,7 @@ body.is-mobile
 .axxa-back-to-bottom {
   position: absolute;
   right: 16px;
-  bottom: calc(var(--axxa-composer-h, 80px) + 12px);
+  bottom: calc(var(--axxa-composer-h, 80px) + 20px);
   width: 44px;
   height: 44px;
   display: inline-flex;
@@ -857,7 +857,8 @@ layout no
   position: absolute;
   left: 10px;
   right: 10px;
-  bottom: 10px;
+  /* mais respiro do fundo da tela (estava muito colado) */
+  bottom: 18px;
   z-index: 900;
   pointer-events: auto;
   display: block;
@@ -892,6 +893,11 @@ layout no
   background: transparent;
   border: none;
 }
+/* Agent: composer um pouco maior — reserva espaço pra 2ª linha do ticker (wrap)
+   sem o composer crescer (o ticker fica clampado nesta altura, overflow hidden). */
+.axxa-composer-card[data-mode="agent"] .axxa-composer-editor {
+  min-height: 2.7em;
+}
 /* ============================================================
  * PLACEHOLDER ROTATIVO (ticker) — frase cicla as sugestões do modo (~6s),
  * desliza de baixo + fade. Só com editor VAZIO e SEM foco. "+ Add" injeta a
@@ -919,9 +925,11 @@ layout no
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  /* topo: o texto começa onde o digitado começaria; "+ Add" alinhado à 1ª linha */
+  align-items: flex-start;
   gap: 8px;
-  padding: 0 6px;
+  padding: 5px 6px;
+  /* clamp na altura do editor (overflow hidden) — o wrap NÃO cresce o composer */
   overflow: hidden;
   pointer-events: auto;
   cursor: text;
@@ -933,12 +941,13 @@ layout no
   display: flex;
   overflow: hidden;
 }
-/* texto digitado (typewriter) — faint, com caret piscando no fim */
+/* texto digitado (typewriter) — faint, QUEBRA linha (wrap) nas frases grandes */
 .axxa-ticker-phrase {
   display: block;
   max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: var(--text-faint);
   font-size: var(--font-ui-medium);
 }
@@ -3599,7 +3608,7 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: calc(var(--axxa-composer-h, 80px) + 14px);
+  bottom: calc(var(--axxa-composer-h, 80px) + 22px);
   z-index: 890;
   display: flex;
   align-items: center;
@@ -8037,7 +8046,7 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   background: var(--background-secondary);
   /* padding-bottom reserva a altura do composer (que flutua absolute/fixed) — os
      balões (margin-top:auto) param logo acima dele, sem sobrepor a saudação. */
-  padding: 24px 16px calc(var(--axxa-composer-h, 80px) + 16px);
+  padding: 24px 16px calc(var(--axxa-composer-h, 80px) + 24px);
 }
 /* zona 1 — provider no TOPO */
 .axxa-newchat-provider {
