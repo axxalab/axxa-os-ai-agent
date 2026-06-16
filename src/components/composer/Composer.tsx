@@ -637,8 +637,10 @@ export function Composer({
     pendingAttachments.length === 0;
   useEffect(() => {
     if (!tickerVisible) return;
-    const phrases = tickerItems.map((it) =>
-      it.prompt.replace(/\s+/g, " ").trim()
+    // Frase exibida = prompt limpo + "..." no fim (o "+ Add" injeta o prompt CRU).
+    const phrases = tickerItems.map(
+      (it) =>
+        it.prompt.replace(/\s+/g, " ").trim().replace(/[:.]+$/, "") + "..."
     );
     if (!phrases.length) return;
     // Tempos pra um feel natural: digita 45ms/char, segura 1.9s, apaga 28ms/char
@@ -647,6 +649,13 @@ export function Composer({
     const HOLD = 1900;
     const DEL = 28;
     const GAP = 450;
+    // Ordem SEMPRE aleatória: próxima frase é sorteada (≠ da atual, sem repetir).
+    const pickIdx = (exclude: number) => {
+      if (phrases.length <= 1) return 0;
+      let n = exclude;
+      while (n === exclude) n = Math.floor(Math.random() * phrases.length);
+      return n;
+    };
     let cancelled = false;
     let timer = 0;
     const tick = (phase: "type" | "del", pos: number) => {
@@ -664,10 +673,12 @@ export function Composer({
       } else if (pos > 0) {
         timer = window.setTimeout(() => tick("del", pos - 1), DEL);
       } else {
-        tickerIdxRef.current = (tickerIdxRef.current + 1) % phrases.length;
+        tickerIdxRef.current = pickIdx(tickerIdxRef.current);
         timer = window.setTimeout(() => tick("type", 0), GAP);
       }
     };
+    // começa numa frase aleatória também
+    tickerIdxRef.current = pickIdx(tickerIdxRef.current);
     tick("type", 0);
     return () => {
       cancelled = true;
