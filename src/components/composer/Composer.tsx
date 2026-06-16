@@ -279,10 +279,12 @@ export function Composer({
   const [placeholderCompartment] = useState(() => new Compartment());
 
   const [isEmpty, setIsEmpty] = useState(true);
-  // Foco do editor — gateia o ticker (placeholder rotativo só aparece desfocado).
+  // Foco do editor — gateia o ticker (placeholder typewriter só aparece desfocado).
   const [isFocused, setIsFocused] = useState(false);
-  // Índice da frase rotativa do placeholder (cicla as sugestões do modo, ~6s).
-  const [tickerIndex, setTickerIndex] = useState(0);
+  // Texto PARCIAL do typewriter (digitando/apagando) + ref do índice da frase atual
+  // (o "+ Add" injeta a frase inteira desse índice).
+  const [typed, setTyped] = useState("");
+  const tickerIdxRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Refs vivas pros handlers da imagem — evita reapegar listeners no editor
@@ -623,16 +625,56 @@ export function Composer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [injectText?.nonce]);
 
-  // Ticker do placeholder: cicla a frase a cada ~6s pelas sugestões do modo.
-  // Motion BÁSICO — toca sempre (sem gate de reduce-motion, por decisão de design).
+  // Placeholder TYPEWRITER: digita a frase char a char, segura, apaga, e vai pra
+  // próxima sugestão do modo. Motion BÁSICO — sem gate de reduce-motion. Só roda
+  // com o ticker visível (editor vazio e desfocado) pra não re-renderizar à toa.
   const tickerItems = SUGGESTIONS[mode] ?? SUGGESTIONS.chat;
+  const tickerVisible =
+    isEmpty &&
+    !isFocused &&
+    !streaming &&
+    !isRecording &&
+    pendingAttachments.length === 0;
   useEffect(() => {
-    if (tickerItems.length <= 1) return;
-    const id = window.setInterval(() => {
-      setTickerIndex((i) => (i + 1) % tickerItems.length);
-    }, 6000);
-    return () => window.clearInterval(id);
-  }, [tickerItems.length]);
+    if (!tickerVisible) return;
+    const phrases = tickerItems.map((it) =>
+      it.prompt.replace(/\s+/g, " ").trim()
+    );
+    if (!phrases.length) return;
+    // Tempos pra um feel natural: digita 45ms/char, segura 1.9s, apaga 28ms/char
+    // (mais rápido), respira 0.45s antes da próxima.
+    const TYPE = 45;
+    const HOLD = 1900;
+    const DEL = 28;
+    const GAP = 450;
+    let cancelled = false;
+    let timer = 0;
+    const tick = (phase: "type" | "del", pos: number) => {
+      if (cancelled) return;
+      const phrase = phrases[tickerIdxRef.current % phrases.length];
+      setTyped(phrase.slice(0, Math.max(0, pos)));
+      if (phase === "type") {
+        timer = window.setTimeout(
+          () =>
+            pos < phrase.length
+              ? tick("type", pos + 1)
+              : tick("del", phrase.length - 1),
+          pos < phrase.length ? TYPE : HOLD
+        );
+      } else if (pos > 0) {
+        timer = window.setTimeout(() => tick("del", pos - 1), DEL);
+      } else {
+        tickerIdxRef.current = (tickerIdxRef.current + 1) % phrases.length;
+        timer = window.setTimeout(() => tick("type", 0), GAP);
+      }
+    };
+    tick("type", 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickerVisible, tickerItems]);
 
   // Injeta o prompt no editor (ticker "+ Add") e foca — mesmo comportamento dos
   // banners/balões. Some o ticker na hora (isEmpty=false + isFocused=true).
@@ -900,32 +942,26 @@ export function Composer({
 
   // Elementos compartilhados pelos 3 layouts (Agent card / Vault glassy / Chat
   // pill). A LÓGICA é idêntica — só muda onde cada um entra no JSX (ver branch).
-  // Ticker (placeholder rotativo): só com o editor VAZIO e SEM foco (e fora de
-  // stream/gravação/anexos). Toco no texto → foca → some (campo normal vazio).
-  const tickerItem = tickerItems[tickerIndex % tickerItems.length];
-  const tickerPhrase = tickerItem.prompt.replace(/\s+/g, " ").trim();
-  const tickerVisible =
-    isEmpty &&
-    !isFocused &&
-    !streaming &&
-    !isRecording &&
-    pendingAttachments.length === 0;
+  // Ticker typewriter: só com o editor VAZIO e SEM foco. Toco no texto → foca →
+  // some (campo vazio). "+ Add" (à direita, faint) injeta a frase INTEIRA do índice.
   const editorEl = (
     <div className="axxa-composer-field">
       <div ref={editorRef} className="axxa-composer-editor" />
       {tickerVisible && (
         <div
           className="axxa-composer-ticker"
-          // tocar no texto = focar o editor (abre o campo normal e vazio)
+          // tocar no texto = focar o editor (abre o campo vazio)
           onMouseDown={(e) => {
             e.preventDefault();
             viewRef.current?.focus();
           }}
         >
+          <span className="axxa-ticker-clip">
+            <span className="axxa-ticker-phrase">{typed}</span>
+          </span>
           <button
             type="button"
             className="axxa-ticker-add"
-            aria-label={t.composer.tickerAdd}
             // não rouba foco nem dispara o focar do container; só injeta a frase
             onMouseDown={(e) => {
               e.preventDefault();
@@ -933,17 +969,14 @@ export function Composer({
             }}
             onClick={(e) => {
               e.stopPropagation();
-              injectIntoEditor(tickerItem.prompt);
+              const item =
+                tickerItems[tickerIdxRef.current % tickerItems.length] ??
+                tickerItems[0];
+              injectIntoEditor(item.prompt);
             }}
           >
-            <Icon name="plus" />
-            <span>{t.composer.tickerAdd}</span>
+            {t.composer.tickerAdd}
           </button>
-          <span className="axxa-ticker-clip">
-            <span className="axxa-ticker-phrase" key={tickerIndex}>
-              {tickerPhrase}
-            </span>
-          </span>
         </div>
       )}
     </div>

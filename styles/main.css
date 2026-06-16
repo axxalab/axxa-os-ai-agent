@@ -926,59 +926,51 @@ layout no
   pointer-events: auto;
   cursor: text;
 }
-.axxa-root .axxa-ticker-add {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 24px;
-  padding: 0 10px 0 7px;
-  border-radius: 999px;
-  border: none;
-  box-shadow: none;
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-  font-size: var(--font-ui-smaller);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
-}
-.axxa-root .axxa-ticker-add:hover {
-  background: var(--background-modifier-border);
-}
-.axxa-root .axxa-ticker-add:active {
-  transform: scale(0.94);
-}
-.axxa-ticker-add .svg-icon {
-  width: 14px;
-  height: 14px;
-}
+/* clip do texto digitado (à esquerda, preenche) */
 .axxa-ticker-clip {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   overflow: hidden;
 }
+/* texto digitado (typewriter) — faint, com caret piscando no fim */
 .axxa-ticker-phrase {
   display: block;
-  width: 100%;
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--text-faint);
   font-size: var(--font-ui-medium);
-  /* motion BÁSICO — toca SEMPRE (sem gate de reduce-motion) */
-  animation: axxa-ticker-in 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 }
-@keyframes axxa-ticker-in {
-  from {
-    opacity: 0;
-    transform: translateY(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.axxa-ticker-phrase::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.12em;
+  background: currentColor;
+  /* motion BÁSICO — pisca SEMPRE (sem gate de reduce-motion) */
+  animation: axxa-caret-blink 1s step-end infinite;
+}
+/* "+ Add" — só a letra: faint, à DIREITA, sem fundo nem borda */
+.axxa-root .axxa-ticker-add {
+  flex: 0 0 auto;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-faint);
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.axxa-root .axxa-ticker-add:hover {
+  color: var(--text-muted);
+}
+.axxa-root .axxa-ticker-add:active {
+  color: var(--text-normal);
 }
 .axxa-composer-card[data-mode="vault-qa"] .axxa-ticker-phrase {
   font-size: 1.45rem;

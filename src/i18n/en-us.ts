@@ -11,7 +11,7 @@ export const EN_US = {
     placeholderVaultQa: "Ask about your Vault...",
     placeholderAgent: "Tell the Agent to organize your vault...",
     placeholderCoder: "Paste code or ask a dev question...",
-    tickerAdd: "Add",
+    tickerAdd: "+ Add",
     sendLabel: "Send message",
     stopLabel: "Stop generation",
     micLabel: "Hold to record audio",
