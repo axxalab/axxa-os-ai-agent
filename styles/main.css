@@ -315,6 +315,21 @@ body.is-mobile
   gap: 16px;
   -webkit-overflow-scrolling: touch;
 }
+/* a conversa entra com um fade suave — disfarça o corte secondary→primary quando
+   sai do new-chat (que é secondary) pra área de chat (primary). Off em reduce-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .axxa-chat-area {
+    animation: axxa-chat-in 0.28s ease;
+  }
+}
+@keyframes axxa-chat-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 .axxa-chat-empty {
   align-items: center;
   justify-content: center;
@@ -572,6 +587,8 @@ body.is-mobile
   margin-left: 3px;
   vertical-align: -1px;
 }
+/* caret de "digitando" (streaming) — pisca; cor = texto atual. (bg+blink tinham
+   sumido no strip do CSS.) Off em reduce-motion (fica estático e visível). */
 .axxa-typing-caret {
   display: inline-block;
   width: 2px;
@@ -579,17 +596,46 @@ body.is-mobile
   margin-left: 2px;
   vertical-align: -0.18em;
   border-radius: 1px;
+  background: currentColor;
 }
+@media (prefers-reduced-motion: no-preference) {
+  .axxa-typing-caret {
+    animation: axxa-caret-blink 1s step-end infinite;
+  }
+}
+@keyframes axxa-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+/* skeleton de loading — base + brilho deslizante (também tinham sumido no strip). */
 .axxa-skeleton {
   border-radius: 8px;
   position: relative;
   overflow: hidden;
+  background: var(--background-modifier-hover);
 }
 .axxa-skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--background-modifier-border) 70%, transparent),
+    transparent
+  );
+}
+@media (prefers-reduced-motion: no-preference) {
+  .axxa-skeleton::after {
+    animation: axxa-shimmer 1.4s ease-in-out infinite;
+  }
+}
+@keyframes axxa-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 .axxa-skeleton-cards {
   display: grid;
@@ -836,7 +882,8 @@ layout no
   background: var(--axxa-composer-bg);
   border: 1px solid var(--background-modifier-border);
   border-radius: 28px;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.16);
+  /* mais presença sobre o canvas secondary (composer também é secondary) */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 /* NENHUM composer muda de cor ao focar — ficam SEMPRE secondary (--axxa-composer-bg).
    (Sem :focus-within de bg, de propósito.) */
@@ -1094,7 +1141,7 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   border-radius: 999px;
   background: var(--axxa-composer-bg);
   border: 1px solid var(--background-modifier-border);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
 }
 .axxa-root .axxa-composer-pill .axxa-composer-editor {
   flex: 1 1 auto;
@@ -1349,19 +1396,29 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   font-size: var(--font-ui-medium);
   line-height: 1.2;
 }
-/* RAIZ do "bloco fantasma" do Agent: o curinga `.axxa-root :is([class*="-card"])`
-   (~L747) dá bg+borda+radius a QUALQUER classe que contenha "-card" — e isso pega
-   o CONTAINER (axxa-suggest-CARDs) e os spans internos (axxa-suggest-CARD-ico/-label),
-   não só o tile. Os snippets de border:none falhavam por especificidade (0,1,0 < 0,2,0).
-   Aqui, na MESMA especificidade (0,2,0) e depois → zera bg+borda nesses elementos.
-   Só `.axxa-suggest-card` (o tile) mantém o outline próprio. */
-.axxa-root .axxa-suggest-cards,
-.axxa-root .axxa-suggest-card-ico,
-.axxa-root .axxa-suggest-card-label,
+/* RAIZ do "bloco fantasma" (TODO o app): o curinga `.axxa-root :is([class*="-card"])`
+   (~L747) dá bg+borda+radius a QUALQUER classe contendo "-card" — pega não só as
+   SUPERFÍCIES de card (.axxa-*-card) mas também os CONTAINERS (-cards) e os spans
+   internos (-card-name/-desc/-label/-value/-title/-id/-cat/-ico…). Os snippets de
+   border:none falhavam por especificidade (0,1,0 < 0,2,0 do curinga).
+   Aqui (0,4,0, depois na cascata) zera bg+borda nesses spans/containers — PRESERVANDO
+   os chips de ícone fixos (-card-icon 36×36) e os avatares (-card-avatar, logo do
+   vendor), que querem o fundo. As superfícies (.axxa-*-card, sem sufixo) não casam. */
+.axxa-root
+  :is([class*="-card-"], [class*="-cards"]):not(
+    [class*="-card-icon"],
+    [class*="-card-avatar"],
+    [class*="-card-cat"],
+    [class*="-card-use"],
+    [class*="-card-open"]
+  ) {
+  background: transparent;
+  border: none;
+}
+/* linhas do Chat (sem "-card", não pegam o curinga) — mantém zerado por pedido. */
 .axxa-root .axxa-suggest-rows,
 .axxa-root .axxa-suggest-row-ico,
 .axxa-root .axxa-suggest-row-label {
-  background: transparent;
   border: none;
 }
 
@@ -1547,6 +1604,11 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
 }
 .axxa-root .axxa-sheet-row:hover {
   background: var(--background-modifier-hover);
+  border-radius: 12px;
+}
+/* press feedback (consistente com as outras rows: realce no toque) */
+.axxa-root .axxa-sheet-row:active {
+  background: var(--background-modifier-border);
   border-radius: 12px;
 }
 .axxa-sheet-row-text {
