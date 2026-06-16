@@ -985,12 +985,14 @@ layout no
   font-size: 1.25rem;
   line-height: 1.3;
 }
-/* Chat (pill): composer de 1 linha — "+ Add" na MESMA linha do texto (sem wrap,
-   centralizado). O wrap é só pros composers de card (Agent/Vault). */
+/* Chat (pill) e Agent: "+ Add" na MESMA linha do texto — ticker numa linha só
+   (nowrap). O wrap de 2 linhas fica só no Q/A. O Agent mantém flex-start (alinha
+   com onde o texto digitado começa, no topo); o pill centraliza. */
 .axxa-composer-pill .axxa-composer-ticker {
   align-items: center;
 }
-.axxa-composer-pill .axxa-ticker-phrase {
+.axxa-composer-pill .axxa-ticker-phrase,
+.axxa-composer-card[data-mode="agent"] .axxa-ticker-phrase {
   white-space: nowrap;
 }
 .axxa-composer-bar {
