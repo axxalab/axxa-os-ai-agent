@@ -1482,6 +1482,7 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
 /* See more do Agent: sem contorno (só o muted + chevron), gap menor — snippet. */
 .axxa-root .axxa-suggest-card.axxa-suggest-more {
   border: none;
+  box-shadow: none;
   gap: 12px;
 }
 
