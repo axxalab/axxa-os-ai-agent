@@ -982,7 +982,16 @@ layout no
   color: var(--text-normal);
 }
 .axxa-composer-card[data-mode="vault-qa"] .axxa-ticker-phrase {
-  font-size: 1.45rem;
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+/* Chat (pill): composer de 1 linha — "+ Add" na MESMA linha do texto (sem wrap,
+   centralizado). O wrap é só pros composers de card (Agent/Vault). */
+.axxa-composer-pill .axxa-composer-ticker {
+  align-items: center;
+}
+.axxa-composer-pill .axxa-ticker-phrase {
+  white-space: nowrap;
 }
 .axxa-composer-bar {
   display: flex;
@@ -1138,10 +1147,12 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
 }
 /* o prompt manda no visual — texto/placeholder grande */
 .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor {
-  font-size: 1.45rem;
+  /* fonte menor + base mais alta: cabe 2 linhas do ticker sem cortar a 2a
+     (o ticker é clampado nesta altura — overflow hidden) */
+  font-size: 1.25rem;
   line-height: 1.3;
   padding: 6px 4px;
-  min-height: 1.9em;
+  min-height: 3.4em;
   max-height: 30vh;
 }
 .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor .cm-placeholder {
