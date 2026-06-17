@@ -90,6 +90,15 @@ import {
   ALL_MODALITIES,
 } from "../../providers/modelModality";
 import { getModelCard, CATEGORY_LABELS } from "../../providers/modelDescriptions";
+import { getModelFamily, type ModelFamily } from "../../providers/modelFamily";
+import {
+  categoryToRole,
+  ROLE_ORDER,
+  ROLE_LABELS,
+  ROLE_DESC,
+  ROLE_ICONS,
+  type RoleId,
+} from "../../providers/modelRoles";
 import {
   modelVendorLogoId,
   modelVendorLabel,
@@ -102,7 +111,7 @@ import {
 } from "../../usage/export";
 
 type TopTabId =
-  | "providers"
+  | "connections"
   | "setup"
   | "appearance"
   | "effort"
@@ -117,6 +126,16 @@ type ProviderTabId =
   | "ollama";
 type OutrosTabId = "geral" | "ui" | "agent" | "rag" | "usage";
 type AppearanceTabId = "background" | "chips" | "ui";
+type ConnTabId = "providers" | "models";
+
+/** Entrada agregada do editor de Models: um modelo (id normalizado) + de quais
+ *  providers conectados ele vem (dedup cross-provider) + papel + família. */
+interface ModelEntry {
+  norm: string;
+  role: RoleId;
+  family: ModelFamily;
+  byProvider: Record<string, string>;
+}
 
 // Filtros da lista de modelos (Settings → Providers). v0.1.150
 type ModelFilterId =
@@ -140,7 +159,11 @@ const MODEL_FILTERS: { id: ModelFilterId; label: string; icon: string }[] = [
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
   /** Top-level tab (Providers / Outros) */
-  private activeTopTab: TopTabId = "providers";
+  private activeTopTab: TopTabId = "connections";
+  /** Sub-tab de Connections: Providers (conexão) | Models (seleção por papel). */
+  private activeConnTab: ConnTabId = "providers";
+  /** Famílias expandidas no editor de Models (key = "<role>:<familyId>"). */
+  private modelsFamilyOpen: Set<string> = new Set();
   /** Sub-tab quando topTab = providers */
   private activeProviderTab: ProviderTabId = "openai";
   /** Cache dos modelos buscados por provider (sobrevive a re-render do tab,
@@ -190,7 +213,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // Top-level tabs (Providers / Outros)
     // ============================================================
     const topTabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
-    this.createTopTabButton(topTabsEl, "providers", t.settings.topTabs.providers);
+    this.createTopTabButton(topTabsEl, "connections", "Connections");
     this.createTopTabButton(topTabsEl, "setup", t.settings.topTabs.setup);
     this.createTopTabButton(topTabsEl, "appearance", t.settings.topTabs.appearance);
     this.createTopTabButton(topTabsEl, "effort", t.settings.topTabs.effort);
@@ -203,8 +226,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const contentEl = containerEl.createDiv({ cls: "axxa-settings-content" });
 
     switch (this.activeTopTab) {
-      case "providers":
-        this.renderProvidersTab(contentEl, t);
+      case "connections":
+        this.renderConnectionsTab(contentEl, t);
         break;
       case "setup":
         this.renderSetupTab(contentEl, t);
@@ -736,6 +759,375 @@ export class AxxaSettingsTab extends PluginSettingTab {
       hapticTick();
       this.activeProviderTab = id;
       this.display();
+    };
+  }
+
+  // ============================================================
+  // CONNECTIONS — wrapper com sub-tabs [Providers | Models]. v0.1.236
+  //   Providers = conexão (key + status). Models = seleção por PAPEL,
+  //   cross-provider, com ★ (default de cada função) + dedup de provider.
+  // ============================================================
+  private renderConnectionsTab(parent: HTMLElement, t: Translations) {
+    const seg = parent.createDiv({
+      cls: "axxa-settings-subtabs axxa-conn-seg",
+    });
+    const mk = (id: ConnTabId, label: string, icon: string) => {
+      const btn = seg.createEl("button", {
+        cls:
+          "axxa-subtab-btn axxa-conn-seg-btn" +
+          (this.activeConnTab === id ? " axxa-subtab-active" : ""),
+        attr: { type: "button" },
+      });
+      setIcon(btn.createSpan({ cls: "axxa-conn-seg-ico" }), icon);
+      btn.createSpan({ text: label });
+      btn.onclick = () => {
+        hapticTick();
+        this.activeConnTab = id;
+        this.display();
+      };
+    };
+    mk("providers", "Providers", "plug");
+    mk("models", "Models", "layers");
+
+    const body = parent.createDiv({ cls: "axxa-conn-body" });
+    if (this.activeConnTab === "providers") {
+      this.renderProvidersTab(body, t);
+    } else {
+      this.renderModelsTab(body, t);
+    }
+  }
+
+  /** Providers conectados = têm key (ou endpoint, no Ollama). */
+  private connectedProviderIds(): string[] {
+    const s = this.plugin.settings;
+    const ids: string[] = [];
+    if (s.openaiApiKey) ids.push("openai");
+    if (s.anthropicApiKey) ids.push("anthropic");
+    if (s.geminiApiKey) ids.push("gemini");
+    if (s.openrouterApiKey) ids.push("openrouter");
+    if (s.nimApiKey) ids.push("nim");
+    if (s.ollamaEndpoint) ids.push("ollama");
+    return ids;
+  }
+
+  /** ID normalizado pra dedup cross-provider: tira o namespace (openai/gpt-4o →
+   *  gpt-4o, meta-llama/llama-3.3 → llama-3.3) e baixa pra minúsculo. */
+  private normModelId(model: string): string {
+    const leaf = model.includes("/")
+      ? model.slice(model.lastIndexOf("/") + 1)
+      : model;
+    return leaf.toLowerCase();
+  }
+
+  /** Junta todos os modelos dos providers conectados, deduplicados por norm. */
+  private gatherModelEntries(connected: string[]): Map<string, ModelEntry> {
+    const s = this.plugin.settings;
+    const entries = new Map<string, ModelEntry>();
+    for (const prov of connected) {
+      const ids = new Set<string>([
+        ...(s.activeModels[prov] ?? []),
+        ...(this.modelCache[prov] ?? []),
+      ]);
+      for (const m of ids) {
+        if (!m) continue;
+        const norm = this.normModelId(m);
+        let e = entries.get(norm);
+        if (!e) {
+          const caps = getModelCapabilities(prov, m);
+          const card = getModelCard(prov, m, caps);
+          e = {
+            norm,
+            role: categoryToRole(card.category),
+            family: getModelFamily(m),
+            byProvider: {},
+          };
+          entries.set(norm, e);
+        }
+        e.byProvider[prov] = m;
+      }
+    }
+    return entries;
+  }
+
+  /** Provider escolhido pra uma entrada deduplicada: preferência salva → o que
+   *  for o ★ do papel → o primeiro. */
+  private entryProvider(e: ModelEntry): string {
+    const provs = Object.keys(e.byProvider);
+    const pref = this.plugin.settings.modelProvider[e.norm];
+    if (pref && e.byProvider[pref]) return pref;
+    const role = this.plugin.settings.roleModels[e.role];
+    if (role && e.byProvider[role.provider] && this.normModelId(role.model) === e.norm) {
+      return role.provider;
+    }
+    return provs[0];
+  }
+
+  // ============================================================
+  // MODELS — seleção por papel (cross-provider, famílias colapsáveis, ★).
+  // ============================================================
+  private renderModelsTab(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      cls: "setting-item-description",
+      text:
+        "Pick the models the plugin uses, grouped by function. ★ sets the default for each role (chat, image, text-to-speech, embedding…). The same model from two providers is merged — pick the source.",
+    });
+
+    const connected = this.connectedProviderIds();
+    if (connected.length === 0) {
+      const empty = parent.createDiv({ cls: "axxa-models-empty" });
+      setIcon(empty.createSpan({ cls: "axxa-models-empty-ico" }), "plug-zap");
+      empty.createEl("p", { text: "No providers connected yet." });
+      const btn = empty.createEl("button", {
+        text: "Connect a provider",
+        cls: "axxa-models-empty-btn",
+        attr: { type: "button" },
+      });
+      btn.onclick = () => {
+        this.activeConnTab = "providers";
+        this.display();
+      };
+      return;
+    }
+
+    const entries = this.gatherModelEntries(connected);
+    // role → familyId → entries[]
+    const byRole = new Map<RoleId, Map<string, ModelEntry[]>>();
+    for (const e of entries.values()) {
+      if (!byRole.has(e.role)) byRole.set(e.role, new Map());
+      const fams = byRole.get(e.role)!;
+      let arr = fams.get(e.family.id);
+      if (!arr) {
+        arr = [];
+        fams.set(e.family.id, arr);
+      }
+      arr.push(e);
+    }
+
+    const wrap = parent.createDiv({ cls: "axxa-models-tab" });
+    let any = false;
+    for (const role of ROLE_ORDER) {
+      const fams = byRole.get(role);
+      if (!fams || fams.size === 0) continue;
+      any = true;
+      this.renderRoleSection(wrap, t, role, fams);
+    }
+    if (!any) {
+      wrap.createEl("p", {
+        cls: "axxa-active-models-empty",
+        text: "No models yet. Open Providers → Fetch from API to populate the list.",
+      });
+    }
+  }
+
+  private renderRoleSection(
+    parent: HTMLElement,
+    t: Translations,
+    role: RoleId,
+    fams: Map<string, ModelEntry[]>
+  ) {
+    const sec = parent.createDiv({ cls: "axxa-role-section" });
+    const head = sec.createDiv({ cls: "axxa-role-head" });
+    setIcon(head.createSpan({ cls: "axxa-role-ico" }), ROLE_ICONS[role]);
+    const txt = head.createDiv({ cls: "axxa-role-head-txt" });
+    txt.createSpan({ text: ROLE_LABELS[role], cls: "axxa-role-label" });
+    txt.createSpan({ text: ROLE_DESC[role], cls: "axxa-role-desc" });
+    // ★ atual do papel (mostrado mesmo com tudo colapsado).
+    const cur = this.plugin.settings.roleModels[role];
+    const curEl = head.createSpan({ cls: "axxa-role-current" });
+    if (cur) {
+      setIcon(curEl.createSpan({ cls: "axxa-role-current-ico" }), "star");
+      curEl.createSpan({
+        text: this.normModelId(cur.model),
+        cls: "axxa-role-current-name",
+      });
+    } else {
+      curEl.addClass("is-unset");
+      curEl.setText("no default");
+    }
+
+    // Famílias ordenadas por nº de entradas desc, depois label.
+    const famIds = Array.from(fams.keys()).sort((a, b) => {
+      const d = fams.get(b)!.length - fams.get(a)!.length;
+      return d !== 0 ? d : a.localeCompare(b);
+    });
+    for (const fid of famIds) this.renderFamilyGroup(sec, t, role, fams.get(fid)!);
+  }
+
+  private renderFamilyGroup(
+    parent: HTMLElement,
+    t: Translations,
+    role: RoleId,
+    entries: ModelEntry[]
+  ) {
+    const fam = entries[0].family;
+    const key = role + ":" + fam.id;
+    const open = this.modelsFamilyOpen.has(key);
+
+    const grp = parent.createDiv({ cls: "axxa-fam-group" });
+    const head = grp.createEl("button", {
+      cls: "axxa-fam-head" + (open ? " is-open" : ""),
+      attr: { type: "button" },
+    });
+    const ico = head.createSpan({ cls: "axxa-fam-ico" });
+    setIcon(ico, fam.icon);
+    ico.style.color = fam.color;
+    head.createSpan({ text: fam.label, cls: "axxa-fam-label" });
+    const onCount = entries.filter((e) => {
+      const prov = this.entryProvider(e);
+      return (this.plugin.settings.activeModels[prov] ?? []).includes(
+        e.byProvider[prov]
+      );
+    }).length;
+    head.createSpan({
+      cls: "axxa-fam-summary",
+      text:
+        entries.length +
+        (entries.length === 1 ? " model" : " models") +
+        (onCount ? " · " + onCount + " on" : ""),
+    });
+    const chev = head.createSpan({ cls: "axxa-fam-chev" });
+    setIcon(chev, "chevron-down");
+
+    const body = grp.createDiv({
+      cls: "axxa-fam-body" + (open ? "" : " axxa-hidden"),
+    });
+    const sorted = entries.slice().sort((a, b) => a.norm.localeCompare(b.norm));
+    for (const e of sorted) this.renderRoleModelRow(body, t, role, e);
+
+    head.onclick = () => {
+      if (this.modelsFamilyOpen.has(key)) this.modelsFamilyOpen.delete(key);
+      else this.modelsFamilyOpen.add(key);
+      const nowOpen = this.modelsFamilyOpen.has(key);
+      body.toggleClass("axxa-hidden", !nowOpen);
+      head.toggleClass("is-open", nowOpen);
+    };
+  }
+
+  private renderRoleModelRow(
+    parent: HTMLElement,
+    t: Translations,
+    role: RoleId,
+    e: ModelEntry
+  ) {
+    const provs = Object.keys(e.byProvider);
+    const prov = this.entryProvider(e);
+    const model = e.byProvider[prov];
+    const caps = getModelCapabilities(prov, model);
+
+    const isOn = () =>
+      (this.plugin.settings.activeModels[prov] ?? []).includes(model);
+    const isStar = () => {
+      const r = this.plugin.settings.roleModels[role];
+      return !!r && r.provider === prov && this.normModelId(r.model) === e.norm;
+    };
+
+    const row = parent.createEl("button", {
+      cls:
+        "axxa-model-opt axxa-model-toggle-row axxa-role-row" +
+        (isOn() ? " axxa-model-opt-active" : "") +
+        (isStar() ? " is-default" : ""),
+      attr: { type: "button", "aria-pressed": String(isOn()) },
+    });
+
+    const logo = row.createSpan({ cls: "axxa-model-opt-logo" });
+    const logoId = modelVendorLogoId(prov, model);
+    if (logoId) {
+      setIcon(logo, logoId);
+    } else {
+      logo.addClass("axxa-logo-missing");
+      logo.setText("🟣");
+      logo.setAttr("title", "logo: " + modelVendorLabel(prov, model));
+    }
+
+    const main = row.createSpan({ cls: "axxa-model-opt-main" });
+    const nameRow = main.createSpan({ cls: "axxa-model-toggle-namerow" });
+    nameRow.createSpan({
+      text: this.normModelId(model),
+      cls: "axxa-model-opt-name",
+    });
+    const pricing = getPricing(prov, model);
+    const tier =
+      pricing.tier && pricing.tier !== "unknown"
+        ? pricing.tier
+        : caps.free
+          ? "free"
+          : "unknown";
+    nameRow.createSpan({
+      text: tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?",
+      cls: "axxa-model-tier axxa-model-tier-" + tier,
+    });
+    const mods = modelModalities(caps, model);
+    if (mods.length > 0) {
+      const modRow = main.createSpan({ cls: "axxa-model-modality-row" });
+      for (const code of mods) {
+        const info = MODALITY_INFO[code];
+        modRow.createSpan({
+          cls: "axxa-model-modality-chip",
+          text: code,
+          attr: { title: info.label + " — " + info.description },
+        });
+      }
+    }
+
+    const ctrls = row.createSpan({ cls: "axxa-model-toggle-ctrls" });
+
+    // Seletor de provider — só quando o MESMO modelo vem de 2+ conectados.
+    if (provs.length > 1) {
+      const sel = ctrls.createSpan({ cls: "axxa-row-provsel" });
+      for (const p of provs) {
+        const opt = sel.createSpan({
+          cls: "axxa-row-provsel-opt" + (p === prov ? " is-sel" : ""),
+          attr: { title: p, "aria-label": p },
+        });
+        const lid = modelVendorLogoId(p, e.byProvider[p]);
+        if (lid) setIcon(opt, lid);
+        else opt.setText(p.slice(0, 1).toUpperCase());
+        opt.onclick = async (ev: MouseEvent) => {
+          ev.stopPropagation();
+          this.plugin.settings.modelProvider[e.norm] = p;
+          await this.plugin.saveSettings();
+          this.display();
+        };
+      }
+    }
+
+    const star = ctrls.createSpan({
+      cls: "axxa-model-star" + (isStar() ? " is-default" : ""),
+      attr: {
+        title: "Set as default for " + ROLE_LABELS[role],
+        "aria-label": "Set as default",
+      },
+    });
+    setIcon(star, "star");
+    const sw = ctrls.createSpan({
+      cls: "axxa-model-toggle-switch" + (isOn() ? " is-on" : ""),
+    });
+
+    // ★ — define o modelo do papel (e garante ativo).
+    star.onclick = async (ev: MouseEvent) => {
+      ev.stopPropagation();
+      this.plugin.settings.roleModels[role] = { model, provider: prov };
+      const list = this.plugin.settings.activeModels[prov] ?? [];
+      if (!list.includes(model)) {
+        list.push(model);
+        this.plugin.settings.activeModels[prov] = list;
+      }
+      await this.plugin.saveSettings();
+      this.display();
+    };
+
+    // Clique na linha = liga/desliga no seletor.
+    row.onclick = async () => {
+      const list = this.plugin.settings.activeModels[prov] ?? [];
+      const idx = list.indexOf(model);
+      const nowOn = idx < 0;
+      if (nowOn) list.push(model);
+      else list.splice(idx, 1);
+      this.plugin.settings.activeModels[prov] = list;
+      await this.plugin.saveSettings();
+      row.toggleClass("axxa-model-opt-active", nowOn);
+      sw.toggleClass("is-on", nowOn);
+      row.setAttr("aria-pressed", String(nowOn));
     };
   }
 

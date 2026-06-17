@@ -7050,6 +7050,196 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
 .axxa-model-star:hover {
   transform: scale(1.15);
 }
+/* ============================================================
+ * CONNECTIONS → MODELS — seleção por papel (cross-provider). v0.1.236
+ * ============================================================ */
+.axxa-conn-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.axxa-conn-seg-ico {
+  display: inline-flex;
+}
+.axxa-conn-seg-ico .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.axxa-conn-body {
+  margin-top: 4px;
+}
+/* empty state — nenhum provider conectado */
+.axxa-models-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.axxa-models-empty-ico .svg-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--text-faint);
+}
+.axxa-models-empty-btn {
+  cursor: pointer;
+}
+/* lista por papel */
+.axxa-models-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 10px;
+}
+.axxa-role-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.axxa-role-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 2px 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.axxa-role-ico {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.axxa-role-ico .svg-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-normal);
+}
+.axxa-role-head-txt {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.axxa-role-label {
+  font-weight: 700;
+  color: var(--text-normal);
+}
+.axxa-role-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.axxa-role-current {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 45%;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.axxa-role-current-ico .svg-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--interactive-accent);
+}
+.axxa-role-current-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.axxa-role-current.is-unset {
+  font-style: italic;
+  opacity: 0.7;
+}
+/* família colapsável */
+.axxa-fam-group {
+  display: flex;
+  flex-direction: column;
+}
+.axxa-fam-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-normal);
+  transition: background 0.12s;
+}
+.axxa-fam-head:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-fam-ico {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.axxa-fam-ico .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.axxa-fam-label {
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+.axxa-fam-summary {
+  flex: 1 1 auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.axxa-fam-chev {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+.axxa-fam-chev .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-fam-head.is-open .axxa-fam-chev {
+  transform: rotate(180deg);
+}
+.axxa-fam-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0 6px 8px;
+}
+/* seletor de provider na linha (dedup do mesmo modelo em 2+ providers) */
+.axxa-row-provsel {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+}
+.axxa-row-provsel-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.12s, background 0.12s;
+}
+.axxa-row-provsel-opt .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+.axxa-row-provsel-opt.is-sel {
+  opacity: 1;
+  background: var(--background-primary);
+}
+.axxa-row-provsel-opt:hover {
+  opacity: 0.85;
+}
 .axxa-model-default-tag {
   flex: 0 0 auto;
   font-size: 9px;
