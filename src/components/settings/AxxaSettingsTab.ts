@@ -156,6 +156,17 @@ const MODEL_FILTERS: { id: ModelFilterId; label: string; icon: string }[] = [
   { id: "audio-gen", label: "Áudio", icon: "volume-2" },
 ];
 
+/** Logo de cada PROVIDER (registrado em registerBrandLogos). Usado no início de
+ *  cada linha do editor de Models e no seletor de provider. v0.1.236 */
+const PROVIDER_LOGOS: Record<string, string> = {
+  openai: "logo-openai",
+  anthropic: "logo-anthropic",
+  gemini: "logo-gemini",
+  openrouter: "logo-openrouter",
+  nim: "logo-nvidia",
+  ollama: "logo-ollama",
+};
+
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
   /** Top-level tab (Providers / Outros) */
@@ -164,6 +175,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private activeConnTab: ConnTabId = "providers";
   /** Famílias expandidas no editor de Models (key = "<role>:<familyId>"). */
   private modelsFamilyOpen: Set<string> = new Set();
+  /** Seções de papel RECOLHIDAS no editor de Models (default = todas abertas). */
+  private modelsRoleClosed: Set<RoleId> = new Set();
   /** Sub-tab quando topTab = providers */
   private activeProviderTab: ProviderTabId = "openai";
   /** Cache dos modelos buscados por provider (sobrevive a re-render do tab,
@@ -926,12 +939,17 @@ export class AxxaSettingsTab extends PluginSettingTab {
     fams: Map<string, ModelEntry[]>
   ) {
     const sec = parent.createDiv({ cls: "axxa-role-section" });
-    const head = sec.createDiv({ cls: "axxa-role-head" });
+    const closed = this.modelsRoleClosed.has(role);
+    // Cabeçalho = accordion (recolhe a seção inteira). v0.1.236
+    const head = sec.createEl("button", {
+      cls: "axxa-role-head" + (closed ? "" : " is-open"),
+      attr: { type: "button" },
+    });
     setIcon(head.createSpan({ cls: "axxa-role-ico" }), ROLE_ICONS[role]);
     const txt = head.createDiv({ cls: "axxa-role-head-txt" });
     txt.createSpan({ text: ROLE_LABELS[role], cls: "axxa-role-label" });
     txt.createSpan({ text: ROLE_DESC[role], cls: "axxa-role-desc" });
-    // ★ atual do papel (mostrado mesmo com tudo colapsado).
+    // ★ atual do papel (visível mesmo com a seção recolhida).
     const cur = this.plugin.settings.roleModels[role];
     const curEl = head.createSpan({ cls: "axxa-role-current" });
     if (cur) {
@@ -944,13 +962,26 @@ export class AxxaSettingsTab extends PluginSettingTab {
       curEl.addClass("is-unset");
       curEl.setText("no default");
     }
+    const chev = head.createSpan({ cls: "axxa-role-chev" });
+    setIcon(chev, "chevron-down");
 
+    const body = sec.createDiv({
+      cls: "axxa-role-body" + (closed ? " axxa-hidden" : ""),
+    });
     // Famílias ordenadas por nº de entradas desc, depois label.
     const famIds = Array.from(fams.keys()).sort((a, b) => {
       const d = fams.get(b)!.length - fams.get(a)!.length;
       return d !== 0 ? d : a.localeCompare(b);
     });
-    for (const fid of famIds) this.renderFamilyGroup(sec, t, role, fams.get(fid)!);
+    for (const fid of famIds) this.renderFamilyGroup(body, t, role, fams.get(fid)!);
+
+    head.onclick = () => {
+      if (this.modelsRoleClosed.has(role)) this.modelsRoleClosed.delete(role);
+      else this.modelsRoleClosed.add(role);
+      const nowClosed = this.modelsRoleClosed.has(role);
+      body.toggleClass("axxa-hidden", nowClosed);
+      head.toggleClass("is-open", !nowClosed);
+    };
   }
 
   private renderFamilyGroup(
@@ -1029,14 +1060,17 @@ export class AxxaSettingsTab extends PluginSettingTab {
       attr: { type: "button", "aria-pressed": String(isOn()) },
     });
 
-    const logo = row.createSpan({ cls: "axxa-model-opt-logo" });
-    const logoId = modelVendorLogoId(prov, model);
+    // Logo do PROVIDER de onde o modelo vem (sempre disponível pros 6).
+    const logo = row.createSpan({
+      cls: "axxa-model-opt-logo",
+      attr: { title: prov },
+    });
+    const logoId = PROVIDER_LOGOS[prov];
     if (logoId) {
       setIcon(logo, logoId);
     } else {
       logo.addClass("axxa-logo-missing");
       logo.setText("🟣");
-      logo.setAttr("title", "logo: " + modelVendorLabel(prov, model));
     }
 
     const main = row.createSpan({ cls: "axxa-model-opt-main" });
@@ -1079,7 +1113,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
           cls: "axxa-row-provsel-opt" + (p === prov ? " is-sel" : ""),
           attr: { title: p, "aria-label": p },
         });
-        const lid = modelVendorLogoId(p, e.byProvider[p]);
+        const lid = PROVIDER_LOGOS[p];
         if (lid) setIcon(opt, lid);
         else opt.setText(p.slice(0, 1).toUpperCase());
         opt.onclick = async (ev: MouseEvent) => {

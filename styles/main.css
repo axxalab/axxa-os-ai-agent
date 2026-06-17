@@ -7102,8 +7102,32 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 2px 2px 6px;
+  width: 100%;
+  padding: 4px 2px 8px;
+  background: transparent;
+  border: none;
   border-bottom: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+  text-align: left;
+}
+.axxa-role-chev {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+.axxa-role-chev .svg-icon {
+  width: 17px;
+  height: 17px;
+}
+.axxa-role-head.is-open .axxa-role-chev {
+  transform: rotate(180deg);
+}
+.axxa-role-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
 }
 .axxa-role-ico {
   display: inline-flex;
