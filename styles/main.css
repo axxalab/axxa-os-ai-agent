@@ -7264,6 +7264,127 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
 .axxa-row-provsel-opt:hover {
   opacity: 0.85;
 }
+/* nível VENDOR (accordion intermediário Modo → Vendor → Família) */
+.axxa-vendor-group {
+  display: flex;
+  flex-direction: column;
+}
+.axxa-vendor-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-normal);
+  transition: background 0.12s;
+}
+.axxa-vendor-head:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-vendor-ico {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.axxa-vendor-ico .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-vendor-label {
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+.axxa-vendor-summary {
+  flex: 1 1 auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.axxa-vendor-chev {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+.axxa-vendor-chev .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.axxa-vendor-head.is-open .axxa-vendor-chev {
+  transform: rotate(180deg);
+}
+.axxa-vendor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 10px;
+}
+/* filtro por família (All / Selected / Not selected) */
+.axxa-fam-filter {
+  display: flex;
+  gap: 4px;
+  padding: 2px 0 6px;
+}
+.axxa-root .axxa-fam-filter-opt {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: none;
+}
+.axxa-root .axxa-fam-filter-opt.is-sel {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+/* badge do provider na linha (logo + nome) */
+.axxa-row-provbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  padding: 1px 6px 1px 4px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+.axxa-row-provbadge-ico {
+  display: inline-flex;
+}
+.axxa-row-provbadge-ico .svg-icon {
+  width: 11px;
+  height: 11px;
+}
+/* ♥ favorito (controle separado do ★ default) */
+.axxa-model-fav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px;
+  color: var(--text-faint);
+  transition: color 0.13s, transform 0.1s;
+}
+.axxa-model-fav .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-model-fav:hover {
+  transform: scale(1.15);
+  color: var(--text-muted);
+}
+.axxa-model-fav.is-fav {
+  color: var(--interactive-accent);
+}
 .axxa-model-default-tag {
   flex: 0 0 auto;
   font-size: 9px;

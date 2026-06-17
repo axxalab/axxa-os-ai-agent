@@ -39,7 +39,7 @@ export const ROLE_LABELS: Record<RoleId, string> = {
   image: "Image",
   video: "Video",
   tts: "Text-to-speech",
-  embedding: "Embedding",
+  embedding: "Text embedding",
   other: "Other",
 };
 
