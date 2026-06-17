@@ -18,6 +18,7 @@ import {
   plainForSpeech,
   claimSpeaker,
   releaseSpeaker,
+  isCloudTtsActive,
 } from "../_shared/speech";
 import { ThinkingGlyph } from "../_shared/ThinkingGlyph";
 import { hapticTick } from "../_shared/haptics";
@@ -254,7 +255,7 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
   const [speaking, setSpeaking] = useState(false);
   const resetSpeakingRef = useRef(() => setSpeaking(false));
   const handleReadAloud = () => {
-    if (!("speechSynthesis" in window)) {
+    if (!("speechSynthesis" in window) && !isCloudTtsActive()) {
       // v0.1.228 — mensagem dedicada (antes reusava saveAsNoteFailed, enganoso).
       new Notice(t.chat.readAloudUnsupported);
       return;

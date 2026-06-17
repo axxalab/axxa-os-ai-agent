@@ -77,6 +77,7 @@ import {
 } from "../components/_shared/effort";
 import { getContextWindow } from "../components/_shared/contextWindows";
 import { useWakeLock } from "../components/_shared/useWakeLock";
+import { setCloudTts } from "../components/_shared/speech";
 import {
   saveChat,
   loadChat,
@@ -114,6 +115,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const unsub = plugin.onSettingsChange(() => forceRender((n) => n + 1));
     return unsub;
   }, [plugin]);
+
+  // Cloud TTS: quando o ★ TTS de Connections → Models aponta pra OpenAI e há
+  // key, o read-aloud/Modo Voz passa a falar via nuvem; senão, nativo. v0.1.236
+  const ttsRole = plugin.roleModel("tts");
+  useEffect(() => {
+    if (ttsRole && ttsRole.provider === "openai" && plugin.settings.openaiApiKey) {
+      setCloudTts({
+        provider: "openai",
+        model: ttsRole.model,
+        apiKey: plugin.settings.openaiApiKey,
+      });
+    } else {
+      setCloudTts(null);
+    }
+  }, [ttsRole?.provider, ttsRole?.model, plugin.settings.openaiApiKey]);
 
   // (v0.1.127) Fullscreen REMOVIDO — o plugin não mexe mais no layout/chrome
   // do Obsidian. Fullscreen v3 virá depois via snippet do dev.

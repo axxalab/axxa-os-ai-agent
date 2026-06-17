@@ -978,6 +978,12 @@ export default class AxxaPlugin extends Plugin {
     return roles;
   }
 
+  /** Modelo escolhido pra um PAPEL (Connections → Models). Consumidores novos
+   *  (geração de imagem/vídeo, cloud TTS) leem o ★ por aqui. v0.1.236 */
+  roleModel(role: RoleId): RoleModelEntry | undefined {
+    return this.settings.roleModels?.[role];
+  }
+
   /** Modelo-padrão atual de um provider (lê os campos legados por provider). */
   private providerDefaultModel(provider: string): string {
     const s = this.settings;

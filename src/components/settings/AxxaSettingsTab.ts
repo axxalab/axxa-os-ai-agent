@@ -875,6 +875,40 @@ export class AxxaSettingsTab extends PluginSettingTab {
     return provs[0];
   }
 
+  /** Write-through do ★: grava nos campos legados que os consumidores JÁ leem
+   *  hoje (chat → defaultProvider + modelo do provider; embedding →
+   *  ragEmbeddingModel). image/video/tts são lidos via plugin.roleModel(). */
+  private applyRoleSideEffects(role: RoleId, model: string, provider: string) {
+    const s = this.plugin.settings;
+    if (role === "chat") {
+      s.defaultProvider = provider;
+      switch (provider) {
+        case "anthropic":
+          s.anthropicModel = model;
+          break;
+        case "gemini":
+          s.geminiModel = model;
+          break;
+        case "openrouter":
+          s.openrouterModel = model;
+          break;
+        case "nim":
+          s.nimModel = model;
+          break;
+        case "ollama":
+          s.ollamaModel = model;
+          break;
+        default:
+          s.defaultModel = model;
+          break;
+      }
+    } else if (role === "embedding") {
+      s.ragEmbeddingModel = model;
+      s.ragEmbeddingProvider = provider;
+      new Notice("Embedding model set — reindex the Vault (Setup → RAG) to apply.");
+    }
+  }
+
   // ============================================================
   // MODELS — seleção por papel (cross-provider, famílias colapsáveis, ★).
   // ============================================================
@@ -1146,6 +1180,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
         list.push(model);
         this.plugin.settings.activeModels[prov] = list;
       }
+      this.applyRoleSideEffects(role, model, prov);
       await this.plugin.saveSettings();
       this.display();
     };
