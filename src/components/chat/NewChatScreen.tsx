@@ -80,8 +80,16 @@ export function NewChatScreen({
 
   return (
     <div className="axxa-newchat" data-mode={mode}>
-      {/* Disposição em 3 zonas: provider no TOPO · saudação CENTRADA · balões no
-          FUNDO (acima do composer). Mais intuitivo e arejado. */}
+      {/* Disposição: saudação (welcome) CENTRADA · seletor de provider logo
+          ABAIXO dela · balões no FUNDO (acima do composer). */}
+      <div className="axxa-newchat-head">
+        <span className="axxa-newchat-icon">
+          <Icon name={icon} />
+        </span>
+        <h2 className="axxa-newchat-title">{title}</h2>
+        <p className="axxa-newchat-sub">{sub}</p>
+      </div>
+
       <div className="axxa-newchat-provider">
         <div className="axxa-seg-block">
           <span className="axxa-seg-head">
@@ -103,14 +111,6 @@ export function NewChatScreen({
             }}
           />
         </div>
-      </div>
-
-      <div className="axxa-newchat-head">
-        <span className="axxa-newchat-icon">
-          <Icon name={icon} />
-        </span>
-        <h2 className="axxa-newchat-title">{title}</h2>
-        <p className="axxa-newchat-sub">{sub}</p>
       </div>
 
       {/* Balões — no fundo, acima do composer (o .axxa-newchat reserva a altura

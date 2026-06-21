@@ -747,6 +747,11 @@ layout no
   background: var(--background-primary);
   color: var(--text-normal);
 }
+/* canvas do chat: PRIMARY no light, SECONDARY no dark (regra do user). O composer
+   (sempre secondary) se separa por borda/sombra nos dois temas. v0.1.236 */
+body.theme-dark .axxa-root {
+  background: var(--background-secondary);
+}
 /* tipografia semântica: apoio = muted, carimbos/versão = faint */
 .axxa-root :is([class*="-sub"], [class*="-desc"], [class*="-meta"], [class*="-hint"]) {
   color: var(--text-muted);
@@ -8389,23 +8394,24 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* fundo da NOVA conversa = secondary (snippet do user) — canvas único com o
-     composer (também secondary), tiles outline por cima. */
-  background: var(--background-secondary);
+  /* fundo da nova conversa = herda o canvas do chat (.axxa-root): primary no
+     light, secondary no dark. */
+  background: transparent;
   /* padding-bottom reserva a altura do composer (que flutua absolute/fixed) — os
      balões (margin-top:auto) param logo acima dele, sem sobrepor a saudação. */
   padding: 24px 16px calc(var(--axxa-composer-h, 80px) + 24px);
 }
-/* zona 1 — provider no TOPO */
+/* provider logo ABAIXO da saudação; margin-bottom auto empurra os balões pro fundo */
 .axxa-newchat-provider {
   width: 100%;
   max-width: 460px;
   flex: 0 0 auto;
+  margin: 16px 0 auto;
 }
-/* zona 2 — saudação CENTRADA (margin auto come o espaço livre dos 2 lados, então
-   ela fica no meio entre o provider e os balões). */
+/* saudação CENTRADA com o provider logo abaixo: margin-top auto (aqui) +
+   margin-bottom auto (no provider) centralizam o bloco welcome+provider. */
 .axxa-newchat-head {
-  margin: auto 0;
+  margin: auto 0 0;
   width: 100%;
   max-width: 460px;
   display: flex;
