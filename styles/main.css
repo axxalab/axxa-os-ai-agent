@@ -1248,6 +1248,11 @@ body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
   border: 1px solid var(--background-modifier-border);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
 }
+/* no dark o canvas é secondary (igual ao pill) — a borda aparece um tico mais
+   pra separar, mantendo sutil. */
+body.theme-dark .axxa-root .axxa-composer-pill {
+  border-color: var(--background-modifier-border-hover);
+}
 .axxa-root .axxa-composer-pill .axxa-composer-editor {
   flex: 1 1 auto;
   min-width: 0;
@@ -8043,6 +8048,22 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
 .axxa-sidebar-new .svg-icon {
   width: 18px;
   height: 18px;
+}
+/* New chat / Q&A / Agent: ícone E texto em ACCENT, SEM fundo em nenhum estado
+   (nem no hover do desktop). Feedback de hover = accent mais forte, sem fill. */
+.axxa-root .axxa-sidebar-new,
+.axxa-root .axxa-sidebar-new:focus,
+.axxa-root .axxa-sidebar-new:active {
+  background: transparent;
+  color: var(--interactive-accent);
+}
+.axxa-root .axxa-sidebar-new:hover {
+  background: transparent;
+  color: var(--interactive-accent-hover);
+}
+.axxa-root .axxa-sidebar-new svg,
+.axxa-root .axxa-sidebar-new .svg-icon {
+  color: inherit;
 }
 .axxa-sidebar-new-group {
   flex: 0 0 auto;
