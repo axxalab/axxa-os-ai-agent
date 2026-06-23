@@ -10,7 +10,9 @@
 		"test:watch": "vitest",
 		"size": "node scripts/size-report.mjs",
 		"collect:hot": "node scripts/collect-hot.mjs",
-		"deploy:output": "node scripts/deploy.mjs"
+		"deploy:output": "node scripts/deploy.mjs",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build"
 	},
 	"dependencies": {
 		"preact": "^10.29.2",
@@ -22,14 +24,25 @@
 		"@codemirror/autocomplete": "^6.20.3",
 		"@codemirror/state": "^6.6.0",
 		"@codemirror/view": "^6.43.0",
+		"@storybook/addon-a11y": "^8.6.14",
+		"@storybook/addon-essentials": "^8.6.14",
+		"@storybook/addon-interactions": "^8.6.14",
+		"@storybook/addon-links": "^8.6.14",
+		"@storybook/blocks": "^8.6.14",
+		"@storybook/react-vite": "^8.6.14",
+		"@storybook/test": "^8.6.14",
 		"@types/node": "^16.18.108",
 		"@types/react": "^18.3.11",
 		"@types/react-dom": "^18.3.0",
+		"@vitejs/plugin-react": "^4.7.0",
 		"builtin-modules": "^3.3.0",
 		"esbuild": "^0.20.2",
+		"lucide": "^0.460.0",
 		"obsidian": "latest",
+		"storybook": "^8.6.14",
 		"tslib": "^2.7.0",
 		"typescript": "^5.6.2",
+		"vite": "^5.4.21",
 		"vitest": "^2.1.9"
 	}
 }
