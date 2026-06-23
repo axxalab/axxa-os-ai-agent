@@ -1,6 +1,6 @@
 // ComposerSuggestions.stories.tsx — "balões" de sugestão da nova conversa.
-import type { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, within, fn } from "@storybook/test";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within, fn } from "storybook/test";
 import { ComposerSuggestions } from "./ComposerSuggestions";
 
 const meta = {

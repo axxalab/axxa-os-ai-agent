@@ -4,8 +4,8 @@
 // densidade/motion + preset de background). Tudo isso é controlável pela
 // toolbar (globalTypes) pra inspecionar qualquer componente em qualquer estado.
 
-import * as React from "react";
-import type { Preview, Decorator } from "@storybook/react";
+import type { Preview, Decorator } from "@storybook/react-vite";
+import { withThemeByClassName } from "@storybook/addon-themes";
 
 // Ordem importa: primeiro as variáveis nativas do Obsidian, depois o CSS do DS
 // que as consome.
@@ -34,20 +34,10 @@ const BACKGROUND_PRESETS = [
   "flow",
 ];
 
+// Nota: o seletor "Theme" (light/dark) é provido pelo addon-themes
+// (withThemeByClassName) lá embaixo — ele alterna a classe no <body>, igual ao
+// Obsidian. Aqui ficam só os globals específicos do AXXA.
 export const globalTypes = {
-  theme: {
-    name: "Theme",
-    description: "Tema do Obsidian (light / dark)",
-    defaultValue: "light",
-    toolbar: {
-      icon: "contrast",
-      dynamicTitle: true,
-      items: [
-        { value: "light", title: "Light", icon: "sun" },
-        { value: "dark", title: "Dark", icon: "moon" },
-      ],
-    },
-  },
   background: {
     name: "Background",
     description: "Preset de fundo do AXXA (axxa-bg-*)",
@@ -95,20 +85,13 @@ const mockApp = createMockApp();
 const translations = getTranslations("en-us");
 
 /**
- * Decorator-mestre: aplica o tema no <body>, monta a `.axxa-root` com o preset
- * de background + tokens de densidade/motion, e injeta os Contexts (App + i18n)
- * que os componentes esperam. Um "frame" opcional imita o painel lateral do
- * Obsidian (controlável por `parameters.axxaFrame`).
+ * Decorator-mestre: monta a `.axxa-root` com o preset de background + tokens de
+ * densidade/motion, e injeta os Contexts (App + i18n) que os componentes
+ * esperam. O tema (classe no <body>) é responsabilidade do addon-themes. Um
+ * "frame" opcional imita o painel lateral do Obsidian (via `parameters.axxaFrame`).
  */
 const withAxxaEnvironment: Decorator = (Story, context) => {
-  const { theme, background, density, motion } = context.globals;
-
-  // Tema vive no <body> (o styles/main.css usa `body.theme-dark .axxa-root`).
-  React.useEffect(() => {
-    const body = document.body;
-    body.classList.toggle("theme-dark", theme === "dark");
-    body.classList.toggle("theme-light", theme !== "dark");
-  }, [theme]);
+  const { background, density, motion } = context.globals;
 
   // `axxaFrame: false` desliga o painel; objeto permite custom width/height.
   const frameParam = context.parameters.axxaFrame as
@@ -159,7 +142,15 @@ const withAxxaEnvironment: Decorator = (Story, context) => {
 /* ------------------------------- preview -------------------------------- */
 
 const preview: Preview = {
-  decorators: [withAxxaEnvironment],
+  decorators: [
+    // addon-themes: alterna a classe de tema no <body> (toolbar "Theme").
+    withThemeByClassName({
+      themes: { Light: "theme-light", Dark: "theme-dark" },
+      defaultTheme: "Light",
+      parentSelector: "body",
+    }),
+    withAxxaEnvironment,
+  ],
   parameters: {
     layout: "centered",
     controls: {

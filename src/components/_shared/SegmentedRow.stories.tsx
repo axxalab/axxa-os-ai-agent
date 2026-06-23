@@ -1,7 +1,7 @@
 // SegmentedRow.stories.tsx — controle segmentado com pílula deslizante (WAAPI).
 import { useState } from "react";
-import type { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, within, fn } from "@storybook/test";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within, fn } from "storybook/test";
 import { SegmentedRow, type SegmentedItem } from "./SegmentedRow";
 
 const MODE_ITEMS: SegmentedItem[] = [

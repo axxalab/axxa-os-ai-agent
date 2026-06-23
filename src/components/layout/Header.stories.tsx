@@ -1,6 +1,6 @@
 // Header.stories.tsx — header da view (branding / título / switcher de modelo).
-import type { Meta, StoryObj } from "@storybook/react";
-import { fn } from "@storybook/test";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import { Header } from "./Header";
 
 const meta = {

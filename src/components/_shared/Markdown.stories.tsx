@@ -2,7 +2,7 @@
 // Nota: no Storybook o renderer real do Obsidian é mockado por um conversor
 // markdown→HTML mínimo (.storybook/obsidian-mock.ts) — o suficiente pra mostrar
 // formatação. No app real, a engine é a mesma que renderiza notas.
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Markdown } from "./Markdown";
 
 const RICH = `# AXXA OS

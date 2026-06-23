@@ -1,5 +1,5 @@
 // Colors.stories.tsx — paleta do DS (tokens nativos + cores semânticas).
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 
 function Swatch({ name, value }: { name: string; value: string }) {
   return (

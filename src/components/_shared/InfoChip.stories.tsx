@@ -1,5 +1,5 @@
 // InfoChip.stories.tsx — chip compacto "ícone + valor" da status line do Composer.
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { InfoChip } from "./InfoChip";
 
 const meta = {

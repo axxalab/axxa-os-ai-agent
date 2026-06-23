@@ -1,5 +1,5 @@
 // Backgrounds.stories.tsx — presets de fundo (axxa-bg-*) da .axxa-root.
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 
 const PRESETS = [
   "none", "dawn", "ocean", "forest", "violet", "rose",

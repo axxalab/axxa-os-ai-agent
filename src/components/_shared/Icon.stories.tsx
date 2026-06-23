@@ -1,5 +1,5 @@
 // Icon.stories.tsx — wrapper do setIcon (Lucide) do Obsidian.
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Icon } from "./Icon";
 
 const meta = {
