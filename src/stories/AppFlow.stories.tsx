@@ -1,12 +1,13 @@
-// AppFlow.stories.tsx — FLUXO COMPLETO "funcionando": os componentes reais do DS
-// ligados ao store de chat de verdade, com um motor de IA FAKE que faz streaming.
-// Dá pra usar de ponta a ponta dentro do Storybook: nova conversa → sugestão →
-// enviar → ver a resposta streamando → reagir / regenerar / continuar → abrir a
-// gaveta → navegar conversas → trocar de modelo.
+// AppFlow.stories.tsx — FLUXO COMPLETO "funcionando": os componentes REAIS do DS
+// (Header, NewChatScreen, ChatArea/Messages, Composer com CodeMirror, Sidebar,
+// ConversationsList, ModelSheet, SuggestionsSheet) ligados ao store de chat real,
+// com um motor de IA FAKE que faz streaming. Use de ponta a ponta: nova conversa
+// → sugestão/digitar → enviar → ver streamar → reagir/regenerar → gaveta →
+// conversas → trocar de modelo.
 //
-// Não é o AxxaApp real (que é acoplado a providers/persistência/geração) — é uma
-// orquestração enxuta que demonstra o DS inteiro interagindo.
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+// Não é o AxxaApp real (acoplado a providers/persistência/geração) — é uma
+// orquestração enxuta que demonstra o DS inteiro interagindo de verdade.
+import { useEffect, useRef, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Header } from "../components/layout/Header";
@@ -14,10 +15,9 @@ import { Sidebar } from "../components/layout/Sidebar";
 import { ChatArea } from "../components/chat/ChatArea";
 import { ConversationsList } from "../components/chat/ConversationsList";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
+import { Composer } from "../components/composer/Composer";
 import { ModelSheet } from "../components/composer/ModelSheet";
 import { SuggestionsSheet } from "../components/composer/SuggestionsSheet";
-import { Icon } from "../components/_shared/Icon";
-import { InfoChip } from "../components/_shared/InfoChip";
 import {
   ChatActionsContext,
   type ChatActions,
@@ -47,14 +47,11 @@ const REPLIES: Record<string, string[]> = {
   ],
 };
 
-function pickReply(mode: string): string {
+const pickReply = (mode: string): string => {
   const pool = REPLIES[mode] ?? REPLIES.chat;
   return pool[Math.floor(Math.random() * pool.length)];
-}
-
+};
 const tokenize = (s: string): string[] => s.match(/\S+\s*/g) ?? [s];
-
-/* --------------------------- conversa pré-pronta ------------------------ */
 
 const CANNED: ChatMessage[] = [
   { id: "p1", type: "user", content: "Me explique RAG em duas frases.", timestamp: Date.now() },
@@ -76,6 +73,9 @@ function FlowApp({ preload }: { preload?: boolean }) {
   const isLoading = useChatStore((s) => s.isLoading);
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
   const sessionModel = useChatStore((s) => s.sessionModel);
+  const tokensIn = useChatStore((s) => s.tokensIn);
+  const tokensOut = useChatStore((s) => s.tokensOut);
+  const tokensPerSec = useChatStore((s) => s.tokensPerSec);
 
   const [view, setView] = useState<"chat" | "conversations">("chat");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -86,13 +86,10 @@ function FlowApp({ preload }: { preload?: boolean }) {
   const [model, setModel] = useState("gpt-4o");
   const [effort, setEffort] = useState("med");
   const [favorites, setFavorites] = useState<string[]>(["openai::gpt-4o", "openai::o3-mini"]);
-  const [draft, setDraft] = useState("");
+  const [draftEmpty, setDraftEmpty] = useState(true);
+  const [inject, setInject] = useState<{ text: string; nonce: number } | undefined>(undefined);
   const timer = useRef<number | null>(null);
 
-  const tokensIn = useChatStore((s) => s.tokensIn);
-  const tokensOut = useChatStore((s) => s.tokensOut);
-
-  // Reset ao montar a story (store é global). Opcionalmente pré-carrega.
   useEffect(() => {
     const s = useChatStore.getState();
     s.newChat();
@@ -111,8 +108,9 @@ function FlowApp({ preload }: { preload?: boolean }) {
 
   const isLocked = sessionModel !== null;
   const activeModel = sessionModel ?? model;
+  const injectPrompt = (text: string) =>
+    setInject((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
 
-  /* streaming fake de tokens dentro de uma ai-response */
   const streamInto = (aiId: string, reply: string, onDone?: () => void) => {
     const s = useChatStore.getState();
     s.setStreamingMessageId(aiId);
@@ -140,7 +138,6 @@ function FlowApp({ preload }: { preload?: boolean }) {
 
   const startReply = (modeNow: string) => {
     const s = useChatStore.getState();
-    // No modo agente, mostra um "activity step" antes da resposta.
     if (modeNow === "agent") {
       const cId = s.addMessage({
         type: "ai-comment",
@@ -153,9 +150,10 @@ function FlowApp({ preload }: { preload?: boolean }) {
           doneText: "Vault lido — 3 notas",
         },
       });
-      window.setTimeout(() => {
-        useChatStore.getState().updateActivity(cId, { phase: "done" }, "Vault lido — 3 notas");
-      }, 900);
+      window.setTimeout(
+        () => useChatStore.getState().updateActivity(cId, { phase: "done" }, "Vault lido — 3 notas"),
+        900
+      );
     }
     const aiId = s.addMessage({ type: "ai-response", content: "" });
     streamInto(aiId, pickReply(modeNow));
@@ -171,8 +169,16 @@ function FlowApp({ preload }: { preload?: boolean }) {
       s.lockSession(provider, activeModel, mode);
     }
     s.addMessage({ type: "user", content: clean });
-    setDraft("");
     window.setTimeout(() => startReply(mode), 120);
+  };
+
+  const handleStop = () => {
+    if (timer.current) window.clearInterval(timer.current);
+    timer.current = null;
+    const s = useChatStore.getState();
+    s.setStreamingMessageId(null);
+    s.setLoading(false);
+    s.endStreamTimer();
   };
 
   const loadCanned = (chatId: string) => {
@@ -193,7 +199,6 @@ function FlowApp({ preload }: { preload?: boolean }) {
     setView("chat");
   };
 
-  /* ações da bolha (footer da AIResponse) ligadas ao store */
   const chatActions: ChatActions = {
     regenerate: (aiId) => {
       const st = useChatStore.getState();
@@ -203,9 +208,8 @@ function FlowApp({ preload }: { preload?: boolean }) {
       st.beginVariant(aiId);
       streamInto(aiId, pickReply(mode), () => useChatStore.getState().syncVariant(aiId));
     },
-    continueResponse: (aiId) => {
-      streamInto(aiId, " E, complementando: vale revisar os exemplos antes de aplicar.");
-    },
+    continueResponse: (aiId) =>
+      streamInto(aiId, " E, complementando: vale revisar os exemplos antes de aplicar."),
     deleteMessage: (id) => {
       const st = useChatStore.getState();
       const idx = st.messages.findIndex((m) => m.id === id);
@@ -213,9 +217,7 @@ function FlowApp({ preload }: { preload?: boolean }) {
       const next = st.messages[idx + 1];
       if (st.messages[idx].type === "user" && next?.type === "ai-response") {
         st.setMessages([...st.messages.slice(0, idx), ...st.messages.slice(idx + 2)]);
-      } else {
-        st.removeMessage(id);
-      }
+      } else st.removeMessage(id);
     },
     editMessage: (id, content) => {
       const st = useChatStore.getState();
@@ -250,7 +252,7 @@ function FlowApp({ preload }: { preload?: boolean }) {
         personaActive={false}
         modelName={activeModel}
         modelOptions={["gpt-4o", "gpt-4o-mini", "o3-mini"]}
-        onSelectModel={(m) => setModel(m)}
+        onSelectModel={setModel}
         modelLocked={isLocked}
         onOpenVoice={() => {}}
       />
@@ -275,92 +277,37 @@ function FlowApp({ preload }: { preload?: boolean }) {
                 provider={provider}
                 onProviderChange={setProvider}
                 onOpenSettings={() => {}}
-                onPickSuggestion={(t) => setDraft(t)}
+                onPickSuggestion={injectPrompt}
                 onSeeMoreSuggestions={() => setSuggestOpen(true)}
-                showSuggestions={draft.trim() === ""}
+                showSuggestions={draftEmpty}
               />
             ) : (
               <ChatArea />
             )}
           </div>
 
-          {/* Composer enxuto (o real usa CodeMirror — aqui um input fiel ao visual). */}
-          <div
-            style={{
-              flex: "0 0 auto",
-              borderTop: "1px solid var(--background-modifier-border)",
-              padding: "8px 12px 12px",
-              background: "var(--background-primary)",
-            }}
-          >
-            <div style={{ display: "flex", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-              <InfoChip icon="sparkles" color="var(--color-cyan)">{provider}</InfoChip>
-              <InfoChip icon="cpu" color="var(--color-purple)">{activeModel}</InfoChip>
-              <InfoChip icon="zap" color="var(--color-orange)">{effort}</InfoChip>
-              <InfoChip icon="coins" color="var(--color-blue)">{tokensIn + tokensOut}</InfoChip>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-end",
-                gap: 8,
-                background: "var(--background-secondary)",
-                border: "1px solid var(--background-modifier-border)",
-                borderRadius: 14,
-                padding: 8,
-              }}
-            >
-              <button
-                type="button"
-                title="Trocar modelo"
-                onClick={() => setModelSheetOpen(true)}
-                style={btnStyle}
-              >
-                <Icon name="sliders-horizontal" />
-              </button>
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft((e.target as HTMLTextAreaElement).value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend(draft);
-                  }
-                }}
-                placeholder={
-                  mode === "agent"
-                    ? "Peça uma ação no vault…"
-                    : mode === "vault-qa"
-                      ? "Pergunte às suas notas…"
-                      : "Mensagem para o AXXA…"
-                }
-                rows={1}
-                style={{
-                  flex: 1,
-                  resize: "none",
-                  border: "none",
-                  background: "transparent",
-                  color: "var(--text-normal)",
-                  font: "inherit",
-                  outline: "none",
-                  padding: "6px 4px",
-                  maxHeight: 120,
-                }}
-              />
-              <button
-                type="button"
-                title={isLoading ? "Parar" : "Enviar"}
-                onClick={() => (isLoading ? null : handleSend(draft))}
-                style={{
-                  ...btnStyle,
-                  background: "var(--interactive-accent)",
-                  color: "var(--text-on-accent)",
-                }}
-              >
-                <Icon name={isLoading ? "square" : "arrow-up"} />
-              </button>
-            </div>
-          </div>
+          <Composer
+            onSend={handleSend}
+            onStop={handleStop}
+            streaming={isLoading}
+            providerName={provider}
+            modelName={activeModel}
+            effort={effort}
+            tokensIn={tokensIn}
+            tokensOut={tokensOut}
+            tokensPerSec={tokensPerSec}
+            contextUsed={tokensIn + tokensOut}
+            locked={isLocked}
+            mode={mode}
+            visibleChips={["provider", "model", "effort", "tokens", "context"]}
+            visionEnabled
+            onPlusClick={() => {}}
+            onOpenModel={() => setModelSheetOpen(true)}
+            onOpenVoice={() => {}}
+            onDraftChange={(t) => setDraftEmpty(t.trim() === "")}
+            injectText={inject}
+            commands={[]}
+          />
         </>
       )}
 
@@ -401,7 +348,7 @@ function FlowApp({ preload }: { preload?: boolean }) {
             setModelSheetOpen(false);
           }}
           currentEffort={effort}
-          onSelectEffort={(lvl) => setEffort(lvl)}
+          onSelectEffort={setEffort}
           thinkingOn={false}
           onToggleThinking={() => {}}
           onClose={() => setModelSheetOpen(false)}
@@ -414,7 +361,7 @@ function FlowApp({ preload }: { preload?: boolean }) {
         <SuggestionsSheet
           mode={mode}
           onPick={(t) => {
-            setDraft(t);
+            injectPrompt(t);
             setSuggestOpen(false);
           }}
           onClose={() => setSuggestOpen(false)}
@@ -423,20 +370,6 @@ function FlowApp({ preload }: { preload?: boolean }) {
     </ChatActionsContext.Provider>
   );
 }
-
-const btnStyle: CSSProperties = {
-  flex: "0 0 auto",
-  width: 36,
-  height: 36,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 10,
-  border: "none",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-};
 
 /* ------------------------------- meta ----------------------------------- */
 
@@ -451,11 +384,12 @@ const meta = {
     docs: {
       description: {
         component:
-          "FLUXO completo e interativo: os componentes reais do DS ligados ao store " +
-          "de chat, com um motor de IA FAKE que faz streaming. Experimente: escolha " +
-          "uma sugestão (ou digite) e envie → veja a resposta streamar → use o footer " +
-          "(copiar/regenerar/like) → abra a gaveta (avatar) → 'ver todas' → troque o " +
-          "modelo (ícone à esquerda do composer). Troque tema/densidade/motion pela toolbar.",
+          "FLUXO completo e interativo com os componentes REAIS (inclusive o Composer " +
+          "com CodeMirror) ligados ao store, e um motor de IA FAKE que faz streaming. " +
+          "Escolha uma sugestão (ou digite) e envie → veja a resposta streamar → use o " +
+          "footer (copiar/regenerar/like) → abra a gaveta (avatar) → 'ver todas' → " +
+          "troque o modelo (chip do composer). Toolbar Theme/Background/Density/Motion " +
+          "afeta tudo.",
       },
     },
   },
@@ -465,11 +399,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Começa numa conversa nova (tela de sugestões). Digite e envie. */
-export const NewConversation: Story = {
-  args: { preload: false },
-};
+export const NewConversation: Story = { args: { preload: false } };
 
 /** Já começa com uma conversa carregada — continue mandando mensagens. */
-export const WithConversation: Story = {
-  args: { preload: true },
-};
+export const WithConversation: Story = { args: { preload: true } };

@@ -11,6 +11,13 @@ import "./obsidian-dom";
 import type { Preview, Decorator } from "@storybook/react-vite";
 import { withThemeByClassName } from "@storybook/addon-themes";
 
+// Registra os logos de marca (providers + modelos) no mock do addIcon, pra que
+// <Icon name="logo-openai" /> etc. rendam o SVG real (igual ao onload do plugin).
+import { registerBrandLogos } from "../src/components/_shared/brandLogos";
+import { registerBrandIcons } from "../src/components/_shared/brandIcons";
+registerBrandLogos();
+registerBrandIcons();
+
 // Ordem importa: primeiro as variáveis nativas do Obsidian, depois o CSS do DS
 // que as consome.
 import "./obsidian-theme.css";

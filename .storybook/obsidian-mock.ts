@@ -60,8 +60,20 @@ export function setIcon(parent: HTMLElement, iconId: string): void {
   if (!parent) return;
   parent.replaceChildren();
 
-  // Nome desconhecido vira um quadradinho — torna o "buraco" visível em vez de
-  // sumir silenciosamente (ajuda a achar ícones errados nas stories).
+  // 1) Ícone/logo de marca registrado via addIcon() (BRAND_LOGOS/BRAND_ICONS).
+  //    O conteúdo é o INNER de um <svg viewBox="0 0 100 100"> (padrão do Obsidian).
+  const custom = CUSTOM_ICONS.get(iconId);
+  if (custom !== undefined) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.classList.add("svg-icon", iconId);
+    svg.innerHTML = custom;
+    parent.appendChild(svg);
+    return;
+  }
+
+  // 2) Ícone Lucide (o setIcon nativo usa a mesma lib). Nome desconhecido vira
+  //    um quadradinho — torna o "buraco" visível em vez de sumir silenciosamente.
   const node =
     (icons as unknown as Record<string, IconNode>)[toPascalCase(iconId)] ??
     FALLBACK_NODE;
@@ -70,6 +82,11 @@ export function setIcon(parent: HTMLElement, iconId: string): void {
   svg.classList.add("svg-icon", `lucide-${iconId}`);
   parent.appendChild(svg);
 }
+
+// Registro dos ícones customizados do Obsidian (addIcon). O AXXA registra os
+// logos de marca via registerBrandLogos()/registerBrandIcons() no onload — no
+// Storybook isso é feito no preview.
+const CUSTOM_ICONS = new Map<string, string>();
 
 /* --------------------------- MarkdownRenderer --------------------------- */
 // Conversor markdown→HTML MÍNIMO (headings, bold/italic/code, listas, code
@@ -280,7 +297,9 @@ export class FuzzySuggestModal<T> extends SuggestModal<T> {
   onChooseItem(): void {}
 }
 
-export function addIcon(): void {}
+export function addIcon(id: string, svgContent: string): void {
+  CUSTOM_ICONS.set(id, svgContent);
+}
 
 export function normalizePath(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
