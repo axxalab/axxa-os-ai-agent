@@ -4,6 +4,10 @@
 // densidade/motion + preset de background). Tudo isso é controlável pela
 // toolbar (globalTypes) pra inspecionar qualquer componente em qualquer estado.
 
+// Polyfill das extensões DOM do Obsidian (empty/createEl/…). DEVE vir antes de
+// qualquer componente — vários os usam ao renderizar.
+import "./obsidian-dom";
+
 import type { Preview, Decorator } from "@storybook/react-vite";
 import { withThemeByClassName } from "@storybook/addon-themes";
 

@@ -222,6 +222,65 @@ export class TFile {}
 export class TFolder {}
 export class MarkdownView {}
 
+// Menu nativo (context menus de ConversationsList / Sidebar / mensagens). A API
+// é encadeável: new Menu().addItem(i => i.setTitle().setIcon().onClick()).showAt…
+class MenuItem {
+  setTitle(): this {
+    return this;
+  }
+  setIcon(): this {
+    return this;
+  }
+  setChecked(): this {
+    return this;
+  }
+  setDisabled(): this {
+    return this;
+  }
+  onClick(): this {
+    return this;
+  }
+  setSection(): this {
+    return this;
+  }
+}
+
+export class Menu {
+  addItem(cb: (item: MenuItem) => void): this {
+    cb(new MenuItem());
+    return this;
+  }
+  addSeparator(): this {
+    return this;
+  }
+  setNoIcon(): this {
+    return this;
+  }
+  showAtMouseEvent(): void {}
+  showAtPosition(): void {}
+  hide(): void {}
+}
+
+// Modais de busca (PlusModal usa FuzzySuggestModal). Render no Storybook é no-op.
+export class SuggestModal<T> extends Modal {
+  getSuggestions(_query: string): T[] {
+    return [];
+  }
+  renderSuggestion(): void {}
+  onChooseSuggestion(): void {}
+}
+export class FuzzySuggestModal<T> extends SuggestModal<T> {
+  getItems(): T[] {
+    return [];
+  }
+  getItemText(): string {
+    return "";
+  }
+  onChooseItem(): void {}
+}
+
+export function addIcon(): void {}
+
 export function normalizePath(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
 }
