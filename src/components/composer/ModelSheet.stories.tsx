@@ -21,6 +21,9 @@ const meta = {
   },
   argTypes: {
     provider: { control: "text" },
+    models: { control: "object", description: "IDs dos modelos adicionados do provider." },
+    favorites: { control: "object", description: 'Favoritos globais ("provider::model").' },
+    lang: { control: "text", description: "Locale das descrições." },
     currentModel: { control: "text" },
     currentEffort: {
       control: "inline-radio",

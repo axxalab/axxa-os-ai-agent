@@ -1,0 +1,19 @@
+{
+  // Typecheck SÓ das stories + config do Storybook. Separado do tsconfig do
+  // plugin porque os pacotes do Storybook 10 usam `exports` maps, que exigem
+  // moduleResolution "bundler" (o tsconfig do plugin usa "node" legado, e o
+  // build do plugin nem deve enxergar as stories). Use: `npm run typecheck:stories`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
+    "src/**/*.stories.tsx",
+    "src/stories/**/*"
+  ],
+  "exclude": ["node_modules"]
+}

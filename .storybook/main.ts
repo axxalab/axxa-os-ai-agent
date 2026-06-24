@@ -23,11 +23,14 @@ const config: StorybookConfig = {
   // outline e o painel de interactions agora são CORE (não precisam de addon).
   // Restam os addons "de verdade":
   addons: [
+    "@storybook/addon-onboarding", // tour guiado de 1º uso do Storybook
     "@storybook/addon-links",
     "@storybook/addon-docs", // autodocs + páginas MDX (era parte do essentials)
     "@storybook/addon-a11y", // auditoria de acessibilidade por story
     "@storybook/addon-themes", // switcher de tema oficial (light/dark via classe)
+    "@storybook/addon-designs", // embed de frames do Figma na aba "Design"
     "@storybook/addon-vitest", // roda as stories como testes (Vitest browser mode)
+    "@storybook/addon-mcp", // servidor MCP: expõe o conhecimento das stories pra IA
   ],
   framework: {
     name: "@storybook/react-vite",

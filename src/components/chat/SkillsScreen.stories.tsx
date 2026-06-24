@@ -50,6 +50,7 @@ const meta = {
     },
   },
   argTypes: {
+    skills: { control: "object", description: "Skills disponíveis (Skill[])." },
     onUse: { action: "use" },
     onOpenNote: { action: "openNote" },
     onClose: { action: "close" },

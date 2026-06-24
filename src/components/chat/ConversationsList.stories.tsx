@@ -21,6 +21,7 @@ const meta = {
     },
   },
   argTypes: {
+    chats: { control: "object", description: "Conversas a listar (ChatSummary[])." },
     visibleChips: { control: "object" },
     onLoadChat: { action: "loadChat" },
     onClose: { action: "close" },

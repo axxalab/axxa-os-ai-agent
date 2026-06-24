@@ -63,7 +63,8 @@ export function setIcon(parent: HTMLElement, iconId: string): void {
   // Nome desconhecido vira um quadradinho — torna o "buraco" visível em vez de
   // sumir silenciosamente (ajuda a achar ícones errados nas stories).
   const node =
-    (icons as Record<string, IconNode>)[toPascalCase(iconId)] ?? FALLBACK_NODE;
+    (icons as unknown as Record<string, IconNode>)[toPascalCase(iconId)] ??
+    FALLBACK_NODE;
 
   const svg = buildSvgNode(node);
   svg.classList.add("svg-icon", `lucide-${iconId}`);

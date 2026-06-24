@@ -22,6 +22,7 @@ const meta = {
     },
   },
   argTypes: {
+    result: { control: "object", description: "Resultado da checagem de compatibilidade." },
     onSwapModel: { action: "swapModel" },
     onDismiss: { action: "dismiss" },
   },
