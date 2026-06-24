@@ -10,12 +10,21 @@
 // novas stories exercitem mais da API.
 // ---------------------------------------------------------------------------
 
-import { createElement, icons } from "lucide";
+import { icons } from "lucide";
 
 /* ----------------------------- setIcon ---------------------------------- */
 // O Obsidian vem com Lucide bundleado; o setIcon nativo injeta o <svg> do ícone
 // com a classe `.svg-icon` (que o styles/main.css dimensiona por contexto).
-// Replicamos isso 1:1 usando o pacote `lucide`.
+// Replicamos isso a partir dos dados do pacote `lucide`.
+//
+// Cada ícone do lucide é um IconNode no formato `[tag, attrs, children[]]`
+// (recursivo). NÃO usamos o `createElement` do lucide de propósito: a sua
+// assinatura difere entre os builds CJS e ESM (no ESM o export recebe o array
+// inteiro; no CJS recebe 3 args) — montar o SVG manualmente é à prova disso.
+
+type IconNode = [string, Record<string, unknown>, IconNode[]?];
+
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 const toPascalCase = (name: string): string =>
   name
@@ -24,29 +33,39 @@ const toPascalCase = (name: string): string =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
 
+function buildSvgNode([tag, attrs, children = []]: IconNode): SVGElement {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [name, value] of Object.entries(attrs ?? {})) {
+    el.setAttribute(name, String(value));
+  }
+  for (const child of children) {
+    el.appendChild(buildSvgNode(child));
+  }
+  return el;
+}
+
+const FALLBACK_NODE: IconNode = [
+  "svg",
+  {
+    xmlns: SVG_NS,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": 2,
+  },
+  [["rect", { x: 4, y: 4, width: 16, height: 16, rx: 3 }]],
+];
+
 export function setIcon(parent: HTMLElement, iconId: string): void {
   if (!parent) return;
   parent.replaceChildren();
 
-  const node = (icons as Record<string, [string, Record<string, unknown>, unknown[]]>)[
-    toPascalCase(iconId)
-  ];
-  if (!node) {
-    // Fallback: nome desconhecido vira um quadradinho — torna o "buraco" visível
-    // em vez de sumir silenciosamente (ajuda a achar ícones errados nas stories).
-    const fallback = createElement("svg", {
-      xmlns: "http://www.w3.org/2000/svg",
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 2,
-    }, [["rect", { x: 4, y: 4, width: 16, height: 16, rx: 3 }]]);
-    fallback.classList.add("svg-icon", `lucide-${iconId}`);
-    parent.appendChild(fallback);
-    return;
-  }
+  // Nome desconhecido vira um quadradinho — torna o "buraco" visível em vez de
+  // sumir silenciosamente (ajuda a achar ícones errados nas stories).
+  const node =
+    (icons as Record<string, IconNode>)[toPascalCase(iconId)] ?? FALLBACK_NODE;
 
-  const svg = createElement(node[0], node[1] as Record<string, unknown>, node[2] as unknown[]);
+  const svg = buildSvgNode(node);
   svg.classList.add("svg-icon", `lucide-${iconId}`);
   parent.appendChild(svg);
 }
