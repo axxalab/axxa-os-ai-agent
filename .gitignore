@@ -21,6 +21,9 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
+# Storybook (saída de build — gerada por `npm run build-storybook`)
+storybook-static/
+
 # Build output — TRACKED no git (necessário pra distribuição do plugin)
 # Não ignorar: output/main.js, output/manifest.json, output/styles.css
 

@@ -16,5 +16,6 @@
     "jsx": "react-jsx",
     "lib": ["DOM", "ES2020"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "src/**/*.stories.tsx", "src/stories"]
 }

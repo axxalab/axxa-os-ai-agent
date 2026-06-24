@@ -1,0 +1,62 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Introduction" />
+
+# AXXA OS — Design System
+
+Storybook do **AXXA OS — AI Agent** (plugin do Obsidian). Aqui vivem os
+componentes do nosso design system, isolados do app, em todos os seus estados.
+
+> **Filosofia:** só o **tema** (cores/tipografia) é herdado do Obsidian.
+> Estrutura, espaçamento, interações e componentes são **nossos**.
+
+---
+
+## Como usar a toolbar
+
+Toda story roda dentro de um ambiente que replica o runtime do plugin. Use os
+controles da toolbar (topo) para inspecionar qualquer combinação:
+
+| Controle | O que faz |
+|----------|-----------|
+| **Theme** | Alterna `light` / `dark` (classe no `<body>`, igual ao Obsidian). |
+| **Background** | Aplica um preset de fundo `axxa-bg-*` na `.axxa-root`. |
+| **Density** | `large` / `normal` / `compact` — reescala o espaçamento (`[DS:density]`). |
+| **Motion** | `soft` / `wave` / `intense` / `chaotic` — personalidade das animações (`[DS:motion]`). |
+
+E os addons (painéis de baixo):
+
+- **Controls** — edite props/args ao vivo (com tabela gerada das interfaces TS).
+- **Actions** — veja os callbacks (`onSelect`, `onPick`, …) sendo disparados.
+- **Interactions** — passo a passo das interações automatizadas (`play`).
+- **Accessibility** — auditoria a11y por story.
+- **Docs** — página de documentação por componente (aba *Docs*).
+
+---
+
+## Organização
+
+- **Foundations** — tokens: cores, backgrounds, **logos**.
+- **Shared** — primitivos reusáveis (`Icon`, `InfoChip`, `SegmentedRow`, `ThinkingGlyph`, `Markdown`).
+- **Chat** — mensagens, lista de conversas, sugestões, cards de modelo, voz.
+- **Composer** — barra de composição (`Composer` real com CodeMirror), sheets, `+`, câmera.
+- **Layout** — chrome da view (`Header`, `Sidebar`).
+- **Screens** — telas full-screen (Projects, Media, Statistics, Profile, Plans).
+- **Obsidian** — a aba de **Settings** nativa + a view **In Context** (drawer + barra inferior).
+- **Flows** — **Full App**: fluxo completo e navegável, ligado ao store, com IA fake.
+
+## Interações & testes
+
+Várias stories têm `play` (painel **Interactions**, embaixo) — clicam/digitam e
+verificam callbacks. Com o **addon-vitest**, as stories rodam como teste no
+browser: `npx playwright install chromium && npm run test:stories`.
+
+---
+
+## Ambiente
+
+Os componentes importam a API do Obsidian (`setIcon`, `MarkdownRenderer`…).
+Como o Storybook roda fora do app, o módulo `obsidian` é **aliasado** para um
+mock (`.storybook/obsidian-mock.ts`) — o `setIcon` desenha ícones Lucide reais e
+o `MarkdownRenderer` usa um conversor markdown→HTML mínimo. As variáveis CSS
+nativas do Obsidian são recriadas em `.storybook/obsidian-theme.css`.

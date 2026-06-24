@@ -1,0 +1,142 @@
+/* .storybook/obsidian-theme.css
+ * ---------------------------------------------------------------------------
+ * O plugin herda DO OBSIDIAN apenas o tema (cores/tipografia) — todo o resto
+ * (estrutura, espaçamento, componentes) é do AXXA DS. Como o Storybook roda
+ * FORA do Obsidian, recriamos aqui o conjunto de variáveis CSS nativas que o
+ * `styles/main.css` consome (ver `var(--...)`), nos dois modos (light/dark).
+ *
+ * Os valores espelham o tema padrão do Obsidian. A classe `theme-light` /
+ * `theme-dark` é alternada no <body> pelo decorator global (toolbar "Theme").
+ * ------------------------------------------------------------------------- */
+
+:root,
+body.theme-light {
+  color-scheme: light;
+
+  /* superfícies */
+  --background-primary: #ffffff;
+  --background-primary-alt: #f5f6f8;
+  --background-secondary: #f2f3f5;
+  --background-secondary-alt: #e3e5e8;
+
+  /* modificadores */
+  --background-modifier-border: #d4d6da;
+  --background-modifier-border-hover: #c4c6cb;
+  --background-modifier-border-focus: #a3a6ab;
+  --background-modifier-hover: rgba(0, 0, 0, 0.045);
+  --background-modifier-active-hover: rgba(0, 0, 0, 0.08);
+  --background-modifier-form-field: #ffffff;
+  --background-modifier-cover: rgba(0, 0, 0, 0.65);
+  --background-modifier-success: #08b94e;
+  --background-modifier-error: #e93147;
+
+  /* texto */
+  --text-normal: #1f2329;
+  --text-muted: #5c6370;
+  --text-faint: #9aa0aa;
+  --text-on-accent: #ffffff;
+  --text-accent: #7c5cff;
+  --text-error: #c0392b;
+  --text-success: #08823a;
+
+  /* acento / interativo */
+  --interactive-accent: #7c5cff;
+  --interactive-accent-hover: #6a48f0;
+  --interactive-normal: #f2f3f5;
+  --interactive-hover: #e9eaec;
+
+  /* cores semânticas */
+  --color-red: #e93147;
+  --color-orange: #e9973f;
+  --color-yellow: #e0c33b;
+  --color-green: #08b94e;
+  --color-cyan: #00b8d4;
+  --color-blue: #2f7df6;
+  --color-purple: #9c5cff;
+  --color-pink: #e64db0;
+
+  /* tipografia */
+  --font-interface: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-text: var(--font-interface);
+  --font-monospace: "SFMono-Regular", Menlo, Consolas, "Roboto Mono", monospace;
+  --font-ui-smaller: 12px;
+  --font-ui-small: 13px;
+  --font-ui-medium: 15px;
+  --font-ui-large: 20px;
+
+  /* raios / tamanhos / sombra */
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --size-4-1: 4px;
+  --size-4-2: 8px;
+  --size-4-3: 12px;
+  --shadow-s: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-l: 0 12px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  /* ícones (setIcon do Obsidian dimensiona o .svg-icon por estas vars) */
+  --icon-size: 18px;
+  --icon-stroke: 1.75px;
+
+  /* layout / safe-areas (no-ops fora do app, mas referenciadas pelo CSS) */
+  --safe-area-inset-bottom: 0px;
+  --keyboard-height: 0px;
+  --navbar-height: 0px;
+  --copilot-status-bar-clearance: 0px;
+}
+
+body.theme-dark {
+  color-scheme: dark;
+
+  --background-primary: #1e1e1f;
+  --background-primary-alt: #1a1a1b;
+  --background-secondary: #161617;
+  --background-secondary-alt: #0d0d0e;
+
+  --background-modifier-border: #2c2c2e;
+  --background-modifier-border-hover: #3a3a3d;
+  --background-modifier-border-focus: #4a4a4d;
+  --background-modifier-hover: rgba(255, 255, 255, 0.06);
+  --background-modifier-active-hover: rgba(255, 255, 255, 0.1);
+  --background-modifier-form-field: rgba(0, 0, 0, 0.25);
+  --background-modifier-cover: rgba(0, 0, 0, 0.8);
+
+  --text-normal: #e3e4e6;
+  --text-muted: #9ea1a6;
+  --text-faint: #6b6e74;
+  --text-on-accent: #ffffff;
+  --text-accent: #a78bff;
+  --text-error: #ff6b6b;
+  --text-success: #3ad17e;
+
+  --interactive-accent: #7c5cff;
+  --interactive-accent-hover: #8f74ff;
+  --interactive-normal: #2a2a2c;
+  --interactive-hover: #343437;
+
+  --color-red: #ff5a6e;
+  --color-green: #3ad17e;
+  --color-cyan: #3ad6f0;
+  --color-blue: #5b9bff;
+  --color-purple: #b083ff;
+  --color-pink: #ff6fc8;
+
+  --shadow-s: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-l: 0 16px 40px rgba(0, 0, 0, 0.55), 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* Sizing global do ícone — o setIcon real marca o <svg> com `.svg-icon`; o
+   styles/main.css faz override por contexto, isto é só o default herdado. */
+.svg-icon {
+  width: var(--icon-size, 18px);
+  height: var(--icon-size, 18px);
+  stroke-width: var(--icon-stroke, 1.75px);
+  color: inherit;
+}
+
+/* O canvas do Storybook usa a superfície nativa pra o preview parecer o app. */
+body {
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
