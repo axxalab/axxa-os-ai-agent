@@ -37,11 +37,56 @@ export const mockPlugin = {
   manifest: { version: "0.1.236" },
   fetchModelInfo: async () => null,
   vectorIndex: null,
+  chatSummaries: [] as ChatSummary[],
   loadChatSummaries: async () => [] as ChatSummary[],
   onSettingsChange: () => () => {},
   onChatsChange: () => () => {},
   saveSettings: async () => {},
 } as unknown as AxxaPlugin;
+
+/* --------------------------- mocks de mídia ----------------------------- */
+// CameraModal/PlusModal usam getUserMedia; o Composer usa MediaRecorder. Aqui
+// fornecemos stubs pra a UI funcionar no Storybook sem hardware/permissão real.
+export function installMediaMocks(): void {
+  const makeStream = () =>
+    typeof MediaStream !== "undefined"
+      ? new MediaStream()
+      : ({ getTracks: () => [], getVideoTracks: () => [], getAudioTracks: () => [] } as unknown as MediaStream);
+
+  const md = (navigator.mediaDevices ?? ({} as MediaDevices)) as MediaDevices & Record<string, unknown>;
+  md.getUserMedia = (async () => makeStream()) as MediaDevices["getUserMedia"];
+  try {
+    Object.defineProperty(navigator, "mediaDevices", { value: md, configurable: true });
+  } catch {
+    /* já definido */
+  }
+
+  if (typeof (globalThis as Record<string, unknown>).MediaRecorder === "undefined") {
+    class MR {
+      state = "inactive";
+      ondataavailable: ((e: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+      start() {
+        this.state = "recording";
+      }
+      stop() {
+        this.state = "inactive";
+        this.ondataavailable?.({ data: new Blob() });
+        this.onstop?.();
+      }
+      static isTypeSupported() {
+        return true;
+      }
+    }
+    (globalThis as Record<string, unknown>).MediaRecorder = MR;
+  }
+}
+
+/** Instala os mocks de mídia antes de renderizar (câmera/gravação). */
+export const withMediaMocks: Decorator = (Story) => {
+  installMediaMocks();
+  return <Story />;
+};
 
 /* -------------------------------- mock app ------------------------------ */
 // `App` do Obsidian para componentes que recebem `app` por prop (ex.: MediaScreen).
