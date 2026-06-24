@@ -41,9 +41,9 @@
 		"@types/react": "^18.3.11",
 		"@types/react-dom": "^18.3.0",
 		"@vitejs/plugin-react": "^4.7.0",
-		"@vitest/browser": "^4.1.9",
-		"@vitest/browser-playwright": "^4.1.9",
-		"@vitest/coverage-v8": "^4.1.9",
+		"@vitest/browser": "~4.0.18",
+		"@vitest/browser-playwright": "~4.0.18",
+		"@vitest/coverage-v8": "~4.0.18",
 		"builtin-modules": "^3.3.0",
 		"esbuild": "^0.20.2",
 		"lucide": "^0.460.0",
@@ -53,6 +53,6 @@
 		"tslib": "^2.7.0",
 		"typescript": "^5.6.2",
 		"vite": "^5.4.21",
-		"vitest": "^4.1.9"
+		"vitest": "~4.0.18"
 	}
 }
