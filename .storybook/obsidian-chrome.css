@@ -1,0 +1,315 @@
+/* .storybook/obsidian-chrome.css
+ * ---------------------------------------------------------------------------
+ * CSS ESTRUTURAL nativo do Obsidian (normalmente no app.css, ausente fora do
+ * app). Recria o visual de: a aba de Settings (.setting-item + controles
+ * toggle/dropdown/button/slider), modais, e o "chrome" do workspace (drawer +
+ * mobile-navbar de baixo). Os valores espelham o tema padrão do Obsidian e
+ * consomem as variáveis de obsidian-theme.css.
+ * ------------------------------------------------------------------------- */
+
+/* ============================ SETTINGS ================================== */
+.axxa-settings-root {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+  padding: 12px 16px 24px;
+  overflow: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+.axxa-settings-root h2 {
+  font-size: 1.4em;
+  font-weight: 700;
+  margin: 4px 0 12px;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.setting-item:first-child {
+  border-top: none;
+}
+.setting-item-info {
+  margin-right: auto;
+  min-width: 0;
+}
+.setting-item-name {
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+  line-height: 1.3;
+}
+.setting-item-description {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+.setting-item-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Heading (setName + setHeading) */
+.setting-item-heading {
+  padding: 18px 0 8px;
+  border-top: none;
+}
+.setting-item-heading .setting-item-name {
+  font-size: 1.05em;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+/* Inputs nativos dentro das Settings */
+.axxa-settings-root input[type="text"],
+.axxa-settings-root input[type="search"],
+.axxa-settings-root input[type="password"],
+.axxa-settings-root input[type="number"],
+.axxa-settings-root textarea,
+.setting-item-control input[type="text"],
+.setting-item-control input[type="search"] {
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  border-radius: var(--radius-s);
+  padding: 6px 9px;
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+  outline: none;
+  min-width: 180px;
+}
+.axxa-settings-root textarea {
+  width: 100%;
+  min-height: 70px;
+  resize: vertical;
+}
+.axxa-settings-root input:focus,
+.axxa-settings-root textarea:focus,
+.axxa-settings-root select:focus {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent);
+}
+
+/* Dropdown (select.dropdown) */
+.dropdown {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  border-radius: var(--radius-s);
+  padding: 6px 28px 6px 9px;
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+/* Botões */
+.axxa-settings-root button,
+.setting-item-control button {
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+  border: none;
+  border-radius: var(--radius-s);
+  padding: 6px 12px;
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow-s);
+}
+.axxa-settings-root button:hover,
+.setting-item-control button:hover {
+  background: var(--interactive-hover);
+}
+.setting-item-control button.mod-cta {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.setting-item-control button.mod-cta:hover {
+  background: var(--interactive-accent-hover);
+}
+.setting-item-control button.mod-warning {
+  background: var(--background-modifier-error, #e93147);
+  color: #fff;
+}
+.clickable-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+.clickable-icon:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover) !important;
+}
+.clickable-icon .svg-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Toggle (.checkbox-container) */
+.checkbox-container {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 22px;
+  background: var(--background-modifier-border);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.15s ease;
+}
+.checkbox-container::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+.checkbox-container.is-enabled {
+  background: var(--interactive-accent);
+}
+.checkbox-container.is-enabled::after {
+  transform: translateX(18px);
+}
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Slider */
+.slider {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--background-modifier-border);
+  outline: none;
+  cursor: pointer;
+  min-width: 140px;
+}
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  cursor: pointer;
+}
+.slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  cursor: pointer;
+}
+
+/* ============================== MODAL =================================== */
+.modal-bg {
+  position: fixed;
+  inset: 0;
+  background: var(--background-modifier-cover);
+  z-index: 100;
+}
+.modal {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-l);
+  padding: 20px;
+}
+
+/* ===================== WORKSPACE CHROME (drawer) ======================== */
+/* "Moldura" do Obsidian mobile: drawer com header em cima e a barra de
+   navegação (mobile-navbar) embaixo. Usada na story "Obsidian/In Context". */
+.axxa-ob-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+}
+.workspace-drawer-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.workspace-drawer-header .titlebar-text {
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.workspace-drawer-header .clickable-icon {
+  margin-left: auto;
+}
+.workspace-drawer-active-tab-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.mobile-navbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  height: 54px;
+  background: var(--background-secondary);
+  border-top: 1px solid var(--background-modifier-border);
+  padding-bottom: var(--safe-area-inset-bottom, 0px);
+}
+.mobile-navbar-action {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  background: transparent;
+  border: none;
+}
+.mobile-navbar-action.is-active {
+  color: var(--interactive-accent);
+}
+.mobile-navbar-action .svg-icon {
+  width: 22px;
+  height: 22px;
+}

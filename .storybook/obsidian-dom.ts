@@ -135,5 +135,15 @@ def("toggle", function (this: HTMLElement, show: boolean) {
   else this.style.display = "none";
   return this;
 });
+def("find", function (this: HTMLElement, selector: string) {
+  return this.querySelector(selector);
+});
+def("findAll", function (this: HTMLElement, selector: string) {
+  return Array.from(this.querySelectorAll(selector));
+});
+def("setTooltip", function (this: HTMLElement, text: string) {
+  this.setAttribute("aria-label", text ?? "");
+  return this;
+});
 
 export {};

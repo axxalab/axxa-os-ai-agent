@@ -18,9 +18,10 @@ import { registerBrandIcons } from "../src/components/_shared/brandIcons";
 registerBrandLogos();
 registerBrandIcons();
 
-// Ordem importa: primeiro as variáveis nativas do Obsidian, depois o CSS do DS
-// que as consome.
+// Ordem importa: primeiro as variáveis nativas do Obsidian, depois o CSS
+// estrutural do Obsidian (settings/drawer/navbar) e por fim o CSS do DS.
 import "./obsidian-theme.css";
+import "./obsidian-chrome.css";
 import "../styles/main.css";
 
 import { AppContext } from "../src/components/_shared/AppContext";

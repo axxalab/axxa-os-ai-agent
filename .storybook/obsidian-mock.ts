@@ -233,12 +233,384 @@ export class Modal {
 }
 
 export class Plugin {}
-export class PluginSettingTab {}
 export class ItemView {}
-export class Setting {}
 export class TFile {}
-export class TFolder {}
+export class TFolder {
+  children: unknown[] = [];
+  path = "";
+  name = "";
+}
 export class MarkdownView {}
+
+// PluginSettingTab — fornece containerEl + app, como o real. O subclasse
+// (AxxaSettingsTab) chama display() pra montar a UI imperativa.
+export class PluginSettingTab {
+  app: unknown;
+  containerEl: HTMLElement;
+  constructor(app: unknown, _plugin?: unknown) {
+    this.app = app;
+    this.containerEl = document.createElement("div");
+  }
+  display(): void {}
+  hide(): void {}
+}
+
+/* --------------------------- Setting (fiel) ----------------------------- */
+// Reconstrói a API fluente do Obsidian `Setting` montando o DOM real
+// (.setting-item / -info / -name / -description / -control) + os componentes
+// (Text/TextArea/Search/Toggle/Dropdown/Button/ExtraButton/Slider). O suficiente
+// pra renderizar o AxxaSettingsTab inteiro idêntico ao app.
+
+function applyText(el: HTMLElement, value: string | DocumentFragment | undefined): void {
+  if (value == null) return;
+  if (typeof value === "string") el.textContent = value;
+  else el.replaceChildren(value);
+}
+
+class BaseComponent {
+  disabled = false;
+  setDisabled(d: boolean): this {
+    this.disabled = d;
+    return this;
+  }
+  then(cb: (c: this) => void): this {
+    cb(this);
+    return this;
+  }
+}
+
+class TextComponent extends BaseComponent {
+  inputEl: HTMLInputElement;
+  constructor(parent: HTMLElement, type = "text") {
+    super();
+    this.inputEl = document.createElement("input");
+    this.inputEl.type = type;
+    parent.appendChild(this.inputEl);
+  }
+  getValue(): string {
+    return this.inputEl.value;
+  }
+  setValue(v: string): this {
+    this.inputEl.value = v ?? "";
+    return this;
+  }
+  setPlaceholder(p: string): this {
+    this.inputEl.placeholder = p ?? "";
+    return this;
+  }
+  setDisabled(d: boolean): this {
+    this.inputEl.disabled = d;
+    return this;
+  }
+  onChange(cb: (v: string) => unknown): this {
+    this.inputEl.addEventListener("input", () => cb(this.inputEl.value));
+    return this;
+  }
+}
+
+class SearchComponent extends TextComponent {
+  constructor(parent: HTMLElement) {
+    super(parent, "search");
+  }
+}
+
+class TextAreaComponent extends BaseComponent {
+  inputEl: HTMLTextAreaElement;
+  constructor(parent: HTMLElement) {
+    super();
+    this.inputEl = document.createElement("textarea");
+    parent.appendChild(this.inputEl);
+  }
+  getValue(): string {
+    return this.inputEl.value;
+  }
+  setValue(v: string): this {
+    this.inputEl.value = v ?? "";
+    return this;
+  }
+  setPlaceholder(p: string): this {
+    this.inputEl.placeholder = p ?? "";
+    return this;
+  }
+  onChange(cb: (v: string) => unknown): this {
+    this.inputEl.addEventListener("input", () => cb(this.inputEl.value));
+    return this;
+  }
+}
+
+class ToggleComponent extends BaseComponent {
+  toggleEl: HTMLElement;
+  private value = false;
+  private cb?: (v: boolean) => unknown;
+  constructor(parent: HTMLElement) {
+    super();
+    this.toggleEl = document.createElement("div");
+    this.toggleEl.className = "checkbox-container";
+    this.toggleEl.setAttribute("role", "switch");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    this.toggleEl.appendChild(input);
+    this.toggleEl.addEventListener("click", () => {
+      this.setValue(!this.value);
+      this.cb?.(this.value);
+    });
+    parent.appendChild(this.toggleEl);
+  }
+  getValue(): boolean {
+    return this.value;
+  }
+  setValue(v: boolean): this {
+    this.value = v;
+    this.toggleEl.classList.toggle("is-enabled", v);
+    return this;
+  }
+  onChange(cb: (v: boolean) => unknown): this {
+    this.cb = cb;
+    return this;
+  }
+}
+
+class DropdownComponent extends BaseComponent {
+  selectEl: HTMLSelectElement;
+  constructor(parent: HTMLElement) {
+    super();
+    this.selectEl = document.createElement("select");
+    this.selectEl.className = "dropdown";
+    parent.appendChild(this.selectEl);
+  }
+  addOption(value: string, display: string): this {
+    const o = document.createElement("option");
+    o.value = value;
+    o.textContent = display;
+    this.selectEl.appendChild(o);
+    return this;
+  }
+  addOptions(record: Record<string, string>): this {
+    for (const [v, d] of Object.entries(record)) this.addOption(v, d);
+    return this;
+  }
+  getValue(): string {
+    return this.selectEl.value;
+  }
+  setValue(v: string): this {
+    this.selectEl.value = v;
+    return this;
+  }
+  onChange(cb: (v: string) => unknown): this {
+    this.selectEl.addEventListener("change", () => cb(this.selectEl.value));
+    return this;
+  }
+}
+
+class ButtonComponent extends BaseComponent {
+  buttonEl: HTMLButtonElement;
+  constructor(parent: HTMLElement) {
+    super();
+    this.buttonEl = document.createElement("button");
+    parent.appendChild(this.buttonEl);
+  }
+  setButtonText(t: string): this {
+    this.buttonEl.textContent = t;
+    return this;
+  }
+  setCta(): this {
+    this.buttonEl.classList.add("mod-cta");
+    return this;
+  }
+  setWarning(): this {
+    this.buttonEl.classList.add("mod-warning");
+    return this;
+  }
+  setIcon(name: string): this {
+    setIcon(this.buttonEl, name);
+    return this;
+  }
+  setTooltip(t: string): this {
+    this.buttonEl.setAttribute("aria-label", t);
+    return this;
+  }
+  setDisabled(d: boolean): this {
+    this.buttonEl.disabled = d;
+    return this;
+  }
+  onClick(cb: (e: MouseEvent) => unknown): this {
+    this.buttonEl.addEventListener("click", cb);
+    return this;
+  }
+}
+
+class ExtraButtonComponent extends BaseComponent {
+  extraSettingsEl: HTMLElement;
+  constructor(parent: HTMLElement) {
+    super();
+    this.extraSettingsEl = document.createElement("button");
+    this.extraSettingsEl.className = "clickable-icon extra-setting-button";
+    parent.appendChild(this.extraSettingsEl);
+  }
+  setIcon(name: string): this {
+    setIcon(this.extraSettingsEl, name);
+    return this;
+  }
+  setTooltip(t: string): this {
+    this.extraSettingsEl.setAttribute("aria-label", t);
+    return this;
+  }
+  setDisabled(): this {
+    return this;
+  }
+  onClick(cb: (e: MouseEvent) => unknown): this {
+    this.extraSettingsEl.addEventListener("click", cb);
+    return this;
+  }
+}
+
+class SliderComponent extends BaseComponent {
+  sliderEl: HTMLInputElement;
+  constructor(parent: HTMLElement) {
+    super();
+    this.sliderEl = document.createElement("input");
+    this.sliderEl.type = "range";
+    this.sliderEl.className = "slider";
+    parent.appendChild(this.sliderEl);
+  }
+  setLimits(min: number, max: number, step: number): this {
+    this.sliderEl.min = String(min);
+    this.sliderEl.max = String(max);
+    this.sliderEl.step = String(step);
+    return this;
+  }
+  getValue(): number {
+    return Number(this.sliderEl.value);
+  }
+  setValue(v: number): this {
+    this.sliderEl.value = String(v);
+    return this;
+  }
+  setDynamicTooltip(): this {
+    return this;
+  }
+  onChange(cb: (v: number) => unknown): this {
+    this.sliderEl.addEventListener("input", () => cb(Number(this.sliderEl.value)));
+    return this;
+  }
+}
+
+export class Setting {
+  settingEl: HTMLElement;
+  infoEl: HTMLElement;
+  nameEl: HTMLElement;
+  descEl: HTMLElement;
+  controlEl: HTMLElement;
+  components: BaseComponent[] = [];
+  constructor(containerEl: HTMLElement) {
+    this.settingEl = document.createElement("div");
+    this.settingEl.className = "setting-item";
+    this.infoEl = document.createElement("div");
+    this.infoEl.className = "setting-item-info";
+    this.nameEl = document.createElement("div");
+    this.nameEl.className = "setting-item-name";
+    this.descEl = document.createElement("div");
+    this.descEl.className = "setting-item-description";
+    this.controlEl = document.createElement("div");
+    this.controlEl.className = "setting-item-control";
+    this.infoEl.append(this.nameEl, this.descEl);
+    this.settingEl.append(this.infoEl, this.controlEl);
+    containerEl.appendChild(this.settingEl);
+  }
+  setName(v: string | DocumentFragment): this {
+    applyText(this.nameEl, v);
+    return this;
+  }
+  setDesc(v: string | DocumentFragment): this {
+    applyText(this.descEl, v);
+    return this;
+  }
+  setClass(c: string): this {
+    this.settingEl.classList.add(c);
+    return this;
+  }
+  setTooltip(t: string): this {
+    this.settingEl.setAttribute("aria-label", t);
+    return this;
+  }
+  setHeading(): this {
+    this.settingEl.classList.add("setting-item-heading");
+    return this;
+  }
+  setDisabled(d: boolean): this {
+    this.settingEl.classList.toggle("is-disabled", d);
+    return this;
+  }
+  clear(): this {
+    this.controlEl.replaceChildren();
+    this.components = [];
+    return this;
+  }
+  then(cb: (s: Setting) => void): this {
+    cb(this);
+    return this;
+  }
+  addText(cb?: (c: TextComponent) => void): this {
+    const c = new TextComponent(this.controlEl);
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+  addSearch(cb?: (c: SearchComponent) => void): this {
+    const c = new SearchComponent(this.controlEl);
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+  addTextArea(cb?: (c: TextAreaComponent) => void): this {
+    const c = new TextAreaComponent(this.controlEl);
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+  addToggle(cb?: (c: ToggleComponent) => void): this {
+    const c = new ToggleComponent(this.controlEl);
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+  addDropdown(cb?: (c: DropdownComponent) => void): this {
+    const c = new DropdownComponent(this.controlEl);
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+  addButton(cb?: (c: ButtonComponent) => void): this {
+    const c = new ButtonComponent(this.controlEl);
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+  addExtraButton(cb?: (c: ExtraButtonComponent) => void): this {
+    const c = new ExtraButtonComponent(this.controlEl);
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+  addSlider(cb?: (c: SliderComponent) => void): this {
+    const c = new SliderComponent(this.controlEl);
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+  addColorPicker(cb?: (c: TextComponent) => void): this {
+    const c = new TextComponent(this.controlEl, "color");
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+  addMomentFormat(cb?: (c: TextComponent) => void): this {
+    const c = new TextComponent(this.controlEl);
+    this.components.push(c);
+    cb?.(c);
+    return this;
+  }
+}
 
 // Menu nativo (context menus de ConversationsList / Sidebar / mensagens). A API
 // é encadeável: new Menu().addItem(i => i.setTitle().setIcon().onClick()).showAt…
