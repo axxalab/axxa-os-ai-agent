@@ -43,6 +43,7 @@ function Grid({ tokens }: { tokens: [string, string][] }) {
 }
 
 const meta = {
+  tags: ["autodocs"],
   title: "Foundations/Colors",
   parameters: {
     layout: "centered",

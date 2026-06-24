@@ -1,6 +1,6 @@
 // SuggestionsSheet.stories.tsx — bottom sheet com a lista completa de sugestões.
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { fn, within, userEvent, expect } from "storybook/test";
 import { SuggestionsSheet } from "./SuggestionsSheet";
 
 const meta = {
@@ -40,3 +40,13 @@ type Story = StoryObj<typeof meta>;
 export const Chat: Story = { args: { mode: "chat" } };
 export const Agent: Story = { args: { mode: "agent" } };
 export const VaultQA: Story = { args: { mode: "vault-qa" } };
+
+/** Interação: tocar numa sugestão dispara onPick com o prompt. */
+export const PickInteraction: Story = {
+  args: { mode: "chat" },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByText("Summarize a text"));
+    await expect(args.onPick).toHaveBeenCalled();
+  },
+};

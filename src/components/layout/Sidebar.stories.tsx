@@ -22,6 +22,12 @@ const meta = {
   },
   argTypes: {
     open: { control: "boolean" },
+    chats: { control: "object", description: "Conversas recentes (ChatSummary[])." },
+    activeView: {
+      control: "inline-radio",
+      options: ["chat", "conversations", "media", "projects", "statistics", "profile", "plans"],
+      description: "View ativa (destaca o item de nav).",
+    },
     tier: { control: "inline-radio", options: ["free", "pro"] },
     founder: { control: "boolean" },
     version: { control: "text" },

@@ -44,6 +44,7 @@ function PresetTile({ preset }: { preset: string }) {
 }
 
 const meta = {
+  tags: ["autodocs"],
   title: "Foundations/Backgrounds",
   parameters: {
     layout: "centered",

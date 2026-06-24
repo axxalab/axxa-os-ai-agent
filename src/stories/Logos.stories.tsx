@@ -49,6 +49,7 @@ function Grid({ children }: { children: React.ReactNode }) {
 }
 
 const meta = {
+  tags: ["autodocs"],
   title: "Foundations/Logos",
   parameters: {
     layout: "centered",

@@ -3,6 +3,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { Composer, type PendingAttachment } from "./Composer";
+import { withMediaMocks } from "../../../.storybook/fixtures";
 
 // 1x1 cinza pra simular thumbnail de imagem anexada.
 const GRAY_PX =
@@ -73,6 +74,7 @@ const meta = {
     onSaveAudio: fn(),
   },
   decorators: [
+    withMediaMocks, // hold-to-record usa MediaRecorder/getUserMedia
     (Story) => (
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
         <Story />

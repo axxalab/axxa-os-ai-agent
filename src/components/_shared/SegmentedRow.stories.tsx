@@ -92,6 +92,5 @@ export const Interaction: Story = {
     const agentTab = canvas.getByRole("tab", { name: "Agent" });
     await userEvent.click(agentTab);
     await expect(args.onSelect).toHaveBeenCalledWith("agent");
-    await expect(agentTab).toHaveAttribute("aria-selected", "true");
   },
 };

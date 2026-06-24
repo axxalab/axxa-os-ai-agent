@@ -1,6 +1,6 @@
 // ConversationsList.stories.tsx — tela cheia de todas as conversas (busca/sort/filtro).
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { fn, within, userEvent, expect } from "storybook/test";
 import { ConversationsList } from "./ConversationsList";
 import { SUMMARIES } from "../../../.storybook/fixtures";
 
@@ -49,4 +49,13 @@ export const Default: Story = {};
 /** Estado vazio — nenhuma conversa ainda. */
 export const Empty: Story = {
   args: { chats: [] },
+};
+
+/** Interação: clicar numa conversa dispara onLoadChat com o id certo. */
+export const LoadChatInteraction: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByText(SUMMARIES[0].title));
+    await expect(args.onLoadChat).toHaveBeenCalledWith(SUMMARIES[0].id);
+  },
 };

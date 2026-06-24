@@ -1,6 +1,6 @@
 // Header.stories.tsx — header da view (branding / título / switcher de modelo).
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { fn, within, userEvent, expect } from "storybook/test";
 import { Header } from "./Header";
 
 const meta = {
@@ -28,6 +28,15 @@ const meta = {
     modelName: { control: "text" },
     modelLocked: { control: "boolean" },
     modelOptions: { control: "object" },
+    onOpenSettings: { action: "openSettings" },
+    onNewChat: { action: "newChat" },
+    onOpenSidebar: { action: "openSidebar" },
+    onRenameChat: { action: "renameChat" },
+    onToggleSearch: { action: "toggleSearch" },
+    onCopyConversation: { action: "copyConversation" },
+    onEditPersona: { action: "editPersona" },
+    onSelectModel: { action: "selectModel" },
+    onOpenVoice: { action: "openVoice" },
   },
   args: {
     version: "0.1.236",
@@ -80,5 +89,15 @@ export const SearchActive: Story = {
     chatTitle: "Notas da reunião",
     canCopy: true,
     searchActive: true,
+  },
+};
+
+/** Interação: clicar em "New chat" dispara onNewChat. */
+export const NewChatAction: Story = {
+  args: { chatTitle: "Conversa atual", canCopy: true },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "New chat" }));
+    await expect(args.onNewChat).toHaveBeenCalled();
   },
 };
