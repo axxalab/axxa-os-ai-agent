@@ -7,11 +7,21 @@ name: Release Obsidian plugin
 #
 # Fluxo de update: bump do manifest + commit, depois:
 #   git tag 0.1.176 && git push --tags
+#
+# Alternativa manual (workflow_dispatch): dispara pela aba Actions / API sem
+# push de tag. A versão vem do input `version` ou, se vazio, do manifest.json —
+# e a própria Release cria a tag apontando pro commit buildado.
 
 on:
   push:
     tags:
       - "*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão a publicar (vazio = usa manifest.json)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -36,10 +46,26 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Resolve a tag: push de tag usa o ref; dispatch manual usa o input ou,
+      # se vazio, a versão do manifest.json.
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${GITHUB_REF}" = "${GITHUB_REF#refs/tags/}" ]; then
+            tag="${{ github.event.inputs.version }}"
+            if [ -z "$tag" ]; then
+              tag=$(node -p "require('./manifest.json').version")
+            fi
+          else
+            tag="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Tag resolvida: $tag"
+
       # Guarda contra o erro clássico: taggear sem bumpar o manifest.
       - name: Check tag matches manifest version
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
+          tag="${{ steps.tag.outputs.tag }}"
           ver=$(node -p "require('./manifest.json').version")
           if [ "$tag" != "$ver" ]; then
             echo "::error::Tag ($tag) != manifest.json ($ver). Bumpe o manifest antes de taggear."
@@ -48,12 +74,18 @@ jobs:
           echo "OK: $tag == $ver"
 
       # Os assets saem em output/ (basename vira main.js/manifest.json/styles.css).
+      # Em dispatch manual, `gh release create` cria a tag no commit buildado.
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
+          tag="${{ steps.tag.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag já existe — nada a fazer."
+            exit 0
+          fi
           gh release create "$tag" \
             --title "$tag" \
+            --target "${GITHUB_SHA}" \
             --notes "AXXA OS — AI Agent $tag. Veja os commits para o changelog." \
             output/main.js output/manifest.json output/styles.css
