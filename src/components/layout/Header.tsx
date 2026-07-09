@@ -202,15 +202,6 @@ export function Header({
         )}
         <button
           type="button"
-          className="axxa-header-gear"
-          onClick={onOpenVoice}
-          aria-label={t.voice.title}
-          title={t.voice.title}
-        >
-          <Icon name="audio-lines" />
-        </button>
-        <button
-          type="button"
           className="axxa-header-gear axxa-header-gear-primary"
           onClick={onNewChat}
           aria-label={t.header.newChat}

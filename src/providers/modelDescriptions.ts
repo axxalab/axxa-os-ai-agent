@@ -265,6 +265,28 @@ export function getModelFullInfo(
   return { card, caps, pricing, enriched };
 }
 
+/**
+ * Nome CURTO/apresentável a partir do id do modelo — mesmo quando a API devolve um
+ * id longo. Ex: "claude-opus-4-8" → "Opus 4.8", "anthropic/claude-3.5-sonnet" →
+ * "3.5 Sonnet", "llama3.2:latest" → "Llama3.2". Usado no pill do composer + sheet.
+ */
+export function prettyModelName(id: string): string {
+  let s = (id || "").trim();
+  if (s.includes("/")) s = s.slice(s.lastIndexOf("/") + 1); // vendor/model → model
+  if (s.includes(":")) s = s.slice(0, s.indexOf(":")); // tira tag tipo :latest
+  s = s.replace(/^(claude-|models-)/, "");
+  s = s.replace(/(\d)-(\d)/g, "$1.$2"); // versões: 4-8 → 4.8
+  s = s.replace(/[-_]/g, " ").trim();
+  return s
+    .split(/\s+/)
+    .map((w) => {
+      if (/^gpt$/i.test(w)) return "GPT";
+      if (/^\d/.test(w)) return w; // números de versão / 4o
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(" ");
+}
+
 // EN curado pros modelos mais comuns (baseline offline, match por prefixo, mais
 // específico primeiro). O resto pega EN via Fetch info (OpenRouter) ou cai no
 // pt como fallback até buscar. Mantém o "phrase to phrase" nos flagships.

@@ -51,6 +51,34 @@ export function modelVendorLogoId(provider: string, model: string): string | nul
   return null;
 }
 
+/** Vendor (MAKER) do modelo — usado pra agrupar a lista de Models (Modo →
+ *  Vendor → Família). Distinto do PROVIDER (onde se acessa). v0.1.236 */
+export interface ModelVendor {
+  id: string;
+  label: string;
+}
+const VENDOR_RULES: [RegExp, ModelVendor][] = [
+  [/claude/, { id: "anthropic", label: "Anthropic" }],
+  [/(gemini|imagen|gemma|palm|bison|nano-?banana)/, { id: "google", label: "Google" }],
+  [/(llama|meta-)/, { id: "meta", label: "Meta" }],
+  [/qwen/, { id: "qwen", label: "Qwen" }],
+  [/(mistral|mixtral|codestral|pixtral|ministral)/, { id: "mistral", label: "Mistral" }],
+  [/deepseek/, { id: "deepseek", label: "DeepSeek" }],
+  [/flux/, { id: "bfl", label: "Black Forest Labs" }],
+  [/(stable-?diffusion|sdxl|stability)/, { id: "stability", label: "Stability AI" }],
+  [/(nemotron|nvidia|phi-)/, { id: "nvidia", label: "NVIDIA" }],
+  [/grok/, { id: "xai", label: "xAI" }],
+  [/(gpt|^o[1-9]|davinci|dall|whisper|tts|chatgpt|text-embedding)/, { id: "openai", label: "OpenAI" }],
+];
+
+/** Vendor do modelo (1ª regra que casa). Fallback "Other" pro desconhecido. */
+export function getModelVendor(model: string): ModelVendor {
+  const id = (model || "").toLowerCase();
+  const tail = id.includes("/") ? id.slice(id.lastIndexOf("/") + 1) : id;
+  for (const [re, v] of VENDOR_RULES) if (re.test(tail) || re.test(id)) return v;
+  return { id: "other", label: "Other" };
+}
+
 /** Label curto do vendor pro tooltip do placeholder (ex: "MISTRAL"). */
 export function modelVendorLabel(provider: string, model: string): string {
   const raw =

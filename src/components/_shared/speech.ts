@@ -1,6 +1,9 @@
 // src/components/_shared/speech.ts
 // Wrappers finos do Web Speech API (TTS + STT). Usados pelo read-aloud das
-// mensagens e pelo Modo Voz. Tudo local/grátis — sem custo de provider.
+// mensagens e pelo Modo Voz. Nativo por padrão (grátis); quando o ★ TTS de
+// Connections → Models está setado, usa cloud TTS (OpenAI) — ver setCloudTts.
+
+import { openaiProvider } from "../../providers/openai";
 
 export interface SpeakOpts {
   voiceURI?: string;
@@ -27,6 +30,7 @@ export function listVoices(): SpeechSynthesisVoice[] {
 }
 
 export function cancelSpeech(): void {
+  stopCloudAudio();
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 
@@ -52,8 +56,93 @@ export function releaseSpeaker(reset: () => void): void {
 // próximo cancel() e evitar callbacks fora de ordem. v0.1.228
 let lastUtter: SpeechSynthesisUtterance | null = null;
 
+// ── Cloud TTS (opt-in) ──────────────────────────────────────
+// Quando AxxaApp injeta uma config (★ TTS de Connections → Models), speak() usa
+// a nuvem em vez do TTS nativo do SO. Só OpenAI (/v1/audio/speech) por enquanto.
+interface CloudTtsConfig {
+  provider: string;
+  model: string;
+  apiKey: string;
+  voice?: string;
+}
+let cloudTts: CloudTtsConfig | null = null;
+
+/** Liga/desliga o cloud TTS. cfg null (ou sem key/model) = volta pro nativo. */
+export function setCloudTts(cfg: CloudTtsConfig | null): void {
+  cloudTts = cfg && cfg.apiKey && cfg.model ? cfg : null;
+}
+
+/** true se o cloud TTS está ativo (read-aloud funciona mesmo sem speechSynthesis). */
+export function isCloudTtsActive(): boolean {
+  return cloudTts !== null;
+}
+
+// Áudio cloud em reprodução — cancelado junto do speechSynthesis.
+let activeAudio: HTMLAudioElement | null = null;
+let activeAudioUrl: string | null = null;
+function stopCloudAudio(): void {
+  if (activeAudio) {
+    activeAudio.onended = null;
+    activeAudio.onerror = null;
+    activeAudio.pause();
+    activeAudio = null;
+  }
+  if (activeAudioUrl) {
+    URL.revokeObjectURL(activeAudioUrl);
+    activeAudioUrl = null;
+  }
+}
+
+/** Fala via provider (nuvem): cria o <audio> JÁ no tick do gesto (ajuda o
+ *  autoplay do mobile), busca o mp3 e toca. true se conseguiu iniciar. */
+function speakViaProvider(
+  text: string,
+  opts: SpeakOpts,
+  cfg: CloudTtsConfig
+): boolean {
+  if (cfg.provider !== "openai") return false;
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  stopCloudAudio();
+  const audio = new Audio();
+  activeAudio = audio;
+  audio.onended = () => {
+    stopCloudAudio();
+    opts.onEnd?.();
+  };
+  audio.onerror = () => {
+    stopCloudAudio();
+    opts.onError?.();
+  };
+  openaiProvider
+    .generateAudio({ model: cfg.model, prompt: text, voice: cfg.voice }, cfg.apiKey)
+    .then((items) => {
+      const item = items[0];
+      if (!item || audio !== activeAudio) return; // cancelado nesse meio tempo
+      // item.data.buffer é o arrayBuffer cru completo (generateAudio o cria de
+      // res.arrayBuffer); cast resolve a união ArrayBuffer|SharedArrayBuffer.
+      const blob = new Blob([item.data.buffer as ArrayBuffer], {
+        type: item.mime || "audio/mpeg",
+      });
+      const url = URL.createObjectURL(blob);
+      activeAudioUrl = url;
+      audio.src = url;
+      if (opts.rate) audio.playbackRate = Math.max(0.5, Math.min(2, opts.rate));
+      void audio.play().catch(() => {
+        stopCloudAudio();
+        opts.onError?.();
+      });
+    })
+    .catch(() => {
+      stopCloudAudio();
+      opts.onError?.();
+    });
+  return true;
+}
+
 /** Fala o texto. Devolve true se conseguiu iniciar. */
 export function speak(text: string, opts: SpeakOpts = {}): boolean {
+  // Cloud TTS (★ de Models) tem prioridade; se não iniciar, cai pro nativo.
+  if (cloudTts && speakViaProvider(text, opts, cloudTts)) return true;
   if (!("speechSynthesis" in window)) {
     opts.onError?.();
     return false;

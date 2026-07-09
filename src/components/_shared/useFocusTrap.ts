@@ -14,6 +14,7 @@
 //     (a11y: o teclado volta pro botão que disparou o modal).
 
 import { useEffect, type RefObject } from "react";
+import { Platform } from "obsidian";
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -49,6 +50,15 @@ export function useFocusTrap(
 
     // Quem tinha o foco antes de abrir — pra devolver no fim.
     const prevFocus = document.activeElement as HTMLElement | null;
+    // Teclado virtual aberto AGORA? (Obsidian expõe --keyboard-height no <html>.)
+    // Se NÃO estava aberto, no fim a gente NÃO devolve o foco a um campo de texto
+    // — senão o .focus() reabriria o teclado. (Regra: um sheet nunca ativa o
+    // teclado se ele já não estava ativo antes.)
+    const kbOpenAtOpen =
+      parseFloat(
+        document.documentElement.style.getPropertyValue("--keyboard-height") ||
+          "0"
+      ) > 0;
 
     // Lista os focáveis VISÍVEIS do container (offsetParent null = escondido).
     const focusables = (): HTMLElement[] =>
@@ -96,8 +106,17 @@ export function useFocusTrap(
     document.addEventListener("keydown", onKey, true);
     return () => {
       document.removeEventListener("keydown", onKey, true);
-      // Devolve o foco a quem tinha antes (se ainda está no DOM).
-      if (prevFocus && prevFocus.isConnected) prevFocus.focus?.();
+      // Devolve o foco a quem tinha antes (se ainda está no DOM)…
+      if (prevFocus && prevFocus.isConnected) {
+        const isTextEntry =
+          prevFocus.isContentEditable ||
+          prevFocus.tagName === "INPUT" ||
+          prevFocus.tagName === "TEXTAREA";
+        // …MAS no mobile, se era um campo de texto e o teclado NÃO estava aberto
+        // quando o sheet abriu, pula o refocus pra não reabrir o teclado.
+        if (Platform.isMobile && isTextEntry && !kbOpenAtOpen) return;
+        prevFocus.focus?.();
+      }
     };
   }, [ref, onEscape, active, autoFocus]);
 }

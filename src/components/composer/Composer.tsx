@@ -21,6 +21,7 @@ import { Notice, Platform } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { InfoChip } from "../_shared/InfoChip";
 import { formatTokens, getContextWindow } from "../_shared/contextWindows";
+import { prettyModelName } from "../../providers/modelDescriptions";
 import { useT } from "../../i18n";
 import { useApp } from "../_shared/AppContext";
 import {
@@ -29,6 +30,7 @@ import {
   extractWikilinks,
   type AxxaCommand,
 } from "./completions";
+import { SUGGESTIONS } from "./ComposerSuggestions";
 
 function formatRecordingDuration(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -36,6 +38,20 @@ function formatRecordingDuration(ms: number): string {
   const s = totalSec % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
+
+// Vault Q/A: anexos como pill compacto "Label · ícone · ×N" por tipo (ref Flow).
+const ATTACH_LABEL: Record<string, string> = {
+  image: "Image",
+  note: "Note",
+  pdf: "PDF",
+  audio: "Audio",
+};
+const ATTACH_ICON: Record<string, string> = {
+  image: "image",
+  note: "file-text",
+  pdf: "file",
+  audio: "mic",
+};
 
 /** Entry de anexo no Composer — tipo discriminado por kind. */
 interface PendingImage {
@@ -76,6 +92,10 @@ interface ComposerProps {
   onSend: (text: string) => void;
   onStop?: () => void;
   onPlusClick?: () => void;
+  /** Abre o seletor de modelo (sheet estilo Claude) — passo seguinte do DS. */
+  onOpenModel?: () => void;
+  /** Abre o modo Voz (movido do header pro composer — ref Claude). */
+  onOpenVoice?: () => void;
   streaming?: boolean;
   providerName: string;
   modelName: string;
@@ -213,6 +233,8 @@ export function Composer({
   onSend,
   onStop,
   onPlusClick,
+  onOpenModel,
+  onOpenVoice,
   streaming = false,
   providerName,
   modelName,
@@ -257,6 +279,12 @@ export function Composer({
   const [placeholderCompartment] = useState(() => new Compartment());
 
   const [isEmpty, setIsEmpty] = useState(true);
+  // Foco do editor — gateia o ticker (placeholder typewriter só aparece desfocado).
+  const [isFocused, setIsFocused] = useState(false);
+  // Texto PARCIAL do typewriter (digitando/apagando) + ref do índice da frase atual
+  // (o "+ Add" injeta a frase inteira desse índice).
+  const [typed, setTyped] = useState("");
+  const tickerIdxRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Refs vivas pros handlers da imagem — evita reapegar listeners no editor
@@ -433,6 +461,9 @@ export function Composer({
             setIsEmpty(text.length === 0);
             onDraftChangeRef.current?.(text);
           }
+          if (update.focusChanged) {
+            setIsFocused(update.view.hasFocus);
+          }
         }),
         // Paste handlers:
         //  1. Imagem do clipboard → vira anexo (quando modelo suporta vision)
@@ -515,6 +546,11 @@ export function Composer({
           },
           ".cm-content": {
             caretColor: "var(--text-normal)",
+            color: "var(--text-normal)",
+            // -webkit-text-fill-color: no WebView mobile o sistema às vezes
+            // sobrescreve o `color`; fixar aqui garante o texto nativo (light no
+            // dark, dark no light) em TODOS os composers, inclusive o chat.
+            "-webkit-text-fill-color": "var(--text-normal)",
             // Padding 0 — texto começa EXATAMENTE no left edge do editor
             // (offset horizontal vem só do flex parent: composer-pill padding)
             padding: "0",
@@ -588,6 +624,80 @@ export function Composer({
     view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [injectText?.nonce]);
+
+  // Placeholder TYPEWRITER: digita a frase char a char, segura, apaga, e vai pra
+  // próxima sugestão do modo. Motion BÁSICO — sem gate de reduce-motion. Só roda
+  // com o ticker visível (editor vazio e desfocado) pra não re-renderizar à toa.
+  const tickerItems = SUGGESTIONS[mode] ?? SUGGESTIONS.chat;
+  const tickerVisible =
+    isEmpty &&
+    !isFocused &&
+    !streaming &&
+    !isRecording &&
+    pendingAttachments.length === 0;
+  useEffect(() => {
+    if (!tickerVisible) return;
+    // Frase exibida = prompt limpo + "..." no fim (o "+ Add" injeta o prompt CRU).
+    const phrases = tickerItems.map(
+      (it) =>
+        it.prompt.replace(/\s+/g, " ").trim().replace(/[:.]+$/, "") + "..."
+    );
+    if (!phrases.length) return;
+    // Tempos pra um feel natural: digita 45ms/char, segura 1.9s, apaga 28ms/char
+    // (mais rápido), respira 0.45s antes da próxima.
+    const TYPE = 45;
+    const HOLD = 1900;
+    const DEL = 28;
+    const GAP = 450;
+    // Ordem SEMPRE aleatória: próxima frase é sorteada (≠ da atual, sem repetir).
+    const pickIdx = (exclude: number) => {
+      if (phrases.length <= 1) return 0;
+      let n = exclude;
+      while (n === exclude) n = Math.floor(Math.random() * phrases.length);
+      return n;
+    };
+    let cancelled = false;
+    let timer = 0;
+    const tick = (phase: "type" | "del", pos: number) => {
+      if (cancelled) return;
+      const phrase = phrases[tickerIdxRef.current % phrases.length];
+      setTyped(phrase.slice(0, Math.max(0, pos)));
+      if (phase === "type") {
+        timer = window.setTimeout(
+          () =>
+            pos < phrase.length
+              ? tick("type", pos + 1)
+              : tick("del", phrase.length - 1),
+          pos < phrase.length ? TYPE : HOLD
+        );
+      } else if (pos > 0) {
+        timer = window.setTimeout(() => tick("del", pos - 1), DEL);
+      } else {
+        tickerIdxRef.current = pickIdx(tickerIdxRef.current);
+        timer = window.setTimeout(() => tick("type", 0), GAP);
+      }
+    };
+    // começa numa frase aleatória também
+    tickerIdxRef.current = pickIdx(tickerIdxRef.current);
+    tick("type", 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickerVisible, tickerItems]);
+
+  // Injeta o prompt no editor (ticker "+ Add") e foca — mesmo comportamento dos
+  // banners/balões. Some o ticker na hora (isEmpty=false + isFocused=true).
+  const injectIntoEditor = (text: string) => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: text },
+      selection: { anchor: text.length },
+    });
+    view.focus();
+  };
 
   const handleSendClick = () => {
     if (streaming) return;
@@ -738,7 +848,8 @@ export function Composer({
   // O botão à direita tem 3 modos: send (texto digitado) / stop (streaming) / mic (vazio).
   // Em "mic", o press inicia gravação e release para (hold-to-record).
   // Em "send" e "stop", click normal.
-  const isMicMode = !streaming && isEmpty;
+  // Vault Q/A não tem voz/mic — lá o botão é send puro (seta), nunca microfone.
+  const isMicMode = !streaming && isEmpty && mode !== "vault-qa";
 
   let iconName: string;
   let label: string;
@@ -748,12 +859,13 @@ export function Composer({
     iconName = "square";
     label = t.composer.stopLabel;
     onClick = handleStopClick;
-  } else if (isEmpty) {
+  } else if (isMicMode) {
     iconName = "mic";
     label = isRecording ? t.composer.micRecording : t.composer.micLabel;
     onClick = undefined; // mic é controlado por press/release, não click
   } else {
-    iconName = "arrow-up";
+    // Vault Q/A usa seta pra direita (ref print Flow); Agent/chat, seta pra cima.
+    iconName = mode === "vault-qa" ? "arrow-right" : "arrow-up";
     label = t.composer.sendLabel;
     onClick = handleSendClick;
   }
@@ -839,8 +951,172 @@ export function Composer({
     };
   }, []);
 
+  // Elementos compartilhados pelos 3 layouts (Agent card / Vault glassy / Chat
+  // pill). A LÓGICA é idêntica — só muda onde cada um entra no JSX (ver branch).
+  // Ticker typewriter: só com o editor VAZIO e SEM foco. Toco no texto → foca →
+  // some (campo vazio). "+ Add" (à direita, faint) injeta a frase INTEIRA do índice.
+  const editorEl = (
+    <div className="axxa-composer-field">
+      <div ref={editorRef} className="axxa-composer-editor" />
+      {tickerVisible && (
+        <div
+          className="axxa-composer-ticker"
+          // tocar no texto = focar o editor (abre o campo vazio)
+          onMouseDown={(e) => {
+            e.preventDefault();
+            viewRef.current?.focus();
+          }}
+        >
+          <span className="axxa-ticker-clip">
+            <span className="axxa-ticker-phrase">{typed}</span>
+          </span>
+          <button
+            type="button"
+            className="axxa-ticker-add"
+            // não rouba foco nem dispara o focar do container; só injeta a frase
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const item =
+                tickerItems[tickerIdxRef.current % tickerItems.length] ??
+                tickerItems[0];
+              injectIntoEditor(item.prompt);
+            }}
+          >
+            {t.composer.tickerAdd}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+  const plusEl = (
+    <button
+      type="button"
+      className="axxa-composer-plus"
+      aria-label={t.composer.plusLabel}
+      title={t.composer.plusLabel}
+      // Não rouba o foco do editor (mantém o teclado aberto ao abrir o sheet, e
+      // ao fechar o foco volta pro editor → o teclado reativa). v0.1.x
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onPlusClick}
+    >
+      <Icon name="plus" />
+    </button>
+  );
+  const modelEl = (
+    <button
+      type="button"
+      className="axxa-composer-model"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onOpenModel}
+      aria-label="Select model"
+      title={modelName}
+    >
+      {/* nome CURTO no pill, mesmo quando o id/API vem grande; title= mantém o full */}
+      <span className="axxa-composer-model-name">
+        {prettyModelName(modelName)}
+      </span>
+      <span className="axxa-composer-model-effort">{effort}</span>
+    </button>
+  );
+  const sendEl = (
+    <button
+      type="button"
+      className={
+        "axxa-composer-send" +
+        (streaming ? " axxa-composer-stop" : "") +
+        (isRecording ? " axxa-composer-recording" : "") +
+        (isMicMode ? " axxa-composer-mic" : "")
+      }
+      onClick={onClick}
+      onMouseDown={(e) => {
+        if (isMicMode) armMic(e.clientX, e.clientY);
+      }}
+      onMouseMove={(e) => {
+        if (isMicMode) moveMic(e.clientX, e.clientY);
+      }}
+      onMouseUp={() => {
+        if (isMicMode) endMic();
+      }}
+      onMouseLeave={() => {
+        if (isMicMode) cancelMicArm();
+      }}
+      onTouchStart={(e) => {
+        if (!isMicMode) return;
+        e.preventDefault();
+        const tch = e.touches[0];
+        if (!tch) return;
+        armMic(tch.clientX, tch.clientY);
+      }}
+      onTouchMove={(e) => {
+        if (!isMicMode) return;
+        const tch = e.touches[0];
+        if (!tch) return;
+        moveMic(tch.clientX, tch.clientY);
+      }}
+      onTouchEnd={(e) => {
+        if (!isMicMode) return;
+        e.preventDefault();
+        endMic();
+      }}
+      onTouchCancel={() => {
+        if (isMicMode) endMic();
+      }}
+      aria-label={label}
+      title={label}
+    >
+      <Icon name={iconName} />
+    </button>
+  );
+  const voiceEl =
+    onOpenVoice && isMicMode ? (
+      <button
+        type="button"
+        className="axxa-composer-voice"
+        onClick={onOpenVoice}
+        aria-label={t.voice.title}
+        title={t.voice.title}
+      >
+        <Icon name="audio-lines" />
+      </button>
+    ) : null;
+  // Vault Q/A: anexos como pill compacto inline por tipo (ref print Flow).
+  const vaultPills =
+    pendingAttachments.length > 0 ? (
+      <div className="axxa-composer-attach-pills">
+        {Object.entries(
+          pendingAttachments.reduce<Record<string, number>>((acc, a) => {
+            acc[a.kind] = (acc[a.kind] ?? 0) + 1;
+            return acc;
+          }, {})
+        ).map(([kind, count]) => (
+          <button
+            key={kind}
+            type="button"
+            className="axxa-composer-attach-pill"
+            onClick={() =>
+              pendingAttachments
+                .filter((a) => a.kind === kind)
+                .forEach((a) => onRemoveAttachment?.(a.id))
+            }
+            aria-label={`${ATTACH_LABEL[kind] ?? kind} ×${count}`}
+            title={t.composer.attachImageRemoveLabel}
+          >
+            <span className="axxa-composer-attach-pill-label">
+              {ATTACH_LABEL[kind] ?? kind}
+            </span>
+            <Icon name={ATTACH_ICON[kind] ?? "paperclip"} />
+            <span className="axxa-composer-attach-pill-count">×{count}</span>
+          </button>
+        ))}
+      </div>
+    ) : null;
+
   return (
-    <div className="axxa-composer" ref={composerRef}>
+    <div className="axxa-composer" data-mode={mode} ref={composerRef}>
       {isRecording && (
         <div className="axxa-recording-indicator" aria-live="polite">
           <span className="axxa-recording-dot" aria-hidden="true" />
@@ -861,8 +1137,9 @@ export function Composer({
       />
       {/* Anexos pendentes (preview chips antes do envio).
           Multi-tipo: image (thumbnail+shimmer), note (ícone file-text),
-          pdf (ícone file), audio (ícone mic). */}
-      {pendingAttachments.length > 0 && (
+          pdf (ícone file), audio (ícone mic). No Vault Q/A NÃO ficam aqui —
+          viram um pill compacto inline na barra (ref print Flow). */}
+      {mode !== "vault-qa" && pendingAttachments.length > 0 && (
         <div
           className="axxa-composer-attachments"
           aria-label={t.composer.attachmentsLabel}
@@ -891,153 +1168,35 @@ export function Composer({
           })}
         </div>
       )}
-      <div className="axxa-composer-row">
-        <div
-          className={
-            "axxa-composer-pill" +
-            (isEmpty ? "" : " axxa-composer-pill-typing")
-          }
-        >
-          <button
-            type="button"
-            className="axxa-composer-plus"
-            aria-label={t.composer.plusLabel}
-            title={t.composer.plusLabel}
-            onClick={onPlusClick}
-          >
-            <Icon name="plus" />
-          </button>
-          <div ref={editorRef} className="axxa-composer-editor" />
-          {/* Attach buttons (paperclip + image) — APENAS quando isEmpty
-              (composer vazio). Quando user comeca a digitar, somem e cedem
-              espaco pro texto. Pra anexar depois, user vai no + (PlusModal). */}
-          <button
-            type="button"
-            className="axxa-composer-attach axxa-composer-attach-file"
-            aria-label={t.composer.plusLabel}
-            title={t.composer.plusLabel}
-            onClick={onPlusClick}
-          >
-            <Icon name="paperclip" />
-          </button>
-          {visionEnabled && (
-            <button
-              type="button"
-              className="axxa-composer-attach"
-              aria-label={t.composer.attachImageLabel}
-              title={t.composer.attachImageLabel}
-              onClick={handleAttachClick}
-            >
-              <Icon name="image" />
-            </button>
+      {mode === "chat" ? (
+        /* Chat: pill ÚNICO numa linha (ref print ChatGPT) — + · editor · mic · voz.
+           Sem card de 2 linhas; o editor é inline entre o + e os botões. */
+        <div className="axxa-composer-pill" data-mode="chat">
+          {plusEl}
+          {editorEl}
+          {sendEl}
+          {voiceEl}
+        </div>
+      ) : (
+        /* Agent (card Claude) e Vault Q/A (card glassy): editor em cima, bar embaixo.
+           data-mode troca só o visual; a lógica é a mesma. */
+        <div className="axxa-composer-card" data-mode={mode}>
+          {editorEl}
+          <div className="axxa-composer-bar">
+            {plusEl}
+            {mode !== "vault-qa" && modelEl}
+            <span className="axxa-composer-bar-spacer" />
+            {mode === "vault-qa" && vaultPills}
+            {/* voz à esquerda, mic/send à direita (send é a ação primária na ponta) */}
+            {voiceEl}
+            {sendEl}
+          </div>
+          {/* handle do card (ref print Flow) — só no Vault Q/A */}
+          {mode === "vault-qa" && (
+            <div className="axxa-composer-handle" aria-hidden="true" />
           )}
         </div>
-        <button
-          type="button"
-          className={
-            "axxa-composer-send" +
-            (streaming ? " axxa-composer-stop" : "") +
-            (isRecording ? " axxa-composer-recording" : "")
-          }
-          onClick={onClick}
-          onMouseDown={(e) => {
-            if (isMicMode) armMic(e.clientX, e.clientY);
-          }}
-          onMouseMove={(e) => {
-            if (isMicMode) moveMic(e.clientX, e.clientY);
-          }}
-          onMouseUp={() => {
-            if (isMicMode) endMic();
-          }}
-          onMouseLeave={() => {
-            if (isMicMode) cancelMicArm();
-          }}
-          onTouchStart={(e) => {
-            if (!isMicMode) return;
-            // Previne click sintético depois (mobile)
-            e.preventDefault();
-            // v0.1.228: touches[0] pode ser undefined em eventos raros — guarda.
-            const tch = e.touches[0];
-            if (!tch) return;
-            armMic(tch.clientX, tch.clientY);
-          }}
-          onTouchMove={(e) => {
-            if (!isMicMode) return;
-            // v0.1.228: touches[0] pode ser undefined — guarda antes de usar.
-            const tch = e.touches[0];
-            if (!tch) return;
-            moveMic(tch.clientX, tch.clientY);
-          }}
-          onTouchEnd={(e) => {
-            if (!isMicMode) return;
-            e.preventDefault();
-            endMic();
-          }}
-          onTouchCancel={() => {
-            if (isMicMode) endMic();
-          }}
-          aria-label={label}
-          title={label}
-        >
-          <Icon name={iconName} />
-        </button>
-      </div>
-
-      {/* Status row abaixo do pill — micro-ícones coloridos
-          SINGLE LINE (v0.1.38): flex-wrap:nowrap no CSS. User curated
-          chips via Settings → Outros → Chips. */}
-      <div className="axxa-composer-info">
-        {visibleChips.includes("mode") && mode !== "chat" && (
-          <InfoChip icon="library" color="var(--color-pink, #f472b6)">
-            {mode === "vault-qa" ? "vault" : mode}
-          </InfoChip>
-        )}
-        {visibleChips.includes("model") && (
-          <InfoChip
-            icon={locked ? "lock" : "cpu"}
-            color="var(--color-purple, #a370f7)"
-          >
-            {modelName}
-          </InfoChip>
-        )}
-        {visibleChips.includes("effort") && (
-          <InfoChip icon="zap" color="var(--color-orange, #ec7b3e)">
-            {effort}
-          </InfoChip>
-        )}
-        {visibleChips.includes("context") && (
-          <InfoChip icon="gauge" color="var(--color-cyan, #4cc9f0)">
-            {formatTokens(contextUsed)}/{formatTokens(contextTotal)}
-          </InfoChip>
-        )}
-        {visibleChips.includes("in") && (
-          <InfoChip icon="arrow-down" color="var(--color-blue, #4361ee)">
-            {tokensIn}
-          </InfoChip>
-        )}
-        {visibleChips.includes("out") && (
-          <InfoChip icon="arrow-up" color="var(--color-green, #06d6a0)">
-            {tokensOut}
-          </InfoChip>
-        )}
-        {visibleChips.includes("total") && (
-          <InfoChip icon="sigma" color="var(--text-muted)">
-            {tokensTotal}
-          </InfoChip>
-        )}
-        {visibleChips.includes("speed") && tokensPerSec > 0 && (
-          <InfoChip icon="activity" color="var(--color-yellow, #facc15)">
-            {tokensPerSec >= 10
-              ? Math.round(tokensPerSec)
-              : tokensPerSec.toFixed(1)}
-            {" t/s"}
-          </InfoChip>
-        )}
-      </div>
-
-      {/* Disclaimer discreto — "a IA pode errar" (refs: Claude iOS 17,
-          ChatGPT iOS 133). Uma linha só, abaixo do composer. */}
-      <div className="axxa-composer-disclaimer">{t.chat.disclaimer}</div>
+      )}
     </div>
   );
 }

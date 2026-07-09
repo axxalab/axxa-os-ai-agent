@@ -4,8 +4,8 @@ remove cor,
    background, sombra, glass, animação. Re-rodar: node scripts/strip-css.mjs */
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
   padding-top: 0 !important;
   padding-bottom: calc(
         var(--safe-area-inset-bottom, 0px) +
@@ -40,7 +40,9 @@ body.is-mobile
 }
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
   position: relative;
-  z-index: 0;
+  /* z-index 10 (snippet do Inspector): põe a view da AXXA na frente da leaf
+     nativa de baixo (o "No file") pra o composer não ficar atrás dela. */
+  z-index: 10;
   height: 100%;
   width: 100%;
   box-sizing: border-box;
@@ -307,11 +309,25 @@ body.is-mobile
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 12px calc(var(--axxa-composer-h, 80px) + 16px) 12px;
+  padding: 16px 12px calc(var(--axxa-composer-h, 80px) + 24px) 12px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   -webkit-overflow-scrolling: touch;
+}
+/* a conversa entra com um fade suave — disfarça o corte secondary→primary quando
+   sai do new-chat (que é secondary) pra área de chat (primary). Off em reduce-motion. */
+/* motion básico — sempre toca (sem gate de reduce-motion, por decisão de design) */
+.axxa-chat-area {
+  animation: axxa-chat-in 0.28s ease;
+}
+@keyframes axxa-chat-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .axxa-chat-empty {
   align-items: center;
@@ -328,7 +344,7 @@ body.is-mobile
 .axxa-back-to-bottom {
   position: absolute;
   right: 16px;
-  bottom: calc(var(--axxa-composer-h, 80px) + 12px);
+  bottom: calc(var(--axxa-composer-h, 80px) + 20px);
   width: 44px;
   height: 44px;
   display: inline-flex;
@@ -570,6 +586,8 @@ body.is-mobile
   margin-left: 3px;
   vertical-align: -1px;
 }
+/* caret de "digitando" (streaming) — pisca; cor = texto atual. (bg+blink tinham
+   sumido no strip do CSS.) Off em reduce-motion (fica estático e visível). */
 .axxa-typing-caret {
   display: inline-block;
   width: 2px;
@@ -577,17 +595,42 @@ body.is-mobile
   margin-left: 2px;
   vertical-align: -0.18em;
   border-radius: 1px;
+  background: currentColor;
 }
+.axxa-typing-caret {
+  animation: axxa-caret-blink 1s step-end infinite;
+}
+@keyframes axxa-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+/* skeleton de loading — base + brilho deslizante (também tinham sumido no strip). */
 .axxa-skeleton {
   border-radius: 8px;
   position: relative;
   overflow: hidden;
+  background: var(--background-modifier-hover);
 }
 .axxa-skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--background-modifier-border) 70%, transparent),
+    transparent
+  );
+}
+.axxa-skeleton::after {
+  animation: axxa-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes axxa-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 .axxa-skeleton-cards {
   display: grid;
@@ -704,6 +747,11 @@ layout no
   background: var(--background-primary);
   color: var(--text-normal);
 }
+/* canvas do chat: PRIMARY no light, SECONDARY no dark (regra do user). O composer
+   (sempre secondary) se separa por borda/sombra nos dois temas. v0.1.236 */
+body.theme-dark .axxa-root {
+  background: var(--background-secondary);
+}
 /* tipografia semântica: apoio = muted, carimbos/versão = faint */
 .axxa-root :is([class*="-sub"], [class*="-desc"], [class*="-meta"], [class*="-hint"]) {
   color: var(--text-muted);
@@ -791,20 +839,6 @@ layout no
 }
 /* superfícies-chave visíveis (pass 1.1) — evita containers transparentes no teste.
    Se algum elemento ainda aparecer "sem pele", é só apontar e a gente veste. */
-.axxa-composer {
-  background: var(--background-primary);
-  border-top: 1px solid var(--background-modifier-border);
-}
-.axxa-composer-editor {
-  background: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-l, 12px);
-}
-.axxa-composer-row {
-  background: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-l, 12px);
-}
 .axxa-bubble-user {
   background: var(--background-modifier-hover);
 }
@@ -817,6 +851,1030 @@ layout no
 .axxa-header {
   background: var(--background-primary);
 }
+
+/* ============================================================
+ * COMPOSER — DS 1.0 (ref: print do Claude Agent composer)
+ * Card arredondado · editor em cima · bar embaixo (+ · modelo·effort · send).
+ * Vars nativas do Obsidian, sem !important. .axxa-root .x vence o button-ghost.
+ * Regras antigas (composer-pill/info/attach/row) ficam órfãs → sweep.
+ * ============================================================ */
+.axxa-root .axxa-composer {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  /* mais respiro do fundo da tela (estava muito colado) */
+  bottom: 18px;
+  z-index: 900;
+  pointer-events: auto;
+  display: block;
+  padding: 0;
+}
+/* superfície dos 3 composers (e campos de texto): bloco ÚNICO, SEMPRE secondary
+   (light e dark) — destaca o composer do fundo primary nos dois temas. Decisão
+   temporária: muda quando realocarmos o "modo style". */
+.axxa-root {
+  --axxa-composer-bg: var(--background-secondary);
+}
+.axxa-composer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  background: var(--axxa-composer-bg);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 28px;
+  /* mais presença sobre o canvas secondary (composer também é secondary) */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+/* NENHUM composer muda de cor ao focar — ficam SEMPRE secondary (--axxa-composer-bg).
+   (Sem :focus-within de bg, de propósito.) */
+.axxa-root .axxa-composer-editor {
+  font-size: var(--font-ui-medium);
+  line-height: 1.45;
+  color: var(--text-normal);
+  padding: 4px 6px;
+  max-height: 38vh;
+  overflow-y: auto;
+  background: transparent;
+  border: none;
+}
+/* Agent: composer um pouco maior — reserva espaço pra 2ª linha do ticker (wrap)
+   sem o composer crescer (o ticker fica clampado nesta altura, overflow hidden). */
+.axxa-composer-card[data-mode="agent"] .axxa-composer-editor {
+  min-height: 2.7em;
+}
+/* ============================================================
+ * PLACEHOLDER ROTATIVO (ticker) — frase cicla as sugestões do modo (~6s),
+ * desliza de baixo + fade. Só com editor VAZIO e SEM foco. "+ Add" injeta a
+ * frase (igual os banners); tocar no texto foca e abre o campo vazio.
+ * O field embrulha o editor pra ancorar o overlay (assume o flex do editor).
+ * ============================================================ */
+.axxa-composer-field {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+.axxa-composer-field > .axxa-composer-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.axxa-composer-pill .axxa-composer-field {
+  flex: 1 1 auto;
+}
+/* esconde o placeholder nativo do CM quando desfocado (quem mostra é o ticker);
+   focado → o placeholder normal volta. */
+.axxa-root .axxa-composer:not(:focus-within) .cm-placeholder {
+  opacity: 0;
+}
+.axxa-composer-ticker {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  /* topo: o texto começa onde o digitado começaria; "+ Add" alinhado à 1ª linha */
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 6px;
+  /* clamp na altura do editor (overflow hidden) — o wrap NÃO cresce o composer */
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: text;
+}
+/* clip do texto digitado (à esquerda, preenche) */
+.axxa-ticker-clip {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+}
+/* texto digitado (typewriter) — faint, QUEBRA linha (wrap) nas frases grandes */
+.axxa-ticker-phrase {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  color: var(--text-faint);
+  font-size: var(--font-ui-medium);
+}
+.axxa-ticker-phrase::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.12em;
+  background: currentColor;
+  /* motion BÁSICO — pisca SEMPRE (sem gate de reduce-motion) */
+  animation: axxa-caret-blink 1s step-end infinite;
+}
+/* "+ Add" — só a letra: faint, à DIREITA, sem fundo nem borda */
+.axxa-root .axxa-ticker-add {
+  flex: 0 0 auto;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-faint);
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.axxa-root .axxa-ticker-add:hover {
+  color: var(--text-muted);
+}
+.axxa-root .axxa-ticker-add:active {
+  color: var(--text-normal);
+}
+.axxa-composer-card[data-mode="vault-qa"] .axxa-ticker-phrase {
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+/* Chat (pill) e Agent: "+ Add" na MESMA linha do texto — ticker numa linha só
+   (nowrap). O wrap de 2 linhas fica só no Q/A. O Agent mantém flex-start (alinha
+   com onde o texto digitado começa, no topo); o pill centraliza. */
+.axxa-composer-pill .axxa-composer-ticker {
+  align-items: center;
+}
+.axxa-composer-pill .axxa-ticker-phrase,
+.axxa-composer-card[data-mode="agent"] .axxa-ticker-phrase {
+  white-space: nowrap;
+}
+.axxa-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.axxa-composer-bar-spacer {
+  flex: 1 1 auto;
+}
+.axxa-root .axxa-composer-plus {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border: none;
+  cursor: pointer;
+}
+.axxa-root .axxa-composer-plus:hover {
+  background: var(--background-modifier-border);
+}
+.axxa-root .axxa-composer-model {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  min-width: 0;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  border: none;
+  cursor: pointer;
+}
+.axxa-root .axxa-composer-model:hover {
+  background: var(--background-modifier-border);
+}
+.axxa-composer-model-name {
+  font-weight: 600;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.axxa-composer-model-effort {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  flex: 0 0 auto;
+}
+.axxa-root .axxa-composer-send {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  cursor: pointer;
+}
+.axxa-root .axxa-composer-send:hover {
+  background: var(--interactive-accent-hover);
+}
+.axxa-root .axxa-composer-send .svg-icon {
+  color: var(--text-on-accent);
+}
+.axxa-root .axxa-composer-send.axxa-composer-recording {
+  background: var(--text-error, #e5484d);
+}
+/* botão de voz (movido do header) — círculo neutro ao lado do send */
+.axxa-root .axxa-composer-voice {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border: none;
+  cursor: pointer;
+}
+.axxa-root .axxa-composer-voice:hover {
+  background: var(--background-modifier-border);
+}
+/* transição + feedback de press, compartilhado pelos botões da bar */
+.axxa-root .axxa-composer-plus,
+.axxa-root .axxa-composer-model,
+.axxa-root .axxa-composer-send,
+.axxa-root .axxa-composer-voice {
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.axxa-root .axxa-composer-plus:active,
+.axxa-root .axxa-composer-send:active,
+.axxa-root .axxa-composer-voice:active {
+  transform: scale(0.94);
+}
+/* ícones dentro da bar de 32px — proporção certa */
+.axxa-composer-bar .svg-icon {
+  width: 18px;
+  height: 18px;
+}
+/* sem outline accent ao focar/digitar no editor — o cursor já indica o foco.
+   Vence a regra global .axxa-root :focus-visible (que é !important). */
+.axxa-root .axxa-composer-editor .cm-editor:focus-visible,
+.axxa-root .axxa-composer-editor .cm-content:focus-visible,
+.axxa-root .axxa-composer-editor .cm-editor.cm-focused {
+  outline: none !important;
+}
+
+/* ============================================================
+ * COMPOSER — VARIANTE VAULT Q/A (ref: print Flow + snippet do Inspector).
+ * Mesmo componente, data-mode="vault-qa". FAKE BOTTOM SHEET full-width, radius só
+ * no topo, card primary + borda + sombra só em cima. Usa o MESMO esquema do bottom
+ * sheet: `position: fixed` → encosta no fundo REAL do viewport (o absolute parava
+ * na base do .axxa-root, acima do clearance da navbar, e não alcançava onde o sheet
+ * alcança). O teclado é tratado por `bottom: var(--keyboard-height)` — o Obsidian
+ * expõe essa var no <html> (ver AxxaView keyboardObserver), então ele sobe junto
+ * com o teclado sem precisar do absolute.
+ * ============================================================ */
+.axxa-root .axxa-composer[data-mode="vault-qa"] {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--keyboard-height, 0px);
+  padding: 0;
+}
+.axxa-composer-card[data-mode="vault-qa"] {
+  gap: 16px;
+  padding: 18px 18px calc(10px + env(safe-area-inset-bottom, 0px));
+  /* sem borda: é um sheet colado na base (laterais na borda da tela, fundo no
+     viewport) — a sombra só de cima já faz a separação. */
+  border: none;
+  border-radius: 28px 28px 0 0;
+  background: var(--axxa-composer-bg);
+  /* sombra SÓ em cima: spread negativo (-4) faz a sombra não passar da borda de
+     baixo (offset+blur+spread = -6+8-4 = -2 ≤ 0), então embaixo fica a cor crua. */
+  box-shadow: 0 -6px 8px -4px rgba(0, 0, 0, 0.3);
+}
+/* no DARK a sombra preta some no fundo escuro — bem mais forte e espalhada pra
+   destacar o "fake bottom sheet" (a borda de baixo está no fim da tela, o
+   vazamento pra baixo é off-screen, então pode espalhar). */
+body.theme-dark .axxa-composer-card[data-mode="vault-qa"] {
+  box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.62);
+}
+/* o prompt manda no visual — texto/placeholder grande */
+.axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor {
+  /* fonte menor + base mais alta: cabe 2 linhas do ticker sem cortar a 2a
+     (o ticker é clampado nesta altura — overflow hidden) */
+  font-size: 1.25rem;
+  line-height: 1.3;
+  padding: 6px 4px;
+  min-height: 3.4em;
+  max-height: 30vh;
+}
+.axxa-composer-card[data-mode="vault-qa"] .axxa-composer-editor .cm-placeholder {
+  color: var(--text-muted);
+}
+/* botões flat: sem círculo, só o ícone (branco) — igual o print */
+.axxa-root .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-plus,
+.axxa-root .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-send {
+  background: transparent;
+  color: var(--text-normal);
+  width: 36px;
+  height: 36px;
+}
+.axxa-root .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-plus:hover,
+.axxa-root .axxa-composer-card[data-mode="vault-qa"] .axxa-composer-send:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-composer-card[data-mode="vault-qa"] .axxa-composer-send .svg-icon {
+  color: var(--text-normal);
+}
+/* ícones maiores na variante */
+.axxa-composer-card[data-mode="vault-qa"] .axxa-composer-bar .svg-icon {
+  width: 24px;
+  height: 24px;
+}
+/* pill de anexo inline "Label · ícone · ×N" */
+.axxa-composer-attach-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+.axxa-root .axxa-composer-attach-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+  max-width: 100%;
+}
+.axxa-composer-attach-pill-label {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.axxa-composer-attach-pill-count {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+.axxa-composer-attach-pill .svg-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+/* handle do card (barra característica embaixo) */
+.axxa-composer-handle {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+  margin: 4px auto 2px;
+}
+
+/* ============================================================
+ * COMPOSER — VARIANTE CHAT (ref: print ChatGPT).
+ * Pill ÚNICO numa linha: + flat · editor inline · mic flat · voz (círculo accent).
+ * Sem card de 2 linhas, sem pill de modelo. A lógica é a mesma do Agent.
+ * ============================================================ */
+.axxa-composer-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--axxa-composer-bg);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+/* no dark o canvas é secondary (igual ao pill) — a borda aparece um tico mais
+   pra separar, mantendo sutil. */
+body.theme-dark .axxa-root .axxa-composer-pill {
+  border-color: var(--background-modifier-border-hover);
+}
+.axxa-root .axxa-composer-pill .axxa-composer-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-ui-medium);
+  line-height: 1.4;
+  padding: 6px;
+  max-height: 28vh;
+  background: transparent;
+  border: none;
+}
+/* + e mic = flat (sem círculo, ícone na cor do texto) */
+.axxa-root .axxa-composer-pill .axxa-composer-plus,
+.axxa-root .axxa-composer-pill .axxa-composer-send.axxa-composer-mic {
+  background: transparent;
+  color: var(--text-normal);
+  width: 38px;
+  height: 38px;
+}
+.axxa-root .axxa-composer-pill .axxa-composer-plus:hover,
+.axxa-root .axxa-composer-pill .axxa-composer-send.axxa-composer-mic:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-composer-pill .axxa-composer-send.axxa-composer-mic .svg-icon {
+  color: var(--text-normal);
+}
+/* send (texto/stop) e voz = círculo accent */
+.axxa-root .axxa-composer-pill .axxa-composer-send,
+.axxa-root .axxa-composer-pill .axxa-composer-voice {
+  width: 38px;
+  height: 38px;
+}
+.axxa-root .axxa-composer-pill .axxa-composer-voice {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.axxa-composer-pill .axxa-composer-voice .svg-icon {
+  color: var(--text-on-accent);
+}
+/* ícones da pill ~22px */
+.axxa-composer-pill .svg-icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* indicador de gravação (mic hold-to-talk) — rebuild no DS */
+.axxa-recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  align-self: flex-start;
+  max-width: max-content;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-normal);
+  background: var(--background-secondary);
+  background: color-mix(in srgb, var(--text-error, #e5484d) 14%, var(--background-secondary));
+}
+.axxa-recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--text-error, #e5484d);
+}
+.axxa-recording-dot {
+  animation: axxa-rec-pulse 1.2s ease-in-out infinite;
+}
+@keyframes axxa-rec-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.78); }
+}
+.axxa-recording-timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.axxa-recording-hint {
+  color: var(--text-muted);
+}
+
+/* ============================================================
+ * COMPOSER — texto 100% nativo. Garante que o texto digitado herde a cor dos
+ * elementos do Obsidian (white/dark) e que o -webkit-text-fill-color do WebView
+ * mobile não sobrescreva o color. Tudo via --text-normal (a cor nativa).
+ * ============================================================ */
+.axxa-root .axxa-composer-editor,
+.axxa-root .axxa-composer-editor .cm-editor,
+.axxa-root .axxa-composer-editor .cm-content,
+.axxa-root .axxa-composer-editor .cm-line {
+  color: var(--text-normal);
+  -webkit-text-fill-color: var(--text-normal);
+}
+
+/* ============================================================
+ * BALÕES DE SUGESTÃO da NOVA conversa — ref prints 2026-06-15.
+ * Um estilo por modo: chat → linhas · agent → cards h · vault-qa → pills.
+ * VIVEM NO CORPO (dentro da .axxa-newchat), ancorados no FUNDO (margin-top:auto)
+ * logo acima do composer — a .axxa-newchat reserva a altura dele no padding-bottom.
+ * NÃO flutuam mais por cima da saudação. Seguem o teclado porque a view encolhe
+ * junto (composer absolute/fixed sempre na borda da view encolhida). Cor nativa.
+ * ============================================================ */
+.axxa-suggest {
+  /* a saudação (.axxa-newchat-head) tem margin:auto, então ELA centraliza e
+     empurra os balões pro fundo. Aqui margin-top:0 pra não competir pelos autos. */
+  margin-top: 0;
+  width: 100%;
+  pointer-events: auto;
+}
+/* reset do chrome de botão do sistema — no WebView mobile o <button> ganha uma
+   BORDA própria que o `border: none` não tira; appearance:none mata isso. */
+.axxa-root .axxa-suggest-row,
+.axxa-root .axxa-suggest-card,
+.axxa-root .axxa-suggest-bubble,
+.axxa-root .axxa-suggest-grid-card {
+  appearance: none;
+  -webkit-appearance: none;
+}
+/* entrada com stagger leve (cada balão entra logo após o anterior) — backwards
+   segura o estado inicial durante o delay. Motion básico: toca SEMPRE. */
+.axxa-suggest-row,
+.axxa-suggest-card,
+.axxa-suggest-bubble {
+  animation: axxa-suggest-in var(--axxa-motion-dur, 0.32s)
+    cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+.axxa-suggest > *:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.axxa-suggest > *:nth-child(2) {
+  animation-delay: 0.07s;
+}
+.axxa-suggest > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+@keyframes axxa-suggest-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* — CHAT: linhas verticais (ícone + label), sem fundo de card (ref ChatGPT) — */
+.axxa-suggest-rows {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 4px 4px 14px;
+}
+.axxa-root .axxa-suggest-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 12px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 14px;
+  text-align: left;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.axxa-root .axxa-suggest-row:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-root .axxa-suggest-row:active {
+  background: var(--background-modifier-border);
+}
+.axxa-suggest-row-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-normal);
+}
+.axxa-suggest-row-ico .svg-icon {
+  width: 24px;
+  height: 24px;
+}
+.axxa-suggest-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* — AGENT: cards horizontais (ícone em cima, label embaixo) (ref Gemini) — */
+.axxa-suggest-cards {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  padding: 4px 2px 12px;
+  /* mais distância do fundo da tela (lift acima do composer) */
+  margin-bottom: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.axxa-suggest-cards::-webkit-scrollbar {
+  display: none;
+}
+/* cards do Agent = tile OUTLINE (snippet do user via Inspector): fundo
+   transparente + contorno faint (1px text-faint), radius 16, ícone em cima +
+   label, padding 12, altura = conteúdo (a "medida mínima"). */
+.axxa-root .axxa-suggest-card {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  height: fit-content;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px;
+  background: transparent;
+  /* borda LITERALMENTE igual à do composer do Agent (mesma cor/largura/estilo) */
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  text-align: left;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.axxa-root .axxa-suggest-card:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-root .axxa-suggest-card:active {
+  transform: scale(0.97);
+}
+.axxa-suggest-card-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-normal);
+}
+.axxa-suggest-card-ico .svg-icon {
+  width: 24px;
+  height: 24px;
+}
+.axxa-suggest-card-label {
+  font-weight: 600;
+  font-size: var(--font-ui-medium);
+  line-height: 1.2;
+}
+/* RAIZ do "bloco fantasma" (TODO o app): o curinga `.axxa-root :is([class*="-card"])`
+   (~L747) dá bg+borda+radius a QUALQUER classe contendo "-card" — pega não só as
+   SUPERFÍCIES de card (.axxa-*-card) mas também os CONTAINERS (-cards) e os spans
+   internos (-card-name/-desc/-label/-value/-title/-id/-cat/-ico…). Os snippets de
+   border:none falhavam por especificidade (0,1,0 < 0,2,0 do curinga).
+   Aqui (0,4,0, depois na cascata) zera bg+borda nesses spans/containers — PRESERVANDO
+   os chips de ícone fixos (-card-icon 36×36) e os avatares (-card-avatar, logo do
+   vendor), que querem o fundo. As superfícies (.axxa-*-card, sem sufixo) não casam. */
+.axxa-root
+  :is([class*="-card-"], [class*="-cards"]):not(
+    [class*="-card-icon"],
+    [class*="-card-avatar"],
+    [class*="-card-cat"],
+    [class*="-card-use"],
+    [class*="-card-open"]
+  ) {
+  background: transparent;
+  border: none;
+}
+/* linhas do Chat (sem "-card", não pegam o curinga) — mantém zerado por pedido. */
+.axxa-root .axxa-suggest-rows,
+.axxa-root .axxa-suggest-row-ico,
+.axxa-root .axxa-suggest-row-label {
+  border: none;
+}
+
+/* — VAULT QA: balões SIMPLES e separados — pill com borda + sombra, ícone +
+   título numa linha. Fundo primary (a borda + sombra é que destacam). Embrulham
+   centralizados acima do composer. */
+.axxa-suggest-bubbles {
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+.axxa-root .axxa-suggest-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 999px;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.axxa-root .axxa-suggest-bubble:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-root .axxa-suggest-bubble:active {
+  transform: scale(0.96);
+}
+.axxa-suggest-bubble-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-muted);
+}
+.axxa-suggest-bubble-ico .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-suggest-bubble-label {
+  white-space: nowrap;
+}
+
+/* — "See more" (abre o bottom sheet): afordância discreta, texto/ícone muted.
+   Nos PILLS do vault (que têm borda) vira tracejado pra ler como "ver todos". */
+.axxa-suggest-more .axxa-suggest-row-label,
+.axxa-suggest-more .axxa-suggest-card-label,
+.axxa-suggest-more .axxa-suggest-bubble-label,
+.axxa-suggest-more .axxa-suggest-row-ico,
+.axxa-suggest-more .axxa-suggest-card-ico,
+.axxa-suggest-more .axxa-suggest-bubble-ico {
+  color: var(--text-muted);
+}
+.axxa-root .axxa-suggest-bubble.axxa-suggest-more {
+  border-style: dashed;
+}
+/* See more do Agent: sem contorno (só o muted + chevron), gap menor — snippet. */
+.axxa-root .axxa-suggest-card.axxa-suggest-more {
+  border: none;
+  box-shadow: none;
+  gap: 12px;
+}
+
+/* — Bottom sheet "See more": grid 2×2 bem espaçado. Cada sugestão é uma IDEIA
+   (pode virar um plano), então vira um CARD com presença — avatar accent + título
+   + hint que pode quebrar em 2 linhas. Card = secondary sobre a folha primary. */
+.axxa-suggest-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 8px 2px 16px;
+}
+.axxa-root .axxa-suggest-grid-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  min-height: 118px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  text-align: left;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.axxa-root .axxa-suggest-grid-card:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-root .axxa-suggest-grid-card:active {
+  transform: scale(0.98);
+}
+.axxa-suggest-grid-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--background-modifier-hover);
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  color: var(--interactive-accent);
+}
+.axxa-suggest-grid-ico .svg-icon {
+  width: 20px;
+  height: 20px;
+}
+.axxa-suggest-grid-label {
+  font-weight: 600;
+  font-size: var(--font-ui-medium);
+  line-height: 1.25;
+  color: var(--text-normal);
+}
+.axxa-suggest-grid-hint {
+  font-size: var(--font-ui-smaller);
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+ * BOTTOM SHEET — Select model / Effort (DS 1.0, ref prints Claude).
+ * Reaproveita o shell .axxa-plus-overlay/-sheet/-handle/-divider e o
+ * switch .axxa-plus-row-switch. Header (nav + título) + rows no tamanho
+ * de linha dos prints (nome + tagline · selecionado = accent + check).
+ * ============================================================ */
+.axxa-sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.axxa-root .axxa-sheet-nav {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text-normal);
+  cursor: pointer;
+}
+.axxa-root .axxa-sheet-nav:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-sheet-nav .svg-icon {
+  width: 20px;
+  height: 20px;
+}
+.axxa-sheet-title {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+.axxa-sheet-list {
+  display: flex;
+  flex-direction: column;
+}
+.axxa-root .axxa-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: var(--axxa-row-py) 8px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-normal);
+  transition: background 0.12s ease;
+}
+.axxa-root .axxa-sheet-row:hover {
+  background: var(--background-modifier-hover);
+  border-radius: 12px;
+}
+/* press feedback (consistente com as outras rows: realce no toque) */
+.axxa-root .axxa-sheet-row:active {
+  background: var(--background-modifier-border);
+  border-radius: 12px;
+}
+.axxa-sheet-row-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-stack-gap);
+}
+.axxa-sheet-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-normal);
+}
+.axxa-sheet-row-desc {
+  font-size: var(--font-ui-small);
+  line-height: 1.3;
+  color: var(--text-muted);
+  /* texto secundário: sempre 1 linha, sem wrap e sem scroll lateral */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.axxa-sheet-row-on .axxa-sheet-row-name,
+.axxa-sheet-row-on .axxa-sheet-row-desc {
+  color: var(--interactive-accent);
+}
+.axxa-sheet-row-check,
+.axxa-sheet-row-chevron {
+  flex: 0 0 auto;
+  display: inline-flex;
+}
+.axxa-sheet-row-check {
+  color: var(--interactive-accent);
+}
+.axxa-sheet-row-chevron {
+  color: var(--text-muted);
+}
+.axxa-sheet-row-check .svg-icon,
+.axxa-sheet-row-chevron .svg-icon {
+  width: 20px;
+  height: 20px;
+}
+.axxa-sheet-badge {
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--background-modifier-hover);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+/* "Add favorite" — sempre alinhado à esquerda, em letra secondary */
+.axxa-root .axxa-sheet-addfav {
+  display: block;
+  width: 100%;
+  padding: 14px 8px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+.axxa-root .axxa-sheet-addfav:hover:not(:disabled) {
+  color: var(--text-normal);
+}
+.axxa-root .axxa-sheet-addfav:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.axxa-sheet-addfav-label {
+  display: block;
+  padding: 4px 8px 2px;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+/* seletor segmentado (mesmo da sidebar) nos chips do More — altura 28px */
+.axxa-sheet-seg {
+  flex: 0 0 auto; /* faixa FIXA entre o topo e o corpo (não rola) */
+  padding: 2px 16px 12px;
+}
+.axxa-sheet-seg .axxa-seg {
+  padding: 3px;
+}
+.axxa-sheet-seg .axxa-seg-ind {
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+}
+.axxa-sheet-seg .axxa-seg-btn {
+  padding: 3px 9px;
+}
+.axxa-sheet-seg .axxa-seg-btn .axxa-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.axxa-sheet-seg .axxa-seg-btn-label {
+  font-size: var(--font-ui-smaller);
+}
+
+/* estrela de favoritar (More models) — preenche no ativo, trava no teto de 5 */
+.axxa-root .axxa-sheet-star {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.axxa-root .axxa-sheet-star:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+}
+.axxa-root .axxa-sheet-star:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.axxa-sheet-star .svg-icon {
+  width: 20px;
+  height: 20px;
+}
+.axxa-sheet-star-on {
+  color: var(--interactive-accent);
+}
+.axxa-sheet-star-on .svg-icon {
+  fill: var(--interactive-accent);
+}
+
+
+/* Listas de modelos (favoritos + More) = compactas: densidade de LISTA
+   (--axxa-list-row-py, mais apertada que --axxa-row-py das nav rows) + fontes menores */
+.axxa-sheet-list-compact .axxa-sheet-row {
+  padding: var(--axxa-list-row-py) 8px;
+  gap: 10px;
+}
+.axxa-sheet-list-compact .axxa-sheet-row-name {
+  font-size: var(--font-ui-small);
+}
+.axxa-sheet-list-compact .axxa-sheet-row-desc {
+  font-size: var(--font-ui-smaller);
+}
+.axxa-sheet-list-compact .axxa-sheet-star {
+  width: 32px;
+  height: 32px;
+}
+
 @supports not (color: color-mix(in srgb, red, blue)) {
   .axxa-root {
     --axxa-pill-bg: var(--background-modifier-hover);
@@ -2295,14 +3353,6 @@ layout no
   font-size: var(--font-ui-small);
   cursor: pointer;
 }
-.axxa-composer-disclaimer {
-  text-align: center;
-  font-size: var(--font-ui-smaller);
-  line-height: 1.3;
-  padding: 5px 12px 2px 12px;
-  opacity: 0.85;
-  user-select: none;
-}
 .axxa-continue-btn {
   display: inline-flex;
   align-items: center;
@@ -2581,7 +3631,7 @@ layout no
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: calc(var(--axxa-composer-h, 80px) + 14px);
+  bottom: calc(var(--axxa-composer-h, 80px) + 22px);
   z-index: 890;
   display: flex;
   align-items: center;
@@ -2660,158 +3710,6 @@ layout no
 .axxa-incompat-close .axxa-icon .svg-icon {
   width: 12px;
   height: 12px;
-}
-.axxa-composer {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 4px 6px;
-  z-index: 900;
-  transition: bottom 0.18s ease;
-  pointer-events: auto;
-}
-.axxa-composer-row,
-.axxa-composer-info,
-.axxa-composer-attachments {
-  position: relative;
-  z-index: 1;
-}
-.axxa-composer-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  min-height: 0;
-  flex-wrap: nowrap;
-  width: 100%;
-  box-sizing: border-box;
-}
-.axxa-composer-pill {
-  flex: 1 1 0 !important;
-  min-width: 0;
-}
-.axxa-composer-send {
-  flex: 0 0 44px !important;
-  width: 44px !important;
-  box-sizing: border-box;
-}
-.axxa-composer-info {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 3px 10px;
-  padding: 6px 12px;
-  margin: 0 4px;
-  font-size: 10px;
-  line-height: 1.3;
-  user-select: none;
-  max-width: 100%;
-  min-width: 0;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
-  position: relative;
-  isolation: isolate;
-}
-@supports not (color: color-mix(in srgb, red, blue)) {
-  .axxa-composer-info {
-    opacity: 0.97;
-  }
-}
-.axxa-info-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-  font-weight: 500;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-}
-.axxa-info-chip > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.axxa-info-chip .axxa-icon {
-  flex-shrink: 0;
-}
-.axxa-info-chip .axxa-icon .svg-icon {
-  width: 11px;
-  height: 11px;
-}
-.axxa-composer-pill {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 0;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  border-radius: 22px;
-  padding: 6px 14px 6px 6px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.axxa-composer-plus,
-.axxa-composer-plus:hover,
-.axxa-composer-plus:focus,
-.axxa-composer-plus:active,
-.axxa-composer-plus:disabled {
-  appearance: none;
-  -webkit-appearance: none;
-  border: none !important;
-}
-.axxa-composer-plus {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: color 0.15s;
-}
-.axxa-composer-plus:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.axxa-composer-attach,
-.axxa-composer-attach:hover,
-.axxa-composer-attach:focus,
-.axxa-composer-attach:active {
-  appearance: none;
-  -webkit-appearance: none;
-  border: none !important;
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-.axxa-composer-attach .axxa-icon .svg-icon {
-  width: 16px;
-  height: 16px;
-}
-.axxa-composer-pill .axxa-composer-attach {
-  transition: width 0.2s ease, opacity 0.15s ease, margin 0.2s ease,
-              padding 0.2s ease, transform 0.2s ease;
-  overflow: hidden;
-}
-.axxa-composer-pill-typing .axxa-composer-attach {
-  width: 0 !important;
-  min-width: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  opacity: 0;
-  transform: scale(0.5);
-  pointer-events: none;
 }
 .axxa-composer-attachments {
   display: flex;
@@ -3333,51 +4231,6 @@ layout no
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.axxa-composer-send,
-.axxa-composer-send:hover,
-.axxa-composer-send:focus,
-.axxa-composer-send:active {
-  appearance: none;
-  -webkit-appearance: none;
-  border: none !important;
-}
-.axxa-composer-send {
-  flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  align-self: flex-end;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, transform 0.1s;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
-}
-.axxa-composer-send:active {
-  transform: scale(0.95);
-}
-.axxa-recording-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: var(--font-ui-smaller);
-  align-self: flex-start;
-  max-width: max-content;
-}
-.axxa-recording-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-.axxa-recording-timer {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
 .axxa-starter {
   flex: 1 1 auto;
   height: 100%;
@@ -3719,32 +4572,65 @@ layout no
   width: 100%;
   min-width: 0;
 }
-.axxa-recent-meta.axxa-composer-info {
-  padding: 0;
-  gap: 1px 8px;
-  font-size: 9px;
-  flex-wrap: nowrap;
-  overflow: hidden;
-}
 .axxa-plus-overlay {
-  position: absolute;
+  /* fixed (não absolute): o .view-content da AXXA tem padding-bottom de clearance
+     da navbar mobile, então o .axxa-root (ancestral posicionado) NÃO chega ao fundo
+     real → o sheet parava acima e abria um vão. fixed cobre o viewport inteiro e
+     encosta no fundo, igual os modais nativos do Obsidian (e a CameraModal). */
+  position: fixed;
   inset: 0;
   display: flex;
   align-items: flex-end;
   z-index: 1000;
 }
+/* Bottom sheet com 2 estados (opened / full) — lei do AXXA. O sheet NÃO rola;
+   o topo (.axxa-sheet-top) fica fixo e só o corpo (.axxa-sheet-body) rola.
+   sem borda: colado na base (laterais na borda da tela) — radius do topo +
+   cover já separam. */
 .axxa-plus-sheet {
   width: 100%;
-  max-height: 75%;
-  overflow-y: auto;
+  height: 34vh; /* estado OPENED (abre menor) */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  /* todo bottom sheet sobe em bg secondary (vence o .axxa-plus-sheet,... primary) */
+  background: var(--background-secondary);
   border-radius: 22px 22px 0 0;
-  padding: 12px 16px 24px 16px;
+  transition: height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.axxa-plus-sheet-full {
+  height: 70vh; /* estado EXPANDED (aumenta o modal, não full screen) */
+}
+/* TOPO fixo = o toggle (tap/drag). Não rola. */
+.axxa-sheet-top {
+  flex: 0 0 auto;
+  padding: 8px 16px 0 16px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.axxa-sheet-top:active {
+  cursor: grabbing;
+}
+/* CORPO rolável */
+.axxa-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px 24px 16px;
 }
 .axxa-plus-handle {
   width: 40px;
   height: 4px;
   border-radius: 999px;
   margin: 0 auto 16px auto;
+  /* a "barra característica" do bottom sheet — sem cor ela ficava invisível */
+  background: var(--background-modifier-border);
+}
+.axxa-sheet .axxa-plus-handle {
+  margin-bottom: 10px;
 }
 .axxa-plus-title {
   margin: 0 0 16px 0;
@@ -3994,7 +4880,11 @@ layout no
   height: 26px;
   border-radius: 999px;
   position: relative;
+  background: var(--background-modifier-border);
   transition: background 0.18s ease;
+}
+.axxa-plus-row-switch-on {
+  background: var(--interactive-accent);
 }
 .axxa-plus-row-switch-thumb {
   position: absolute;
@@ -4003,6 +4893,8 @@ layout no
   width: 20px;
   height: 20px;
   border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .axxa-plus-row-switch-on .axxa-plus-row-switch-thumb {
@@ -4222,14 +5114,6 @@ layout no
 .axxa-bubble-ai .axxa-icon .svg-icon {
   width: 14px;
   height: 14px;
-}
-.axxa-composer-plus .axxa-icon .svg-icon {
-  width: 20px;
-  height: 20px;
-}
-.axxa-composer-send .axxa-icon .svg-icon {
-  width: 22px;
-  height: 22px;
 }
 .axxa-markdown pre.axxa-code-block {
   position: relative;
@@ -4973,6 +5857,12 @@ body.is-mobile.axxa-keyboard-open
 }
 body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   padding-bottom: var(--keyboard-height, 0);
+}
+/* Com o teclado aberto, o sheet precisa CABER acima dele (senão o 70vh estoura o
+   topo). Escopado em .axxa-keyboard-open: teclado fechado → sem cap → 34/70vh
+   normais. */
+body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
+  max-height: calc(100vh - var(--keyboard-height, 0px) - 16px);
 }
 .axxa-active-models-section {
   padding: 8px 0 16px 0;
@@ -6170,6 +7060,341 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-model-star:hover {
   transform: scale(1.15);
 }
+/* ============================================================
+ * CONNECTIONS → MODELS — seleção por papel (cross-provider). v0.1.236
+ * ============================================================ */
+.axxa-conn-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.axxa-conn-seg-ico {
+  display: inline-flex;
+}
+.axxa-conn-seg-ico .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.axxa-conn-body {
+  margin-top: 4px;
+}
+/* empty state — nenhum provider conectado */
+.axxa-models-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.axxa-models-empty-ico .svg-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--text-faint);
+}
+.axxa-models-empty-btn {
+  cursor: pointer;
+}
+/* lista por papel */
+.axxa-models-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 10px;
+}
+.axxa-role-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.axxa-role-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 2px 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+  text-align: left;
+}
+.axxa-role-chev {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+.axxa-role-chev .svg-icon {
+  width: 17px;
+  height: 17px;
+}
+.axxa-role-head.is-open .axxa-role-chev {
+  transform: rotate(180deg);
+}
+.axxa-role-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+}
+.axxa-role-ico {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.axxa-role-ico .svg-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-normal);
+}
+.axxa-role-head-txt {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.axxa-role-label {
+  font-weight: 700;
+  color: var(--text-normal);
+}
+.axxa-role-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.axxa-role-current {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 45%;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.axxa-role-current-ico .svg-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--interactive-accent);
+}
+.axxa-role-current-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.axxa-role-current.is-unset {
+  font-style: italic;
+  opacity: 0.7;
+}
+/* família colapsável */
+.axxa-fam-group {
+  display: flex;
+  flex-direction: column;
+}
+.axxa-fam-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-normal);
+  transition: background 0.12s;
+}
+.axxa-fam-head:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-fam-ico {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.axxa-fam-ico .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.axxa-fam-label {
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+.axxa-fam-summary {
+  flex: 1 1 auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.axxa-fam-chev {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+.axxa-fam-chev .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-fam-head.is-open .axxa-fam-chev {
+  transform: rotate(180deg);
+}
+.axxa-fam-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0 6px 8px;
+}
+/* seletor de provider na linha (dedup do mesmo modelo em 2+ providers) */
+.axxa-row-provsel {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+}
+.axxa-row-provsel-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.12s, background 0.12s;
+}
+.axxa-row-provsel-opt .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+.axxa-row-provsel-opt.is-sel {
+  opacity: 1;
+  background: var(--background-primary);
+}
+.axxa-row-provsel-opt:hover {
+  opacity: 0.85;
+}
+/* nível VENDOR (accordion intermediário Modo → Vendor → Família) */
+.axxa-vendor-group {
+  display: flex;
+  flex-direction: column;
+}
+.axxa-vendor-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-normal);
+  transition: background 0.12s;
+}
+.axxa-vendor-head:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-vendor-ico {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.axxa-vendor-ico .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-vendor-label {
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+.axxa-vendor-summary {
+  flex: 1 1 auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.axxa-vendor-chev {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+.axxa-vendor-chev .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.axxa-vendor-head.is-open .axxa-vendor-chev {
+  transform: rotate(180deg);
+}
+.axxa-vendor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 10px;
+}
+/* filtro por família (All / Selected / Not selected) */
+.axxa-fam-filter {
+  display: flex;
+  gap: 4px;
+  padding: 2px 0 6px;
+}
+.axxa-root .axxa-fam-filter-opt {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: none;
+}
+.axxa-root .axxa-fam-filter-opt.is-sel {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+/* badge do provider na linha (logo + nome) */
+.axxa-row-provbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  padding: 1px 6px 1px 4px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+.axxa-row-provbadge-ico {
+  display: inline-flex;
+}
+.axxa-row-provbadge-ico .svg-icon {
+  width: 11px;
+  height: 11px;
+}
+/* ♥ favorito (controle separado do ★ default) */
+.axxa-model-fav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px;
+  color: var(--text-faint);
+  transition: color 0.13s, transform 0.1s;
+}
+.axxa-model-fav .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-model-fav:hover {
+  transform: scale(1.15);
+  color: var(--text-muted);
+}
+.axxa-model-fav.is-fav {
+  color: var(--interactive-accent);
+}
 .axxa-model-default-tag {
   flex: 0 0 auto;
   font-size: 9px;
@@ -6824,6 +8049,22 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   width: 18px;
   height: 18px;
 }
+/* New chat / Q&A / Agent: ícone E texto em ACCENT, SEM fundo em nenhum estado
+   (nem no hover do desktop). Feedback de hover = accent mais forte, sem fill. */
+.axxa-root .axxa-sidebar-new,
+.axxa-root .axxa-sidebar-new:focus,
+.axxa-root .axxa-sidebar-new:active {
+  background: transparent;
+  color: var(--interactive-accent);
+}
+.axxa-root .axxa-sidebar-new:hover {
+  background: transparent;
+  color: var(--interactive-accent-hover);
+}
+.axxa-root .axxa-sidebar-new svg,
+.axxa-root .axxa-sidebar-new .svg-icon {
+  color: inherit;
+}
 .axxa-sidebar-new-group {
   flex: 0 0 auto;
   display: flex;
@@ -6925,6 +8166,13 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 }
 .axxa-sidebar-seg {
   padding: 0 10px 8px 10px;
+}
+/* seletor de chats da sidebar = track OPACO. O .axxa-seg base é translúcido
+   (color-mix ...55%, transparent) e sumia sobre o --background-secondary da
+   sidebar. Aqui vira uma superfície sólida (primary + leve tint da borda). */
+.axxa-sidebar-seg .axxa-seg {
+  background: var(--background-primary);
+  background: color-mix(in srgb, var(--background-modifier-border) 40%, var(--background-primary));
 }
 :is(.axxa-sidebar-seg, .axxa-mpick-tabs) .axxa-seg {
   max-width: 100%;
@@ -7167,22 +8415,31 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 16px;
+  /* fundo da nova conversa = herda o canvas do chat (.axxa-root): primary no
+     light, secondary no dark. */
+  background: transparent;
+  /* padding-bottom reserva a altura do composer (que flutua absolute/fixed) — os
+     balões (margin-top:auto) param logo acima dele, sem sobrepor a saudação. */
+  padding: 24px 16px calc(var(--axxa-composer-h, 80px) + 24px);
 }
-.axxa-newchat-inner {
+/* provider logo ABAIXO da saudação; margin-bottom auto empurra os balões pro fundo */
+.axxa-newchat-provider {
   width: 100%;
   max-width: 460px;
-  margin: auto 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  flex: 0 0 auto;
+  margin: 16px 0 auto;
 }
+/* saudação CENTRADA com o provider logo abaixo: margin-top auto (aqui) +
+   margin-bottom auto (no provider) centralizam o bloco welcome+provider. */
 .axxa-newchat-head {
+  margin: auto 0 0;
+  width: 100%;
+  max-width: 460px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 8px;
+  gap: 10px;
 }
 .axxa-newchat-model {
   display: flex;
@@ -7192,35 +8449,35 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-overlay {
 .axxa-newchat .axxa-seg-block .axxa-seg {
   height: 48px;
 }
-.axxa-newchat-active .axxa-composer-info,
-.axxa-newchat-active .axxa-composer-disclaimer {
-  display: none;
-}
-.axxa-newchat-active .axxa-composer-send {
-  padding: 24px;
-}
+/* avatar do modo — círculo com leve tinta da cor accent (intuitivo: "é a IA") */
 .axxa-newchat-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  width: 60px;
+  height: 60px;
   border-radius: 999px;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  background: var(--background-secondary);
+  background: color-mix(in srgb, var(--interactive-accent) 13%, transparent);
+  color: var(--interactive-accent);
 }
 .axxa-newchat-icon .svg-icon {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 .axxa-newchat-title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.4rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .axxa-newchat-sub {
   margin: 0;
+  max-width: 30ch;
   font-size: var(--font-ui-small);
   line-height: 1.45;
+  color: var(--text-muted);
 }
 .axxa-mpick {
   display: flex;

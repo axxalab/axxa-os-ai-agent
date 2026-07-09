@@ -20,7 +20,9 @@ import { SkillsScreen } from "../components/chat/SkillsScreen";
 import { Icon } from "../components/_shared/Icon";
 import { ChatArea } from "../components/chat/ChatArea";
 import { Composer } from "../components/composer/Composer";
+import { SuggestionsSheet } from "../components/composer/SuggestionsSheet";
 import { PlusModal } from "../components/composer/PlusModal";
+import { ModelSheet } from "../components/composer/ModelSheet";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
 import { ConversationsList } from "../components/chat/ConversationsList";
 import {
@@ -53,7 +55,11 @@ import { TranslationsContext, getTranslations } from "../i18n";
 import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { ProviderError, type ProviderMessage, type MessageAttachment } from "../providers/base";
-import { getModelCapabilities, isGenerationModel } from "../providers/modelCapabilities";
+import {
+  getModelCapabilities,
+  isGenerationModel,
+  supportsThinking,
+} from "../providers/modelCapabilities";
 import {
   buildChatSystemPrompt,
   storeMessagesToProvider,
@@ -71,6 +77,7 @@ import {
 } from "../components/_shared/effort";
 import { getContextWindow } from "../components/_shared/contextWindows";
 import { useWakeLock } from "../components/_shared/useWakeLock";
+import { setCloudTts } from "../components/_shared/speech";
 import {
   saveChat,
   loadChat,
@@ -108,6 +115,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const unsub = plugin.onSettingsChange(() => forceRender((n) => n + 1));
     return unsub;
   }, [plugin]);
+
+  // Cloud TTS: quando o ★ TTS de Connections → Models aponta pra OpenAI e há
+  // key, o read-aloud/Modo Voz passa a falar via nuvem; senão, nativo. v0.1.236
+  const ttsRole = plugin.roleModel("tts");
+  useEffect(() => {
+    if (ttsRole && ttsRole.provider === "openai" && plugin.settings.openaiApiKey) {
+      setCloudTts({
+        provider: "openai",
+        model: ttsRole.model,
+        apiKey: plugin.settings.openaiApiKey,
+      });
+    } else {
+      setCloudTts(null);
+    }
+  }, [ttsRole?.provider, ttsRole?.model, plugin.settings.openaiApiKey]);
 
   // (v0.1.127) Fullscreen REMOVIDO — o plugin não mexe mais no layout/chrome
   // do Obsidian. Fullscreen v3 virá depois via snippet do dev.
@@ -280,6 +302,30 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Modo Voz (ref: ChatGPT iOS 133/140, Grok 63/66). v0.1.192
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [modelSheetOpen, setModelSheetOpen] = useState(false);
+  // Favoritos do seletor de modelo — chaves "provider::model" (≤5 por provider).
+  // Só esses aparecem no bottom sheet; o resto vive no "More models". v0.1.236
+  const [favoriteModels, setFavoriteModels] = useState<string[]>(
+    plugin.settings.favoriteModels ?? []
+  );
+  const handleToggleFavorite = (model: string) => {
+    const key = `${activeProviderId}::${model}`;
+    setFavoriteModels((prev) => {
+      let next: string[];
+      if (prev.includes(key)) {
+        next = prev.filter((k) => k !== key);
+      } else {
+        const count = prev.filter((k) =>
+          k.startsWith(`${activeProviderId}::`)
+        ).length;
+        if (count >= 5) return prev; // teto de 5 por provider
+        next = [...prev, key];
+      }
+      plugin.settings.favoriteModels = next;
+      void plugin.saveSettings();
+      return next;
+    });
+  };
   const [voiceURI, setVoiceURI] = useState(plugin.settings.voiceURI);
   const [voiceRate, setVoiceRate] = useState(plugin.settings.voiceRate);
   const [voiceIntroDone, setVoiceIntroDone] = useState(
@@ -359,6 +405,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [composerInject, setComposerInject] = useState<
     { text: string; nonce: number } | undefined
   >(undefined);
+  // Editor do composer vazio? Gateia os balões de sugestão (somem ao digitar).
+  // Flip-guarded: só re-renderiza quando cruza a fronteira vazio↔texto (não a
+  // cada tecla — o rascunho em si continua num ref pra não re-renderizar tudo).
+  const [composerEmpty, setComposerEmpty] = useState(true);
+  // "See more" dos balões → bottom sheet com a lista completa do modo (ou null).
+  const [suggestSheetOpen, setSuggestSheetOpen] = useState(false);
 
   // Gaveta lateral (avatar do header) com as conversas. v0.1.145
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1056,6 +1108,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // da gaveta). Mesma lógica do handleNewChat + fixa o modo da sessão. v0.1.219
   const handleNewChatWithMode = (newMode: string) => {
     abortRef.current?.abort();
+    // Limpa um prompt-starter pendente ANTES do remount do Composer (key=mode):
+    // sem isso o editor recém-montado re-injeta o texto da sugestão antiga.
+    setComposerInject(undefined);
     setMode(newMode);
     useChatStore.getState().newChat();
     setCleanChat(true);
@@ -1269,6 +1324,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   };
 
   const handleStarterMode = async (newMode: string) => {
+    // Limpa o prompt-starter pendente antes do remount do Composer (key=mode) —
+    // senão trocar de modo re-injeta a sugestão que já tinha sido apagada.
+    setComposerInject(undefined);
     setMode(newMode);
     plugin.settings.defaultMode = newMode;
     await plugin.saveSettings();
@@ -1604,12 +1662,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             mode={activeMode}
             plugin={plugin}
             provider={providerSel}
-            model={starterModel}
-            activeModels={plugin.settings.activeModels}
             onProviderChange={handleStarterProvider}
-            onModelChange={handleStarterModel}
-            onArenaConfirm={handleArenaConfirm}
             onOpenSettings={handleOpenSettings}
+            onPickSuggestion={handlePromptStarter}
+            onSeeMoreSuggestions={() => setSuggestSheetOpen(true)}
+            showSuggestions={composerEmpty}
           />
         ) : (
           <ChatArea highlightTarget={searchTarget} />
@@ -1633,10 +1690,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         )}
         {view === "chat" && (
           <Composer
+            key={activeMode}
             onSend={handleSend}
             onStop={handleStop}
             onPlusClick={handlePlusClick}
-            onDraftChange={(text) => (composerDraftRef.current = text)}
+            onOpenVoice={() => setVoiceOpen(true)}
+            onOpenModel={() => setModelSheetOpen(true)}
+            onDraftChange={(text) => {
+              composerDraftRef.current = text;
+              const empty = text.trim().length === 0;
+              setComposerEmpty((prev) => (prev === empty ? prev : empty));
+            }}
             injectText={composerInject}
             streaming={isLoading}
             providerName={activeProvider.name}
@@ -1817,6 +1881,32 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 })();
                 setPendingAttachments((prev) => [...prev, entry]);
               }}
+            />
+          )}
+          {modelSheetOpen && (
+            <ModelSheet
+              provider={activeProviderId}
+              models={activeModelsList}
+              favorites={favoriteModels}
+              onToggleFavorite={handleToggleFavorite}
+              currentModel={activeModel}
+              onSelectModel={handleHeaderModelSelect}
+              currentEffort={effort}
+              onSelectEffort={handleSelectEffort}
+              thinkingOn={Boolean(plusToggles.extendedThinking)}
+              onToggleThinking={(v) =>
+                setPlusToggles((prev) => ({ ...prev, extendedThinking: v }))
+              }
+              onOpenSettings={handleOpenSettings}
+              thinkingCapable={supportsThinking(activeModel)}
+              onClose={() => setModelSheetOpen(false)}
+            />
+          )}
+          {suggestSheetOpen && (
+            <SuggestionsSheet
+              mode={activeMode}
+              onPick={handlePromptStarter}
+              onClose={() => setSuggestSheetOpen(false)}
             />
           )}
           {projectEditor && (

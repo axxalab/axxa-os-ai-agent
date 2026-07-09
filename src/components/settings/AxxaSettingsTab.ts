@@ -90,9 +90,20 @@ import {
   ALL_MODALITIES,
 } from "../../providers/modelModality";
 import { getModelCard, CATEGORY_LABELS } from "../../providers/modelDescriptions";
+import { getModelFamily, type ModelFamily } from "../../providers/modelFamily";
+import {
+  categoryToRole,
+  ROLE_ORDER,
+  ROLE_LABELS,
+  ROLE_DESC,
+  ROLE_ICONS,
+  type RoleId,
+} from "../../providers/modelRoles";
 import {
   modelVendorLogoId,
   modelVendorLabel,
+  getModelVendor,
+  type ModelVendor,
 } from "../_shared/modelLogo";
 import { getHotLevel, hotLabel } from "../../providers/dataCollect";
 import {
@@ -102,7 +113,7 @@ import {
 } from "../../usage/export";
 
 type TopTabId =
-  | "providers"
+  | "connections"
   | "setup"
   | "appearance"
   | "effort"
@@ -117,6 +128,23 @@ type ProviderTabId =
   | "ollama";
 type OutrosTabId = "geral" | "ui" | "agent" | "rag" | "usage";
 type AppearanceTabId = "background" | "chips" | "ui";
+type ConnTabId = "providers" | "models";
+
+/** Entrada agregada do editor de Models: um modelo (id normalizado) + de quais
+ *  providers conectados ele vem (dedup cross-provider) + papel + família. */
+interface ModelEntry {
+  norm: string;
+  role: RoleId;
+  vendor: ModelVendor;
+  family: ModelFamily;
+  byProvider: Record<string, string>;
+}
+
+/** Grupo de um vendor dentro de um papel: o vendor + suas famílias. */
+interface VendorGroup {
+  vendor: ModelVendor;
+  families: Map<string, ModelEntry[]>;
+}
 
 // Filtros da lista de modelos (Settings → Providers). v0.1.150
 type ModelFilterId =
@@ -137,10 +165,28 @@ const MODEL_FILTERS: { id: ModelFilterId; label: string; icon: string }[] = [
   { id: "audio-gen", label: "Áudio", icon: "volume-2" },
 ];
 
+/** Logo de cada PROVIDER (registrado em registerBrandLogos). Usado no início de
+ *  cada linha do editor de Models e no seletor de provider. v0.1.236 */
+const PROVIDER_LOGOS: Record<string, string> = {
+  openai: "logo-openai",
+  anthropic: "logo-anthropic",
+  gemini: "logo-gemini",
+  openrouter: "logo-openrouter",
+  nim: "logo-nvidia",
+  ollama: "logo-ollama",
+};
+
 export class AxxaSettingsTab extends PluginSettingTab {
   plugin: AxxaPlugin;
   /** Top-level tab (Providers / Outros) */
-  private activeTopTab: TopTabId = "providers";
+  private activeTopTab: TopTabId = "connections";
+  /** Sub-tab de Connections: Providers (conexão) | Models (seleção por papel). */
+  private activeConnTab: ConnTabId = "providers";
+  /** Accordions ABERTOS no editor de Models (keys: "<role>", "<role>:<vendor>",
+   *  "<role>:<vendor>:<family>"). Vazio = tudo colapsado por default. v0.1.236 */
+  private modelsOpen: Set<string> = new Set();
+  /** Filtro por família (key = "<role>:<vendor>:<family>"): all | sel | unsel. */
+  private modelsFilter: Map<string, string> = new Map();
   /** Sub-tab quando topTab = providers */
   private activeProviderTab: ProviderTabId = "openai";
   /** Cache dos modelos buscados por provider (sobrevive a re-render do tab,
@@ -190,7 +236,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // Top-level tabs (Providers / Outros)
     // ============================================================
     const topTabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
-    this.createTopTabButton(topTabsEl, "providers", t.settings.topTabs.providers);
+    this.createTopTabButton(topTabsEl, "connections", "Connections");
     this.createTopTabButton(topTabsEl, "setup", t.settings.topTabs.setup);
     this.createTopTabButton(topTabsEl, "appearance", t.settings.topTabs.appearance);
     this.createTopTabButton(topTabsEl, "effort", t.settings.topTabs.effort);
@@ -203,8 +249,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const contentEl = containerEl.createDiv({ cls: "axxa-settings-content" });
 
     switch (this.activeTopTab) {
-      case "providers":
-        this.renderProvidersTab(contentEl, t);
+      case "connections":
+        this.renderConnectionsTab(contentEl, t);
         break;
       case "setup":
         this.renderSetupTab(contentEl, t);
@@ -736,6 +782,552 @@ export class AxxaSettingsTab extends PluginSettingTab {
       hapticTick();
       this.activeProviderTab = id;
       this.display();
+    };
+  }
+
+  // ============================================================
+  // CONNECTIONS — wrapper com sub-tabs [Providers | Models]. v0.1.236
+  //   Providers = conexão (key + status). Models = seleção por PAPEL,
+  //   cross-provider, com ★ (default de cada função) + dedup de provider.
+  // ============================================================
+  private renderConnectionsTab(parent: HTMLElement, t: Translations) {
+    const seg = parent.createDiv({
+      cls: "axxa-settings-subtabs axxa-conn-seg",
+    });
+    const mk = (id: ConnTabId, label: string, icon: string) => {
+      const btn = seg.createEl("button", {
+        cls:
+          "axxa-subtab-btn axxa-conn-seg-btn" +
+          (this.activeConnTab === id ? " axxa-subtab-active" : ""),
+        attr: { type: "button" },
+      });
+      setIcon(btn.createSpan({ cls: "axxa-conn-seg-ico" }), icon);
+      btn.createSpan({ text: label });
+      btn.onclick = () => {
+        hapticTick();
+        this.activeConnTab = id;
+        this.display();
+      };
+    };
+    mk("providers", "Providers", "plug");
+    mk("models", "Models", "layers");
+
+    const body = parent.createDiv({ cls: "axxa-conn-body" });
+    if (this.activeConnTab === "providers") {
+      this.renderProvidersTab(body, t);
+    } else {
+      this.renderModelsTab(body, t);
+    }
+  }
+
+  /** Providers conectados = têm key (ou endpoint, no Ollama). */
+  private connectedProviderIds(): string[] {
+    const s = this.plugin.settings;
+    const ids: string[] = [];
+    if (s.openaiApiKey) ids.push("openai");
+    if (s.anthropicApiKey) ids.push("anthropic");
+    if (s.geminiApiKey) ids.push("gemini");
+    if (s.openrouterApiKey) ids.push("openrouter");
+    if (s.nimApiKey) ids.push("nim");
+    if (s.ollamaEndpoint) ids.push("ollama");
+    return ids;
+  }
+
+  /** ID normalizado pra dedup cross-provider: tira o namespace (openai/gpt-4o →
+   *  gpt-4o, meta-llama/llama-3.3 → llama-3.3) e baixa pra minúsculo. */
+  private normModelId(model: string): string {
+    const leaf = model.includes("/")
+      ? model.slice(model.lastIndexOf("/") + 1)
+      : model;
+    return leaf.toLowerCase();
+  }
+
+  /** Junta os modelos dos providers conectados, deduplicados por norm, com
+   *  vendor + família + papel. Embeddings entram por fora (discoveredEmbeddings
+   *  + o ★ atual do RAG) já que não vivem em activeModels. */
+  private gatherModelEntries(connected: string[]): Map<string, ModelEntry> {
+    const s = this.plugin.settings;
+    const entries = new Map<string, ModelEntry>();
+    const add = (prov: string, m: string, forceRole?: RoleId) => {
+      if (!m) return;
+      const norm = this.normModelId(m);
+      let e = entries.get(norm);
+      if (!e) {
+        const caps = getModelCapabilities(prov, m);
+        const card = getModelCard(prov, m, caps);
+        const role =
+          forceRole ??
+          (/embed/i.test(m) ? "embedding" : categoryToRole(card.category));
+        e = {
+          norm,
+          role,
+          vendor: getModelVendor(m),
+          family: getModelFamily(m),
+          byProvider: {},
+        };
+        entries.set(norm, e);
+      }
+      e.byProvider[prov] = m;
+    };
+    for (const prov of connected) {
+      for (const m of new Set<string>([
+        ...(s.activeModels[prov] ?? []),
+        ...(this.modelCache[prov] ?? []),
+      ])) {
+        add(prov, m);
+      }
+      const embeds = new Set<string>(s.discoveredEmbeddings[prov] ?? []);
+      if (s.ragEmbeddingProvider === prov && s.ragEmbeddingModel) {
+        embeds.add(s.ragEmbeddingModel);
+      }
+      for (const m of embeds) add(prov, m, "embedding");
+    }
+    return entries;
+  }
+
+  /** Provider escolhido pra uma entrada deduplicada: preferência salva → o que
+   *  for o ★ do papel → o primeiro. */
+  private entryProvider(e: ModelEntry): string {
+    const provs = Object.keys(e.byProvider);
+    const pref = this.plugin.settings.modelProvider[e.norm];
+    if (pref && e.byProvider[pref]) return pref;
+    const role = this.plugin.settings.roleModels[e.role];
+    if (role && e.byProvider[role.provider] && this.normModelId(role.model) === e.norm) {
+      return role.provider;
+    }
+    return provs[0];
+  }
+
+  /** Write-through do ★: grava nos campos legados que os consumidores JÁ leem
+   *  hoje (chat → defaultProvider + modelo do provider; embedding →
+   *  ragEmbeddingModel). image/video/tts são lidos via plugin.roleModel(). */
+  private applyRoleSideEffects(role: RoleId, model: string, provider: string) {
+    const s = this.plugin.settings;
+    if (role === "chat") {
+      s.defaultProvider = provider;
+      switch (provider) {
+        case "anthropic":
+          s.anthropicModel = model;
+          break;
+        case "gemini":
+          s.geminiModel = model;
+          break;
+        case "openrouter":
+          s.openrouterModel = model;
+          break;
+        case "nim":
+          s.nimModel = model;
+          break;
+        case "ollama":
+          s.ollamaModel = model;
+          break;
+        default:
+          s.defaultModel = model;
+          break;
+      }
+    } else if (role === "embedding") {
+      s.ragEmbeddingModel = model;
+      s.ragEmbeddingProvider = provider;
+      new Notice("Embedding model set — reindex the Vault (Setup → RAG) to apply.");
+    }
+  }
+
+  // ============================================================
+  // MODELS — seleção por papel (cross-provider, famílias colapsáveis, ★).
+  // ============================================================
+  private renderModelsTab(parent: HTMLElement, t: Translations) {
+    parent.createEl("p", {
+      cls: "setting-item-description",
+      text:
+        "Pick the models the plugin uses, grouped by function. ★ sets the default for each role (chat, image, text-to-speech, embedding…). The same model from two providers is merged — pick the source.",
+    });
+
+    const connected = this.connectedProviderIds();
+    if (connected.length === 0) {
+      const empty = parent.createDiv({ cls: "axxa-models-empty" });
+      setIcon(empty.createSpan({ cls: "axxa-models-empty-ico" }), "plug-zap");
+      empty.createEl("p", { text: "No providers connected yet." });
+      const btn = empty.createEl("button", {
+        text: "Connect a provider",
+        cls: "axxa-models-empty-btn",
+        attr: { type: "button" },
+      });
+      btn.onclick = () => {
+        this.activeConnTab = "providers";
+        this.display();
+      };
+      return;
+    }
+
+    const entries = this.gatherModelEntries(connected);
+    // role → vendorId → { vendor, families: familyId → entries[] }
+    const byRole = new Map<RoleId, Map<string, VendorGroup>>();
+    for (const e of entries.values()) {
+      if (!byRole.has(e.role)) byRole.set(e.role, new Map());
+      const vmap = byRole.get(e.role)!;
+      let vg = vmap.get(e.vendor.id);
+      if (!vg) {
+        vg = { vendor: e.vendor, families: new Map() };
+        vmap.set(e.vendor.id, vg);
+      }
+      let arr = vg.families.get(e.family.id);
+      if (!arr) {
+        arr = [];
+        vg.families.set(e.family.id, arr);
+      }
+      arr.push(e);
+    }
+
+    const wrap = parent.createDiv({ cls: "axxa-models-tab" });
+    let any = false;
+    for (const role of ROLE_ORDER) {
+      const vmap = byRole.get(role);
+      if (!vmap || vmap.size === 0) continue;
+      any = true;
+      this.renderRoleSection(wrap, t, role, vmap);
+    }
+    if (!any) {
+      wrap.createEl("p", {
+        cls: "axxa-active-models-empty",
+        text: "No models yet. Open Providers → Fetch from API to populate the list.",
+      });
+    }
+  }
+
+  private vendorEntryCount(vg: VendorGroup): number {
+    let n = 0;
+    for (const arr of vg.families.values()) n += arr.length;
+    return n;
+  }
+
+  /** Toggle de um accordion (atualiza modelsOpen + classes, sem re-render). */
+  private toggleOpen(key: string, body: HTMLElement, head: HTMLElement) {
+    if (this.modelsOpen.has(key)) this.modelsOpen.delete(key);
+    else this.modelsOpen.add(key);
+    const nowOpen = this.modelsOpen.has(key);
+    body.toggleClass("axxa-hidden", !nowOpen);
+    head.toggleClass("is-open", nowOpen);
+  }
+
+  // Nível 1 — MODO (papel): accordion colapsado por default.
+  private renderRoleSection(
+    parent: HTMLElement,
+    t: Translations,
+    role: RoleId,
+    vmap: Map<string, VendorGroup>
+  ) {
+    const key = role;
+    const open = this.modelsOpen.has(key);
+    const sec = parent.createDiv({ cls: "axxa-role-section" });
+    const head = sec.createEl("button", {
+      cls: "axxa-role-head" + (open ? " is-open" : ""),
+      attr: { type: "button" },
+    });
+    setIcon(head.createSpan({ cls: "axxa-role-ico" }), ROLE_ICONS[role]);
+    const txt = head.createDiv({ cls: "axxa-role-head-txt" });
+    txt.createSpan({ text: ROLE_LABELS[role], cls: "axxa-role-label" });
+    txt.createSpan({ text: ROLE_DESC[role], cls: "axxa-role-desc" });
+    // ★ atual do papel (visível mesmo recolhido).
+    const cur = this.plugin.settings.roleModels[role];
+    const curEl = head.createSpan({ cls: "axxa-role-current" });
+    if (cur) {
+      setIcon(curEl.createSpan({ cls: "axxa-role-current-ico" }), "star");
+      curEl.createSpan({
+        text: this.normModelId(cur.model),
+        cls: "axxa-role-current-name",
+      });
+    } else {
+      curEl.addClass("is-unset");
+      curEl.setText("no default");
+    }
+    const chev = head.createSpan({ cls: "axxa-role-chev" });
+    setIcon(chev, "chevron-down");
+
+    const body = sec.createDiv({
+      cls: "axxa-role-body" + (open ? "" : " axxa-hidden"),
+    });
+    const vendorIds = Array.from(vmap.keys()).sort((a, b) => {
+      const d = this.vendorEntryCount(vmap.get(b)!) - this.vendorEntryCount(vmap.get(a)!);
+      return d !== 0
+        ? d
+        : vmap.get(a)!.vendor.label.localeCompare(vmap.get(b)!.vendor.label);
+    });
+    for (const vid of vendorIds) {
+      this.renderVendorGroup(body, t, role, vid, vmap.get(vid)!);
+    }
+
+    head.onclick = () => this.toggleOpen(key, body, head);
+  }
+
+  // Nível 2 — VENDOR (maker): accordion colapsado por default.
+  private renderVendorGroup(
+    parent: HTMLElement,
+    t: Translations,
+    role: RoleId,
+    vendorId: string,
+    vg: VendorGroup
+  ) {
+    const key = role + ":" + vendorId;
+    const open = this.modelsOpen.has(key);
+    const grp = parent.createDiv({ cls: "axxa-vendor-group" });
+    const head = grp.createEl("button", {
+      cls: "axxa-vendor-head" + (open ? " is-open" : ""),
+      attr: { type: "button" },
+    });
+    const rep = [...vg.families.values()][0]?.[0];
+    const ico = head.createSpan({ cls: "axxa-vendor-ico" });
+    const vlogo = rep
+      ? modelVendorLogoId(
+          this.entryProvider(rep),
+          rep.byProvider[this.entryProvider(rep)]
+        )
+      : null;
+    if (vlogo) {
+      setIcon(ico, vlogo);
+    } else {
+      ico.addClass("axxa-logo-missing");
+      ico.setText("🟣");
+    }
+    head.createSpan({ text: vg.vendor.label, cls: "axxa-vendor-label" });
+    const fc = vg.families.size;
+    head.createSpan({
+      cls: "axxa-vendor-summary",
+      text: fc + (fc === 1 ? " family" : " families"),
+    });
+    const chev = head.createSpan({ cls: "axxa-vendor-chev" });
+    setIcon(chev, "chevron-down");
+
+    const body = grp.createDiv({
+      cls: "axxa-vendor-body" + (open ? "" : " axxa-hidden"),
+    });
+    const famIds = Array.from(vg.families.keys()).sort((a, b) => {
+      const d = vg.families.get(b)!.length - vg.families.get(a)!.length;
+      return d !== 0 ? d : a.localeCompare(b);
+    });
+    for (const fid of famIds) {
+      this.renderFamilyGroup(body, t, role, vendorId, vg.families.get(fid)!);
+    }
+
+    head.onclick = () => this.toggleOpen(key, body, head);
+  }
+
+  // Nível 3 — FAMÍLIA: accordion colapsado; body = filtro + linhas.
+  private renderFamilyGroup(
+    parent: HTMLElement,
+    t: Translations,
+    role: RoleId,
+    vendorId: string,
+    entries: ModelEntry[]
+  ) {
+    const fam = entries[0].family;
+    const key = role + ":" + vendorId + ":" + fam.id;
+    const open = this.modelsOpen.has(key);
+
+    const grp = parent.createDiv({ cls: "axxa-fam-group" });
+    const head = grp.createEl("button", {
+      cls: "axxa-fam-head" + (open ? " is-open" : ""),
+      attr: { type: "button" },
+    });
+    const ico = head.createSpan({ cls: "axxa-fam-ico" });
+    setIcon(ico, fam.icon);
+    ico.style.color = fam.color;
+    head.createSpan({ text: fam.label, cls: "axxa-fam-label" });
+    const onCount = entries.filter((e) => {
+      const prov = this.entryProvider(e);
+      return (this.plugin.settings.activeModels[prov] ?? []).includes(
+        e.byProvider[prov]
+      );
+    }).length;
+    head.createSpan({
+      cls: "axxa-fam-summary",
+      text:
+        entries.length +
+        (entries.length === 1 ? " model" : " models") +
+        (onCount ? " · " + onCount + " on" : ""),
+    });
+    const chev = head.createSpan({ cls: "axxa-fam-chev" });
+    setIcon(chev, "chevron-down");
+
+    const body = grp.createDiv({
+      cls: "axxa-fam-body" + (open ? "" : " axxa-hidden"),
+    });
+    // Filtro: All / Selected / Not selected.
+    const filter = this.modelsFilter.get(key) ?? "all";
+    const fbar = body.createDiv({ cls: "axxa-fam-filter" });
+    const FOPTS: [string, string][] = [
+      ["all", "All"],
+      ["sel", "Selected"],
+      ["unsel", "Not selected"],
+    ];
+    for (const [fid, flabel] of FOPTS) {
+      const opt = fbar.createEl("button", {
+        cls: "axxa-fam-filter-opt" + (filter === fid ? " is-sel" : ""),
+        text: flabel,
+        attr: { type: "button" },
+      });
+      opt.onclick = (ev: MouseEvent) => {
+        ev.stopPropagation();
+        this.modelsFilter.set(key, fid);
+        this.display();
+      };
+    }
+    const rows = entries
+      .slice()
+      .sort((a, b) => a.norm.localeCompare(b.norm))
+      .filter((e) => {
+        if (filter === "all") return true;
+        const prov = this.entryProvider(e);
+        const on = (this.plugin.settings.activeModels[prov] ?? []).includes(
+          e.byProvider[prov]
+        );
+        return filter === "sel" ? on : !on;
+      });
+    for (const e of rows) this.renderRoleModelRow(body, t, role, e);
+
+    head.onclick = () => this.toggleOpen(key, body, head);
+  }
+
+  // Linha do modelo: [vendor logo] nome + badge do provider + tier/tags +
+  // [♥ favorito] [★ default] [switch select].
+  private renderRoleModelRow(
+    parent: HTMLElement,
+    t: Translations,
+    role: RoleId,
+    e: ModelEntry
+  ) {
+    const prov = this.entryProvider(e);
+    const model = e.byProvider[prov];
+    const caps = getModelCapabilities(prov, model);
+    const favKey = prov + "::" + model;
+
+    const isOn = () =>
+      (this.plugin.settings.activeModels[prov] ?? []).includes(model);
+    const isFav = () =>
+      (this.plugin.settings.favoriteModels ?? []).includes(favKey);
+    const isDefault = () => {
+      const r = this.plugin.settings.roleModels[role];
+      return !!r && r.provider === prov && this.normModelId(r.model) === e.norm;
+    };
+
+    const row = parent.createEl("button", {
+      cls:
+        "axxa-model-opt axxa-model-toggle-row axxa-role-row" +
+        (isOn() ? " axxa-model-opt-active" : "") +
+        (isDefault() ? " is-default" : ""),
+      attr: { type: "button", "aria-pressed": String(isOn()) },
+    });
+
+    // Logo do VENDOR (maker) no início.
+    const logo = row.createSpan({
+      cls: "axxa-model-opt-logo",
+      attr: { title: e.vendor.label },
+    });
+    const vlogo = modelVendorLogoId(prov, model);
+    if (vlogo) {
+      setIcon(logo, vlogo);
+    } else {
+      logo.addClass("axxa-logo-missing");
+      logo.setText("🟣");
+    }
+
+    const main = row.createSpan({ cls: "axxa-model-opt-main" });
+    const nameRow = main.createSpan({ cls: "axxa-model-toggle-namerow" });
+    nameRow.createSpan({
+      text: this.normModelId(model),
+      cls: "axxa-model-opt-name",
+    });
+    // Badge do provider (logo + nome) — onde o modelo é servido.
+    const pBadge = nameRow.createSpan({
+      cls: "axxa-row-provbadge",
+      attr: { title: "Served by " + prov },
+    });
+    const plogo = PROVIDER_LOGOS[prov];
+    if (plogo) {
+      setIcon(pBadge.createSpan({ cls: "axxa-row-provbadge-ico" }), plogo);
+    }
+    pBadge.createSpan({ text: prov, cls: "axxa-row-provbadge-txt" });
+    // Tier.
+    const pricing = getPricing(prov, model);
+    const tier =
+      pricing.tier && pricing.tier !== "unknown"
+        ? pricing.tier
+        : caps.free
+          ? "free"
+          : "unknown";
+    nameRow.createSpan({
+      text: tier === "free" ? "FREE" : tier === "paid" ? "PAID" : "?",
+      cls: "axxa-model-tier axxa-model-tier-" + tier,
+    });
+    // Tags de modalidade.
+    const mods = modelModalities(caps, model);
+    if (mods.length > 0) {
+      const modRow = main.createSpan({ cls: "axxa-model-modality-row" });
+      for (const code of mods) {
+        const info = MODALITY_INFO[code];
+        modRow.createSpan({
+          cls: "axxa-model-modality-chip",
+          text: code,
+          attr: { title: info.label + " — " + info.description },
+        });
+      }
+    }
+
+    const ctrls = row.createSpan({ cls: "axxa-model-toggle-ctrls" });
+
+    // ♥ FAVORITE — favoritos do composer (chave "provider::model").
+    const fav = ctrls.createSpan({
+      cls: "axxa-model-fav" + (isFav() ? " is-fav" : ""),
+      attr: { title: "Favorite (composer quick-pick)", "aria-label": "Favorite" },
+    });
+    setIcon(fav, "bookmark");
+    fav.onclick = async (ev: MouseEvent) => {
+      ev.stopPropagation();
+      const arr = this.plugin.settings.favoriteModels ?? [];
+      const i = arr.indexOf(favKey);
+      if (i < 0) arr.push(favKey);
+      else arr.splice(i, 1);
+      this.plugin.settings.favoriteModels = arr;
+      await this.plugin.saveSettings();
+      fav.toggleClass("is-fav", arr.includes(favKey));
+    };
+
+    // ★ DEFAULT — o modelo do papel (write-through nos campos legados).
+    const star = ctrls.createSpan({
+      cls: "axxa-model-star" + (isDefault() ? " is-default" : ""),
+      attr: {
+        title: "Set as default for " + ROLE_LABELS[role],
+        "aria-label": "Set as default",
+      },
+    });
+    setIcon(star, "star");
+    star.onclick = async (ev: MouseEvent) => {
+      ev.stopPropagation();
+      this.plugin.settings.roleModels[role] = { model, provider: prov };
+      const list = this.plugin.settings.activeModels[prov] ?? [];
+      if (!list.includes(model)) {
+        list.push(model);
+        this.plugin.settings.activeModels[prov] = list;
+      }
+      this.applyRoleSideEffects(role, model, prov);
+      await this.plugin.saveSettings();
+      this.display();
+    };
+
+    // SELECT — switch (clique na linha liga/desliga no plugin).
+    const sw = ctrls.createSpan({
+      cls: "axxa-model-toggle-switch" + (isOn() ? " is-on" : ""),
+    });
+    row.onclick = async () => {
+      const list = this.plugin.settings.activeModels[prov] ?? [];
+      const idx = list.indexOf(model);
+      const nowOn = idx < 0;
+      if (nowOn) list.push(model);
+      else list.splice(idx, 1);
+      this.plugin.settings.activeModels[prov] = list;
+      await this.plugin.saveSettings();
+      row.toggleClass("axxa-model-opt-active", nowOn);
+      sw.toggleClass("is-on", nowOn);
+      row.setAttr("aria-pressed", String(nowOn));
     };
   }
 

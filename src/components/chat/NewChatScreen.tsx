@@ -7,11 +7,11 @@
 
 import { Icon } from "../_shared/Icon";
 import { SegmentedRow } from "../_shared/SegmentedRow";
+import { ComposerSuggestions } from "../composer/ComposerSuggestions";
 import { hapticTick } from "../_shared/haptics";
 import { useT } from "../../i18n";
 import type AxxaPlugin from "../../main";
 import { PROVIDERS, providerConfigured } from "./StarterScreen";
-import { ModelPicker } from "./ModelPicker";
 
 /** Ícone + textos por modo. chat | vault-qa | agent. */
 function modeBits(mode: string, t: ReturnType<typeof useT>) {
@@ -41,15 +41,15 @@ interface NewChatScreenProps {
   mode: string;
   plugin: AxxaPlugin;
   provider: string;
-  model: string;
-  /** Modelos ativos por provider — curado nas Settings (mesma fonte da starter). */
-  activeModels: Record<string, string[]>;
   onProviderChange: (provider: string) => void;
-  onModelChange: (model: string) => void;
-  /** Confirma provider + modelo juntos (a arena navega entre providers). */
-  onArenaConfirm: (provider: string, model: string) => void;
   /** "+" no provider / abrir Settings. */
   onOpenSettings: () => void;
+  /** Injeta o prompt do balão de sugestão no composer. */
+  onPickSuggestion: (text: string) => void;
+  /** Abre o bottom sheet "See more" com a lista completa do modo. */
+  onSeeMoreSuggestions: () => void;
+  /** Mostra os balões (chat vazio + editor do composer ainda vazio). */
+  showSuggestions: boolean;
 }
 
 const PROVIDER_ADD = "__add__";
@@ -58,16 +58,14 @@ export function NewChatScreen({
   mode,
   plugin,
   provider,
-  model,
-  activeModels,
   onProviderChange,
-  onModelChange,
-  onArenaConfirm,
   onOpenSettings,
+  onPickSuggestion,
+  onSeeMoreSuggestions,
+  showSuggestions,
 }: NewChatScreenProps) {
   const t = useT();
   const { icon, title, sub } = modeBits(mode, t);
-  const modelOptions = activeModels[provider] ?? [];
 
   // Provider segmented: só os CONFIGURADOS (+ garante o atual) e um "+" no fim
   // que abre Settings — idêntico à StarterScreen. v0.1.220
@@ -82,16 +80,17 @@ export function NewChatScreen({
 
   return (
     <div className="axxa-newchat" data-mode={mode}>
-      <div className="axxa-newchat-inner">
-        <div className="axxa-newchat-head">
-          <span className="axxa-newchat-icon">
-            <Icon name={icon} />
-          </span>
-          <h2 className="axxa-newchat-title">{title}</h2>
-          <p className="axxa-newchat-sub">{sub}</p>
-        </div>
+      {/* Disposição: saudação (welcome) CENTRADA · seletor de provider logo
+          ABAIXO dela · balões no FUNDO (acima do composer). */}
+      <div className="axxa-newchat-head">
+        <span className="axxa-newchat-icon">
+          <Icon name={icon} />
+        </span>
+        <h2 className="axxa-newchat-title">{title}</h2>
+        <p className="axxa-newchat-sub">{sub}</p>
+      </div>
 
-        {/* Provider — mesmo seg-block da StarterScreen (ícone-only + label). */}
+      <div className="axxa-newchat-provider">
         <div className="axxa-seg-block">
           <span className="axxa-seg-head">
             {t.starter.providerLabel}
@@ -112,20 +111,17 @@ export function NewChatScreen({
             }}
           />
         </div>
-
-        {/* Modelo — seletor redesenhado (tabs por categoria + modal + favoritos). */}
-        <div className="axxa-newchat-model">
-          <label className="axxa-starter-label">{t.starter.modelLabel}</label>
-          <ModelPicker
-            provider={provider}
-            model={model}
-            modelOptions={modelOptions}
-            onModelChange={onModelChange}
-            onArenaConfirm={onArenaConfirm}
-            plugin={plugin}
-          />
-        </div>
       </div>
+
+      {/* Balões — no fundo, acima do composer (o .axxa-newchat reserva a altura
+          dele). 3 visíveis + "See more" → bottom sheet com a lista completa. */}
+      {showSuggestions && (
+        <ComposerSuggestions
+          mode={mode}
+          onPick={onPickSuggestion}
+          onSeeMore={onSeeMoreSuggestions}
+        />
+      )}
     </div>
   );
 }
