@@ -19,6 +19,24 @@ body.is-mobile
 .view-content {
   padding-bottom: var(--size-4-1) !important;
 }
+/* Navbar mobile: reserva o padding do composer ACIMA da navbar nativa.
+   :not(.axxa-fullscreen) = regra do modo normal; fullscreen (futuro) opta
+   por sair dela. NÃO remover como órfã — :not() de classe ausente CASA. */
+@supports selector(body:has(*)) {
+  body.is-mobile:not(.axxa-fullscreen):has(.mobile-navbar):not(.is-hidden-nav)
+    .workspace-tab-container
+    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+    .view-content {
+    padding-bottom: calc(
+            var(--navbar-height, 50px) +
+            max(
+                var(--safe-area-inset-bottom, 0px),
+                var(--size-4-3)
+            ) +
+            var(--size-4-1)
+        ) !important;
+  }
+}
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] {
   position: relative;
   isolation: auto;

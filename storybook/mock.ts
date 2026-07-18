@@ -156,6 +156,7 @@ export const mockPlugin: any = {
     composerChips: ["model", "effort", "speed", "in", "out"],
     listChips: ["mode", "model", "date"],
     effortConfigs: {},
+    mobileFullscreen: false,
     openaiDataSharing: false,
     openaiUsageTier: 1,
     openaiAdminKey: "",
