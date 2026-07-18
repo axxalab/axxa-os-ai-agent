@@ -1,0 +1,300 @@
+/* storybook/theme.css
+   Variáveis do tema do Obsidian (aproximação do default theme) + chrome do
+   próprio storybook. Só pro preview — o plugin real herda essas vars do app. */
+
+:root,
+body {
+  --font-interface: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Inter", sans-serif;
+  --font-text: var(--font-interface);
+  --font-monospace: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo,
+    monospace;
+  --font-ui-smaller: 12px;
+  --font-ui-small: 13px;
+  --font-ui-medium: 15px;
+  --font-ui-large: 20px;
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --shadow-l: 0 8px 40px rgba(0, 0, 0, 0.25);
+  --size-2-1: 2px;
+  --size-2-2: 4px;
+  --size-2-3: 6px;
+  --size-4-1: 4px;
+  --size-4-2: 8px;
+  --size-4-3: 12px;
+  --size-4-4: 16px;
+  --color-red: #e93147;
+  --color-green: #08b94e;
+  --safe-area-inset-bottom: 0px;
+  --keyboard-height: 0px;
+  --navbar-height: 0px;
+}
+
+/* ── Light ── */
+body.theme-light {
+  --background-primary: #ffffff;
+  --background-primary-alt: #fafafa;
+  --background-secondary: #f6f6f6;
+  --background-secondary-alt: #e3e3e3;
+  --background-modifier-border: #e0e0e0;
+  --background-modifier-border-hover: #cfcfcf;
+  --background-modifier-border-focus: #b8b8b8;
+  --background-modifier-hover: rgba(0, 0, 0, 0.06);
+  --background-modifier-form-field: #ffffff;
+  --background-modifier-cover: rgba(0, 0, 0, 0.35);
+  --background-modifier-error: #ffdadf;
+  --text-normal: #222222;
+  --text-muted: #5c5c5c;
+  --text-faint: #999999;
+  --text-error: #e93147;
+  --text-accent: #705dcf;
+  --text-on-accent: #ffffff;
+  --interactive-accent: #7c68ee;
+  --interactive-accent-hover: #6a56dd;
+  --interactive-normal: #f2f3f5;
+  --interactive-hover: #e9e9e9;
+  color: var(--text-normal);
+  background: var(--background-primary);
+}
+
+/* ── Dark ── */
+body.theme-dark {
+  --background-primary: #1e1e1e;
+  --background-primary-alt: #242424;
+  --background-secondary: #262626;
+  --background-secondary-alt: #1a1a1a;
+  --background-modifier-border: #3a3a3a;
+  --background-modifier-border-hover: #4a4a4a;
+  --background-modifier-border-focus: #5a5a5a;
+  --background-modifier-hover: rgba(255, 255, 255, 0.075);
+  --background-modifier-form-field: #1e1e1e;
+  --background-modifier-cover: rgba(0, 0, 0, 0.55);
+  --background-modifier-error: #3a1e22;
+  --text-normal: #dadada;
+  --text-muted: #9e9e9e;
+  --text-faint: #666666;
+  --text-error: #fb464c;
+  --text-accent: #a48bff;
+  --text-on-accent: #ffffff;
+  --interactive-accent: #7c68ee;
+  --interactive-accent-hover: #8f7dfa;
+  --interactive-normal: #2a2a2a;
+  --interactive-hover: #333333;
+  color: var(--text-normal);
+  background: var(--background-primary);
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-medium);
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* ── Chrome do storybook ── */
+.sb-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+.sb-nav {
+  width: 230px;
+  flex: none;
+  border-right: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  overflow-y: auto;
+  padding: 12px 8px;
+}
+.sb-nav h1 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin: 4px 8px 10px;
+}
+.sb-nav-group {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 14px 8px 4px;
+}
+.sb-nav button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: 13px;
+}
+.sb-nav button:hover {
+  background: var(--background-modifier-hover);
+}
+.sb-nav button.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.sb-stage-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sb-toolbar {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.sb-toolbar select,
+.sb-toolbar button {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+.sb-stage {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background: var(--background-secondary-alt, #ddd);
+  padding: 16px;
+}
+.sb-frame {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+.sb-frame.mobile {
+  width: 390px;
+  height: 844px;
+  align-self: center;
+}
+.sb-frame.desktop {
+  width: 900px;
+  min-height: 640px;
+  align-self: stretch;
+}
+
+/* O root do plugin dentro do frame */
+.sb-frame .axxa-root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Notices / menus do shim ── */
+.sb-notices {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sb-notice {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  box-shadow: var(--shadow-l);
+}
+.sb-menu {
+  position: fixed;
+  z-index: 9999;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: var(--shadow-l);
+}
+.sb-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-normal);
+}
+.sb-menu-item:hover {
+  background: var(--background-modifier-hover);
+}
+.sb-menu-icon svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+.sb-menu-sep {
+  height: 1px;
+  background: var(--background-modifier-border);
+  margin: 4px 6px;
+}
+
+/* Modal shim */
+.sb-modal-container {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sb-modal-container .modal-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--background-modifier-cover);
+}
+.sb-modal-container .modal {
+  position: relative;
+  background: var(--background-primary);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 320px;
+  max-width: 560px;
+  max-height: 80vh;
+  overflow: auto;
+  box-shadow: var(--shadow-l);
+}
+
+/* Ícones lucide herdam cor */
+.svg-icon {
+  stroke: currentColor;
+}
