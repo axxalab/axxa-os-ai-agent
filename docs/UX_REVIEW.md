@@ -1,5 +1,39 @@
 # AXXA OS — Revisão de UX pré-publicação (v0.1.236)
 
+> **STATUS (branch `claude/storybook-ux-review-plugin-fybzg0`)** — a segunda
+> passada desta branch já **resolveu**: P0 #1 (chave de teste removida do
+> copy), P0 #2 (`fill: currentColor` no glyph), P1 #4 (`prettyModelName` na
+> lista e nas Statistics), P1 #9 (pill "PRO" removido das mensagens), P1 #10
+> (coluna de leitura ~760px no desktop), o copy errado de armazenamento de
+> keys ("stored locally in the vault" → OS keychain), os vazamentos de PT na
+> UI EN (filtros, quant profiles, metadados de modelo) e a reorganização das
+> Settings (fim da tab "Other" — ver `SETTINGS_REDESIGN` abaixo). Também
+> foram removidos ~1.9k linhas de código morto (StarterScreen/InspireScreen/
+> themeColor/modelStats) e ~1.6k linhas de CSS órfão. Pendentes: P0 #3
+> (screenshots reais pro README) e os P2.
+
+## SETTINGS_REDESIGN — nova arquitetura (v0.1.237)
+
+Antes: 6 tabs — `Connections | Setup & RAG | Appearance | Effort | Usage |
+Other`, com "Other" servindo de gaveta de bagunça (idioma com UMA opção,
+override de plano de dev, roadmap interno "Coming soon" com nomes de sprint).
+
+Depois: **5 tabs com dono claro** —
+
+| Tab | Conteúdo | Racional |
+|---|---|---|
+| **Connections** | Providers (key + status) · Models por papel | O coração do produto; sub-tabs de provider agora têm logo + nome + estado ativo (eram icon-only) |
+| **Vault** | Pastas + Skills + RAG | Tudo que toca o vault num lugar; nome direto em vez de "Setup & RAG" |
+| **Agent** | Permissões do Agent Mode + diff approval + Effort levels | Configs de SEGURANÇA saíram do fundo da gaveta; effort é tuning do mesmo comportamento, mora junto. Sub-tab default = o nível default do usuário (era "Max") |
+| **Appearance** | Background · Chips · Interface | inalterada |
+| **Usage** | custos/tokens | inalterada |
+
+Cortes de produto: dropdown de idioma (uma opção só = ruído), "Plan (admin
+test)" (ferramenta de dev não vai em UI de produção; o campo
+`devTierOverride` continua no data.json pra dev), lista "Coming soon"
+(roadmap interno não é assunto de Settings), emojis nos tabs de effort,
+label cru "max_tokens (response)" → "Max response tokens".
+
 Revisão feita com o **storybook do projeto** (`npm run storybook`, novo em
 `storybook/`), que renderiza os componentes reais do plugin fora do Obsidian:
 16 stories × temas dark/light × viewport mobile (390×844) e desktop (900px),

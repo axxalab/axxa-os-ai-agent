@@ -38,18 +38,18 @@ export const QUANT_PROFILE_IDS = [
 
 /** Labels curtos (estilo EFFORT_LABELS — em código, não i18n). */
 export const QUANT_PROFILE_LABELS: Record<string, string> = {
-  precision: "Precisão",
-  balanced: "Equilibrado",
-  light: "Leve",
-  minimal: "Mínimo",
+  precision: "Precision",
+  balanced: "Balanced",
+  light: "Light",
+  minimal: "Minimal",
 };
 
 /** "Melhor uso" mostrado no campo (estilo EFFORT_DESCRIPTIONS). */
 export const QUANT_PROFILE_USES: Record<string, string> = {
-  precision: "Máxima qualidade. Vaults pequenos (<2k notas) ou desktop.",
-  balanced: "Recomendado. Ótima qualidade e cabe no mobile.",
-  light: "Vaults grandes (10k+) no mobile. Rápido e leve.",
-  minimal: "Vaults gigantes (50k+). Busca grosseira, máxima economia.",
+  precision: "Max quality. Small vaults (<2k notes) or desktop.",
+  balanced: "Recommended. Great quality, fits on mobile.",
+  light: "Large vaults (10k+) on mobile. Fast and light.",
+  minimal: "Huge vaults (50k+). Coarse search, max savings.",
 };
 
 export function getQuantProfile(id: string): QuantProfile {

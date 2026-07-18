@@ -115,10 +115,9 @@ import {
 type TopTabId =
   | "connections"
   | "setup"
+  | "agent"
   | "appearance"
-  | "effort"
-  | "usage"
-  | "outros";
+  | "usage";
 type ProviderTabId =
   | "openai"
   | "anthropic"
@@ -126,7 +125,6 @@ type ProviderTabId =
   | "openrouter"
   | "nim"
   | "ollama";
-type OutrosTabId = "geral" | "ui" | "agent" | "rag" | "usage";
 type AppearanceTabId = "background" | "chips" | "ui";
 type ConnTabId = "providers" | "models";
 
@@ -156,13 +154,13 @@ type ModelFilterId =
   | "img-gen"
   | "audio-gen";
 const MODEL_FILTERS: { id: ModelFilterId; label: string; icon: string }[] = [
-  { id: "all", label: "Todos", icon: "layout-grid" },
+  { id: "all", label: "All", icon: "layout-grid" },
   { id: "vision", label: "Vision", icon: "image" },
   { id: "tools", label: "Tools", icon: "wrench" },
   { id: "free", label: "Free", icon: "gift" },
   { id: "stream", label: "Stream", icon: "zap" },
-  { id: "img-gen", label: "Imagem", icon: "image-plus" },
-  { id: "audio-gen", label: "Áudio", icon: "volume-2" },
+  { id: "img-gen", label: "Image", icon: "image-plus" },
+  { id: "audio-gen", label: "Audio", icon: "volume-2" },
 ];
 
 /** Logo de cada PROVIDER (registrado em registerBrandLogos). Usado no início de
@@ -194,12 +192,11 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private modelCache: Record<string, string[]> = {};
   /** Filtro de capacidade ativo por provider na lista de modelos. v0.1.150 */
   private modelFilter: Record<string, ModelFilterId> = {};
-  /** Sub-tab quando topTab = outros (v0.1.39 reorganização) */
-  private activeOutrosTab: OutrosTabId = "geral";
   /** Sub-tab quando topTab = appearance (v0.1.107: Fundo / Chips / Interface) */
   private activeAppearanceTab: AppearanceTabId = "background";
-  /** Sub-tab quando topTab = effort — qual nível está sendo editado */
-  private activeEffortTab: EffortLevel = "max";
+  /** Nível de effort sendo editado na tab Agent. Semeado no constructor com o
+   *  default do user — editar "o seu nível" é o caso comum, não o Max. */
+  private activeEffortTab: EffortLevel = "med";
   private unsubscribe?: () => void;
   /** Período em dias do filtro do Usage tab. 0 = tudo. Persistido em memória. */
   private usagePeriodDays = 0;
@@ -213,6 +210,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   constructor(app: App, plugin: AxxaPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+    const eff = plugin.settings.defaultEffort as EffortLevel;
+    if (EFFORT_LEVELS.includes(eff)) this.activeEffortTab = eff;
   }
 
   display(): void {
@@ -238,10 +237,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const topTabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
     this.createTopTabButton(topTabsEl, "connections", "Connections");
     this.createTopTabButton(topTabsEl, "setup", t.settings.topTabs.setup);
+    this.createTopTabButton(topTabsEl, "agent", t.settings.topTabs.agent);
     this.createTopTabButton(topTabsEl, "appearance", t.settings.topTabs.appearance);
-    this.createTopTabButton(topTabsEl, "effort", t.settings.topTabs.effort);
     this.createTopTabButton(topTabsEl, "usage", t.settings.topTabs.usage);
-    this.createTopTabButton(topTabsEl, "outros", t.settings.topTabs.outros);
 
     // ============================================================
     // Conteúdo da top-tab ativa
@@ -255,17 +253,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       case "setup":
         this.renderSetupTab(contentEl, t);
         break;
+      case "agent":
+        this.renderAgentTab(contentEl, t);
+        break;
       case "appearance":
         this.renderAppearanceTab(contentEl, t);
         break;
-      case "effort":
-        this.renderEffortTab(contentEl, t);
-        break;
       case "usage":
         this.renderOutrosUsage(contentEl, t);
-        break;
-      case "outros":
-        this.renderOutros(contentEl, t);
         break;
     }
   }
@@ -771,13 +766,16 @@ export class AxxaSettingsTab extends PluginSettingTab {
       nim: "logo-nvidia",
       ollama: "logo-ollama",
     };
+    // Logo + label curto (v0.1.237): icon-only obrigava a adivinhar o provider
+    // e o estado ativo — mesmo padrão do segmented de Connections.
     const btn = parent.createEl("button", {
       cls:
-        "axxa-subtab-btn axxa-subtab-icon" +
+        "axxa-subtab-btn axxa-conn-seg-btn" +
         (this.activeProviderTab === id ? " axxa-subtab-active" : ""),
-      attr: { "aria-label": label, title: label },
+      attr: { "aria-label": label, title: label, type: "button" },
     });
-    setIcon(btn, LOGO[id] ?? "");
+    setIcon(btn.createSpan({ cls: "axxa-conn-seg-ico" }), LOGO[id] ?? "");
+    btn.createSpan({ text: label });
     btn.onclick = () => {
       hapticTick();
       this.activeProviderTab = id;
@@ -1953,7 +1951,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       attr: { type: "button" },
     });
     setIcon(toggle.createSpan({ cls: "axxa-modality-legend-ico" }), "help-circle");
-    toggle.createSpan({ text: "Tipos de modelo (modalidade I/O)" });
+    toggle.createSpan({ text: "Model types (I/O modality)" });
     const list = wrap.createDiv({ cls: "axxa-modality-legend axxa-hidden" });
     for (const code of ALL_MODALITIES) {
       const info = MODALITY_INFO[code];
@@ -2111,58 +2109,24 @@ export class AxxaSettingsTab extends PluginSettingTab {
   // ============================================================
   // Tab: Outros — header + sub-tabs (Geral / UI / Agent / RAG)
   // ============================================================
-  private renderOutros(parent: HTMLElement, t: Translations) {
+  /**
+   * Tab Agent (v0.1.237 — reorganização "fim do Other"): tudo que governa o
+   * COMPORTAMENTO da IA num lugar só — permissões do Agent Mode + fine-tuning
+   * dos níveis de effort. O antigo grab-bag "Other" morreu: idioma (uma opção
+   * só) e override de plano (ferramenta de dev) saíram da UI; o roadmap
+   * interno ("coming soon") não é assunto de Settings.
+   */
+  private renderAgentTab(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
-      text: t.settings.outrosIntro,
+      text: t.settings.outrosAgentIntro,
       cls: "setting-item-description",
     });
+    this.renderAgentSection(parent, t);
 
-    // Sub-tabs (Geral / Agent / RAG) — Appearance e Usage agora são
-    // top-tabs separadas (v0.1.56).
-    const subTabsEl = parent.createDiv({ cls: "axxa-settings-subtabs" });
-    this.createOutrosSubTab(subTabsEl, "geral", t.settings.outrosTabs.geral);
-    this.createOutrosSubTab(subTabsEl, "agent", t.settings.outrosTabs.agent);
-
-    // RAG migrou pra top-tab "Setup & RAG" (v0.1.152). State legado → geral.
-    if (
-      this.activeOutrosTab === "ui" ||
-      this.activeOutrosTab === "usage" ||
-      this.activeOutrosTab === "rag"
-    ) {
-      this.activeOutrosTab = "geral";
-    }
-
-    const subContentEl = parent.createDiv({ cls: "axxa-settings-subcontent" });
-    switch (this.activeOutrosTab) {
-      case "geral":
-        this.renderOutrosGeral(subContentEl, t);
-        break;
-      case "agent":
-        this.renderOutrosAgent(subContentEl, t);
-        break;
-    }
+    parent.createEl("h3", { text: t.settings.topTabs.effortSection });
+    this.renderEffortTab(parent, t);
   }
 
-  /** Botão de sub-tab de Outros */
-  private createOutrosSubTab(
-    parent: HTMLElement,
-    id: OutrosTabId,
-    label: string
-  ) {
-    const btn = parent.createEl("button", {
-      cls:
-        "axxa-subtab-btn" +
-        (this.activeOutrosTab === id ? " axxa-subtab-active" : ""),
-      text: label,
-    });
-    btn.onclick = () => {
-      hapticTick();
-      this.activeOutrosTab = id;
-      this.display();
-    };
-  }
-
-  /** Sub-tab Geral — idioma + paths */
   /**
    * Anexa um <datalist> nativo HTML ao input pra autocomplete de pastas.
    * Lista todas as pastas do vault (TFolder) e bind via `list=` attribute.
@@ -2201,51 +2165,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
     inputEl.setAttribute("autocomplete", "off");
   }
 
-  private renderOutrosGeral(parent: HTMLElement, t: Translations) {
-    parent.createEl("p", {
-      text: t.settings.outrosGeralIntro,
-      cls: "setting-item-description",
-    });
-
-    new Setting(parent)
-      .setName(t.settings.language)
-      .setDesc(t.settings.languageDesc)
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("en-us", t.settings.languageEnUs)
-          .setValue(this.plugin.settings.language)
-          .onChange(async (value) => {
-            this.plugin.settings.language = value;
-            await this.plugin.saveSettings();
-            this.display();
-          })
-      );
-
-    // Plano (admin) — testar free vs pro sem mexer no entitlement real. v0.1.174
-    new Setting(parent)
-      .setName(t.settings.planOverrideName)
-      .setDesc(t.settings.planOverrideDesc)
-      .addDropdown((dd) =>
-        dd
-          .addOption("auto", t.settings.planAuto)
-          .addOption("pro", "Pro")
-          .addOption("free", "Free")
-          .setValue(this.plugin.settings.devTierOverride || "auto")
-          .onChange(async (value) => {
-            this.plugin.settings.devTierOverride = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
-    parent.createEl("h3", { text: t.settings.comingSoon });
-    const todo = parent.createEl("ul");
-    t.settings.comingSoonItems.forEach((item) => {
-      todo.createEl("li", { text: item });
-    });
-  }
-
   // ============================================================
-  // Tab: Setup & RAG (v0.1.152) — pastas do vault + RAG, ao lado de Providers.
+  // Tab: Vault (ex "Setup & RAG") — pastas do vault + RAG.
   // ============================================================
   private renderSetupTab(parent: HTMLElement, t: Translations) {
     parent.createEl("p", {
@@ -2356,12 +2277,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
   /** Sub-tab Interface — chips, aparência, code wrap */
   /** Sub-tab Agent — permissão */
-  private renderOutrosAgent(parent: HTMLElement, t: Translations) {
-    parent.createEl("p", {
-      text: t.settings.outrosAgentIntro,
-      cls: "setting-item-description",
-    });
-
+  /** Permissões e comportamento do Agent Mode (linhas da tab Agent). */
+  private renderAgentSection(parent: HTMLElement, t: Translations) {
     new Setting(parent)
       .setName(t.agent.permissionLevel)
       .setDesc(t.agent.permissionLevelDesc)

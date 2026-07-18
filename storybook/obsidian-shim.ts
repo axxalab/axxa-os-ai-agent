@@ -425,56 +425,184 @@ export class Setting {
   }
   addText(cb: (c: any) => void) {
     const input = this.controlEl.createEl("input", { type: "text" }) as HTMLInputElement;
-    cb({
+    const c: any = {
       inputEl: input,
-      setValue: (v: string) => {
+      setValue(v: string) {
         input.value = v;
+        return c;
       },
-      setPlaceholder: (p: string) => {
+      getValue() {
+        return input.value;
+      },
+      setPlaceholder(p: string) {
         input.placeholder = p;
+        return c;
       },
-      onChange: (f: (v: string) => void) =>
-        input.addEventListener("input", () => f(input.value)),
-    });
+      setDisabled(d: boolean) {
+        input.disabled = d;
+        return c;
+      },
+      onChange(f: (v: string) => void) {
+        input.addEventListener("input", () => f(input.value));
+        return c;
+      },
+    };
+    cb(c);
+    return this;
+  }
+  addTextArea(cb: (c: any) => void) {
+    const input = this.controlEl.createEl("textarea") as HTMLTextAreaElement;
+    const c: any = {
+      inputEl: input,
+      setValue(v: string) {
+        input.value = v;
+        return c;
+      },
+      setPlaceholder(p: string) {
+        input.placeholder = p;
+        return c;
+      },
+      onChange(f: (v: string) => void) {
+        input.addEventListener("input", () => f(input.value));
+        return c;
+      },
+    };
+    cb(c);
     return this;
   }
   addToggle(cb: (c: any) => void) {
     const input = this.controlEl.createEl("input", { type: "checkbox" }) as HTMLInputElement;
-    cb({
-      setValue: (v: boolean) => {
+    const c: any = {
+      toggleEl: input,
+      setValue(v: boolean) {
         input.checked = v;
+        return c;
       },
-      onChange: (f: (v: boolean) => void) =>
-        input.addEventListener("change", () => f(input.checked)),
-    });
+      setDisabled(d: boolean) {
+        input.disabled = d;
+        return c;
+      },
+      setTooltip() {
+        return c;
+      },
+      onChange(f: (v: boolean) => void) {
+        input.addEventListener("change", () => f(input.checked));
+        return c;
+      },
+    };
+    cb(c);
     return this;
   }
   addButton(cb: (c: any) => void) {
     const btn = this.controlEl.createEl("button") as HTMLButtonElement;
-    cb({
+    const c: any = {
       buttonEl: btn,
-      setButtonText: (t: string) => {
+      setButtonText(t: string) {
         btn.textContent = t;
+        return c;
       },
-      setCta: () => btn.addClass("mod-cta"),
-      onClick: (f: () => void) => btn.addEventListener("click", f),
-    });
+      setIcon(name: string) {
+        setIcon(btn, name);
+        return c;
+      },
+      setCta() {
+        btn.addClass("mod-cta");
+        return c;
+      },
+      setWarning() {
+        btn.addClass("mod-warning");
+        return c;
+      },
+      setTooltip(t: string) {
+        btn.title = t;
+        return c;
+      },
+      setDisabled(d: boolean) {
+        btn.disabled = d;
+        return c;
+      },
+      onClick(f: () => void) {
+        btn.addEventListener("click", f);
+        return c;
+      },
+    };
+    cb(c);
     return this;
+  }
+  addExtraButton(cb: (c: any) => void) {
+    return this.addButton(cb);
   }
   addDropdown(cb: (c: any) => void) {
     const sel = this.controlEl.createEl("select") as HTMLSelectElement;
-    cb({
-      addOption: (v: string, l: string) => {
+    const c: any = {
+      selectEl: sel,
+      addOption(v: string, l: string) {
         const o = sel.createEl("option") as HTMLOptionElement;
         o.value = v;
         o.textContent = l;
+        return c;
       },
-      setValue: (v: string) => {
+      addOptions(opts: Record<string, string>) {
+        for (const [v, l] of Object.entries(opts)) c.addOption(v, l);
+        return c;
+      },
+      setValue(v: string) {
         sel.value = v;
+        return c;
       },
-      onChange: (f: (v: string) => void) =>
-        sel.addEventListener("change", () => f(sel.value)),
-    });
+      setDisabled(d: boolean) {
+        sel.disabled = d;
+        return c;
+      },
+      onChange(f: (v: string) => void) {
+        sel.addEventListener("change", () => f(sel.value));
+        return c;
+      },
+    };
+    cb(c);
+    return this;
+  }
+  addSlider(cb: (c: any) => void) {
+    const input = this.controlEl.createEl("input", { type: "range" }) as HTMLInputElement;
+    const c: any = {
+      sliderEl: input,
+      setLimits(min: number, max: number, step: number) {
+        input.min = String(min);
+        input.max = String(max);
+        input.step = String(step);
+        return c;
+      },
+      setValue(v: number) {
+        input.value = String(v);
+        return c;
+      },
+      setDynamicTooltip() {
+        return c;
+      },
+      onChange(f: (v: number) => void) {
+        input.addEventListener("input", () => f(Number(input.value)));
+        return c;
+      },
+    };
+    cb(c);
+    return this;
+  }
+  setDisabled() {
+    return this;
+  }
+  setClass(cls: string) {
+    this.settingEl.addClass(cls);
+    return this;
+  }
+  setTooltip() {
+    return this;
+  }
+  then(cb: (s: Setting) => void) {
+    cb(this);
+    return this;
+  }
+  clear() {
+    this.controlEl.empty();
     return this;
   }
 }
@@ -509,6 +637,21 @@ export function parseYaml(s: string): any {
 
 export async function requestUrl(): Promise<any> {
   throw new Error("requestUrl não disponível no storybook");
+}
+
+// ── PluginSettingTab (pro preview da Settings) ─────────────
+export class PluginSettingTab {
+  app: unknown;
+  plugin: unknown;
+  containerEl: HTMLElement;
+  constructor(app: unknown, plugin: unknown) {
+    this.app = app;
+    this.plugin = plugin;
+    this.containerEl = document.createElement("div");
+    this.containerEl.className = "vertical-tab-content sb-settings-host";
+  }
+  display() {}
+  hide() {}
 }
 
 // ── Stubs de classes só-tipo (nunca instanciadas no preview) ─

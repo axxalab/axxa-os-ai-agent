@@ -157,11 +157,6 @@ interface AxxaSettings {
    *  DEFAULT_EFFORT_CONFIGS built-in (src/components/_shared/effort.ts).
    *  Configurado via Settings → Effort → sub-tab por nível. */
   effortConfigs: Partial<Record<EffortLevel, Partial<EffortConfig>>>;
-  // ============ Fullscreen mobile (v0.1.74 — reintroduzido) ============
-  /** Modo fullscreen mobile: drawer direito ocupa 100vw + esconde chrome
-   *  nativo do Obsidian (drawer-header, tabs, footer). Toggle via menu
-   *  "..." no Header. Persiste entre reloads. */
-  mobileFullscreen: boolean;
   // ============ OpenAI specifics (v0.1.165) ============
   /** Inscrito no programa de data-sharing da OpenAI — dá tokens grátis diários
    *  em modelos de TEXTO (NÃO cobre geração de imagem). Informa os hints de
@@ -294,7 +289,6 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   listChips: ["mode", "model", "date"],
   // Vazio = usa DEFAULT_EFFORT_CONFIGS sem overrides. User edita via Settings.
   effortConfigs: {},
-  mobileFullscreen: false,
   openaiDataSharing: false,
   openaiUsageTier: 1,
   openaiAdminKey: "",

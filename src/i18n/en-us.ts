@@ -572,7 +572,7 @@ export const EN_US = {
     ],
     licenseLabel: "License key",
     apply: "Apply",
-    licenseHint: "Paste your license to unlock Pro. (test: AXXA-PRO-TEST-2026)",
+    licenseHint: "Paste your license to unlock Pro.",
     licenseValid: "✓ Valid key — Pro active.",
     licenseInvalid: "✗ Invalid format. Use AXXA-PRO-XXXX-XXXX.",
   },
@@ -645,11 +645,11 @@ export const EN_US = {
     title: "AXXA OS — AI Agent",
     topTabs: {
       providers: "Providers",
-      setup: "Setup & RAG",
+      setup: "Vault",
+      agent: "Agent",
       appearance: "Appearance",
-      effort: "Effort",
       usage: "Usage",
-      outros: "Other",
+      effortSection: "Effort levels",
     },
     setupIntro:
       "Folders where AXXA saves everything in your vault + semantic search (RAG) over your notes.",
@@ -661,11 +661,11 @@ export const EN_US = {
       ui: "Interface",
     },
     effortTabs: {
-      low: "Low 🐢",
-      med: "Med ⚖️",
-      high: "High ⚡",
-      xhigh: "xHigh 🔥",
-      max: "Max 🚀",
+      low: "Low",
+      med: "Med",
+      high: "High",
+      xhigh: "xHigh",
+      max: "Max",
     },
     effortIntro:
       "Fine-tune each Effort level. Each level has its own sub-tab — empty fields fall back to built-in defaults. Max is uncapped by default (200 turns, 80% of context).",
@@ -673,7 +673,7 @@ export const EN_US = {
     effortResetConfirm: "Reset this level to default values? Your overrides will be lost.",
     effortResetDone: "Restored to defaults.",
     effortFields: {
-      maxTokens: "max_tokens (response)",
+      maxTokens: "Max response tokens",
       maxTokensDesc:
         "Max tokens the model can generate. 0 = uncapped (uses % of model's context window).",
       agentMaxTurns: "Agent: max turns",
@@ -715,7 +715,7 @@ export const EN_US = {
     defaultProvider: "Default provider",
     defaultProviderDesc: "Which API to use in conversations",
     apiKey: "API Key",
-    apiKeyDescOpenai: "sk-... — stored locally in the vault.",
+    apiKeyDescOpenai: "sk-... — stored in your OS keychain, never in plain text.",
     openaiDataSharing: "Data-sharing program",
     openaiDataSharingDesc:
       "Sharing your API traffic with OpenAI earns free daily tokens on TEXT models. Check this if you're enrolled.",
@@ -725,10 +725,10 @@ export const EN_US = {
       eligible
         ? `Free tokens/day (data-sharing): ~${bigK}k on large models · ~${miniM}M on mini. ⚠️ IMAGE generation isn't covered — billed normally (~$0.04/img).`
         : "Enable data-sharing (Tier 1+) to earn free daily tokens on TEXT models. Image generation is never covered.",
-    apiKeyDescAnthropic: "sk-ant-... — stored locally.",
-    apiKeyDescGemini: "Key from aistudio.google.com/apikey — stored locally.",
-    apiKeyDescOpenrouter: "sk-or-... — stored locally.",
-    apiKeyDescNim: "nvapi-... (from build.nvidia.com) — stored locally.",
+    apiKeyDescAnthropic: "sk-ant-... — stored in your OS keychain.",
+    apiKeyDescGemini: "Key from aistudio.google.com/apikey — stored in your OS keychain.",
+    apiKeyDescOpenrouter: "sk-or-... — stored in your OS keychain.",
+    apiKeyDescNim: "nvapi-... (from build.nvidia.com) — stored in your OS keychain.",
     model: "Default model",
     modelDesc: (provider: string) =>
       `Default model for ${provider}. Use 'Fetch' to see what's available.`,
@@ -768,25 +768,11 @@ export const EN_US = {
     ollamaEndpoint: "Endpoint",
     ollamaEndpointDesc:
       "Ollama server URL (default: http://localhost:11434)",
-    outrosIntro: "General settings — paths, language, appearance.",
-    outrosTabs: {
-      geral: "General",
-      ui: "Interface",
-      agent: "Agent",
-      rag: "RAG",
-      usage: "Usage",
-    },
-    outrosGeralIntro: "Language, vault paths and basic preferences.",
     outrosUiIntro: "Appearance, visible chips, code blocks.",
-    outrosAgentIntro: "Permissions and Agent Mode behavior.",
-    outrosRagIntro: "Semantic search across your notes with embeddings.",
+    outrosAgentIntro:
+      "How the AI behaves: Agent Mode permissions and per-level effort tuning.",
     outrosUsageIntro:
       "Token accounting and estimated cost per conversation. Pricing based on official lab tables (see src/usage/pricing.ts). Exportable to PDF and Markdown.",
-    language: "Language",
-    languageDesc:
-      "Plugin language. The UI updates immediately.",
-    languagePtBr: "Português (Brasil)",
-    languageEnUs: "English (US)",
     chatsPath: "Chats folder",
     chatsPathDesc: "Where chats are saved in the Vault",
     skillsPath: "Skills folder",
@@ -808,13 +794,6 @@ export const EN_US = {
     generationPath: "Generation folder",
     generationPathDesc:
       "Where generated media (image/audio/video) is saved. Each output creates 2 files: the media + a .md sidecar with frontmatter (prompt, model, provider).",
-    comingSoon: "Coming soon",
-    comingSoonItems: [
-      "Audio recorder (mic) — Sprint E",
-      "Agent Mode (file ops) — Module 6",
-      "Skills management — Module 7",
-      "MCP Connect (Notion, ClickUp, Figma) — Module 9",
-    ],
     codeWrap: "Wrap lines in code blocks",
     codeWrapDesc:
       "When enabled, long code blocks wrap instead of scrolling horizontally. Useful on narrow screens (mobile).",
@@ -989,10 +968,6 @@ export const EN_US = {
     adminKeyName: "Admin key (optional)",
     adminKeyDesc:
       "Only for real costs/balance (Admin API). Can't do chat — your project key stays in the field above.",
-    planOverrideName: "Plan (admin test)",
-    planOverrideDesc:
-      "Simulates the plan to test paid screens. 'Auto' uses the account's real plan; 'Free'/'Pro' force the behavior. Doesn't change your real plan.",
-    planAuto: "Auto (real plan)",
     openaiProjectName: "Project ID (optional)",
     openaiProjectDesc:
       "Attributes the real cost to this project only. Create a dedicated AXXA project in the OpenAI dashboard and use a key from it — then balance/cost reflects only the plugin, not the whole org.",

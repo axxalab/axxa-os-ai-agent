@@ -13,6 +13,7 @@ import { SegmentedRow } from "../_shared/SegmentedRow";
 import { useT, type Translations } from "../../i18n";
 import { formatTokens } from "../_shared/contextWindows";
 import { modelVendorLogoId } from "../_shared/modelLogo";
+import { prettyModelName } from "../../providers/modelDescriptions";
 import type { ChatSummary } from "../_shared/chatPersistence";
 
 interface ConversationsListProps {
@@ -357,7 +358,7 @@ export function ConversationsList({
                         color={CHIP_COLORS.model}
                       >
                         {/* fallback p/ chip não ficar vazio quando falta model. v0.1.228 */}
-                        {c.model || c.provider || "—"}
+                        {c.model ? prettyModelName(c.model) : c.provider || "—"}
                       </InfoChip>
                     )}
                     {visibleChips.includes("messages") && (

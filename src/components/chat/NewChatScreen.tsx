@@ -11,7 +11,7 @@ import { ComposerSuggestions } from "../composer/ComposerSuggestions";
 import { hapticTick } from "../_shared/haptics";
 import { useT } from "../../i18n";
 import type AxxaPlugin from "../../main";
-import { PROVIDERS, providerConfigured } from "./StarterScreen";
+import { PROVIDERS, providerConfigured } from "../_shared/providersMeta";
 
 /** Ícone + textos por modo. chat | vault-qa | agent. */
 function modeBits(mode: string, t: ReturnType<typeof useT>) {

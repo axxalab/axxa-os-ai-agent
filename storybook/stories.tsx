@@ -2,7 +2,8 @@
 // Registro de stories: cada uma monta um componente real do plugin com dados
 // mock. O shell (main.tsx) cuida de tema/densidade/viewport.
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AxxaSettingsTab } from "../src/components/settings/AxxaSettingsTab";
 import { useChatStore } from "../src/store/chat";
 import { NewChatScreen } from "../src/components/chat/NewChatScreen";
 import { ChatArea } from "../src/components/chat/ChatArea";
@@ -158,7 +159,27 @@ function NewChatStory({ mode }: { mode: string }) {
   );
 }
 
+/** Monta a Settings tab nativa (Obsidian) dentro de um div do preview. */
+function SettingsStory() {
+  const hostRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const tab = new AxxaSettingsTab(mockPlugin.app, mockPlugin);
+    tab.display();
+    host.replaceChildren(tab.containerEl);
+    return () => host.replaceChildren();
+  }, []);
+  return <div ref={hostRef} style={{ overflow: "auto", flex: 1, padding: "12px" }} />;
+}
+
 export const STORIES: Story[] = [
+  {
+    id: "settings",
+    title: "Settings",
+    group: "Settings",
+    render: () => <SettingsStory />,
+  },
   {
     id: "chat",
     title: "Conversa (chat ativo)",

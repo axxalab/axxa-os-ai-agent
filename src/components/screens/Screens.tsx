@@ -17,6 +17,7 @@ import { formatUsd } from "../../usage/pricing";
 import { formatTokens } from "../_shared/contextWindows";
 import type { ChatSummary } from "../_shared/chatPersistence";
 import { isLicensePro, type AppView, type Tier } from "../../entitlements";
+import { prettyModelName } from "../../providers/modelDescriptions";
 
 // ── Shell comum ────────────────────────────────────────────
 function ScreenShell({
@@ -193,7 +194,7 @@ export function StatisticsScreen({
         <div className="axxa-stat-list">
           {topModels.map(([model, b]) => (
             <div key={model} className="axxa-stat-row">
-              <code className="axxa-stat-model">{model}</code>
+              <code className="axxa-stat-model">{prettyModelName(model)}</code>
               <span className="axxa-stat-row-cost">{formatUsd(b.cost)}</span>
             </div>
           ))}

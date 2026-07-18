@@ -440,7 +440,6 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
           >
             <Icon name="thumbs-down" />
           </button>
-          <span className="axxa-pro-pill" aria-label={t.chat.upgradePro}>PRO</span>
         </div>
       )}
       {!isStreaming && <Timestamp ts={msg.timestamp} />}
