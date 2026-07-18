@@ -100,7 +100,7 @@ export class GeminiProvider implements Provider {
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError("API key do Gemini não configurada.", "no-key");
+      throw new ProviderError("Gemini API key not configured.", "no-key");
     }
     const body = buildChatBody(req, { provider: "gemini" });
 
@@ -115,7 +115,7 @@ export class GeminiProvider implements Provider {
         throw: false,
       });
     } catch {
-      throw new ProviderError("Falha de conexão.", "network");
+      throw new ProviderError("Connection failed.", "network");
     }
     // Muro de billing ANTES do mapeamento genérico (senão 429 vira rate-limit).
     if (res.status >= 400) {
@@ -127,10 +127,10 @@ export class GeminiProvider implements Provider {
     ensureOkRequest(res, { label: "Gemini", authStatuses: [401, 403] });
 
     const message = res.json?.choices?.[0]?.message;
-    if (!message) throw new ProviderError("Resposta vazia do Gemini.", "unknown");
+    if (!message) throw new ProviderError("Empty response from Gemini.", "unknown");
     const { content, toolCalls } = parseOpenAIChatMessage(message);
     if (!toolCalls && !content) {
-      throw new ProviderError("Resposta vazia do Gemini (sem texto nem tool_calls).", "unknown");
+      throw new ProviderError("Empty response from Gemini (no text or tool_calls).", "unknown");
     }
     return { content, toolCalls, usage: usageFrom(res.json) };
   }
@@ -145,7 +145,7 @@ export class GeminiProvider implements Provider {
   ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "API key do Gemini não configurada. Gere uma em aistudio.google.com/apikey.",
+        "Gemini API key not configured. Create one at aistudio.google.com/apikey.",
         "no-key"
       );
     }
@@ -195,7 +195,7 @@ export class GeminiProvider implements Provider {
       }
     }
     await ensureOkStream(res, { label: "Gemini", authStatuses: [401, 403] });
-    if (!res.body) throw new ProviderError("Stream vazio do Gemini.", "unknown");
+    if (!res.body) throw new ProviderError("Empty stream from Gemini.", "unknown");
 
     return parseOpenAICompatSSE(res.body, onToken, onUsage, "gemini_call", onReasoning);
   }
@@ -224,7 +224,7 @@ export class GeminiProvider implements Provider {
   ): Promise<MediaGenerationItem[]> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "API key do Gemini não configurada.",
+        "Gemini API key not configured.",
         "no-key"
       );
     }
@@ -272,7 +272,7 @@ export class GeminiProvider implements Provider {
       });
     } catch (err) {
       console.error("[axxa] Gemini image gen network error:", err);
-      throw new ProviderError("Falha de conexão.", "network");
+      throw new ProviderError("Connection failed.", "network");
     }
     if (res.status < 200 || res.status >= 300) {
       const detail =
@@ -281,7 +281,7 @@ export class GeminiProvider implements Provider {
         `HTTP ${res.status}`;
       console.error("[axxa] Gemini image gen failed:", res.status, res.json ?? res.text);
       if (res.status === 401 || res.status === 403) {
-        throw new ProviderError("API key Gemini inválida.", "invalid-key");
+        throw new ProviderError("Invalid Gemini API key.", "invalid-key");
       }
       // Muro de billing: modelos de imagem (Imagen/Nano Banana) NÃO entram no
       // free tier — sem billing ativo na API o request é barrado. A assinatura
@@ -290,9 +290,9 @@ export class GeminiProvider implements Provider {
         throw new ProviderError(`Gemini billing: ${detail}`, "billing");
       }
       if (res.status === 429) {
-        throw new ProviderError("Rate limit Gemini.", "rate-limit");
+        throw new ProviderError("Gemini rate limit.", "rate-limit");
       }
-      throw new ProviderError(`Gemini imagens (${res.status}): ${detail}`, "unknown");
+      throw new ProviderError(`Gemini images (${res.status}): ${detail}`, "unknown");
     }
     // Aceita ambos os shapes: inlineData (camelCase, comum em REST JS clients)
     // OU inline_data (snake_case, formato cru REST)
@@ -322,8 +322,8 @@ export class GeminiProvider implements Provider {
     if (items.length === 0) {
       // Erro mais claro: cita modelo + sugere usar gemini-2.5-flash-image
       throw new ProviderError(
-        `Gemini "${request.model}" não retornou imagens. ` +
-          `Modelos confirmados pra image gen: gemini-2.5-flash-image (Nano Banana), imagen-3.0-generate-002.`,
+        `Gemini "${request.model}" returned no images. ` +
+          `Confirmed image gen models: gemini-2.5-flash-image (Nano Banana), imagen-3.0-generate-002.`,
         "unknown"
       );
     }
@@ -371,7 +371,7 @@ export class GeminiProvider implements Provider {
       });
     } catch (err) {
       console.error("[axxa] Imagen network error:", err);
-      throw new ProviderError("Falha de conexão.", "network");
+      throw new ProviderError("Connection failed.", "network");
     }
     if (res.status < 200 || res.status >= 300) {
       const detail =
@@ -380,13 +380,13 @@ export class GeminiProvider implements Provider {
         `HTTP ${res.status}`;
       console.error("[axxa] Imagen gen failed:", res.status, res.json ?? res.text);
       if (res.status === 401 || res.status === 403) {
-        throw new ProviderError("API key Gemini inválida.", "invalid-key");
+        throw new ProviderError("Invalid Gemini API key.", "invalid-key");
       }
       if (isGeminiBillingError(res.status, detail, "image")) {
         throw new ProviderError(`Gemini billing: ${detail}`, "billing");
       }
       if (res.status === 429) {
-        throw new ProviderError("Rate limit Gemini.", "rate-limit");
+        throw new ProviderError("Gemini rate limit.", "rate-limit");
       }
       throw new ProviderError(`Imagen (${res.status}): ${detail}`, "unknown");
     }
@@ -403,7 +403,7 @@ export class GeminiProvider implements Provider {
     }
     if (items.length === 0) {
       throw new ProviderError(
-        `Imagen "${request.model}" não retornou imagens (resposta sem predictions).`,
+        `Imagen "${request.model}" returned no images (response has no predictions).`,
         "unknown"
       );
     }
@@ -417,7 +417,7 @@ export class GeminiProvider implements Provider {
   async listModels(apiKey: string): Promise<string[]> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "API key do Gemini não configurada.",
+        "Gemini API key not configured.",
         "no-key"
       );
     }
@@ -428,7 +428,7 @@ export class GeminiProvider implements Provider {
       throw: false,
     });
     if (res.status === 401 || res.status === 403) {
-      throw new ProviderError("API key Gemini inválida.", "invalid-key");
+      throw new ProviderError("Invalid Gemini API key.", "invalid-key");
     }
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`Gemini: HTTP ${res.status}`, "unknown");

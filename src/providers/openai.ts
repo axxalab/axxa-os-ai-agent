@@ -42,7 +42,7 @@ export class OpenAIProvider implements Provider {
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError("API key da OpenAI não configurada.", "no-key");
+      throw new ProviderError("OpenAI API key not configured.", "no-key");
     }
     const body = buildChatBody(req, {
       provider: "openai",
@@ -60,15 +60,15 @@ export class OpenAIProvider implements Provider {
         throw: false,
       });
     } catch {
-      throw new ProviderError("Falha de conexão. Confira sua internet.", "network");
+      throw new ProviderError("Connection failed. Check your internet.", "network");
     }
     ensureOkRequest(res, { label: "OpenAI" });
 
     const message = res.json?.choices?.[0]?.message;
-    if (!message) throw new ProviderError("Resposta vazia da OpenAI.", "unknown");
+    if (!message) throw new ProviderError("Empty response from OpenAI.", "unknown");
     const { content, toolCalls } = parseOpenAIChatMessage(message);
     if (!toolCalls && !content) {
-      throw new ProviderError("Resposta vazia da OpenAI (sem texto nem tool_calls).", "unknown");
+      throw new ProviderError("Empty response from OpenAI (no text or tool_calls).", "unknown");
     }
     return { content, toolCalls, usage: usageFrom(res.json) };
   }
@@ -92,7 +92,7 @@ export class OpenAIProvider implements Provider {
   ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "API key da OpenAI não configurada. Vá em Settings → AXXA OS para colar sua chave.",
+        "OpenAI API key not configured. Go to Settings → AXXA OS to paste your key.",
         "no-key"
       );
     }
@@ -128,7 +128,7 @@ export class OpenAIProvider implements Provider {
       );
     }
     await ensureOkStream(res, { label: "OpenAI" });
-    if (!res.body) throw new ProviderError("Stream vazio da OpenAI.", "unknown");
+    if (!res.body) throw new ProviderError("Empty stream from OpenAI.", "unknown");
 
     return parseOpenAICompatSSE(res.body, onToken, onUsage, "openai_call", onReasoning);
   }
@@ -149,7 +149,7 @@ export class OpenAIProvider implements Provider {
     apiKey: string
   ): Promise<MediaGenerationItem[]> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError("API key da OpenAI não configurada.", "no-key");
+      throw new ProviderError("OpenAI API key not configured.", "no-key");
     }
     const isGptImage = request.model.startsWith("gpt-image");
     const isDallE3 = request.model.startsWith("dall-e-3");
@@ -184,7 +184,7 @@ export class OpenAIProvider implements Provider {
         });
       } catch (err) {
         console.error("[axxa] OpenAI image gen network error:", err);
-        throw new ProviderError("Falha de conexão na geração.", "network");
+        throw new ProviderError("Connection failed during generation.", "network");
       }
       if (res.status < 500 || attempt >= MAX_ATTEMPTS) break;
       // 500/502/503 → retry com backoff exponencial
@@ -192,13 +192,13 @@ export class OpenAIProvider implements Provider {
       await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
     }
     if (!res) {
-      throw new ProviderError("OpenAI imagens: sem resposta.", "unknown");
+      throw new ProviderError("OpenAI images: no response.", "unknown");
     }
     if (res.status < 200 || res.status >= 300) {
       console.error("[axxa] OpenAI image gen failed:", res.status, res.json ?? res.text);
     }
     if (res.status === 401) {
-      throw new ProviderError("API key inválida.", "invalid-key");
+      throw new ProviderError("Invalid API key.", "invalid-key");
     }
     if (res.status === 403) {
       // Verifica se é problema de org verification (gpt-image-1)
@@ -206,22 +206,22 @@ export class OpenAIProvider implements Provider {
       const isOrgIssue = /verif|organization/i.test(apiMsg);
       if (isOrgIssue || isGptImage) {
         throw new ProviderError(
-          `OpenAI: organização não verificada pra ${request.model}. ` +
-            `Vá em platform.openai.com → Settings → Organization → General → "Verify Organization" ` +
-            `(precisa de telefone + ID válido). Após verificar, aguarde até 30min e tente de novo.`,
+          `OpenAI: organization not verified for ${request.model}. ` +
+            `Go to platform.openai.com → Settings → Organization → General → "Verify Organization" ` +
+            `(requires a phone + valid ID). After verifying, wait up to 30 min and try again.`,
           "invalid-key"
         );
       }
-      throw new ProviderError(`OpenAI: acesso negado. ${apiMsg}`, "invalid-key");
+      throw new ProviderError(`OpenAI: access denied. ${apiMsg}`, "invalid-key");
     }
     if (res.status === 429) {
-      throw new ProviderError("Rate limit OpenAI.", "rate-limit");
+      throw new ProviderError("OpenAI rate limit.", "rate-limit");
     }
     if (res.status >= 500) {
       throw new ProviderError(
-        `OpenAI servidor com problema (${res.status}). ` +
-          `Pode ser incidente temporário — verifique status.openai.com. ` +
-          `Já tentei ${MAX_ATTEMPTS} vezes com backoff.`,
+        `OpenAI server issue (${res.status}). ` +
+          `May be a temporary incident — check status.openai.com. ` +
+          `Retried ${MAX_ATTEMPTS} times with backoff.`,
         "unknown"
       );
     }
@@ -230,11 +230,11 @@ export class OpenAIProvider implements Provider {
         res.json?.error?.message ??
         (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
         `HTTP ${res.status}`;
-      throw new ProviderError(`OpenAI imagens (${res.status}): ${msg}`, "unknown");
+      throw new ProviderError(`OpenAI images (${res.status}): ${msg}`, "unknown");
     }
     const items = res.json?.data;
     if (!Array.isArray(items) || items.length === 0) {
-      throw new ProviderError("OpenAI: resposta sem imagens (data vazio).", "unknown");
+      throw new ProviderError("OpenAI: response had no images (empty data).", "unknown");
     }
     // v0.1.228: quando o size pedido era 'auto' (gpt-image-1), a API escolhe a
     // dimensão real — não fixe 1024x1024. Deixa width/height undefined; o
@@ -246,7 +246,7 @@ export class OpenAIProvider implements Provider {
       if (!b64) {
         // Fallback se vier `url` em vez de b64 (caso raro)
         throw new ProviderError(
-          "OpenAI: imagem retornada sem b64_json (apenas url). Fetch da URL não implementado.",
+          "OpenAI: image returned without b64_json (url only). URL fetch not implemented.",
           "unknown"
         );
       }
@@ -271,7 +271,7 @@ export class OpenAIProvider implements Provider {
     apiKey: string
   ): Promise<MediaGenerationItem[]> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError("API key da OpenAI não configurada.", "no-key");
+      throw new ProviderError("OpenAI API key not configured.", "no-key");
     }
     const body: Record<string, unknown> = {
       model: request.model,
@@ -290,13 +290,13 @@ export class OpenAIProvider implements Provider {
         throw: false,
       });
     } catch (err) {
-      throw new ProviderError("Falha de conexão TTS.", "network");
+      throw new ProviderError("TTS connection failed.", "network");
     }
     if (res.status === 401) {
-      throw new ProviderError("API key inválida.", "invalid-key");
+      throw new ProviderError("Invalid API key.", "invalid-key");
     }
     if (res.status === 429) {
-      throw new ProviderError("Rate limit OpenAI TTS.", "rate-limit");
+      throw new ProviderError("OpenAI TTS rate limit.", "rate-limit");
     }
     if (res.status < 200 || res.status >= 300) {
       const msg = res.json?.error?.message ?? `HTTP ${res.status}`;
@@ -314,7 +314,7 @@ export class OpenAIProvider implements Provider {
    */
   async listModels(apiKey: string): Promise<string[]> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError("API key da OpenAI não configurada.", "no-key");
+      throw new ProviderError("OpenAI API key not configured.", "no-key");
     }
     const res = await requestUrl({
       url: OPENAI_MODELS_ENDPOINT,
@@ -323,7 +323,7 @@ export class OpenAIProvider implements Provider {
       throw: false,
     });
     if (res.status === 401) {
-      throw new ProviderError("API key inválida.", "invalid-key");
+      throw new ProviderError("Invalid API key.", "invalid-key");
     }
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`OpenAI: HTTP ${res.status}`, "unknown");

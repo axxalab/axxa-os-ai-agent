@@ -265,7 +265,7 @@ export class AnthropicProvider implements Provider {
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "API key da Anthropic não configurada. Vá em Settings → AXXA OS.",
+        "Anthropic API key not configured. Go to Settings → AXXA OS.",
         "no-key"
       );
     }
@@ -281,7 +281,7 @@ export class AnthropicProvider implements Provider {
         throw: false,
       });
     } catch (err) {
-      throw new ProviderError("Falha de conexão. Confira sua internet.", "network");
+      throw new ProviderError("Connection failed. Check your internet.", "network");
     }
 
     ensureOkRequest(res, { label: "Anthropic" });
@@ -289,7 +289,7 @@ export class AnthropicProvider implements Provider {
     // Anthropic devolve content como array de blocks tipados (text + tool_use)
     const content = res.json?.content;
     if (!Array.isArray(content)) {
-      throw new ProviderError("Resposta vazia da Anthropic.", "unknown");
+      throw new ProviderError("Empty response from Anthropic.", "unknown");
     }
 
     let text = "";
@@ -308,7 +308,7 @@ export class AnthropicProvider implements Provider {
 
     if (!text && toolCalls.length === 0) {
       throw new ProviderError(
-        "Resposta vazia da Anthropic (sem texto nem tool_use).",
+        "Empty response from Anthropic (no text or tool_use).",
         "unknown"
       );
     }
@@ -338,7 +338,7 @@ export class AnthropicProvider implements Provider {
   ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "API key da Anthropic não configurada. Vá em Settings → AXXA OS.",
+        "Anthropic API key not configured. Go to Settings → AXXA OS.",
         "no-key"
       );
     }
@@ -370,7 +370,7 @@ export class AnthropicProvider implements Provider {
 
     await ensureOkStream(res, { label: "Anthropic" });
     if (!res.body) {
-      throw new ProviderError("Stream vazio da Anthropic.", "unknown");
+      throw new ProviderError("Empty stream from Anthropic.", "unknown");
     }
 
     // Parser SSE — Anthropic envia events tipados.
@@ -460,7 +460,7 @@ export class AnthropicProvider implements Provider {
             );
           } else if (json.type === "error") {
             throw new ProviderError(
-              `Anthropic: ${json.error?.message ?? "erro durante stream"}`,
+              `Anthropic: ${json.error?.message ?? "error during stream"}`,
               "unknown"
             );
           }

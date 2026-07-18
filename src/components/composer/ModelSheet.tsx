@@ -29,6 +29,7 @@ import {
   groupModelsByCategory,
   prettyModelName,
   CATEGORY_ORDER,
+  CATEGORY_LABELS,
   type ModelCategory,
 } from "../../providers/modelDescriptions";
 import { getModelCapabilities } from "../../providers/modelCapabilities";
@@ -48,19 +49,6 @@ const EFFORT_TAGLINES: Record<EffortLevel, string> = {
 // Nível "Default" — baseline fixo (fallback do resolveEffortConfig), separado do
 // check da seleção atual pra os dois não colidirem.
 const DEFAULT_EFFORT: EffortLevel = "med";
-
-// Labels EN das categorias (CATEGORY_LABELS no core ainda é PT) — chips do More.
-const CAT_LABELS_EN: Record<ModelCategory, string> = {
-  "chat-vision": "Multimodal",
-  "chat-text": "Chat",
-  reasoning: "Reasoning",
-  agent: "Agent",
-  "image-gen": "Image",
-  "audio-gen": "Audio",
-  "video-gen": "Video",
-  embedding: "Embedding",
-  other: "Other",
-};
 
 // Ícone por chip (o seletor segmentado é icon-céntrico, mostra o label só no ativo).
 const CHIP_ICON: Record<string, string> = {
@@ -176,7 +164,7 @@ export function ModelSheet({
   );
   const chipItems: SegmentedItem[] = [
     { id: "all", icon: CHIP_ICON.all, label: "All", iconOnly: true },
-    ...presentCats.map((c) => ({ id: c, icon: CHIP_ICON[c], label: CAT_LABELS_EN[c] })),
+    ...presentCats.map((c) => ({ id: c, icon: CHIP_ICON[c], label: CATEGORY_LABELS[c] })),
     ...(freeModels.length
       ? [{ id: "free", icon: CHIP_ICON.free, label: "Free" }]
       : []),

@@ -45,7 +45,7 @@ export function checkCompatibility(
     return {
       ok: false,
       reason: "agent-no-tools",
-      message: `O modelo "${model}" não suporta tool calling — necessário pro Agent.`,
+      message: `Model "${model}" doesn't support tool calling — required for Agent.`,
       suggestions: findCompatibleModels(provider, activeModels, "tools"),
     };
   }
@@ -55,7 +55,7 @@ export function checkCompatibility(
     return {
       ok: false,
       reason: "vision-no-vision",
-      message: `O modelo "${model}" não aceita imagens — imagens anexadas vão ser ignoradas.`,
+      message: `Model "${model}" doesn't accept images — attached images will be ignored.`,
       suggestions: findCompatibleModels(provider, activeModels, "vision"),
     };
   }
@@ -67,7 +67,7 @@ export function checkCompatibility(
     return {
       ok: false,
       reason: "generation-model-in-chat",
-      message: `"${model}" é um modelo de geração — não roda em Agent Mode.`,
+      message: `"${model}" is a generation model — it doesn't run in Agent Mode.`,
       suggestions: findCompatibleModels(provider, activeModels, "tools"),
     };
   }
@@ -78,11 +78,11 @@ export function checkCompatibility(
     const mediaType = caps.imageGen ? "image" : caps.audioGen ? "audio" : "video";
     if (!generationSupported(provider, mediaType)) {
       const label =
-        mediaType === "image" ? "imagem" : mediaType === "audio" ? "áudio" : "vídeo";
+        mediaType === "image" ? "images" : mediaType === "audio" ? "audio" : "video";
       return {
         ok: false,
         reason: "image-gen-not-implemented",
-        message: `"${model}" gera ${label}, mas o AXXA ainda não suporta isso neste provider. Escolha outro modelo.`,
+        message: `"${model}" generates ${label}, but AXXA doesn't support that on this provider yet. Pick another model.`,
         suggestions: findCompatibleModels(provider, activeModels, "imageGen"),
       };
     }

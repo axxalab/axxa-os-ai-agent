@@ -89,9 +89,9 @@ describe("generationSupported — auditoria do que é gerável hoje", () => {
 
   it("resumo cita imagem + áudio e NÃO cita vídeo", () => {
     const s = generationSupportSummary();
-    expect(s).toContain("imagem");
-    expect(s).toContain("áudio");
+    expect(s).toContain("image");
+    expect(s).toContain("audio");
     expect(s).toContain("OpenAI");
-    expect(s).not.toContain("vídeo");
+    expect(s).not.toContain("video");
   });
 });

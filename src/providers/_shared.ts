@@ -192,11 +192,11 @@ export function mapHttpError(
   if (status >= 200 && status < 300) return null;
   const auth = opts.authStatuses ?? [401];
   if (auth.includes(status)) {
-    return new ProviderError(`API key ${opts.label} inválida.`, "invalid-key");
+    return new ProviderError(`Invalid ${opts.label} API key.`, "invalid-key");
   }
   if (status === 429) {
     return new ProviderError(
-      `Rate limit ${opts.label}. Aguarde alguns segundos.`,
+      `${opts.label} rate limit. Wait a few seconds.`,
       "rate-limit"
     );
   }
@@ -205,7 +205,7 @@ export function mapHttpError(
   // transiente da union e a UI já o re-localiza como "tente de novo". v0.1.228.
   if (status >= 500 || status === 408 || status === 409) {
     return new ProviderError(
-      `Serviço ${opts.label} indisponível. Tente novamente.`,
+      `${opts.label} service unavailable. Try again.`,
       "rate-limit"
     );
   }
@@ -462,7 +462,7 @@ export async function fetchModelIds(
 ): Promise<string[]> {
   if (!apiKey || !apiKey.trim()) {
     if (opts.soft) return [];
-    throw new ProviderError(`API key ${opts.label} não configurada.`, "no-key");
+    throw new ProviderError(`${opts.label} API key not configured.`, "no-key");
   }
   try {
     const res = await opts.requestUrlFn({

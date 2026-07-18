@@ -105,7 +105,7 @@ export class OllamaProvider implements Provider {
       });
     } catch (err) {
       throw new ProviderError(
-        `Falha de conexão com Ollama em ${endpoint}. Confirme se o servidor está rodando.`,
+        `Connection to Ollama at ${endpoint} failed. Make sure the server is running.`,
         "network"
       );
     }
@@ -114,7 +114,7 @@ export class OllamaProvider implements Provider {
 
     const message = res.json?.message;
     if (!message) {
-      throw new ProviderError("Resposta vazia do Ollama.", "unknown");
+      throw new ProviderError("Empty response from Ollama.", "unknown");
     }
 
     // Parseia tool_calls — formato Ollama:
@@ -156,7 +156,7 @@ export class OllamaProvider implements Provider {
     const content = typeof message.content === "string" ? message.content : "";
     if (!toolCalls && !content) {
       throw new ProviderError(
-        "Resposta vazia do Ollama (sem texto nem tool_calls).",
+        "Empty response from Ollama (no text or tool_calls).",
         "unknown"
       );
     }
@@ -218,14 +218,14 @@ export class OllamaProvider implements Provider {
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
       throw new ProviderError(
-        `Falha de conexão com Ollama em ${endpoint}. Servidor rodando?`,
+        `Connection to Ollama at ${endpoint} failed. Is the server running?`,
         "network"
       );
     }
 
     await ensureOkStream(res, { label: "Ollama" });
     if (!res.body) {
-      throw new ProviderError("Stream vazio do Ollama.", "unknown");
+      throw new ProviderError("Empty stream from Ollama.", "unknown");
     }
 
     // Parser NDJSON — cada linha é um JSON completo (não SSE)
@@ -335,7 +335,7 @@ export class OllamaProvider implements Provider {
       });
     } catch {
       throw new ProviderError(
-        `Falha de conexão com Ollama em ${endpoint}.`,
+        `Connection to Ollama at ${endpoint} failed.`,
         "network"
       );
     }

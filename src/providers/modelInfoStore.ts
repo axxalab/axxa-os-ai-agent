@@ -112,7 +112,7 @@ async function loadOpenRouterCatalog(): Promise<OpenRouterModel[]> {
     // v0.1.228: só cacheia catálogo válido e não-vazio; em falha deixa null
     // pra permitir retry numa próxima chamada (não fixa um array vazio).
     if (!Array.isArray(data) || data.length === 0) {
-      throw new Error("OpenRouter /models payload vazio/inválido");
+      throw new Error("OpenRouter /models payload empty/invalid");
     }
     openRouterCatalog = data;
     return data;
