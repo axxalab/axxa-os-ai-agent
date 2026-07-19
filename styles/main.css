@@ -1134,12 +1134,25 @@ body.theme-dark .axxa-root {
  * expõe essa var no <html> (ver AxxaView keyboardObserver), então ele sobe junto
  * com o teclado sem precisar do absolute.
  * ============================================================ */
+/* (P1-19) DESKTOP: fixed atravessava a leaf — o sheet se esticava pela
+   janela inteira do Obsidian, por cima do file explorer. No desktop o
+   composer fica absolute DENTRO do painel, como os outros modos. */
 .axxa-root .axxa-composer[data-mode="vault-qa"] {
-  position: fixed;
+  position: absolute;
   left: 0;
   right: 0;
-  bottom: var(--keyboard-height, 0px);
+  bottom: 0;
   padding: 0;
+}
+/* MOBILE: fixed no viewport real, subindo com o teclado — e compensando a
+   navbar nativa quando o teclado está fechado (antes o sheet cobria a
+   navegação global do Obsidian). */
+body.is-mobile .axxa-root .axxa-composer[data-mode="vault-qa"] {
+  position: fixed;
+  bottom: max(
+    var(--keyboard-height, 0px),
+    var(--axxa-status-bar-clearance, 0px)
+  );
 }
 .axxa-composer-card[data-mode="vault-qa"] {
   gap: 16px;
@@ -7359,4 +7372,12 @@ body.axxa-reduce-motion *::after {
 .axxa-sheet-locked-hint .svg-icon {
   width: 12px;
   height: 12px;
+}
+
+/* (P1-45) nota interina de vendas na tela Plans */
+.axxa-plans-sales-note {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
 }

@@ -74,7 +74,15 @@ export function NewChatScreen({
     ? configuredProv
     : [...PROVIDERS.filter((p) => p.id === provider), ...configuredProv];
   const provItems = [
-    ...provBase.map((p) => ({ id: p.id, icon: p.icon, label: p.name })),
+    // (P1-48) Provider atual SEM key entra na lista com marca explícita —
+    // antes era visualmente idêntico aos configurados e o 1º envio falhava.
+    ...provBase.map((p) => ({
+      id: p.id,
+      icon: providerConfigured(plugin, p.id) ? p.icon : "key-round",
+      label: providerConfigured(plugin, p.id)
+        ? p.name
+        : `${p.name} — ${t.newChatScreen.noKeyBadge}`,
+    })),
     { id: PROVIDER_ADD, icon: "plus", label: t.dashboard.providerAdd },
   ];
 

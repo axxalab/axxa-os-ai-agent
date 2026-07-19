@@ -374,6 +374,12 @@ export function PlansScreen({
                 ? t.plans.licenseReady
                 : t.plans.licenseInvalid}
         </p>
+        {/* (P1-45, interim) O funil não pode ser beco sem saída: enquanto a
+            página de venda não existe, a tela diz isso honestamente. O CTA
+            "Get Pro" com preço/URL entra quando o dono definir a loja. */}
+        {tier === "free" && (
+          <p className="axxa-plans-sales-note">{t.plans.salesSoon}</p>
+        )}
       </div>
     </ScreenShell>
   );

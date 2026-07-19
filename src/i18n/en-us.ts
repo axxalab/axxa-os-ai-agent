@@ -219,6 +219,7 @@ export const EN_US = {
 
   // Clean "new conversation" base screen (no starter screen) — per mode. v0.1.219
   newChatScreen: {
+    noKeyBadge: "no key",
     chatTitle: "New chat",
     chatSub: "Send the first message and we're off.",
     vaultQaTitle: "New Q&A",
@@ -344,6 +345,8 @@ export const EN_US = {
   },
 
   starter: {
+    providerAutoSwitched: (name: string) =>
+      `Switched to ${name} — it's the provider with a key configured.`,
     modeLabel: "Mode",
     providerLabel: "Provider",
     modelLabel: "Model",
@@ -644,6 +647,8 @@ export const EN_US = {
     licenseHint: "Paste your license to unlock Pro.",
     licenseValid: "✓ Pro active.",
     licenseReady: "Key format looks good — tap Apply to activate.",
+    salesSoon:
+      "Pro sales open soon. Already got a key from the AXXA team? Paste it above.",
     licenseInvalid: "✗ Invalid format. Use AXXA-PRO-XXXX-XXXX.",
   },
 

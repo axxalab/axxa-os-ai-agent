@@ -287,6 +287,11 @@ export function useChatEngine(ctx: ChatEngineCtx) {
             iconFailed: "circle-stop",
             failedText: t.ai.interrupted,
           });
+        } else {
+          // (P1-72) Stop com resposta PARCIAL: marca truncated — o chip e o
+          // botão Continuar deixam claro que a resposta foi interrompida e
+          // dão o caminho pra retomar (antes parecia uma resposta completa).
+          useChatStore.getState().setTruncated(responseId, true);
         }
       } else {
         if (responseId === null) {

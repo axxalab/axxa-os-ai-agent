@@ -39,6 +39,7 @@ import {
   ProjectEditor,
 } from "../components/screens/Projects";
 import { makeProjectId, type Project } from "../projects";
+import { PROVIDERS, providerConfigured } from "../components/_shared/providersMeta";
 import { openVaultNotePicker } from "../components/composer/PlusModal";
 import {
   getEffectiveTier,
@@ -114,6 +115,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   useEffect(() => {
     const unsub = plugin.onSettingsChange(() => forceRender((n) => n + 1));
     return unsub;
+  }, [plugin]);
+
+  // (P1-48) Armadilha do provider errado: novato adiciona a key do Gemini,
+  // mas o chip ativo segue OpenAI (sem key) e o 1º envio falha com "add your
+  // key in Settings" — que ele ACABOU de fazer. A cada mudança de settings,
+  // se o provider ativo está sem credencial e outro está configurado,
+  // troca automaticamente pro primeiro configurado (com Notice discreto).
+  useEffect(() => {
+    const unsub = plugin.onSettingsChange(() => {
+      const cur = plugin.settings.defaultProvider;
+      if (providerConfigured(plugin, cur)) return;
+      const firstOk = PROVIDERS.find((p) => providerConfigured(plugin, p.id));
+      if (!firstOk) return;
+      plugin.settings.defaultProvider = firstOk.id;
+      setProviderSel(firstOk.id);
+      new Notice(t.starter.providerAutoSwitched(firstOk.name));
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plugin]);
 
   // Cloud TTS: quando o ★ TTS de Connections → Models aponta pra OpenAI e há
@@ -1012,7 +1032,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         setTruncated(aiMessageId, true);
       }
     } catch (err) {
-      if (!(err instanceof DOMException && err.name === "AbortError")) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // (P1-72) Abortar a CONTINUAÇÃO não pode matar o botão Continuar
+        // pra sempre — restaura o truncated e o usuário retoma quando quiser.
+        setTruncated(aiMessageId, true);
+      } else {
         console.error("[axxa] continue falhou:", err);
         const { message } = describeProviderError(err, t, activeProvider.name);
         new Notice(`${t.ai.errorPrefix} ${message}`);
