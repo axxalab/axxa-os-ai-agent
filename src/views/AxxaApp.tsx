@@ -157,7 +157,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Mantém a tela ligada enquanto a IA gera (chat / agent / geração de mídia).
   // Evita que a tela apague por inatividade e congele o stream no mobile.
-  useWakeLock(isLoading);
 
   // View state: chat (default) ou conversations (tela cheia de todas conversas)
   const [view, setView] = useState<AppView>("chat");
@@ -320,6 +319,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Modo Voz (ref: ChatGPT iOS 133/140, Grok 63/66). v0.1.192
   const [voiceOpen, setVoiceOpen] = useState(false);
+  // (P1-91/93) Wake lock cobre o stream E o Modo Voz inteiro — no loop
+  // hands-free a tela apagava entre falas e matava a conversa de voz.
+  useWakeLock(isLoading || voiceOpen);
   const [modelSheetOpen, setModelSheetOpen] = useState(false);
   // Favoritos do seletor de modelo — chaves "provider::model" (≤5 por provider).
   // Só esses aparecem no bottom sheet; o resto vive no "More models". v0.1.236

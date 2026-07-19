@@ -57,6 +57,8 @@ export function VoiceScreen({
   const sttOk = isSpeechRecognitionAvailable();
   const [showIntro, setShowIntro] = useState(!introDone);
   const [state, setState] = useState<ConvoState>("idle");
+  // (P1-86/87) Último start de escuta falhou (permissão de mic/STT).
+  const [micError, setMicError] = useState(false);
   const [interim, setInterim] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   // Inicializador preguiçoso: listVoices() só roda na 1ª render, não a cada uma. v0.1.228
@@ -105,16 +107,23 @@ export function VoiceScreen({
         setState("thinking");
         onSendRef.current(text);
       },
-      onError: () => setState("idle"),
+      onError: () => {
+        // (P1-86/87) Permissão negada/STT quebrado não pode virar silêncio:
+        // marca o erro e o status explica o que fazer.
+        setMicError(true);
+        setState("idle");
+      },
       onEnd: () => {
         // Se parou sozinho enquanto ainda "ouvindo", volta pra idle.
         if (stateRef.current === "listening") setState("idle");
       },
     });
     if (!h) {
+      setMicError(true);
       setState("idle");
       return;
     }
+    setMicError(false);
     dictationRef.current = h;
     setState("listening");
   };
@@ -243,9 +252,11 @@ export function VoiceScreen({
         ? t.voice.statusThinking
         : state === "speaking"
           ? t.voice.statusSpeaking
-          : sttOk
-            ? t.voice.statusTapToTalk
-            : t.voice.statusTtsOnly;
+          : micError
+            ? t.voice.statusMicError
+            : sttOk
+              ? t.voice.statusTapToTalk
+              : t.voice.statusTtsOnly;
 
   return (
     <div className={"axxa-voice axxa-voice-state-" + state} role="dialog" aria-label={t.voice.title}>
@@ -271,7 +282,21 @@ export function VoiceScreen({
       </div>
 
       <div className="axxa-voice-stage">
-        <div className="axxa-voice-orb" aria-hidden="true">
+        {/* (P1-89) Barge-in: tocar no orb enquanto a IA fala interrompe a
+            fala e volta a ouvir — antes era impossível interromper. */}
+        <div
+          className="axxa-voice-orb"
+          role={state === "speaking" ? "button" : undefined}
+          aria-label={state === "speaking" ? t.voice.stopSpeaking : undefined}
+          aria-hidden={state === "speaking" ? undefined : "true"}
+          onClick={() => {
+            if (stateRef.current !== "speaking") return;
+            cancelSpeech();
+            releaseSpeaker(voiceResetRef.current);
+            setState("idle");
+            if (sttOk) startListening();
+          }}
+        >
           <span className="axxa-voice-orb-core" />
           <span className="axxa-voice-orb-ring axxa-voice-orb-ring-1" />
           <span className="axxa-voice-orb-ring axxa-voice-orb-ring-2" />
@@ -341,9 +366,13 @@ export function VoiceScreen({
           <button
             type="button"
             className="axxa-voice-test"
-            onClick={() =>
-              speak(t.voice.testPhrase, { voiceURI, rate: voiceRate })
-            }
+            onClick={() => {
+              // (P1-85) Testar a voz durante "Speaking…" substituía a fala
+              // principal sem disparar o onEnd dela — o modo travava em
+              // speaking pra sempre (mic desabilitado). Destrava o estado.
+              if (stateRef.current === "speaking") setState("idle");
+              speak(t.voice.testPhrase, { voiceURI, rate: voiceRate });
+            }}
           >
             <Icon name="play" />
             {t.voice.test}

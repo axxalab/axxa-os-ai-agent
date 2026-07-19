@@ -81,8 +81,9 @@ export const EN_US = {
     feat2Desc: "AXXA's answers are spoken back to you.",
     feat3Title: "Voice and speed",
     feat3Desc: "Pick the voice and reading pace.",
-    feat4Title: "Local and private",
-    feat4Desc: "Voice and speech processed on your device.",
+    feat4Title: "Your keys, your data",
+    feat4Desc:
+      "System voices run on-device. A cloud voice (if you pick one in Models) uses your own API key.",
     start: "Get started",
     close: "Close",
     settings: "Voice settings",
@@ -92,6 +93,9 @@ export const EN_US = {
     statusThinking: "Thinking…",
     statusSpeaking: "Speaking…",
     statusTapToTalk: "Tap the mic to talk",
+    statusMicError:
+      "Couldn't access the microphone — allow it in system settings, then tap the mic to retry.",
+    stopSpeaking: "Stop speaking",
     statusTtsOnly: "Dictation unavailable — I'll read answers aloud",
     sttUnavailable:
       "Voice dictation isn't available on this device. Answers are still read aloud.",
@@ -986,10 +990,8 @@ export const EN_US = {
     ragIndexingCancel: "Cancel",
     ragIndexingCancelled: "Indexing cancelled.",
     ragIndexingFailed: (msg: string) => `Indexing failed: ${msg}`,
-    ragNoApiKey:
-      "OpenAI API key not configured. Go to Settings → Providers → OpenAI first.",
-    ragNoOpenRouterKey:
-      "OpenRouter API key not configured. Go to Settings → Providers → OpenRouter first.",
+    ragNoProviderKey: (provider: string) =>
+      `${provider} API key not configured. Go to Settings → Connections → ${provider} first.`,
     ragClearConfirm:
       "Are you sure? This deletes the index. You'll need to reindex to use Vault Q&A with embeddings again.",
     ragClearDone: "Index deleted.",

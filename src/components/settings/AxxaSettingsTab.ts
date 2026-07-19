@@ -204,6 +204,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private usagePeriodDays = 0;
   /** Cache do último aggregate computed pra evitar recomputar a cada render. */
   private cachedUsage: UsageAggregate | null = null;
+  /** (P1-60) Referência do array de summaries usado no cachedUsage — como o
+   *  upsert do cache é imutável (P1-12), referência nova = dados novos, e o
+   *  aggregate congelado é invalidado. */
+  private cachedUsageFor: unknown = null;
   /** Controller usado pra cancelar uma indexação em andamento. */
   private indexAbortController: AbortController | null = null;
   /** id do setTimeout que esconde o progress do RAG — limpo no hide(). v0.1.228 */
@@ -2793,20 +2797,24 @@ export class AxxaSettingsTab extends PluginSettingTab {
     statsEl: HTMLElement,
     t: Translations
   ) {
-    // Valida API key correta com base no provider do modelo escolhido
-    const modelSpec = EMBEDDING_MODELS.find(
-      (m) => m.model === this.plugin.settings.ragEmbeddingModel
-    );
-    if (modelSpec?.provider === "openrouter") {
-      if (!this.plugin.settings.openrouterApiKey.trim()) {
-        new Notice(t.settings.ragNoOpenRouterKey);
-        return;
-      }
-    } else {
-      if (!this.plugin.settings.openaiApiKey.trim()) {
-        new Notice(t.settings.ragNoApiKey);
-        return;
-      }
+    // (P1-78) Valida a key do PROVIDER REAL do modelo de embedding: eram só
+    // 2 ramos (openrouter/openai) pra um dropdown de 4 — usuário só-Gemini
+    // recebia "OpenAI API key not configured" tendo tudo configurado.
+    const s = this.plugin.settings;
+    const embProvider =
+      EMBEDDING_MODELS.find((m) => m.model === s.ragEmbeddingModel)?.provider ??
+      s.ragEmbeddingProvider ??
+      "openai";
+    const KEY_BY_PROVIDER: Record<string, { key: string; label: string }> = {
+      openai: { key: s.openaiApiKey, label: "OpenAI" },
+      openrouter: { key: s.openrouterApiKey, label: "OpenRouter" },
+      gemini: { key: s.geminiApiKey, label: "Gemini" },
+      nim: { key: s.nimApiKey, label: "Nvidia NIM" },
+    };
+    const req = KEY_BY_PROVIDER[embProvider] ?? KEY_BY_PROVIDER.openai;
+    if (!req.key.trim()) {
+      new Notice(t.settings.ragNoProviderKey(req.label));
+      return;
     }
 
     // Desabilita botões durante indexação, habilita cancelamento
@@ -3041,12 +3049,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     try {
       // Reusa o cache ÚNICO de summaries (v0.1.175) — sem disk-walk próprio.
+      // (P1-60) Conversas novas invalidam o aggregate: sem isto os números
+      // congelavam na primeira abertura da sessão de Settings.
+      const summaries = await this.plugin.loadChatSummaries();
+      if (this.cachedUsageFor !== summaries) this.cachedUsage = null;
+      this.cachedUsageFor = summaries;
       const agg =
         this.cachedUsage ??
-        aggregateFromSummaries(
-          await this.plugin.loadChatSummaries(),
-          this.usagePeriodDays
-        );
+        aggregateFromSummaries(summaries, this.usagePeriodDays);
       this.cachedUsage = agg;
       contentEl.empty();
       this.renderUsageBody(contentEl, agg, t);
