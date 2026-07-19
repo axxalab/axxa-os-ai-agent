@@ -458,9 +458,23 @@ export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
   const actions = useChatActions();
   const t = useT();
   // Tira o prefixo "[Erro]" do texto — o card já comunica que é erro pelo ícone.
-  const text = msg.content.startsWith(t.ai.errorPrefix)
+  const stripped = msg.content.startsWith(t.ai.errorPrefix)
     ? msg.content.slice(t.ai.errorPrefix.length).trim()
     : msg.content;
+  // Fallback por errorCode (auditoria jul/2026): content vazio deixava o card
+  // só com o ícone ⚠ — cinto de segurança caso algum caminho não preencha.
+  const sessionProvider = useChatStore.getState().sessionProvider ?? "the provider";
+  const fallbackByCode: Partial<Record<NonNullable<AIResponseMessage["errorCode"]>, string>> = {
+    "no-key": t.ai.err.noKey(sessionProvider),
+    "invalid-key": t.ai.err.invalidKey(sessionProvider),
+    "rate-limit": t.ai.err.rateLimit,
+    network: t.ai.err.network,
+    billing: t.ai.err.billing,
+  };
+  const text =
+    stripped.trim() ||
+    (msg.errorCode ? fallbackByCode[msg.errorCode] : undefined) ||
+    t.ai.unknownError;
   const isKeyError =
     msg.errorCode === "no-key" || msg.errorCode === "invalid-key";
   // Billing do Gemini: ação dedicada → abre o AI Studio pra ativar billing

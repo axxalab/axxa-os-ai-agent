@@ -191,10 +191,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await plugin.saveSettings();
     if (openSettings) {
       handleOpenSettings();
-    } else {
-      // "Tudo certo!" (ref: ChatGPT iOS 20) — confirmação breve antes do chat.
-      setShowAllSet(true);
     }
+    // (auditoria jul/2026) "You're all set!" no SKIP era celebração invertida:
+    // confirmava um setup que não aconteceu (zero keys). O skip agora dispensa
+    // em silêncio; a celebração fica reservada pra quando houver key de fato.
   };
   // License key (#15) — salva e re-renderiza (tier recomputa). Notice do estado.
   const handleSetLicense = async (key: string) => {
@@ -450,10 +450,24 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // ============================================================
   // Auto-save debounced — escreve .axxa/chats/chat/[id].md
   // ============================================================
+  // (auditoria jul/2026) Dois guarda-chuvas:
+  //  - justLoadedRef: abrir uma conversa antiga dispara o effect (messages
+  //    mudou na reidratação) e REGRAVAVA o arquivo com date=agora — o
+  //    histórico reordenava sozinho. Pula UM ciclo após o load.
+  //  - pendingSaveRef: o debounce de 500ms era só clearTimeout no cleanup —
+  //    fechar a view logo após a última mudança PERDIA o save. No unmount,
+  //    flusha o save pendente em vez de descartar.
+  const justLoadedRef = useRef(false);
+  const pendingSaveRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (messages.length === 0) return;
     if (!currentChatId) return;
-    const timer = window.setTimeout(() => {
+    if (justLoadedRef.current) {
+      justLoadedRef.current = false;
+      return;
+    }
+    const doSave = () => {
+      pendingSaveRef.current = null;
       const userOrAi = messages.filter(
         (m): m is UserMessage | AIResponseMessage =>
           m.type === "user" ||
@@ -506,7 +520,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           });
         })
         .catch((err) => console.error("[axxa] saveChat falhou:", err));
-    }, 500);
+    };
+    pendingSaveRef.current = doSave;
+    const timer = window.setTimeout(doSave, 500);
     return () => window.clearTimeout(timer);
   }, [
     messages,
@@ -522,6 +538,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     plugin.app,
     plugin.settings.chatsPath,
   ]);
+  // Flush no unmount: se a view fecha com um save agendado, grava AGORA em
+  // vez de descartar (o clearTimeout do cleanup acima só cobre re-agendamento).
+  useEffect(
+    () => () => {
+      pendingSaveRef.current?.();
+    },
+    []
+  );
 
   // ============================================================
   // Handlers
@@ -1444,6 +1468,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         setSessionPersona,
       } = useChatStore.getState();
 
+      // Abrir um chat NÃO é atividade: pula o próximo ciclo do auto-save —
+      // senão a reidratação regrava o arquivo com date=agora e o histórico
+      // reordena só de abrir. (auditoria jul/2026)
+      justLoadedRef.current = true;
       setMessages(restored);
       setCurrentChatId(chat.id);
       setCurrentChatTitle(chat.title);

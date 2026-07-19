@@ -7193,3 +7193,90 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   background-size: cover;
   background-position: center;
 }
+
+/* ── [DS:skin-restore] P1s de estado invisível (auditoria jul/2026) ── */
+
+/* Busca in-chat: destaque do resultado (era só border-radius, sem cor) */
+.axxa-msg-highlight {
+  background: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Segmented: pílula do item ATIVO (o indicador deslizante era transparente) */
+.axxa-seg-ind {
+  background: var(--interactive-accent);
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+}
+
+/* Gaveta: scrim escurece o conteúdo atrás (era 100% transparente) */
+.axxa-sidebar-scrim {
+  background: var(--background-modifier-cover);
+}
+
+/* Emblema Founder/Premium/Free do footer da gaveta */
+.axxa-sidebar-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+.axxa-sidebar-badge-founder {
+  background: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  color: var(--text-accent);
+}
+.axxa-sidebar-badge-premium {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* Projects: aba ativa Chats|Sources */
+.axxa-proj-tab {
+  background: transparent;
+  color: var(--text-muted);
+}
+.axxa-proj-tab-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* ProjectEditor: cor/ícone selecionados + Done desabilitado */
+.axxa-proj-swatch-active {
+  border-color: var(--text-normal);
+  box-shadow: 0 0 0 2px var(--background-primary),
+    0 0 0 4px color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+}
+.axxa-proj-iconcell-active {
+  background: color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+  color: var(--text-accent);
+  box-shadow: inset 0 0 0 1.5px var(--interactive-accent);
+}
+.axxa-proj-editor-done:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Profile/Locked: círculos que renderizavam invisíveis */
+.axxa-profile-avatar2 {
+  background: color-mix(in srgb, var(--interactive-accent) 24%, transparent);
+  color: var(--text-accent);
+  font-weight: 700;
+}
+.axxa-locked-badge {
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+
+/* Reduce motion: mata também ANIMATIONS (o bloco global só cobria transitions) */
+body.axxa-reduce-motion *,
+body.axxa-reduce-motion *::before,
+body.axxa-reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}

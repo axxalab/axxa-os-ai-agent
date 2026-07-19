@@ -508,10 +508,13 @@ export default class AxxaPlugin extends Plugin {
   /** Upsert INCREMENTAL após salvar um chat — evita re-walk do disco. */
   upsertChatSummary(s: ChatSummary): void {
     if (!this.chatSummaries) return;
-    const idx = this.chatSummaries.findIndex((c) => c.id === s.id);
-    if (idx >= 0) this.chatSummaries[idx] = s;
-    else this.chatSummaries.push(s);
-    this.chatSummaries.sort((a, b) => b.date.localeCompare(a.date));
+    // IMUTÁVEL (auditoria jul/2026): mutar in place mantinha a MESMA referência
+    // de array — consumidores React que comparam referência (useEffect deps,
+    // memo) nunca viam a mudança e as listas ficavam stale a sessão inteira.
+    this.chatSummaries = [
+      ...this.chatSummaries.filter((c) => c.id !== s.id),
+      s,
+    ].sort((a, b) => b.date.localeCompare(a.date));
     this.notifyChats();
     this.scheduleChatIndexWrite();
   }

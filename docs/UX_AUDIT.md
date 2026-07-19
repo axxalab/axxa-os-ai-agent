@@ -6,6 +6,29 @@
 > auditoria. Decisões de produto respeitadas: fullscreen mobile retorna
 > (setting reservado); monetização Free/Pro mantida.
 
+## 0. Status do refazer (aplicado nesta branch)
+
+**P0 — 7/7 implementados** (commit \`fix(p0)\`): pele do Modo Voz/editor de
+projeto (overlays opacos + orb com estados), switch dos modelos com estado
+visual, feature de Background revivida (var consumida), áudio honesto
+(wikilink persistido + Notice), nonce global das skills.
+
+**P1 — lote 1 implementado** (este commit):
+- Estados invisíveis (CSS): highlight da busca in-chat, pílula do item ativo
+  no segmented (provider/modo), scrim da gaveta, emblema Founder/Premium,
+  aba ativa do projeto, cor/ícone selecionados no editor, \`Done\` disabled
+  visível, avatar/badge do Profile/Locked, reduce-motion agora mata
+  \`animation\` (só cobria \`transition\`).
+- Integridade de dados: \`upsertChatSummary\` imutável (listas não ficam mais
+  stale), flush do auto-save no unmount (fechar a view não perde mais o save
+  pendente), abrir conversa antiga não regrava \`date=agora\` (histórico não
+  reordena sozinho).
+- Becos sem saída: card de erro com fallback por \`errorCode\` (nunca mais
+  vazio), skip do onboarding não celebra mais "You're all set!" sem key.
+
+**Backlog priorizado**: os demais P1 (seções 4) e P2/P3 (seção 5)
+permanecem catalogados abaixo com evidência e recomendação cada.
+
 ## 1. Método
 
 - **Inventário**: 49 user stories formais (10 personas) com critérios de aceite e
