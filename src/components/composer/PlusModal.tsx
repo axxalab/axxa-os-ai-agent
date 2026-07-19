@@ -495,7 +495,12 @@ function PlusToggleRow({
         "axxa-plus-row axxa-plus-row-tone-" + tone +
         (disabled ? " axxa-plus-row-disabled" : "")
       }
-      role="button"
+      /* (P1-47) O elemento FOCÁVEL é a row — o role=switch + aria-checked
+         ficavam num span decorativo interno que o leitor de tela nunca foca.
+         A row anuncia "switch, on/off"; o span virou visual puro. */
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
       tabIndex={disabled ? -1 : 0}
       onClick={() => !disabled && onChange(!checked)}
       onKeyDown={(e) => {
@@ -517,9 +522,7 @@ function PlusToggleRow({
           "axxa-plus-row-switch" +
           (checked ? " axxa-plus-row-switch-on" : "")
         }
-        aria-checked={checked}
-        aria-disabled={disabled || undefined}
-        role="switch"
+        aria-hidden="true"
       >
         <span className="axxa-plus-row-switch-thumb" />
       </span>

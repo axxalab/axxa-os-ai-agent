@@ -674,6 +674,23 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       text = pendingAttachments.map((p) => p.name).join(", ");
     }
 
+    // (P1-49) Pre-flight de key ANTES de travar a sessão/criar o chat id:
+    // sem isto o 1º envio sem key persistia um chat-fantasma (só a pergunta)
+    // nos Recents, e reabri-lo não mostrava erro nenhum.
+    if (
+      messages.length === 0 &&
+      providerNeedsKey(activeProviderId) &&
+      !apiKeyFor(activeProviderId).trim()
+    ) {
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(activeProvider.name)}`,
+        isError: true,
+        errorCode: "no-key",
+      });
+      return;
+    }
+
     // Primeira msg da sessão → cria chat ID, gera título, trava session
     if (messages.length === 0) {
       const newId = makeId();
@@ -773,6 +790,27 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // gerada NA MESMA bolha — o user navega entre versões com ‹ N/M ›.
   const handleRegenerate = async (aiMessageId: string) => {
     if (useChatStore.getState().isLoading) return;
+    // (P1-57, caso quebrado) Modelo de geração não conversa — streamChat
+    // nele estoura erro depois de já ter esvaziado a bolha. Regenerar mídia
+    // é re-enviar o prompt (o retry da bolha de erro já faz o caminho certo).
+    if (isGenerationModel(getModelCapabilities(activeProviderId, activeModel))) {
+      new Notice(t.ai.regenNotForGeneration);
+      return;
+    }
+    // (P1-58) Pre-flight de key ANTES do beginVariant — sem key o fluxo
+    // esvaziava a bolha e só então falhava.
+    if (
+      providerNeedsKey(activeProviderId) &&
+      !apiKeyFor(activeProviderId).trim()
+    ) {
+      useChatStore.getState().addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(activeProvider.name)}`,
+        isError: true,
+        errorCode: "no-key",
+      });
+      return;
+    }
     const current = useChatStore.getState().messages;
     const aiIdx = current.findIndex(
       (m) => m.id === aiMessageId && m.type === "ai-response"
@@ -845,10 +883,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       syncVariant(aiMessageId);
     } catch (err) {
       syncVariant(aiMessageId);
+      // (P1-58) Variante que ficou VAZIA é descartada — restaura a versão
+      // anterior em vez de exibir uma bolha em branco ‹2/2›.
+      useChatStore.getState().discardEmptyVariant(aiMessageId);
       if (!(err instanceof DOMException && err.name === "AbortError")) {
         console.error("[axxa] regenerar falhou:", err);
-        const { message } = describeProviderError(err, t, activeProvider.name);
-        new Notice(`${t.ai.errorPrefix} ${message}`);
+        const { message, code } = describeProviderError(err, t, activeProvider.name);
+        // Erro como BOLHA acionável (retry/settings), não Notice efêmero.
+        useChatStore.getState().addMessage({
+          type: "ai-response",
+          content: `${t.ai.errorPrefix} ${message}`,
+          isError: true,
+          errorCode: code,
+        });
       }
     } finally {
       setLoading(false);

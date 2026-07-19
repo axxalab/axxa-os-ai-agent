@@ -121,6 +121,8 @@ export const EN_US = {
     cancel: "Cancel",
     done: "Done",
     deleteProject: "Delete project",
+    deleteConfirm: (name: string) =>
+      `Delete the project "${name}"? Conversations and notes stay in your vault — only the grouping is removed.`,
     tabChats: "Chats",
     tabSources: "Sources",
     chatsEmpty: "No conversations in this project yet.",
@@ -561,6 +563,8 @@ export const EN_US = {
     },
     retry: "Try again",
     startNewChat: "Start new chat",
+    regenNotForGeneration:
+      "Regenerate isn't available for media generation — send the prompt again instead.",
     openSettings: "Open Settings",
     openBilling: "Enable billing in AI Studio",
     genUnsupported: (type: "image" | "audio" | "video", supported: string) => {

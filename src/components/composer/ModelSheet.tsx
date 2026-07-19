@@ -436,7 +436,11 @@ export function ModelSheet({
                   <div className="axxa-plus-divider" />
                   <div
                     className="axxa-sheet-row"
-                    role="button"
+                    /* (P1-47) role=switch no elemento FOCÁVEL — o span
+                       interno com o estado nunca era focado pelo leitor. */
+                    role="switch"
+                    aria-checked={thinkingOn}
+                    aria-label="Thinking"
                     tabIndex={0}
                     onClick={() => onToggleThinking(!thinkingOn)}
                     onKeyDown={(e) => {
@@ -457,8 +461,7 @@ export function ModelSheet({
                         "axxa-plus-row-switch" +
                         (thinkingOn ? " axxa-plus-row-switch-on" : "")
                       }
-                      role="switch"
-                      aria-checked={thinkingOn}
+                      aria-hidden="true"
                     >
                       <span className="axxa-plus-row-switch-thumb" />
                     </span>

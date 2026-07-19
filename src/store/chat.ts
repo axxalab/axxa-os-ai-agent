@@ -167,6 +167,8 @@ interface ChatState {
   beginVariant: (id: string) => void;
   /** Sincroniza variants[variantIndex] com o content atual (após o stream). */
   syncVariant: (id: string) => void;
+  /** (P1-58) Descarta a variante ATIVA se ela estiver vazia (regen falhou). */
+  discardEmptyVariant: (id: string) => void;
   /** Navega entre variantes (dir -1/+1), atualizando o content exibido. */
   navigateVariant: (id: string, dir: number) => void;
   selectOption: (messageId: string, optionIndex: number) => void;
@@ -318,6 +320,29 @@ export const useChatStore = create<ChatState>((set) => ({
           content: "",
           truncated: false,
         };
+      }),
+    })),
+  // (P1-58) Regeneração que falhou sem produzir nada: descarta a variante
+  // vazia e restaura a versão anterior — sem isto a bolha virava um branco
+  // ‹2/2› e a resposta antiga "sumia" atrás de uma seta que ninguém conhece.
+  discardEmptyVariant: (id) =>
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== id || m.type !== "ai-response" || !m.variants) return m;
+        if (m.content.trim() !== "") return m;
+        const cur = m.variantIndex ?? m.variants.length - 1;
+        const variants = m.variants.filter((_, i) => i !== cur);
+        if (variants.length === 0) return m;
+        const idx = Math.min(Math.max(0, cur - 1), variants.length - 1);
+        if (variants.length === 1) {
+          return {
+            ...m,
+            content: variants[0],
+            variants: undefined,
+            variantIndex: undefined,
+          };
+        }
+        return { ...m, content: variants[idx], variants, variantIndex: idx };
       }),
     })),
   syncVariant: (id) =>
