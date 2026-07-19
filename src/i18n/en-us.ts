@@ -594,6 +594,8 @@ export const EN_US = {
 
   // Activities/erros do motor de geração de mídia (useGeneration) — P1-27.
   generation: {
+    interruptedNote:
+      "Stopped — the result was discarded. Heads-up: the provider may still charge for this generation.",
     generatingImage: "Generating image...",
     generatingAudio: "Generating audio...",
     generatingVideo: "Generating video...",

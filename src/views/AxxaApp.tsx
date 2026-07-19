@@ -743,6 +743,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     buildImageModelOptions,
     runImageGeneration,
     handleCreateImage,
+    lastImageGenRef,
   } = useGeneration({
     plugin,
     t,
@@ -1044,6 +1045,29 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const userText = (current[userIdx] as UserMessage).content;
     // Volta o histórico pro estado logo após a user-msg (remove erro + comments).
     useChatStore.getState().setMessages(current.slice(0, userIdx + 1));
+    // (P1-31) Turno de geração via modal (user msg "🖼️ prompt"): o retry
+    // re-invoca a MESMA geração — antes caía no modelo de CHAT ativo e o
+    // usuário recebia um parágrafo sobre a imagem em vez da imagem.
+    if (userText.startsWith("🖼️") && lastImageGenRef.current) {
+      const { providerId, model } = lastImageGenRef.current;
+      const genPrompt = userText.replace(/^🖼️\s*/, "");
+      useChatStore.getState().setLoading(true);
+      const genController = new AbortController();
+      abortRef.current = genController;
+      try {
+        await runImageGeneration(
+          genPrompt,
+          providerId,
+          model,
+          undefined,
+          genController.signal
+        );
+      } finally {
+        useChatStore.getState().setLoading(false);
+        if (abortRef.current === genController) abortRef.current = null;
+      }
+      return;
+    }
     const caps = getModelCapabilities(activeProviderId, activeModel);
     // (P1-28) Se o erro pertence ao ÚLTIMO turno enviado, o retry leva os
     // mesmos anexos do envio original (imagem/nota não somem no re-envio).

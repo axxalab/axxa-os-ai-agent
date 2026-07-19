@@ -67,6 +67,9 @@ export class ImageGenModal extends Modal {
   private generateBtn: HTMLButtonElement | null = null;
   // genTitleEl (não titleEl): Modal já tem titleEl: HTMLElement na base. v0.1.228
   private genTitleEl: HTMLElement | null = null;
+  // (P1-32) ref do checkbox IMG2IMG — select() desmarca/desabilita quando o
+  // modelo escolhido não edita, em vez de descartar a imagem em silêncio.
+  private editCbEl: HTMLInputElement | null = null;
 
   constructor(app: App, opts: Opts) {
     super(app);
@@ -140,6 +143,8 @@ export class ImageGenModal extends Modal {
         attr: { type: "checkbox" },
       }) as HTMLInputElement;
       cb.checked = this.useInputImage;
+      cb.disabled = !this.selected?.supportsEdit;
+      this.editCbEl = cb;
       editRow.createSpan({ text: s.useAttached });
       cb.onchange = () => {
         this.useInputImage = cb.checked;
@@ -237,6 +242,15 @@ export class ImageGenModal extends Modal {
       void badge;
       const select = () => {
         this.selected = opt;
+        // (P1-32) Modelo sem supportsEdit + IMG2IMG marcado = imagem do
+        // usuário descartada em silêncio numa ação paga. Desmarca, volta o
+        // título pra "Generate image" e desabilita o checkbox.
+        if (!opt.supportsEdit && this.useInputImage) {
+          this.useInputImage = false;
+          if (this.editCbEl) this.editCbEl.checked = false;
+          this.genTitleEl?.setText(this.opts.strings.title);
+        }
+        if (this.editCbEl) this.editCbEl.disabled = !opt.supportsEdit;
         this.renderOptions(listEl);
         this.syncGenerate();
       };
