@@ -4,6 +4,9 @@
 
 export const EN_US = {
   composer: {
+    audioKeptNote: "audio saved in your vault (not sent to the AI yet)",
+    audioAttachedNotice:
+      "Audio saved to your vault and linked in the message. Heads-up: audio isn't sent to the AI yet.",
     attachImageNoneValid: "No valid image was attached.",
     attachImageTooLarge: "Image too large (max 20MB).",
     attachmentsLabel: "Pending attachments",

@@ -414,8 +414,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Gaveta lateral (avatar do header) com as conversas. v0.1.145
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Nonce GLOBAL monotônico (v0.1.237): o nonce derivado do prev colidia
+  // quando um setComposerInject(undefined) entrava no mesmo tick (skill com
+  // `mode` via slash: handleStarterMode limpa → handlePromptStarter recomeça
+  // do zero → nonce repete → Composer ignora a injeção silenciosamente).
+  const injectNonceRef = useRef(0);
   const handlePromptStarter = (text: string) => {
-    setComposerInject((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
+    injectNonceRef.current += 1;
+    setComposerInject({ text, nonce: injectNonceRef.current });
   };
 
   // Carregamento ÚNICO das conversas (v0.1.175): UM disk-walk cacheado no
@@ -648,7 +654,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     // User msg salva sem attachments no store (pra simplicidade do auto-save .md).
     // O propagation pro provider acontece via parâmetro adicional pra streamReply/runAgentTurn.
-    addMessage({ type: "user", content: text });
+    // EXCEÇÃO honesta (auditoria jul/2026): áudio ainda não vai pro modelo —
+    // sem isto o chip sumia no send e a gravação desaparecia da conversa.
+    // O wikilink persiste na mensagem (e no .md) até a transcrição real chegar.
+    const audioLinks = pendingAttachments
+      .filter((p) => p.attachment.type === "audio")
+      .map((p) => {
+        const a = p.attachment as { path: string };
+        return `> 🎙 [[${a.path}|${p.name}]] — ${t.composer.audioKeptNote}`;
+      });
+    addMessage({
+      type: "user",
+      content: audioLinks.length ? `${text}\n\n${audioLinks.join("\n")}` : text,
+    });
     setPendingAttachments([]);
 
     // Se o modelo ativo é de generation (imageGen/audioGen/videoGen), roteia
@@ -1714,7 +1732,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             mode={activeMode}
             placeholder={placeholderForMode(activeMode, t.composer)}
             onSaveAudio={handleSaveAudio}
-            onAddAudio={(path, durationMs, alias) =>
+            onAddAudio={(path, durationMs, alias) => {
               setPendingAttachments((prev) => [
                 ...prev,
                 {
@@ -1722,8 +1740,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                   attachment: { type: "audio", path, durationMs },
                   name: alias,
                 },
-              ])
-            }
+              ]);
+              // Honestidade (auditoria): áudio ainda não vai pro modelo —
+              // avisa na hora em vez de deixar o chip sumir no send.
+              new Notice(t.composer.audioAttachedNotice);
+            }}
             commands={axxaCommands}
             visibleChips={plugin.settings.composerChips}
             visionEnabled={getModelCapabilities(activeProviderId, activeModel).vision}
