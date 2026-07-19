@@ -26,8 +26,34 @@ visual, feature de Background revivida (var consumida), áudio honesto
 - Becos sem saída: card de erro com fallback por \`errorCode\` (nunca mais
   vazio), skip do onboarding não celebra mais "You're all set!" sem key.
 
-**Backlog priorizado**: os demais P1 (seções 4) e P2/P3 (seção 5)
-permanecem catalogados abaixo com evidência e recomendação cada.
+**P1 — execução na ordem do documento (release 0.1.237+)**: **68 dos 93
+P1 implementados** em 8 lotes commitados. Destaques por área:
+- *Agent*: gate coerente (nível decide SE confirma; diff = preview),
+  Stop interrompe tools, steps sobrevivem a abort/erro, superfície EN.
+- *Composer*: status row revivida, envio attachment-only, dica do mic,
+  aria-label no editor, live region de resposta.
+- *Modelos por função*: fallback de leitura dos defaults legados, picker
+  de fonte no badge "Served by", nome legível no mobile, busca por
+  prettyModelName, bookmark=favorito unificado.
+- *Erros*: context-overflow com CTA "Start new chat", retry preserva
+  anexos, card nunca vazio, regeneração sem variante-fantasma.
+- *Geração*: retry re-gera a imagem (não cai no chat), IMG2IMG honesto,
+  Stop com soft-cancel avisando cobrança.
+- *Voz*: barge-in no orb, erros de mic acionáveis, wake lock no modo
+  inteiro, Test voice sem travar, copy de privacidade honesto.
+- *Mobile/a11y*: modais keyboard-aware, menus do header por teclado,
+  switches anunciam estado, radiogroup por setas, clearance da navbar
+  consumindo a var certa.
+
+**P1 pendentes (25)** — continuam abaixo com evidência/recomendação:
+19 (composer vault-qa fixed), 41 (caminho Ollama no onboarding — decisão
+de produto), 45 (preço/loja do Pro — precisa da URL de venda), 48
+(provider trap pós-key), 57 (dispatch unificado regenerate/continue —
+refactor M; o caso quebrado de geração já está guardado), 62 (focus trap
+da sidebar), 65–68 (skills), 69–71+75–77 (consistência de custos), 72
+(marcador de stream parcial), 73 (cards do agent mobile), 81–84
+(vault-qa: degradação visível, citações, excerpt por effort, caminho pro
+indexador), 88 (interromper em thinking).
 
 ## 1. Método
 
