@@ -52,16 +52,21 @@ desktop + navbar no mobile), 45-interim ('sales open soon'), 48
 snap+fade), 72 (stop parcial marca truncated), 74 (modais keyboard-aware),
 78 (key certa no index), 81–84 (Vault Q&A: citação não cria nota, origem
 da busca visível, excerpt por effort, chip do índice na New Q&A),
-85–87/89/91–93 (Modo Voz). **Total: 82/93 P1 implementados.**
+85–87/89/91–93 (Modo Voz).
 
-**P1 pendentes (11)**:
-- *Decisão de produto*: 41 (caminho Ollama no onboarding), 45-final
-  (preço + URL da loja do Pro).
-- *Refactors M/L com testes próprios*: 57 (dispatch unificado de
-  regenerate/continue por modo — o caso quebrado de geração já está
-  guardado), 70/75/76/77 (unificação de custos entre Statistics/Usage/
-  export + custo de geração no aggregate), 88 (interromper o turno em
-  'thinking' — barge-in na fala já existe).
+**Lote 13 (release 0.1.239)**: 57 (regenerate/continue agora despacham por
+modo — agent re-roda o turno com tools, vault-qa refaz a busca híbrida antes
+de regenerar, continue leva contexto do vault), 70 (Statistics usa o mesmo
+computeBilledUsage do Usage — "Spend (billed)"), 75 (saldo calculado sobre o
+agregado TOTAL, sem inflar com filtro de período), 76 (nota de janelas no
+cross-check), 77-disclosure (nota honesta de que custos de geração de
+imagem/áudio não entram no agregado), 88 (tap no orb durante 'thinking'
+interrompe a geração). **Total: 91/93 P1 implementados.**
+
+**P1 pendentes (2 — decisão de produto)**: 41 (caminho Ollama no
+onboarding) e 45-final (preço + URL da loja do Pro). Backlog documentado:
+77-completo (contabilizar custo de geração no aggregate — feature L; o
+disclosure honesto já está no lugar).
 
 ## 1. Método
 
