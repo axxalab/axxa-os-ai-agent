@@ -114,7 +114,7 @@ import {
   printUsageReport,
 } from "../../usage/export";
 
-type TopTabId =
+export type TopTabId =
   | "connections"
   | "setup"
   | "agent"
@@ -216,8 +216,17 @@ export class AxxaSettingsTab extends PluginSettingTab {
   constructor(app: App, plugin: AxxaPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+
     const eff = plugin.settings.defaultEffort as EffortLevel;
     if (EFFORT_LEVELS.includes(eff)) this.activeEffortTab = eff;
+  }
+
+
+  /** (P1-69) Pré-seleciona a top-tab antes do próximo display() — usado por
+   *  CTAs do app ("See details in Settings → Usage") pra aterrissar na aba
+   *  certa em vez de largar o usuário em Connections. */
+  presetTab(tab: TopTabId): void {
+    this.activeTopTab = tab;
   }
 
   display(): void {

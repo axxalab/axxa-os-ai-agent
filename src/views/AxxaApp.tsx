@@ -1797,7 +1797,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           canAccess("statistics", tier) ? (
             <StatisticsScreen
               summaries={allChats}
-              onOpenUsage={handleOpenSettings}
+              onOpenUsage={() => {
+                // (P1-69) Aterrissa na aba Usage — antes largava em Connections.
+                plugin.settingsTab?.presetTab("usage");
+                handleOpenSettings();
+              }}
               onClose={() => setView("chat")}
             />
           ) : (

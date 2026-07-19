@@ -315,6 +315,8 @@ export default class AxxaPlugin extends Plugin {
   /** Índice vetorial RAG carregado em memória — compartilhado entre Settings
    *  (indexação) e AxxaApp (busca). null = ainda não foi carregado/indexado. */
   vectorIndex: VectorIndex | null = null;
+  /** (P1-69) Ref da settings tab — permite abrir numa aba específica. */
+  settingsTab: AxxaSettingsTab | null = null;
   /** Listeners avisados a cada saveSettings — usados pra re-renderizar o
    *  React tree quando o user troca idioma ou outro setting reativo. */
   private settingsListeners = new Set<() => void>();
@@ -761,7 +763,8 @@ export default class AxxaPlugin extends Plugin {
     });
 
     // Settings tab — aparece em Settings -> Community Plugins -> AXXA OS.
-    this.addSettingTab(new AxxaSettingsTab(this.app, this));
+    this.settingsTab = new AxxaSettingsTab(this.app, this);
+    this.addSettingTab(this.settingsTab);
 
     // Mede a navbar mobile pra compensar layout (--axxa-status-bar-clearance)
     this.setupStatusBarClearance();

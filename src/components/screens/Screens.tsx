@@ -182,7 +182,13 @@ export function StatisticsScreen({
   return (
     <ScreenShell title={t.nav.statistics} icon="bar-chart-3" onClose={onClose}>
       <div className="axxa-stat-cards">
-        <StatCard label={t.screens.statSpend} value={formatUsd(agg.total.cost)} icon="dollar-sign" />
+        {/* (P1-71) Custos desconhecidos ganham o "*" (mesma convenção do
+            Usage tab) — o total subestimado não se apresenta mais como exato. */}
+        <StatCard
+          label={t.screens.statSpend}
+          value={formatUsd(agg.total.cost) + (agg.total.hasUnknownCost ? "*" : "")}
+          icon="dollar-sign"
+        />
         <StatCard label={t.screens.statChats} value={String(agg.total.chats)} icon="message-square" />
         <StatCard label={t.screens.statTokens} value={formatTokens(agg.total.tokensIn + agg.total.tokensOut)} icon="sigma" />
       </div>

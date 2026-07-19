@@ -1475,6 +1475,16 @@ body.theme-dark .axxa-root .axxa-composer-pill {
   overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  /* (P1-73) affordance de scroll: snap por card + fade na borda direita —
+     a scrollbar é escondida e o corte cru do 3º card era a única pista de
+     que existiam mais 9 sugestões (e o See more ficava 100% fora). */
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 8px;
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 36px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 36px), transparent 100%);
+}
+.axxa-suggest-cards > * {
+  scroll-snap-align: start;
 }
 .axxa-suggest-cards::-webkit-scrollbar {
   display: none;
