@@ -225,6 +225,10 @@ export const EN_US = {
   // Clean "new conversation" base screen (no starter screen) — per mode. v0.1.219
   newChatScreen: {
     noKeyBadge: "no key",
+    ragChipOk: (chunks: number) =>
+      `Semantic index ready · ${chunks.toLocaleString()} chunks`,
+    ragChipOff: "No semantic index — keyword search only. Build it →",
+    ragChipTitle: "Open Settings → Vault to manage the semantic index",
     chatTitle: "New chat",
     chatSub: "Send the first message and we're off.",
     vaultQaTitle: "New Q&A",
@@ -550,6 +554,12 @@ export const EN_US = {
     foundContext: (count: number) =>
       // v0.1.228: plural por count !== 1 (inglês usa plural para 0: "0 notes")
       `${count} note${count !== 1 ? "s" : ""} found as context`,
+    foundContextSemantic: (count: number) =>
+      `${count} note${count !== 1 ? "s" : ""} found (semantic + keyword)`,
+    foundContextKeyword: (count: number) =>
+      `${count} note${count !== 1 ? "s" : ""} found (keyword — no semantic index)`,
+    foundContextKeywordFallback: (count: number) =>
+      `${count} note${count !== 1 ? "s" : ""} found (keyword — semantic search failed)`,
     notFound:
       "No relevant notes found — answering without vault context",
   },

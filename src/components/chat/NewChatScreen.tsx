@@ -98,6 +98,33 @@ export function NewChatScreen({
         <p className="axxa-newchat-sub">{sub}</p>
       </div>
 
+      {/* (P1-84) Status do índice semântico direto na New Q&A: um estado, um
+          link — resolve descoberta do indexador e comunica a degradação
+          keyword quando não há índice. */}
+      {mode === "vault-qa" && (
+        <button
+          type="button"
+          className={
+            "axxa-newchat-ragchip" +
+            (plugin.vectorIndex && plugin.vectorIndex.size > 0
+              ? " is-ok"
+              : " is-off")
+          }
+          onClick={onOpenSettings}
+          title={t.newChatScreen.ragChipTitle}
+        >
+          <Icon
+            name={
+              plugin.vectorIndex && plugin.vectorIndex.size > 0
+                ? "radar"
+                : "circle-dashed"
+            }
+          />
+          {plugin.vectorIndex && plugin.vectorIndex.size > 0
+            ? t.newChatScreen.ragChipOk(plugin.vectorIndex.size)
+            : t.newChatScreen.ragChipOff}
+        </button>
+      )}
       <div className="axxa-newchat-provider">
         <div className="axxa-seg-block">
           <span className="axxa-seg-head">

@@ -7400,3 +7400,30 @@ body.axxa-reduce-motion *::after {
 .axxa-skills-seed-btn:hover {
   background: var(--interactive-accent-hover);
 }
+
+/* (P1-84) chip de status do índice RAG na tela New Q&A */
+.axxa-newchat-ragchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  margin: 6px auto 0;
+  padding: 5px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  background: transparent;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.axxa-newchat-ragchip:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-newchat-ragchip.is-ok {
+  color: var(--color-green, #06d6a0);
+  border-color: color-mix(in srgb, var(--color-green, #06d6a0) 35%, transparent);
+}
+.axxa-newchat-ragchip .svg-icon {
+  width: 13px;
+  height: 13px;
+}
