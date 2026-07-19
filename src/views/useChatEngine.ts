@@ -109,8 +109,8 @@ export function useChatEngine(ctx: ChatEngineCtx) {
           phase: "pending",
           iconPending: "radar",
           iconDone: "check",
-          pendingText: `Buscando até ${topK} trechos (híbrido)`,
-          doneText: `Busca concluída`,
+          pendingText: t.vault.searching(topK, effort),
+          doneText: t.vault.searchDone,
         },
       });
 
@@ -140,7 +140,7 @@ export function useChatEngine(ctx: ChatEngineCtx) {
             .join("\n\n---\n\n");
           updateActivity(searchActivityId, {
             phase: "done",
-            doneText: `${hits.length} trecho${hits.length > 1 ? "s" : ""} encontrado${hits.length > 1 ? "s" : ""}`,
+            doneText: t.vault.foundContext(hits.length),
           });
         } else {
           updateActivity(searchActivityId, {

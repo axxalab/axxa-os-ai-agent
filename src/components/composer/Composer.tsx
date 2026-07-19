@@ -941,6 +941,50 @@ export function Composer({
   const contextTotal = getContextWindow(modelName);
   const tokensTotal = tokensIn + tokensOut;
 
+  // (P1-18) Status row curada em Settings → Appearance → Chips. Ordem fixa;
+  // cada chip aparece só se o id está marcado. Speed só durante streaming.
+  const STATUS_CHIPS: Array<{
+    id: string;
+    icon: string;
+    color: string;
+    value: () => string;
+    show?: () => boolean;
+  }> = [
+    { id: "mode", icon: "layout-grid", color: "var(--color-pink, #f472b6)", value: () => mode ?? "chat" },
+    { id: "model", icon: "cpu", color: "var(--color-purple, #a370f7)", value: () => prettyModelName(modelName) },
+    { id: "effort", icon: "gauge", color: "var(--color-orange, #f4a261)", value: () => effort },
+    {
+      id: "context",
+      icon: "database",
+      color: "var(--color-cyan, #4cc9f0)",
+      value: () => `${formatTokens(contextUsed)}/${formatTokens(contextTotal)}`,
+      show: () => contextUsed > 0,
+    },
+    { id: "in", icon: "arrow-down", color: "var(--color-blue, #4361ee)", value: () => formatTokens(tokensIn), show: () => tokensIn > 0 },
+    { id: "out", icon: "arrow-up", color: "var(--color-green, #06d6a0)", value: () => formatTokens(tokensOut), show: () => tokensOut > 0 },
+    { id: "total", icon: "sigma", color: "var(--text-muted)", value: () => formatTokens(tokensTotal), show: () => tokensTotal > 0 },
+    {
+      id: "speed",
+      icon: "zap",
+      color: "var(--color-orange, #f4a261)",
+      value: () => `${Math.round(tokensPerSec)} t/s`,
+      show: () => !!streaming && tokensPerSec > 0,
+    },
+  ];
+  const activeStatusChips = STATUS_CHIPS.filter(
+    (c) => visibleChips.includes(c.id) && (c.show ? c.show() : true)
+  );
+  const statusRow =
+    activeStatusChips.length > 0 ? (
+      <div className="axxa-composer-status" aria-hidden="true">
+        {activeStatusChips.map((c) => (
+          <InfoChip key={c.id} icon={c.icon} color={c.color}>
+            {c.value()}
+          </InfoChip>
+        ))}
+      </div>
+    ) : null;
+
   // Mede a altura do composer + atualiza CSS var --axxa-composer-h na .axxa-root.
   // Permite que o ChatArea aplique padding-bottom dinâmico = altura real do composer
   // (que cresce com texto + anexos pendentes). Usa ResizeObserver pra reatividade.
@@ -1222,6 +1266,11 @@ export function Composer({
           )}
         </div>
       )}
+      {/* (P1-18) Status row — o checklist "Chips" das Settings volta a ter
+          efeito. Cada chip só renderiza se o id está em visibleChips; a linha
+          some quando nada está marcado. Design original: model · effort ·
+          context · in · out · total · speed. */}
+      {statusRow}
     </div>
   );
 }

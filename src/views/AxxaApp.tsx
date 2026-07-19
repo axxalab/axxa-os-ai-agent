@@ -1296,7 +1296,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       .messages.filter((m) => m.type === "user" || m.type === "ai-response")
       .map((m) => ({
         id: m.id,
-        role: m.type === "user" ? "Você" : "IA",
+        role: m.type === "user" ? t.chat.roleUser : t.chat.roleAI,
         text: (m as { content: string }).content,
       }));
     if (hits.length === 0) return;
@@ -1314,11 +1314,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       .getState()
       .messages.filter((m) => m.type === "user" || m.type === "ai-response");
     if (msgs.length === 0) return;
-    const title = currentChatTitle || "Conversa";
+    const title = currentChatTitle || t.header.conversationFallbackTitle;
     const body = msgs
       .map(
         (m) =>
-          `## ${m.type === "user" ? "Você" : "Assistente"}\n\n${(m as { content: string }).content}`
+          `## ${m.type === "user" ? t.chat.roleUser : t.chat.roleAssistant}\n\n${(m as { content: string }).content}`
       )
       .join("\n\n");
     const text = `# ${title}\n\n${body}\n`;
@@ -1525,19 +1525,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     {
       id: "new",
       label: "new",
-      description: "Nova conversa",
+      description: "New conversation",
       execute: () => handleNewChat(),
     },
     {
       id: "clear",
       label: "clear",
-      description: "Limpar conversa atual",
+      description: "Clear the current conversation",
       execute: () => useChatStore.getState().newChat(),
     },
     {
       id: "regen",
       label: "regen",
-      description: "Regenerar última resposta",
+      description: "Regenerate the last response",
       execute: () => {
         const msgs = useChatStore.getState().messages;
         const lastAI = [...msgs].reverse().find((m) => m.type === "ai-response");
@@ -1547,37 +1547,37 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     {
       id: "stop",
       label: "stop",
-      description: "Parar geração em andamento",
+      description: "Stop the current generation",
       execute: () => handleStop(),
     },
     {
       id: "conversations",
       label: "conversations",
-      description: "Ver todas as conversas salvas",
+      description: "View all saved conversations",
       execute: () => handleOpenConversations(),
     },
     {
       id: "settings",
       label: "settings",
-      description: "Abrir Configurações",
+      description: "Open Settings",
       execute: () => handleOpenSettings(),
     },
     {
       id: "mode-chat",
       label: "mode chat",
-      description: "Trocar pro modo Chat (antes da primeira msg)",
+      description: "Switch to Chat mode (before the first message)",
       execute: () => !isLocked && handleStarterMode("chat"),
     },
     {
       id: "mode-vault",
       label: "mode vault-qa",
-      description: "Trocar pro modo Vault Q&A (antes da primeira msg)",
+      description: "Switch to Vault Q&A mode (before the first message)",
       execute: () => !isLocked && handleStarterMode("vault-qa"),
     },
     {
       id: "mode-agent",
       label: "mode agent",
-      description: "Trocar pro modo Agent (antes da primeira msg)",
+      description: "Switch to Agent mode (before the first message)",
       execute: () => !isLocked && handleStarterMode("agent"),
     },
     // Skills do usuário (.md na pasta de skills) → /comando que injeta o
@@ -1748,9 +1748,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onSwapModel={(m) => {
               // Se session locked (após primeira msg), não dá pra trocar — avisa.
               if (isLocked) {
-                new Notice(
-                  `Pra trocar pra ${m}, comece uma Nova conversa (botão "+" no topo).`
-                );
+                new Notice(t.composer.compatLockedNotice(m));
                 return;
               }
               handleStarterModel(m);

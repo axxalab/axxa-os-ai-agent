@@ -31,11 +31,11 @@ export const EFFORT_EMOJIS: Record<EffortLevel, string> = {
 };
 
 export const EFFORT_DESCRIPTIONS: Record<EffortLevel, string> = {
-  low: "Rápido e econômico (≤512 tok · 5 turns)",
-  med: "Equilibrado (≤2k tok · 12 turns)",
-  high: "Detalhado (≤6k tok · 25 turns)",
-  xhigh: "Profundo (≤16k tok · 60 turns)",
-  max: "Incansável (até 80% do contexto · 200 turns)",
+  low: "Fast and economical (≤512 tok · 5 turns)",
+  med: "Balanced (≤2k tok · 12 turns)",
+  high: "Detailed (≤6k tok · 25 turns)",
+  xhigh: "Deep (≤16k tok · 60 turns)",
+  max: "Relentless (up to 80% of context · 200 turns)",
 };
 
 /**

@@ -620,11 +620,11 @@ class VaultNotePickerModal extends FuzzySuggestModal<TFile> {
   private resolver: (path: string | null) => void;
   private resolved = false;
 
-  constructor(app: App, resolver: (path: string | null) => void) {
+  constructor(app: App, resolver: (path: string | null) => void, placeholder: string) {
     super(app);
     this.files = app.vault.getMarkdownFiles();
     this.resolver = resolver;
-    this.setPlaceholder("Buscar nota pra anexar...");
+    this.setPlaceholder(placeholder);
   }
 
   getItems(): TFile[] {
@@ -658,7 +658,7 @@ export async function openVaultNotePicker(
       resolve(null);
       return;
     }
-    const modal = new VaultNotePickerModal(app, resolve);
+    const modal = new VaultNotePickerModal(app, resolve, t.plus.pickNotePlaceholder);
     modal.open();
   });
 }

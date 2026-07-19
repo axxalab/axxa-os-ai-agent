@@ -2417,7 +2417,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     // Providers que têm modelos de embedding (curados + descobertos via fetch).
     const EMB_PROVIDER_LABEL: Record<string, string> = {
-      openai: "OpenAI (texto)",
+      openai: "OpenAI (text)",
       openrouter: "OpenRouter (multimodal)",
       gemini: "Gemini",
       nim: "Nvidia NIM",
@@ -2663,10 +2663,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
         await deleteIndex(this.plugin.app.vault.adapter, this.plugin.settings.ragIndexPath);
         this.plugin.vectorIndex = null;
         this.renderRagStats(statsEl, t);
-        new Notice("Índice removido.");
+        new Notice(t.settings.ragClearDone);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erro";
-        new Notice(`Falha: ${msg}`);
+        const msg = err instanceof Error ? err.message : t.ai.unknownError;
+        new Notice(t.settings.ragClearFailed(msg));
       }
     };
   }
@@ -2836,7 +2836,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       if (err instanceof DOMException && err.name === "AbortError") {
         new Notice(t.settings.ragIndexingCancelled);
       } else {
-        const msg = err instanceof Error ? err.message : "Erro";
+        const msg = err instanceof Error ? err.message : t.ai.unknownError;
         new Notice(t.settings.ragIndexingFailed(msg));
       }
     } finally {
@@ -3154,7 +3154,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
               );
               valueCells["openrouter"].addClass("is-real");
             } catch {
-              valueCells["openrouter"].setText("erro");
+              valueCells["openrouter"].setText(t.settings.usageCellError);
             }
           })()
         );
@@ -3300,7 +3300,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
             realCells["openrouter"].setText(formatUsd(b.usageUsd) + remain);
             realCells["openrouter"].addClass("is-real");
           } catch (err) {
-            realCells["openrouter"].setText("erro");
+            realCells["openrouter"].setText(t.settings.usageCellError);
             new Notice(`OpenRouter: ${err instanceof Error ? err.message : String(err)}`);
           }
         })(),
@@ -3322,7 +3322,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
                 : t.settings.usageBillingOrgNote
             );
           } catch (err) {
-            realCells["openai"].setText("erro");
+            realCells["openai"].setText(t.settings.usageCellError);
             new Notice(`OpenAI: ${err instanceof Error ? err.message : String(err)}`);
           }
         })(),
@@ -3339,7 +3339,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
             realCells["anthropic"].addClass("is-real");
             realCells["anthropic"].setAttr("title", t.settings.usageBillingOrgNote);
           } catch (err) {
-            realCells["anthropic"].setText("erro");
+            realCells["anthropic"].setText(t.settings.usageCellError);
             new Notice(`Anthropic: ${err instanceof Error ? err.message : String(err)}`);
           }
         })(),
@@ -3502,7 +3502,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       const intensity = d.bucket.cost / maxCost;
       // v0.1.228: mesma string no aria-label (a11y) — o heatmap codificava
       // intensidade só por cor/opacidade, sem alternativa textual no DOM.
-      const cellLabel = `${d.day}: ${formatUsd(d.bucket.cost)} · ${d.bucket.chats} conversa${d.bucket.chats === 1 ? "" : "s"}`;
+      const cellLabel = `${d.day}: ${formatUsd(d.bucket.cost)} · ${t.settings.usageHeatmapChats(d.bucket.chats)}`;
       const cell = heatRow.createDiv({
         cls: "axxa-usage-heatcell",
         attr: {

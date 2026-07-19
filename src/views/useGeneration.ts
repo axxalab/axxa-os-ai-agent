@@ -86,10 +86,10 @@ export function useGeneration(ctx: GenerationCtx) {
         iconPending: mediaType === "image" ? "image-plus" : mediaType === "audio" ? "volume-2" : "video",
         iconDone: "check",
         pendingText: mediaType === "image"
-          ? "Gerando imagem..."
+          ? t.generation.generatingImage
           : mediaType === "audio"
-            ? "Gerando áudio..."
-            : "Gerando vídeo...",
+            ? t.generation.generatingAudio
+            : t.generation.generatingVideo,
         doneText: "",
       },
     });
@@ -100,7 +100,7 @@ export function useGeneration(ctx: GenerationCtx) {
       let items;
       if (mediaType === "image") {
         if (!provider.generateImage) {
-          throw new Error(`Provider "${provider.name}" não implementa generateImage.`);
+          throw new Error(t.generation.providerMissing(provider.name, "generateImage"));
         }
         items = await provider.generateImage(
           { model: activeModel, prompt, size: "1024x1024" },
@@ -108,7 +108,7 @@ export function useGeneration(ctx: GenerationCtx) {
         );
       } else if (mediaType === "audio") {
         if (!provider.generateAudio) {
-          throw new Error(`Provider "${provider.name}" não implementa generateAudio.`);
+          throw new Error(t.generation.providerMissing(provider.name, "generateAudio"));
         }
         items = await provider.generateAudio(
           { model: activeModel, prompt },
@@ -116,7 +116,7 @@ export function useGeneration(ctx: GenerationCtx) {
         );
       } else {
         if (!provider.generateVideo) {
-          throw new Error(`Provider "${provider.name}" não implementa generateVideo.`);
+          throw new Error(t.generation.providerMissing(provider.name, "generateVideo"));
         }
         items = await provider.generateVideo(
           { model: activeModel, prompt },
@@ -153,7 +153,7 @@ export function useGeneration(ctx: GenerationCtx) {
         activityId,
         {
           phase: "done",
-          doneText: `${items.length} ${mediaType === "image" ? "imagem" : mediaType === "audio" ? "áudio" : "vídeo"}${items.length > 1 ? "s" : ""} gerado${items.length > 1 ? "s" : ""}`,
+          doneText: t.generation.generatedCount(items.length, mediaType),
         },
         savedPaths[0]
       );
@@ -248,7 +248,7 @@ export function useGeneration(ctx: GenerationCtx) {
         phase: "pending",
         iconPending: inputImage ? "wand-2" : "image-plus",
         iconDone: "check",
-        pendingText: inputImage ? "Editando imagem..." : "Gerando imagem...",
+        pendingText: inputImage ? t.generation.editingImage : t.generation.generatingImage,
         doneText: "",
         placeholder: "image",
       },
@@ -290,7 +290,7 @@ export function useGeneration(ctx: GenerationCtx) {
         activityId,
         {
           phase: "done",
-          doneText: `${items.length} imagem${items.length > 1 ? "ns" : ""} gerada${items.length > 1 ? "s" : ""}`,
+          doneText: t.generation.generatedCount(items.length, "image"),
         },
         savedPaths[0]
       );

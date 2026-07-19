@@ -2,7 +2,8 @@
 // Definições das tools — descrições pro LLM + JSON Schema dos params.
 //
 // Convenção: nome em snake_case (matchea OpenAI/Anthropic).
-// Descrições EM PT-BR — o LLM lê pra decidir quando usar a tool.
+// Descrições em EN — o LLM lê pra decidir quando usar a tool (coerente com
+// o system prompt do agent, que também é EN).
 
 import type { ToolDefinition } from "./types";
 
@@ -10,17 +11,17 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: "vault_search",
     description:
-      "Busca SEMÂNTICA por relevância nas notas do vault (usa o índice de embeddings; cai pra palavras-chave se não houver índice). USE ISTO PRIMEIRO pra encontrar notas relevantes a um tema ou pergunta — é muito mais eficiente que listar pastas e ler arquivos um a um. Retorna os trechos mais relevantes com o path de cada um (use vault_read pra abrir o arquivo inteiro depois).",
+      "SEMANTIC relevance search across the vault notes (uses the embeddings index; falls back to keyword search when there is no index). USE THIS FIRST to find notes relevant to a topic or question — far more efficient than listing folders and reading files one by one. Returns the most relevant excerpts with each one's path (use vault_read to open the full file afterwards).",
     parameters: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "O que procurar — tema, pergunta ou palavras-chave.",
+          description: "What to look for — a topic, question or keywords.",
         },
         topK: {
           type: "number",
-          description: "Quantos trechos retornar (1-20, padrão 5).",
+          description: "How many excerpts to return (1-20, default 5).",
         },
       },
       required: ["query"],
@@ -30,14 +31,14 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: "vault_list",
     description:
-      "Lista os arquivos e pastas dentro de uma pasta do vault. Use pra descobrir o que existe antes de criar/editar. Sem parâmetro = raiz do vault.",
+      "Lists the files and folders inside a vault folder. Use it to discover what exists before creating/editing. No parameter = vault root.",
     parameters: {
       type: "object",
       properties: {
         folder: {
           type: "string",
           description:
-            "Caminho da pasta (ex: 'projetos/2026'). Vazio ou ausente = raiz do vault.",
+            "Folder path (e.g. 'projects/2026'). Empty or absent = vault root.",
         },
       },
       required: [],
@@ -47,13 +48,13 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: "vault_read",
     description:
-      "Lê o conteúdo completo de um arquivo do vault. Use antes de editar pra ver o que tá lá. Conteúdo é truncado em 200K chars se for muito grande.",
+      "Reads the full content of a vault file. Use it before editing to see what is there. Content is truncated at 200K chars when too large.",
     parameters: {
       type: "object",
       properties: {
         path: {
           type: "string",
-          description: "Caminho do arquivo no vault (ex: 'notas/agenda.md').",
+          description: "File path in the vault (e.g. 'notes/agenda.md').",
         },
       },
       required: ["path"],
@@ -63,18 +64,18 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: "vault_create",
     description:
-      "Cria um arquivo novo no vault com o conteúdo fornecido. Falha se o arquivo já existe (use vault_edit pra modificar). Cria pastas no caminho automaticamente se necessário.",
+      "Creates a new vault file with the given content. Fails if the file already exists (use vault_edit to modify). Creates folders along the path automatically when needed.",
     parameters: {
       type: "object",
       properties: {
         path: {
           type: "string",
           description:
-            "Caminho do arquivo novo. Inclua extensão (ex: '.md' pra notas).",
+            "Path of the new file. Include the extension (e.g. '.md' for notes).",
         },
         content: {
           type: "string",
-          description: "Conteúdo do arquivo (markdown, texto, código, etc).",
+          description: "File content (markdown, text, code, etc).",
         },
       },
       required: ["path", "content"],
@@ -84,22 +85,22 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: "vault_edit",
     description:
-      "Edita um arquivo existente substituindo uma string específica. Find/replace literal (sem regex). A string old_str deve aparecer EXATAMENTE 1 vez no arquivo — se aparecer 0 ou múltiplas, a tool falha. Use vault_read antes pra ver o conteúdo exato.",
+      "Edits an existing file by replacing a specific string. Literal find/replace (no regex). old_str must appear EXACTLY once in the file — the tool fails on 0 or multiple matches. Use vault_read first to see the exact content.",
     parameters: {
       type: "object",
       properties: {
         path: {
           type: "string",
-          description: "Caminho do arquivo a editar.",
+          description: "Path of the file to edit.",
         },
         oldStr: {
           type: "string",
           description:
-            "String LITERAL a ser substituída. Inclua contexto suficiente pra ser única no arquivo (3-5 linhas se possível).",
+            "LITERAL string to replace. Include enough context to make it unique in the file (3-5 lines if possible).",
         },
         newStr: {
           type: "string",
-          description: "String que substitui a antiga.",
+          description: "String that replaces the old one.",
         },
       },
       required: ["path", "oldStr", "newStr"],
@@ -109,12 +110,12 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: "vault_move",
     description:
-      "Renomeia ou move um arquivo/pasta. Falha se o destino já existe (não sobrescreve).",
+      "Renames or moves a file/folder. Fails if the destination already exists (never overwrites).",
     parameters: {
       type: "object",
       properties: {
-        from: { type: "string", description: "Caminho atual." },
-        to: { type: "string", description: "Caminho novo." },
+        from: { type: "string", description: "Current path." },
+        to: { type: "string", description: "New path." },
       },
       required: ["from", "to"],
     },
@@ -123,11 +124,11 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: "vault_delete",
     description:
-      "Deleta um arquivo ou uma pasta VAZIA do vault. Operação irreversível — sempre pede confirmação ao user, mesmo em modo YOLO. Pra pastas com conteúdo, delete os arquivos primeiro.",
+      "Deletes a file or an EMPTY folder from the vault. Irreversible operation — always asks the user for confirmation, even in YOLO mode. For folders with content, delete the files first.",
     parameters: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Caminho do arquivo/pasta." },
+        path: { type: "string", description: "File/folder path." },
       },
       required: ["path"],
     },
@@ -137,13 +138,13 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: "vault_create_folder",
     description:
-      "Cria uma pasta no vault (incluindo pastas pai se não existirem). Não-op se a pasta já existe.",
+      "Creates a vault folder (including parent folders when missing). No-op if the folder already exists.",
     parameters: {
       type: "object",
       properties: {
         path: {
           type: "string",
-          description: "Caminho da pasta a criar (ex: 'projetos/2026/q4').",
+          description: "Path of the folder to create (e.g. 'projects/2026/q4').",
         },
       },
       required: ["path"],

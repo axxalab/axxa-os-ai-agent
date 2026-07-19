@@ -48,6 +48,7 @@ function stepArg(step: AIToolStep): string {
  * continuidade: reabrir o chat e o agente lembra do que já executou. v0.1.160
  */
 function AgentSteps({ steps }: { steps: AIToolStep[] }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <div className={"axxa-agent-steps" + (open ? " is-open" : "")}>
@@ -58,7 +59,7 @@ function AgentSteps({ steps }: { steps: AIToolStep[] }) {
         aria-expanded={open}
       >
         <Icon name="wrench" />
-        <span>{steps.length} ações do agente</span>
+        <span>{t.agent.stepsSummary(steps.length)}</span>
         <Icon name="chevron-right" className="axxa-agent-steps-chevron" />
       </button>
       {open && (
