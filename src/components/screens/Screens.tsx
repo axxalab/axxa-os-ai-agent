@@ -13,6 +13,7 @@ import {
   aggregateFromSummaries,
   sortBucketEntries,
 } from "../../usage/aggregate";
+import { computeBilledUsage } from "../../usage/freeBilling";
 import { formatUsd } from "../../usage/pricing";
 import { formatTokens } from "../_shared/contextWindows";
 import type { ChatSummary } from "../_shared/chatPersistence";
@@ -170,23 +171,38 @@ export function StatisticsScreen({
   summaries,
   onOpenUsage,
   onClose,
+  billing,
 }: {
   summaries: ChatSummary[];
   onOpenUsage: () => void;
   onClose: () => void;
+  /** (P1-70) Config de data-sharing — o Spend daqui usa a MESMA régua do
+   *  Usage tab (billed após a cota grátis) em vez de divergir em gross. */
+  billing?: { dataSharing: boolean; tier: number };
 }) {
   const t = useT();
   const agg = useMemo(() => aggregateFromSummaries(summaries), [summaries]);
+  const billed = useMemo(
+    () =>
+      billing?.dataSharing
+        ? computeBilledUsage(agg.chats, {
+            tier: billing.tier || 1,
+            dataSharing: true,
+          })
+        : null,
+    [agg, billing?.dataSharing, billing?.tier]
+  );
+  const headlineSpend = billed ? billed.billedCost : agg.total.cost;
   const topModels = sortBucketEntries(agg.byModel).slice(0, 5);
 
   return (
     <ScreenShell title={t.nav.statistics} icon="bar-chart-3" onClose={onClose}>
       <div className="axxa-stat-cards">
-        {/* (P1-71) Custos desconhecidos ganham o "*" (mesma convenção do
-            Usage tab) — o total subestimado não se apresenta mais como exato. */}
+        {/* (P1-70/71) MESMO headline do Usage tab (billed com data-sharing;
+            "*" quando há custos desconhecidos) — as duas telas divergiam. */}
         <StatCard
-          label={t.screens.statSpend}
-          value={formatUsd(agg.total.cost) + (agg.total.hasUnknownCost ? "*" : "")}
+          label={billed ? t.screens.statSpendBilled : t.screens.statSpend}
+          value={formatUsd(headlineSpend) + (agg.total.hasUnknownCost ? "*" : "")}
           icon="dollar-sign"
         />
         <StatCard label={t.screens.statChats} value={String(agg.total.chats)} icon="message-square" />

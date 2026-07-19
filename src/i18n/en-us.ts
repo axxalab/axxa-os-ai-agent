@@ -101,6 +101,7 @@ export const EN_US = {
     statusMicError:
       "Couldn't access the microphone — allow it in system settings, then tap the mic to retry.",
     stopSpeaking: "Stop speaking",
+    stopThinking: "Stop generating",
     statusTtsOnly: "Dictation unavailable — I'll read answers aloud",
     sttUnavailable:
       "Voice dictation isn't available on this device. Answers are still read aloud.",
@@ -700,6 +701,7 @@ export const EN_US = {
     mediaScopeAxxa: "AXXA only",
     mediaScopeAll: "Whole vault",
     statSpend: "Spend",
+    statSpendBilled: "Spend (billed)",
     statChats: "Chats",
     statTokens: "Tokens",
     statTopModels: "Top models",
@@ -1036,6 +1038,10 @@ export const EN_US = {
     usageDsNote:
       "Estimate. The free allowance is daily (resets at midnight) and per pool. ⚠️ It's shared across ALL your OpenAI API usage — the plugin only sees vault chats, so 'free remaining' is optimistic if you use the API elsewhere. Images never count toward the allowance.",
     usageBillingTitle: "Real billing (cross-check)",
+    usageNoGenCosts:
+      "Note: media generation (images/audio) isn't counted here yet — only chat tokens.",
+    usageXcheckWindowNote: (period: string) =>
+      `Estimated covers ${period} of local chats; Real is provider-reported and may span a different window — treat as a sanity check, not an exact match.`,
     usageBillingCross: "Cross-check with API",
     usageBillingCrossing: "Checking…",
     usageBillingEstimate: "Estimated",

@@ -73,9 +73,11 @@ import {
 } from "../generation/ImageGenModal";
 import {
   effortToMaxTokensSmart,
+  effortToVaultLookup,
   resolveEffortConfig,
   type EffortLevel,
 } from "../components/_shared/effort";
+import { hybridSearch } from "../rag/hybrid";
 import { getContextWindow } from "../components/_shared/contextWindows";
 import { useWakeLock } from "../components/_shared/useWakeLock";
 import { setCloudTts } from "../components/_shared/speech";
@@ -806,6 +808,41 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setPendingAttachments,
   });
 
+  // (P1-57) Reconstrói o contexto do vault pro regenerate/continue no modo
+  // vault-qa — sem isto a nova variante respondia "de cabeça", sem busca,
+  // e a queda de qualidade era silenciosa. Mesmo formato do streamReply.
+  const fetchVaultContextForRetry = async (query: string): Promise<string> => {
+    if (activeMode !== "vault-qa" || !query) return "";
+    try {
+      const { topK, excerptChars } = effortToVaultLookup(
+        effort,
+        plugin.settings.effortConfigs
+      );
+      const hits = await hybridSearch({
+        app: plugin.app,
+        index: plugin.vectorIndex,
+        creds: {
+          openaiApiKey: plugin.settings.openaiApiKey,
+          openrouterApiKey: plugin.settings.openrouterApiKey,
+          geminiApiKey: plugin.settings.geminiApiKey,
+          nimApiKey: plugin.settings.nimApiKey,
+        },
+        query,
+        topK,
+        excerptChars,
+      });
+      if (hits.length === 0) return "";
+      return hits
+        .map((h) => {
+          const base = h.path.replace(/\.md$/i, "").split("/").pop() ?? h.path;
+          return `### [[${base}]]\n_(${h.path})_\n\n${h.text}`;
+        })
+        .join("\n\n---\n\n");
+    } catch {
+      return "";
+    }
+  };
+
   // Regenerar: remove o ai-response (e qualquer msg posterior) e re-roda
   // streamReply usando a user-msg que precedia. Ignora se já tá streamando.
   // Regenerar com BRANCHING: a resposta atual vira uma variante e a nova é
@@ -839,6 +876,24 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     );
     if (aiIdx < 0) return;
 
+    // (P1-57) Modo AGENT: regenerar re-roda o TURNO com tools — o streamChat
+    // puro produzia um completion sem tools (o agente "perdia as mãos").
+    // O run recria as mensagens do turno; variantes não se aplicam ao agent.
+    if (activeMode === "agent") {
+      let agentUserIdx = -1;
+      for (let i = aiIdx; i >= 0; i--) {
+        if (current[i].type === "user") {
+          agentUserIdx = i;
+          break;
+        }
+      }
+      if (agentUserIdx < 0) return;
+      const agentUserText = (current[agentUserIdx] as UserMessage).content;
+      useChatStore.getState().setMessages(current.slice(0, agentUserIdx + 1));
+      await runAgentTurn(agentUserText);
+      return;
+    }
+
     // Remove só o que vem DEPOIS da resposta — a bolha fica e vira variante.
     useChatStore.getState().setMessages(current.slice(0, aiIdx + 1));
 
@@ -861,6 +916,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       .filter(
         (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
       ) as Array<UserMessage | AIResponseMessage>;
+    // (P1-57) Vault Q&A: refaz a busca pro contexto entrar na regeneração.
+    const lastUserBefore = [...before].reverse().find((m) => m.type === "user");
+    const regenVaultBlock = await fetchVaultContextForRetry(
+      lastUserBefore?.content ?? ""
+    );
     const history: ProviderMessage[] = [
       {
         role: "system",
@@ -868,6 +928,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           persona: useChatStore.getState().sessionPersona,
           base: t.systemPrompt.base,
           styleInstruction: resolveStyleInstruction(),
+          vaultSuffix: t.systemPrompt.vaultQaSuffix,
+          vaultBlock: regenVaultBlock,
         }),
       },
       ...storeMessagesToProvider(before),
@@ -970,6 +1032,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       .filter(
         (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
       ) as Array<UserMessage | AIResponseMessage>;
+    // (P1-57) Vault Q&A: a continuação leva o mesmo contexto do vault da
+    // pergunta original — sem isto continuava "de cabeça".
+    const contUserMsg = [...hist].reverse().find((m) => m.type === "user");
+    const contVaultBlock = await fetchVaultContextForRetry(
+      contUserMsg?.content ?? ""
+    );
     const history: ProviderMessage[] = [
       {
         role: "system",
@@ -977,13 +1045,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           persona: useChatStore.getState().sessionPersona,
           base: t.systemPrompt.base,
           styleInstruction: resolveStyleInstruction(),
+          vaultSuffix: t.systemPrompt.vaultQaSuffix,
+          vaultBlock: contVaultBlock,
         }),
       },
       ...storeMessagesToProvider(hist),
       {
         role: "user",
         content:
-          "Continue EXATAMENTE de onde você parou, sem repetir nem reintroduzir o que já escreveu.",
+          "Continue EXACTLY where you left off — do not repeat or reintroduce anything you already wrote.",
       },
     ];
 
@@ -1802,6 +1872,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                 plugin.settingsTab?.presetTab("usage");
                 handleOpenSettings();
               }}
+              billing={{
+                dataSharing: !!plugin.settings.openaiDataSharing,
+                tier: plugin.settings.openaiUsageTier || 1,
+              }}
               onClose={() => setView("chat")}
             />
           ) : (
@@ -2152,6 +2226,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             return (
               <VoiceScreen
                 onSend={(text) => handleSend(text)}
+                onStop={handleStop}
                 onClose={() => setVoiceOpen(false)}
                 lastAi={lastAi}
                 isStreaming={isLoading}

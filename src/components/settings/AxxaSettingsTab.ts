@@ -3067,8 +3067,11 @@ export class AxxaSettingsTab extends PluginSettingTab {
         this.cachedUsage ??
         aggregateFromSummaries(summaries, this.usagePeriodDays);
       this.cachedUsage = agg;
+      // (P1-75) Aggregate completo pro saldo (independe do filtro de período).
+      const aggAll =
+        this.usagePeriodDays === 0 ? agg : aggregateFromSummaries(summaries, 0);
       contentEl.empty();
-      this.renderUsageBody(contentEl, agg, t);
+      this.renderUsageBody(contentEl, agg, t, aggAll);
     } catch (err) {
       contentEl.empty();
       contentEl.createDiv({
@@ -3309,6 +3312,17 @@ export class AxxaSettingsTab extends PluginSettingTab {
       text: t.settings.usageBillingCross,
       cls: "axxa-usage-xcheck-btn",
     });
+    // (P1-76) Estimated e Real cobrem JANELAS diferentes (estimado respeita o
+    // filtro de período; o real vem do provider na janela dele) — sem o aviso
+    // a comparação lado a lado sugeria números comparáveis.
+    sec.createDiv({
+      cls: "setting-item-description",
+      text: t.settings.usageXcheckWindowNote(
+        this.usagePeriodDays === 0
+          ? t.settings.usagePeriodAll
+          : `${this.usagePeriodDays}d`
+      ),
+    });
 
     const table = sec.createDiv({ cls: "axxa-usage-xcheck-list" });
     const header = table.createDiv({ cls: "axxa-usage-xcheck-row is-head" });
@@ -3482,10 +3496,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private renderUsageBody(
     parent: HTMLElement,
     agg: UsageAggregate,
-    t: Translations
+    t: Translations,
+    aggAll?: UsageAggregate
   ) {
     // Saldo por provider (âncora + gasto) — no topo, é a info mais acionável.
-    this.renderBalancePanel(parent, agg, t);
+    // (P1-75) SALDO usa o aggregate SEM filtro de período: saldo = âncora −
+    // gasto TOTAL desde a âncora; com o filtro ativo o gasto encolhia e o
+    // saldo "inflava" — número errado se apresentando como real.
+    this.renderBalancePanel(parent, aggAll ?? agg, t);
 
     // Data-sharing: cobra só o excedente da cota grátis (v0.1.168). O headline
     // de custo passa a refletir o COBRADO (out-of-pocket real).
@@ -3527,6 +3545,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
       "message-square",
       "var(--color-purple, #a370f7)"
     );
+    // (P1-77, disclosure) Geração de mídia ainda não entra no aggregate — o
+    // usuário que só gera imagens via $0.00 sem saber por quê. A contabilidade
+    // real de geração entra quando o pipeline de custos de mídia existir.
+    parent.createDiv({
+      cls: "setting-item-description axxa-usage-gen-note",
+      text: t.settings.usageNoGenCosts,
+    });
 
     if (agg.total.chats === 0) {
       parent.createDiv({

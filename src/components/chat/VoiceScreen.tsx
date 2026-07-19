@@ -27,6 +27,8 @@ type ConvoState = "idle" | "listening" | "thinking" | "speaking";
 interface VoiceScreenProps {
   onSend: (text: string) => void;
   onClose: () => void;
+  /** (P1-88) Aborta a geração em andamento — tap no orb durante "thinking". */
+  onStop: () => void;
   /** Última resposta da IA — lida em voz quando `done`. */
   lastAi: { id: string; content: string; done: boolean } | null;
   isStreaming: boolean;
@@ -43,6 +45,7 @@ interface VoiceScreenProps {
 export function VoiceScreen({
   onSend,
   onClose,
+  onStop,
   lastAi,
   isStreaming,
   lang,
@@ -282,14 +285,28 @@ export function VoiceScreen({
       </div>
 
       <div className="axxa-voice-stage">
-        {/* (P1-89) Barge-in: tocar no orb enquanto a IA fala interrompe a
-            fala e volta a ouvir — antes era impossível interromper. */}
+        {/* (P1-88/89) Barge-in: tocar no orb enquanto a IA FALA interrompe a
+            fala e volta a ouvir; durante o THINKING aborta a geração —
+            antes era impossível interromper qualquer um dos dois. */}
         <div
           className="axxa-voice-orb"
-          role={state === "speaking" ? "button" : undefined}
-          aria-label={state === "speaking" ? t.voice.stopSpeaking : undefined}
-          aria-hidden={state === "speaking" ? undefined : "true"}
+          role={state === "speaking" || state === "thinking" ? "button" : undefined}
+          aria-label={
+            state === "speaking"
+              ? t.voice.stopSpeaking
+              : state === "thinking"
+                ? t.voice.stopThinking
+                : undefined
+          }
+          aria-hidden={
+            state === "speaking" || state === "thinking" ? undefined : "true"
+          }
           onClick={() => {
+            if (stateRef.current === "thinking") {
+              onStop();
+              setState("idle");
+              return;
+            }
             if (stateRef.current !== "speaking") return;
             cancelSpeech();
             releaseSpeaker(voiceResetRef.current);
