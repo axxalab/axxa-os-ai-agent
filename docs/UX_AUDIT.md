@@ -45,15 +45,23 @@ P1 implementados** em 8 lotes commitados. Destaques por área:
   switches anunciam estado, radiogroup por setas, clearance da navbar
   consumindo a var certa.
 
-**P1 pendentes (25)** — continuam abaixo com evidência/recomendação:
-19 (composer vault-qa fixed), 41 (caminho Ollama no onboarding — decisão
-de produto), 45 (preço/loja do Pro — precisa da URL de venda), 48
-(provider trap pós-key), 57 (dispatch unificado regenerate/continue —
-refactor M; o caso quebrado de geração já está guardado), 62 (focus trap
-da sidebar), 65–68 (skills), 69–71+75–77 (consistência de custos), 72
-(marcador de stream parcial), 73 (cards do agent mobile), 81–84
-(vault-qa: degradação visível, citações, excerpt por effort, caminho pro
-indexador), 88 (interromper em thinking).
+**Lotes 9–12 (pós-release 0.1.238)**: P1-19 (composer Q&A absolute no
+desktop + navbar no mobile), 45-interim ('sales open soon'), 48
+(auto-switch de provider + badge 'no key'), 52→62 (focus trap sidebar),
+65–68 (skills completas), 69/71/73 (Usage nav, Spend honesto, cards com
+snap+fade), 72 (stop parcial marca truncated), 74 (modais keyboard-aware),
+78 (key certa no index), 81–84 (Vault Q&A: citação não cria nota, origem
+da busca visível, excerpt por effort, chip do índice na New Q&A),
+85–87/89/91–93 (Modo Voz). **Total: 82/93 P1 implementados.**
+
+**P1 pendentes (11)**:
+- *Decisão de produto*: 41 (caminho Ollama no onboarding), 45-final
+  (preço + URL da loja do Pro).
+- *Refactors M/L com testes próprios*: 57 (dispatch unificado de
+  regenerate/continue por modo — o caso quebrado de geração já está
+  guardado), 70/75/76/77 (unificação de custos entre Statistics/Usage/
+  export + custo de geração no aggregate), 88 (interromper o turno em
+  'thinking' — barge-in na fala já existe).
 
 ## 1. Método
 
