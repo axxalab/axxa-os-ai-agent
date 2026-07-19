@@ -216,7 +216,11 @@ export function ModelSheet({
             onToggleFavorite(m);
           }}
         >
-          <Icon name="star" />
+          {/* (P1-61) bookmark = favorito nos DOIS lugares (Settings usa
+              bookmark); star fica exclusivo pra "default" — antes o mesmo
+              ícone significava coisas diferentes e um mis-tap nas Settings
+              trocava o modelo default global. */}
+          <Icon name="bookmark" />
         </button>
       </div>
     );

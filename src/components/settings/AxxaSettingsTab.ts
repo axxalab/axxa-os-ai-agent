@@ -13,6 +13,7 @@
 
 import {
   App,
+  Menu,
   Modal,
   PluginSettingTab,
   Setting,
@@ -98,6 +99,7 @@ import {
   ROLE_DESC,
   ROLE_ICONS,
   type RoleId,
+  type RoleModelEntry,
 } from "../../providers/modelRoles";
 import {
   modelVendorLogoId,
@@ -891,6 +893,33 @@ export class AxxaSettingsTab extends PluginSettingTab {
     return entries;
   }
 
+  /** (P1-21) Default legado de um papel quando roleModels não tem entrada —
+   *  espelha o seedRoleModels do plugin (chat ← defaultProvider/modelo do
+   *  provider; embedding ← ragEmbedding*). Reasoning não tem legado. */
+  private roleLegacyFallback(role: RoleId): RoleModelEntry | undefined {
+    const s = this.plugin.settings;
+    if (role === "chat") {
+      const prov = s.defaultProvider || "openai";
+      const byProv: Record<string, string> = {
+        openai: s.defaultModel,
+        anthropic: s.anthropicModel,
+        gemini: s.geminiModel,
+        openrouter: s.openrouterModel,
+        nim: s.nimModel,
+        ollama: s.ollamaModel,
+      };
+      const model = byProv[prov];
+      return model ? { model, provider: prov } : undefined;
+    }
+    if (role === "embedding" && s.ragEmbeddingModel) {
+      return {
+        model: s.ragEmbeddingModel,
+        provider: s.ragEmbeddingProvider || "openai",
+      };
+    }
+    return undefined;
+  }
+
   /** Provider escolhido pra uma entrada deduplicada: preferência salva → o que
    *  for o ★ do papel → o primeiro. */
   private entryProvider(e: ModelEntry): string {
@@ -1033,8 +1062,11 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const txt = head.createDiv({ cls: "axxa-role-head-txt" });
     txt.createSpan({ text: ROLE_LABELS[role], cls: "axxa-role-label" });
     txt.createSpan({ text: ROLE_DESC[role], cls: "axxa-role-desc" });
-    // ★ atual do papel (visível mesmo recolhido).
-    const cur = this.plugin.settings.roleModels[role];
+    // ★ atual do papel (visível mesmo recolhido). (P1-21) Fallback de LEITURA
+    // pros campos legados: o seed no load cobre o caso normal, mas se
+    // roleModels estiver vazio em runtime a tela não pode dizer "no default"
+    // enquanto o chat funciona com o default legado — a UI se contradizia.
+    const cur = this.plugin.settings.roleModels[role] ?? this.roleLegacyFallback(role);
     const curEl = head.createSpan({ cls: "axxa-role-current" });
     if (cur) {
       setIcon(curEl.createSpan({ cls: "axxa-role-current-ico" }), "star");
@@ -1243,15 +1275,43 @@ export class AxxaSettingsTab extends PluginSettingTab {
       cls: "axxa-model-opt-name",
     });
     // Badge do provider (logo + nome) — onde o modelo é servido.
+    // (P1-20) Com 2+ fontes o badge vira PICKER: o copy do intro promete
+    // "pick the source" e agora existe UI — a escolha grava modelProvider[norm].
+    const provOptions = Object.keys(e.byProvider);
+    const canPick = provOptions.length > 1;
     const pBadge = nameRow.createSpan({
-      cls: "axxa-row-provbadge",
-      attr: { title: "Served by " + prov },
+      cls: "axxa-row-provbadge" + (canPick ? " axxa-row-provbadge-pick" : ""),
+      attr: {
+        title: canPick
+          ? `Served by ${prov} — click to pick the source (${provOptions.join(" · ")})`
+          : "Served by " + prov,
+      },
     });
     const plogo = PROVIDER_LOGOS[prov];
     if (plogo) {
       setIcon(pBadge.createSpan({ cls: "axxa-row-provbadge-ico" }), plogo);
     }
     pBadge.createSpan({ text: prov, cls: "axxa-row-provbadge-txt" });
+    if (canPick) {
+      setIcon(pBadge.createSpan({ cls: "axxa-row-provbadge-chev" }), "chevron-down");
+      pBadge.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const menu = new Menu();
+        for (const p of provOptions) {
+          menu.addItem((item) =>
+            item
+              .setTitle(p + (p === prov ? "  ✓" : ""))
+              .setIcon(PROVIDER_LOGOS[p] ?? "plug")
+              .onClick(async () => {
+                this.plugin.settings.modelProvider[e.norm] = p;
+                await this.plugin.saveSettings();
+                this.display();
+              })
+          );
+        }
+        menu.showAtMouseEvent(ev);
+      });
+    }
     // Tier.
     const pricing = getPricing(prov, model);
     const tier =

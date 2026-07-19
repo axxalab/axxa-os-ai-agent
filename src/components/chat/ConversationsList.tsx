@@ -177,6 +177,9 @@ export function ConversationsList({
       return (
         c.title.toLowerCase().includes(q) ||
         c.model.toLowerCase().includes(q) ||
+        // (P1-23) O chip exibe prettyModelName — a busca tem que achar pelo
+        // que o usuário VÊ ("sonnet 4.6"), não só pelo id cru.
+        prettyModelName(c.model).toLowerCase().includes(q) ||
         c.provider.toLowerCase().includes(q) ||
         c.mode.toLowerCase().includes(q)
       );

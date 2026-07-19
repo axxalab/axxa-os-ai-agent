@@ -7309,3 +7309,29 @@ body.axxa-reduce-motion *::after {
   padding: 4px 8px 0 8px;
   min-height: 0;
 }
+
+/* [DS:skin-restore] (P1-22) A linha do modelo priorizava badges fixos e o
+   NOME (dado principal) virava "cla..." no mobile. Nome ganha piso de 12ch
+   e a namerow quebra linha — o badge de provider desce em telas estreitas. */
+.axxa-model-toggle-namerow {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.axxa-model-opt-name {
+  min-width: 12ch;
+}
+
+/* (P1-20) Badge "Served by" clicável quando há 2+ fontes pro mesmo modelo */
+.axxa-row-provbadge-pick {
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+.axxa-row-provbadge-pick:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-row-provbadge-chev .svg-icon {
+  width: 11px;
+  height: 11px;
+}

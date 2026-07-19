@@ -123,7 +123,12 @@ export const mockPlugin: any = {
       ollama: [],
     },
     favoriteModels: ["openai::gpt-5", "anthropic::claude-sonnet-4-6"],
-    roleModels: {},
+    // Representativo do pós-seed real (P1-21): chat + embedding semeados dos
+    // legados; reasoning sem default é o estado legítimo.
+    roleModels: {
+      chat: { model: "gpt-5", provider: "openai" },
+      embedding: { model: "text-embedding-3-small", provider: "openai" },
+    },
     modelProvider: {},
     discoveredEmbeddings: {},
     defaultMode: "chat",
