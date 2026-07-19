@@ -49,11 +49,16 @@ export type ToolGate = "auto" | "confirm";
  * Era inline no agent loop — agora pura e testável (segurança: bug aqui = ação
  * destrutiva sem perguntar).
  *
- * Regras:
+ * Regras (v0.1.237 — auditoria P1-04/P1-05):
  *   - irreversível (delete) → SEMPRE "confirm" (nem o "aprovar todas" pula).
- *   - diffApproval ON + ação destrutiva → "confirm" (preview do diff)…
- *     …a menos que "aprovar todas" já tenha sido marcado nesta sessão.
- *   - senão, segue o evaluatePermission (auto p/ não-destrutivo, etc).
+ *   - "aprovar todas" (sessão) → "auto" pra qualquer ação reversível,
+ *     independente de nível/diff — o botão do modal nunca é promessa vazia.
+ *   - senão, o NÍVEL decide (evaluatePermission): ask confirma destrutivo;
+ *     vault/yolo auto-aprovam como os labels prometem.
+ *   O toggle "Approve changes (diff)" NÃO força mais o gate: ele passou a
+ *   controlar o que a confirmação MOSTRA (preview de diff), não SE confirma —
+ *   antes, com diff ON (default), ask/vault/yolo se comportavam idênticos e o
+ *   dropdown mentia.
  *
  * ATENÇÃO (v0.1.228): este gate trata apenas a dimensão DESTRUTIVA. Tools com
  * "custo" mas não-destrutivas (ex: generate_image, destructive:false) NÃO são
@@ -65,13 +70,11 @@ export type ToolGate = "auto" | "confirm";
 export function decideToolGate(
   tool: ToolDefinition,
   level: PermissionLevel,
-  opts: { diffApproval: boolean; approveAll: boolean }
+  opts: { approveAll: boolean }
 ): ToolGate {
-  const auto = evaluatePermission(tool, level).autoApprove;
-  const needsDiff = opts.diffApproval && !!tool.destructive;
-  if (needsDiff && opts.approveAll && !tool.irreversible) return "auto";
-  if (needsDiff || !auto) return "confirm";
-  return "auto";
+  if (tool.irreversible) return "confirm";
+  if (opts.approveAll) return "auto";
+  return evaluatePermission(tool, level).autoApprove ? "auto" : "confirm";
 }
 
 /** Helper pra exibir o nível na UI. */

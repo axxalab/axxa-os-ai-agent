@@ -33,7 +33,7 @@ export function isTransientError(message: string): boolean {
  *  Exportada pra teste do boundary de segurança (anti path-traversal). */
 export function normalizePath(path: string): string {
   if (!path || typeof path !== "string") {
-    throw new Error("Path vazio ou inválido.");
+    throw new Error("Empty or invalid path.");
   }
   const normalized = path
     .replace(/\\/g, "/")
@@ -44,13 +44,13 @@ export function normalizePath(path: string): string {
   // o traversal real (segmento ".." ou ".") continua bloqueado.
   const segs = normalized.split("/");
   if (segs.some((s) => s === ".." || s === ".")) {
-    throw new Error("Paths com '..' não são permitidos.");
+    throw new Error("Paths containing '..' are not allowed.");
   }
   if (normalized.includes(":")) {
-    throw new Error("Paths com ':' não são permitidos (anti drive letter).");
+    throw new Error("Paths containing ':' are not allowed (no drive letters).");
   }
   if (normalized.split("/").length > VAULT_ROOT_MAX_DEPTH) {
-    throw new Error(`Path com mais de ${VAULT_ROOT_MAX_DEPTH} níveis bloqueado.`);
+    throw new Error(`Paths deeper than ${VAULT_ROOT_MAX_DEPTH} levels are blocked.`);
   }
   return normalized;
 }
@@ -73,7 +73,7 @@ export async function toolVaultList(app: App, args: ListArgs): Promise<string> {
   const folder = args.folder ? normalizePath(args.folder) : "";
   const adapter = app.vault.adapter;
   if (folder && !(await adapter.exists(folder))) {
-    return `Pasta não existe: ${folder}`;
+    return `Folder does not exist: ${folder}`;
   }
   // v0.1.228: adapter.list pode lançar (path é arquivo, permissão, etc.) —
   // devolve mensagem amigável em vez de propagar erro cru pro agent.
@@ -82,15 +82,15 @@ export async function toolVaultList(app: App, args: ListArgs): Promise<string> {
     listing = await adapter.list(folder || "/");
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return `Não consegui listar ${folder || "/"}: ${msg}`;
+    return `Could not list ${folder || "/"}: ${msg}`;
   }
   const folders = listing.folders.map((f) => `📁 ${f}`);
   const files = listing.files.map((f) => `📄 ${f}`);
   const all = [...folders, ...files];
   if (all.length === 0) {
-    return `Pasta vazia: ${folder || "/"}`;
+    return `Empty folder: ${folder || "/"}`;
   }
-  return `Conteúdo de ${folder || "/"} (${all.length} itens):\n` + all.join("\n");
+  return `Contents of ${folder || "/"} (${all.length} items):\n` + all.join("\n");
 }
 
 // ============================================================
@@ -108,11 +108,11 @@ export async function toolVaultRead(app: App, args: ReadArgs): Promise<string> {
   const path = normalizePath(args.path);
   const adapter = app.vault.adapter;
   if (!(await adapter.exists(path))) {
-    throw new Error(`Arquivo não existe: ${path}`);
+    throw new Error(`File does not exist: ${path}`);
   }
   const stat = await adapter.stat(path);
   if (!stat || stat.type !== "file") {
-    throw new Error(`${path} não é um arquivo.`);
+    throw new Error(`${path} is not a file.`);
   }
   const content = await adapter.read(path);
   if (content.length > MAX_READ_CHARS) {
@@ -121,7 +121,7 @@ export async function toolVaultRead(app: App, args: ReadArgs): Promise<string> {
     let cut = MAX_READ_CHARS;
     const code = content.charCodeAt(cut - 1);
     if (code >= 0xd800 && code <= 0xdbff) cut -= 1;
-    return `(arquivo truncado em ${cut} chars — original tinha ${content.length})\n\n${content.slice(0, cut)}`;
+    return `(file truncated at ${cut} chars — original had ${content.length})\n\n${content.slice(0, cut)}`;
   }
   return content;
 }
@@ -143,13 +143,13 @@ export async function toolVaultCreate(
   const adapter = app.vault.adapter;
   if (await adapter.exists(path)) {
     throw new Error(
-      `Arquivo já existe: ${path}. Use vault_edit pra modificar ou vault_move pra renomear.`
+      `File already exists: ${path}. Use vault_edit to modify or vault_move to rename.`
     );
   }
   const dir = dirOf(path);
   if (dir) await ensureFolder(adapter, dir);
   await adapter.write(path, args.content ?? "");
-  return `Arquivo criado: ${path} (${(args.content ?? "").length} chars)`;
+  return `File created: ${path} (${(args.content ?? "").length} chars)`;
 }
 
 // ============================================================
@@ -168,19 +168,19 @@ export async function toolVaultEdit(app: App, args: EditArgs): Promise<string> {
   const path = normalizePath(args.path);
   const adapter = app.vault.adapter;
   if (!(await adapter.exists(path))) {
-    throw new Error(`Arquivo não existe: ${path}`);
+    throw new Error(`File does not exist: ${path}`);
   }
   const content = await adapter.read(path);
   const occurrences = content.split(args.oldStr).length - 1;
   if (occurrences === 0) {
     throw new Error(
-      `String não encontrada em ${path}: "${args.oldStr.slice(0, 100)}"`
+      `String not found in ${path}: "${args.oldStr.slice(0, 100)}"`
     );
   }
   if (occurrences > 1) {
     throw new Error(
-      `String "${args.oldStr.slice(0, 60)}..." aparece ${occurrences}x em ${path}. ` +
-        `Use uma string mais específica pra evitar ambiguidade.`
+      `String "${args.oldStr.slice(0, 60)}..." appears ${occurrences}x in ${path}. ` +
+        `Use a more specific string to avoid ambiguity.`
     );
   }
   // split/join (NÃO .replace): replace interpreta $&, $1, $$ no newStr e
@@ -190,7 +190,7 @@ export async function toolVaultEdit(app: App, args: EditArgs): Promise<string> {
   await adapter.write(path, newContent);
   const delta = args.newStr.length - args.oldStr.length;
   const sign = delta >= 0 ? "+" : "";
-  return `Editado ${path} (${sign}${delta} chars)`;
+  return `Edited ${path} (${sign}${delta} chars)`;
 }
 
 // ============================================================
@@ -207,22 +207,22 @@ export async function toolVaultMove(app: App, args: MoveArgs): Promise<string> {
   const to = normalizePath(args.to);
   const adapter = app.vault.adapter;
   if (!(await adapter.exists(from))) {
-    throw new Error(`Origem não existe: ${from}`);
+    throw new Error(`Source does not exist: ${from}`);
   }
   if (await adapter.exists(to)) {
-    throw new Error(`Destino já existe: ${to}. Não vou sobrescrever.`);
+    throw new Error(`Destination already exists: ${to}. Refusing to overwrite.`);
   }
   // v0.1.228: se a origem é pasta, bloqueia mover pra dentro dela mesma
   // (to === from ou descendente) — rename de pasta nesse caso corromperia.
   const fromStat = await adapter.stat(from);
   if (fromStat?.type === "folder" && (to === from || to.startsWith(from + "/"))) {
-    throw new Error("Não dá pra mover uma pasta pra dentro dela mesma.");
+    throw new Error("Cannot move a folder into itself.");
   }
   const dir = dirOf(to);
   if (dir) await ensureFolder(adapter, dir);
   // Usa rename do adapter (atomic em sistemas POSIX)
   await adapter.rename(from, to);
-  return `Movido: ${from} → ${to}`;
+  return `Moved: ${from} → ${to}`;
 }
 
 // ============================================================
@@ -240,25 +240,25 @@ export async function toolVaultDelete(
   const path = normalizePath(args.path);
   const adapter = app.vault.adapter;
   if (!(await adapter.exists(path))) {
-    throw new Error(`Arquivo não existe: ${path}`);
+    throw new Error(`File does not exist: ${path}`);
   }
   const stat = await adapter.stat(path);
   if (!stat) {
-    throw new Error(`Stat falhou pra ${path}`);
+    throw new Error(`Stat failed for ${path}`);
   }
   if (stat.type === "folder") {
     // Bloqueia delete de pasta com conteúdo (safety)
     const listing = await adapter.list(path);
     if (listing.files.length + listing.folders.length > 0) {
       throw new Error(
-        `Pasta ${path} não está vazia. Delete os arquivos primeiro (safety).`
+        `Folder ${path} is not empty. Delete the files first (safety).`
       );
     }
     await adapter.rmdir(path, false);
-    return `Pasta vazia deletada: ${path}`;
+    return `Empty folder deleted: ${path}`;
   }
   await adapter.remove(path);
-  return `Arquivo deletado: ${path}`;
+  return `File deleted: ${path}`;
 }
 
 // ============================================================
@@ -276,10 +276,10 @@ export async function toolVaultCreateFolder(
   const path = normalizePath(args.path);
   const adapter = app.vault.adapter;
   if (await adapter.exists(path)) {
-    return `Pasta já existe: ${path}`;
+    return `Folder already exists: ${path}`;
   }
   await ensureFolder(adapter, path);
-  return `Pasta criada: ${path}`;
+  return `Folder created: ${path}`;
 }
 
 // ============================================================
@@ -302,7 +302,7 @@ export async function toolVaultSearch(
   args: SearchArgs
 ): Promise<string> {
   const query = String(args.query ?? "").trim();
-  if (!query) throw new Error("Parâmetro 'query' vazio.");
+  if (!query) throw new Error("Empty 'query' parameter.");
   const topK = Math.min(Math.max(Number(args.topK) || 5, 1), 20);
 
   const hits = await hybridSearch({
@@ -318,11 +318,11 @@ export async function toolVaultSearch(
     topK,
   });
   if (hits.length === 0) {
-    return `Nenhuma nota relevante pra "${query}". Tente outros termos ou use vault_list pra navegar.`;
+    return `No relevant notes for "${query}". Try other terms or use vault_list to browse.`;
   }
   const lines = hits.map((h) => `### ${h.path} (${h.via})\n${h.text}`);
   return (
-    `Busca híbrida — ${hits.length} resultado(s) pra "${query}":\n\n` +
+    `Hybrid search — ${hits.length} result(s) for "${query}":\n\n` +
     lines.join("\n\n---\n\n")
   );
 }

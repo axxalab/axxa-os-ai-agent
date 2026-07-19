@@ -46,64 +46,64 @@ export function agentActivitySpec(
       return {
         iconPending: "radar",
         iconDone: "search-check",
-        pendingText: `Buscando "${String(args.query ?? "").slice(0, 40)}"`,
-        doneText: `Buscou "${String(args.query ?? "").slice(0, 40)}"`,
+        pendingText: `Searching "${String(args.query ?? "").slice(0, 40)}"`,
+        doneText: `Searched "${String(args.query ?? "").slice(0, 40)}"`,
       };
     case "vault_list":
       return {
         iconPending: "folder-search",
         iconDone: "folder-check",
-        pendingText: `Listando ${shortPath || "raiz"}`,
-        doneText: `Listou ${shortPath || "raiz"}`,
+        pendingText: `Listing ${shortPath || "root"}`,
+        doneText: `Listed ${shortPath || "root"}`,
       };
     case "vault_read":
       return {
         iconPending: "eye",
         iconDone: "file-check-2",
-        pendingText: `Lendo ${shortPath}`,
-        doneText: `Leu ${shortPath}`,
+        pendingText: `Reading ${shortPath}`,
+        doneText: `Read ${shortPath}`,
       };
     case "vault_create":
       return {
         iconPending: "file-plus-2",
         iconDone: "file-check-2",
-        pendingText: `Criando ${shortPath}`,
-        doneText: `Criou ${shortPath}`,
+        pendingText: `Creating ${shortPath}`,
+        doneText: `Created ${shortPath}`,
       };
     case "vault_edit":
       return {
         iconPending: "file-pen-line",
         iconDone: "file-check-2",
-        pendingText: `Editando ${shortPath}`,
-        doneText: `Editou ${shortPath}`,
+        pendingText: `Editing ${shortPath}`,
+        doneText: `Edited ${shortPath}`,
       };
     case "vault_move":
       return {
         iconPending: "move",
         iconDone: "check-circle-2",
-        pendingText: `Movendo ${shortPath} → ${shortTo}`,
-        doneText: `Moveu ${shortPath} → ${shortTo}`,
+        pendingText: `Moving ${shortPath} → ${shortTo}`,
+        doneText: `Moved ${shortPath} → ${shortTo}`,
       };
     case "vault_delete":
       return {
         iconPending: "trash-2",
         iconDone: "circle-check-big",
-        pendingText: `Deletando ${shortPath}`,
-        doneText: `Deletou ${shortPath}`,
+        pendingText: `Deleting ${shortPath}`,
+        doneText: `Deleted ${shortPath}`,
       };
     case "vault_create_folder":
       return {
         iconPending: "folder-plus",
         iconDone: "folder-check",
-        pendingText: `Criando pasta ${shortPath}`,
-        doneText: `Criou pasta ${shortPath}`,
+        pendingText: `Creating folder ${shortPath}`,
+        doneText: `Created folder ${shortPath}`,
       };
     default:
       return {
         iconPending: "wrench",
         iconDone: "check-circle-2",
-        pendingText: `Executando ${toolName}`,
-        doneText: `${toolName} concluído`,
+        pendingText: `Running ${toolName}`,
+        doneText: `${toolName} completed`,
       };
   }
 }
@@ -119,8 +119,8 @@ export function summarizeToolResult(toolName: string, result: string): string {
   if (!result) return "";
   switch (toolName) {
     case "vault_list": {
-      // Padrão: "Conteúdo de X (Y itens):"
-      const m = /\((\d+)\s+itens?\)/.exec(result);
+      // Padrão: "Contents of X (Y items):"
+      const m = /\((\d+)\s+items?\)/.exec(result);
       return m ? `${m[1]} item${m[1] === "1" ? "" : "s"}` : "";
     }
     case "vault_read":

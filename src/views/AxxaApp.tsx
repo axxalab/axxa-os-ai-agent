@@ -177,6 +177,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // Modo Voz / Skills / "tudo certo" overlays. v0.1.194
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [showAllSet, setShowAllSet] = useState(false);
+  // (P1-13, a11y) Live region: anuncia início/fim da resposta pra leitores de
+  // tela — sem isto o usuário envia e fica no silêncio absoluto.
+  const [srAnnouncement, setSrAnnouncement] = useState("");
+  const prevLoadingRef = useRef(false);
+  useEffect(() => {
+    if (isLoading && !prevLoadingRef.current) {
+      setSrAnnouncement(t.chat.srResponding);
+    } else if (!isLoading && prevLoadingRef.current) {
+      setSrAnnouncement(t.chat.srResponseDone);
+    }
+    prevLoadingRef.current = isLoading;
+  }, [isLoading, t]);
 
   // "Tudo certo!" auto-dispensa em 1.7s — timer com cleanup (evita update em
   // componente desmontado / timers acumulados). v0.1.195
@@ -643,6 +655,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const handleSend = async (text: string) => {
     const { addMessage, lockSession, setCurrentChatId, setCurrentChatTitle } =
       useChatStore.getState();
+
+    // (P1-16) Envio attachment-only: o texto vira a lista de anexos — a bolha
+    // e o título do chat não ficam vazios, e o modelo recebe um contexto útil.
+    if (!text.trim() && pendingAttachments.length > 0) {
+      text = pendingAttachments.map((p) => p.name).join(", ");
+    }
 
     // Primeira msg da sessão → cria chat ID, gera título, trava session
     if (messages.length === 0) {
@@ -1141,6 +1159,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   const handleNewChat = () => {
     abortRef.current?.abort();
+    // (P1-09) Chat novo FORA do fluxo de projeto: descarta a associação
+    // pendente — senão o 1º send entra num projeto que o usuário abandonou.
+    pendingProjectIdRef.current = null;
     useChatStore.getState().newChat();
     setCleanChat(true);
     setView("chat");
@@ -1150,6 +1171,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // da gaveta). Mesma lógica do handleNewChat + fixa o modo da sessão. v0.1.219
   const handleNewChatWithMode = (newMode: string) => {
     abortRef.current?.abort();
+    pendingProjectIdRef.current = null; // (P1-09) idem handleNewChat
     // Limpa um prompt-starter pendente ANTES do remount do Composer (key=mode):
     // sem isso o editor recém-montado re-injeta o texto da sugestão antiga.
     setComposerInject(undefined);
@@ -1472,6 +1494,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       // senão a reidratação regrava o arquivo com date=agora e o histórico
       // reordena só de abrir. (auditoria jul/2026)
       justLoadedRef.current = true;
+      // (P1-09/P1-55) Carregar um chat também sai do fluxo "novo chat no
+      // projeto" — a associação pendente não pode sobreviver à troca.
+      pendingProjectIdRef.current = null;
       setMessages(restored);
       setCurrentChatId(chat.id);
       setCurrentChatTitle(chat.title);
@@ -2016,6 +2041,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               }}
             />
           )}
+          <span className="axxa-sr-only" role="status" aria-live="polite">
+            {srAnnouncement}
+          </span>
           {showAllSet && (
             <div className="axxa-allset" role="status" aria-label={t.allSet.title}>
               <div className="axxa-allset-check">

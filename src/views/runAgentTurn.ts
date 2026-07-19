@@ -198,6 +198,11 @@ export async function runAgentTurnImpl(
     try {
       while (isUncapped || turn < MAX_TURNS) {
         turn++;
+        // (P1-08) Stop entre turnos: sem isto o abort só era sentido pelo
+        // streamChat — e nos turnos 2+ o run morria em silêncio.
+        if (controller.signal.aborted) {
+          throw new DOMException("Interrupted", "AbortError");
+        }
 
         // Cria msg ai-response que vai ser preenchida token-a-token.
         // Cada turno é um message separado pra ficar claro qual tokens
@@ -400,7 +405,6 @@ export async function runAgentTurnImpl(
           // Gate: roda direto ("auto") ou abre o preview de confirmação.
           // Lógica (permissão + diff-approval + irreversível) em permissions.ts.
           const gate = decideToolGate(def, permissionLevel, {
-            diffApproval,
             approveAll: agentApproveAllRef.current,
           });
           let approved = gate === "auto";
@@ -408,6 +412,7 @@ export async function runAgentTurnImpl(
             const modal = new ConfirmationModal(plugin.app, {
               toolCall: call,
               definition: def,
+              showDiff: diffApproval,
             });
             const res = await modal.openAndWait();
             approved = res.approved;
@@ -455,6 +460,24 @@ export async function runAgentTurnImpl(
           prep: (typeof preparedCalls)[number]
         ): Promise<CallResult> => {
           const { call, activityId, spec } = prep;
+          // (P1-08) Stop DURANTE a execução de tools: calls que ainda não
+          // começaram não rodam mais (retorno, não throw — um throw dentro do
+          // Promise.all dos grupos deixaria rejeições órfãs nos irmãos).
+          if (controller.signal.aborted) {
+            updateActivity(activityId, {
+              phase: "failed",
+              iconFailed: "circle-stop",
+              failedText: t.ai.interrupted,
+            });
+            return {
+              callId: call.id,
+              content: "Interrupted by the user — this call did NOT run.",
+              activityId,
+              spec,
+              meta: "",
+              ok: false,
+            };
+          }
           const executor = TOOL_REGISTRY[call.name];
           const maxAttempts = 1 + Math.max(0, effortCfg.toolRetryOnError);
           let lastErr: unknown = null;
@@ -573,6 +596,12 @@ export async function runAgentTurnImpl(
             });
           }
         }
+        // (P1-08) Stop no meio das tools: colheu os resultados (o que rodou,
+        // rodou; o que não rodou ficou marcado) → encerra o run pelo caminho
+        // de interrupção, que anexa os runSteps (P1-06).
+        if (controller.signal.aborted) {
+          throw new DOMException("Interrupted", "AbortError");
+        }
 
         // Se detectou loop, injeta nudge pro LLM e segue um turn — se ele
         // insistir, dá outro turn e o próximo check vai cortar denovo.
@@ -639,19 +668,31 @@ export async function runAgentTurnImpl(
         }
       }
       if (err instanceof DOMException && err.name === "AbortError") {
-        // Abort silencioso — usuário clicou em parar
+        // (P1-08) Interrompido em qualquer turno ganha marcador visível — e
+        // (P1-06) as ações JÁ executadas são anexadas pra persistir no .md e
+        // entrar no replay (o agente não "esquece" o que fez).
+        if (!firstTurn) {
+          const stopId = addMessage({
+            type: "ai-response",
+            content: t.ai.interrupted,
+          });
+          if (runSteps.length > 0) setAgentSteps(stopId, runSteps);
+        }
       } else {
         const { message, code } = describeProviderError(
           err,
           t,
           activeProvider.name
         );
-        addMessage({
+        const errId = addMessage({
           type: "ai-response",
           content: `${t.ai.errorPrefix} ${message}`,
           isError: true,
           errorCode: code,
         });
+        // (P1-06) Erro depois de tools executadas: registra as ações mesmo
+        // assim — sem isto o run errado sumia com o histórico do que tocou.
+        if (runSteps.length > 0) setAgentSteps(errId, runSteps);
       }
     } finally {
       setLoading(false);

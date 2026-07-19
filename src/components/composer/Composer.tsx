@@ -273,10 +273,18 @@ export function Composer({
   sendRef.current = onSend;
   const streamingRef = useRef(streaming);
   streamingRef.current = streaming;
+  // (P1-16) Ref live dos anexos pro sendCurrent (closure de mount) permitir
+  // Enter com editor vazio quando há anexo pendente.
+  const attachmentsCountRef = useRef(0);
+  attachmentsCountRef.current = pendingAttachments.length;
 
   // Compartment = "slot" reconfigurável do CodeMirror — permite trocar o
   // placeholder em runtime (ex.: mode chat → vault-qa) sem destruir o editor.
   const [placeholderCompartment] = useState(() => new Compartment());
+  // (P1-15) Nome acessível do editor: o CM6 tem role=textbox mas sem
+  // aria-label o leitor de tela anuncia só "edit text". O label = placeholder
+  // do modo, reconfigurado junto com ele.
+  const [ariaCompartment] = useState(() => new Compartment());
 
   const [isEmpty, setIsEmpty] = useState(true);
   // Foco do editor — gateia o ticker (placeholder typewriter só aparece desfocado).
@@ -407,7 +415,8 @@ export function Composer({
     function sendCurrent(view: EditorView): boolean {
       if (streamingRef.current) return false;
       const text = view.state.doc.toString().trim();
-      if (!text) return false;
+      // (P1-16) Enter com anexo pendente envia mesmo sem texto.
+      if (!text && attachmentsCountRef.current === 0) return false;
       sendRef.current(text);
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: "" },
@@ -428,6 +437,9 @@ export function Composer({
         keymap.of(enterKey),
         EditorView.lineWrapping,
         placeholderCompartment.of(cmPlaceholder(placeholderText)),
+        ariaCompartment.of(
+          EditorView.contentAttributes.of({ "aria-label": placeholderText })
+        ),
         // Autocomplete: @nota (wikilinks) + /comando (actions do AXXA).
         // Sources delegam pra app e commandsRef — capturam ref live (não closure).
         // aboveCursor:true → tooltip sempre acima do cursor pra não ficar
@@ -600,9 +612,14 @@ export function Composer({
     const view = viewRef.current;
     if (!view) return;
     view.dispatch({
-      effects: placeholderCompartment.reconfigure(cmPlaceholder(placeholderText)),
+      effects: [
+        placeholderCompartment.reconfigure(cmPlaceholder(placeholderText)),
+        ariaCompartment.reconfigure(
+          EditorView.contentAttributes.of({ "aria-label": placeholderText })
+        ),
+      ],
     });
-  }, [placeholderText, placeholderCompartment]);
+  }, [placeholderText, placeholderCompartment, ariaCompartment]);
 
   // Prompt starters da StarterScreen → reescreve o doc + foca + cursor no fim.
   // Dispara a cada novo `nonce`. v0.1.131
@@ -704,7 +721,9 @@ export function Composer({
     const view = viewRef.current;
     if (!view) return;
     const text = view.state.doc.toString().trim();
-    if (!text) return;
+    // (P1-16) Anexo sem texto é envio válido (padrão ChatGPT/Claude) — antes
+    // o usuário tinha que inventar um texto pra despachar a imagem/nota.
+    if (!text && (pendingAttachments?.length ?? 0) === 0) return;
     onSend(text);
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: "" },
@@ -849,7 +868,10 @@ export function Composer({
   // Em "mic", o press inicia gravação e release para (hold-to-record).
   // Em "send" e "stop", click normal.
   // Vault Q/A não tem voz/mic — lá o botão é send puro (seta), nunca microfone.
-  const isMicMode = !streaming && isEmpty && mode !== "vault-qa";
+  // (P1-16) Com anexo pendente o botão vira SEND mesmo de editor vazio —
+  // antes não existia caminho de envio attachment-only (o botão era mic).
+  const isMicMode =
+    !streaming && isEmpty && mode !== "vault-qa" && pendingAttachments.length === 0;
 
   let iconName: string;
   let label: string;
@@ -897,9 +919,12 @@ export function Composer({
   const endMic = () => {
     micStartPosRef.current = null;
     if (micHoldTimerRef.current !== null) {
-      // Soltou antes do hold disparar → era tap/scroll, não grava
+      // Soltou antes do hold disparar → era tap/scroll, não grava.
+      // (P1-17) Tap curto ganha a dica do gesto (padrão WhatsApp/Telegram) —
+      // antes era um no-op 100% silencioso e o hold não era descobrível.
       window.clearTimeout(micHoldTimerRef.current);
       micHoldTimerRef.current = null;
+      new Notice(t.composer.micLabel);
       return;
     }
     stopRecording(false);

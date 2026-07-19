@@ -659,7 +659,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
         if (opts.current !== undefined) {
           text.setValue(String(opts.current));
         }
-        text.onChange(async (raw) => {
+        // v0.1.237 (P1-01): clamp SÓ no blur/Enter. O clamp-por-keystroke da
+        // v0.1.228 reescrevia o input no meio da digitação — com min alto
+        // (Context reserve min=10) digitar "25" virava "10" → "105" → "95".
+        // Digitando: salva apenas valores já dentro do range; ao sair do
+        // campo, clampa, reflete e salva o resultado final.
+        const commit = async (raw: string, reflect: boolean) => {
           const trimmed = raw.trim();
           if (trimmed === "") {
             // Vazio = volta ao default — remove o override
@@ -668,13 +673,16 @@ export class AxxaSettingsTab extends PluginSettingTab {
           }
           const num = Number(trimmed);
           if (!isFinite(num)) return;
-          // Clamp aos limites pra evitar valores absurdos
           const clamped = Math.max(opts.min, Math.min(opts.max, num));
-          // v0.1.228: reflete o valor clampado de volta no input quando saiu
-          // do range — antes salvava o clamp mas deixava o campo mostrando o
-          // valor fora-do-limite digitado (UI dessincronizada do estado).
-          if (clamped !== num) text.setValue(String(clamped));
-          await opts.onSave(clamped);
+          if (reflect && clamped !== num) text.setValue(String(clamped));
+          if (reflect || clamped === num) await opts.onSave(clamped);
+        };
+        text.onChange((raw) => void commit(raw, false));
+        text.inputEl.addEventListener("blur", () =>
+          void commit(text.inputEl.value, true)
+        );
+        text.inputEl.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") void commit(text.inputEl.value, true);
         });
       });
   }

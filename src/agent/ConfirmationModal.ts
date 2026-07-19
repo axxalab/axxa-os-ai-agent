@@ -17,6 +17,10 @@ import type { ToolCall, ToolDefinition } from "./types";
 interface ConfirmOpts {
   toolCall: ToolCall;
   definition: ToolDefinition;
+  /** Mostra o preview/diff da mudança (Settings → "Approve changes (diff)").
+   *  v0.1.237: o toggle deixou de forçar o GATE (nível decide se confirma) e
+   *  passou a controlar só a riqueza da confirmação. Default true. */
+  showDiff?: boolean;
 }
 
 export interface ConfirmResult {
@@ -69,7 +73,7 @@ export class ConfirmationModal extends Modal {
       text: firstSentence(opts.definition.description),
     });
 
-    this.renderPreview(contentEl);
+    if (this.opts.showDiff !== false) this.renderPreview(contentEl);
 
     const setting = new Setting(contentEl);
     setting.addButton((btn) => {

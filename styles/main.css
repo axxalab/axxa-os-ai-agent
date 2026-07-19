@@ -4353,15 +4353,18 @@ body.theme-dark .axxa-root .axxa-composer-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  flex: 0 0 auto;
+  /* (P1-02) flex 1 + min-width menor: as 5 sub-tabs do Effort CABEM em 390px
+     em vez de esconder o "Max" atrás de um scroll sem nenhuma affordance
+     (scrollbar oculta). Em telas largas o flex-grow distribui igual. */
+  flex: 1 1 auto;
   justify-content: center;
-  padding: 8px 14px;
+  padding: 8px 10px;
   border-radius: 999px;
   font-size: var(--font-ui-small);
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
-  min-width: 80px;
+  min-width: 56px;
   white-space: nowrap;
 }
 .axxa-subtab-active {
@@ -7279,4 +7282,18 @@ body.axxa-reduce-motion *::before,
 body.axxa-reduce-motion *::after {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
+}
+
+/* [DS:skin-restore] (P1-13) utilitário screen-reader-only — some visualmente,
+   permanece pro leitor de tela. */
+.axxa-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
