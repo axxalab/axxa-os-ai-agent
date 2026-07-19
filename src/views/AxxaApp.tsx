@@ -296,6 +296,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // Projeto pendente: ao começar "nova conversa neste projeto", a associação
   // chat↔projeto acontece no 1º send (quando o chat id é criado).
   const pendingProjectIdRef = useRef<string | null>(null);
+  // (P1-28) Anexos do ÚLTIMO envio — repassados no retryError do mesmo turno.
+  const lastSendAttachmentsRef = useRef<MessageAttachment[] | undefined>(undefined);
 
   // Ações de projeto extraídas → useProjectActions (Frente 2). persistProjects é
   // retornado porque handleSend e a edição de mensagem também o reusam.
@@ -693,6 +695,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             .map((p) => p.attachment)
             .filter((a) => (a.type === "image" ? caps.vision : true))
         : undefined;
+    // (P1-28) Guarda os anexos do turno pro retry: erro transitório numa msg
+    // com imagem re-tentava SEM a imagem, silenciosamente.
+    lastSendAttachmentsRef.current = attachments;
 
     // User msg salva sem attachments no store (pra simplicidade do auto-save .md).
     // O propagation pro provider acontece via parâmetro adicional pra streamReply/runAgentTurn.
@@ -1040,9 +1045,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // Volta o histórico pro estado logo após a user-msg (remove erro + comments).
     useChatStore.getState().setMessages(current.slice(0, userIdx + 1));
     const caps = getModelCapabilities(activeProviderId, activeModel);
+    // (P1-28) Se o erro pertence ao ÚLTIMO turno enviado, o retry leva os
+    // mesmos anexos do envio original (imagem/nota não somem no re-envio).
+    const lastUserIdx = current.reduce(
+      (acc, m, i) => (m.type === "user" ? i : acc),
+      -1
+    );
+    const retryAttachments =
+      userIdx === lastUserIdx ? lastSendAttachmentsRef.current : undefined;
     if (isGenerationModel(caps)) await runGenerationTurn(userText, caps);
-    else if (activeMode === "agent") await runAgentTurn(userText);
-    else await streamReply(userText);
+    else if (activeMode === "agent") await runAgentTurn(userText, retryAttachments);
+    else await streamReply(userText, retryAttachments);
   };
 
   const chatActions: ChatActions = {
@@ -1054,6 +1067,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // Arrow defere o lookup pra DEPOIS de handleOpenSettings ser inicializado
     // (ele é declarado mais abaixo — evita o temporal dead zone).
     openSettings: () => handleOpenSettings(),
+    startNewChat: () => handleNewChat(),
     saveResponseAsNote: (content: string) => void handleSaveResponseAsNote(content),
   };
 
@@ -1971,6 +1985,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               }
               onOpenSettings={handleOpenSettings}
               thinkingCapable={supportsThinking(activeModel)}
+              locked={isLocked}
               onClose={() => setModelSheetOpen(false)}
             />
           )}

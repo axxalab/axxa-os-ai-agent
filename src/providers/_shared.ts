@@ -210,6 +210,15 @@ export function mapHttpError(
     );
   }
   const detail = extractApiMessage(bodyJson) ?? `HTTP ${status}`;
+  // (P1-26) Context-length excedido: todo provider devolve 400 com um texto
+  // próprio — sem este mapeamento caía em "unknown" com retry inútil.
+  if (
+    /context.{0,8}length|maximum context|context window|too many tokens|prompt is too long|exceeds? the (model'?s? )?context/i.test(
+      detail
+    )
+  ) {
+    return new ProviderError(`${opts.label}: ${detail}`, "context-overflow");
+  }
   return new ProviderError(`${opts.label}: ${detail}`, "unknown");
 }
 

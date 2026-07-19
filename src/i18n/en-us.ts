@@ -315,6 +315,7 @@ export const EN_US = {
     emptyAll: "No saved conversations yet. Send your first message!",
     emptyFilter: "No conversations in this mode yet.",
     emptySearch: "No conversations found for that search.",
+    emptyFiltered: "No conversations in this mode yet.",
     endOfList: "end of list",
     untitled: "Untitled",
     scrollTop: "Scroll to top",
@@ -555,8 +556,11 @@ export const EN_US = {
       network: "Connection failed. Check your internet and try again.",
       billing:
         "Gemini needs active API billing for this model. Your Google AI Pro/Ultra subscription does NOT cover the API — it's billed separately in AI Studio. Enable billing (Prepay plan, min $10) and try again.",
+      contextOverflow:
+        "This conversation no longer fits the model's context window. Start a new chat (this one stays saved), or delete some messages/attachments before retrying.",
     },
     retry: "Try again",
+    startNewChat: "Start new chat",
     openSettings: "Open Settings",
     openBilling: "Enable billing in AI Studio",
     genUnsupported: (type: "image" | "audio" | "video", supported: string) => {

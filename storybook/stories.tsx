@@ -35,6 +35,7 @@ const mockChatActions: ChatActions = {
   editMessage: noop,
   retryError: noop,
   openSettings: noop,
+  startNewChat: noop,
   saveResponseAsNote: noop,
 };
 

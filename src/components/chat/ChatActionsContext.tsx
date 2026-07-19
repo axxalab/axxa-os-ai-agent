@@ -23,6 +23,8 @@ export interface ChatActions {
   retryError: (errorMessageId: string) => void;
   /** Abre a aba de Configurações do plugin (CTA de erro de API key). */
   openSettings: () => void;
+  /** Inicia conversa nova preservando a atual (CTA de contexto estourado). */
+  startNewChat: () => void;
   /** Salva o conteúdo de uma resposta da IA como nova nota no vault. */
   saveResponseAsNote: (content: string) => void;
 }

@@ -115,6 +115,9 @@ interface ModelSheetProps {
   thinkingCapable?: boolean;
   /** Locale pras descrições — app é EN-only hoje. */
   lang?: string;
+  /** (P1-36) Sessão travada (após 1ª msg): escolher outro modelo abre uma
+   *  conversa NOVA — o sheet avisa antes, em vez de só descartar a tela. */
+  locked?: boolean;
 }
 
 export function ModelSheet({
@@ -132,6 +135,7 @@ export function ModelSheet({
   onOpenSettings,
   thinkingCapable = false,
   lang = "en-US",
+  locked = false,
 }: ModelSheetProps) {
   const [view, setView] = useState<"model" | "effort" | "more">("model");
   const [chip, setChip] = useState<string>("all");
@@ -279,6 +283,14 @@ export function ModelSheet({
               </button>
               <span className="axxa-sheet-title">Select model</span>
               <span className="axxa-sheet-nav" aria-hidden="true" />
+            </div>
+          )}
+          {/* (P1-36) Mesmo aviso do header: com sessão travada, trocar de
+              modelo abre conversa nova — nada de troca silenciosa. */}
+          {view === "model" && locked && (
+            <div className="axxa-sheet-locked-hint">
+              <Icon name="lock" />
+              <span>Choosing another model opens a new conversation.</span>
             </div>
           )}
           {view === "effort" && (

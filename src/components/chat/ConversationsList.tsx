@@ -316,7 +316,13 @@ export function ConversationsList({
           <div className="axxa-conversations-empty">
             <Icon name="inbox" />
             <p>
-              {search ? t.conversations.emptySearch : t.conversations.emptyAll}
+              {/* (P1-24) Filtro de modo ativo sem resultados NÃO é "vault
+                  vazio" — a mensagem 'Send your first message!' era falsa. */}
+              {search
+                ? t.conversations.emptySearch
+                : modeFilter !== "all"
+                  ? t.conversations.emptyFiltered
+                  : t.conversations.emptyAll}
             </p>
           </div>
         )}

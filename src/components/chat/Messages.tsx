@@ -471,6 +471,7 @@ export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
     "rate-limit": t.ai.err.rateLimit,
     network: t.ai.err.network,
     billing: t.ai.err.billing,
+    "context-overflow": t.ai.err.contextOverflow,
   };
   const text =
     stripped.trim() ||
@@ -478,6 +479,9 @@ export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
     t.ai.unknownError;
   const isKeyError =
     msg.errorCode === "no-key" || msg.errorCode === "invalid-key";
+  // (P1-26) Contexto estourado: retry refaz a MESMA request e falha sempre —
+  // a saída real é conversa nova (a atual fica salva).
+  const isContextOverflow = msg.errorCode === "context-overflow";
   // Billing do Gemini: ação dedicada → abre o AI Studio pra ativar billing
   // (a assinatura consumer não cobre a API). v0.1.162
   const isBilling = msg.errorCode === "billing";
@@ -518,14 +522,26 @@ export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
             {t.ai.openBilling}
           </button>
         )}
-        <button
-          type="button"
-          className="axxa-error-btn"
-          onClick={() => actions.retryError(msg.id)}
-        >
-          <Icon name="refresh-cw" />
-          {t.ai.retry}
-        </button>
+        {isContextOverflow && (
+          <button
+            type="button"
+            className="axxa-error-btn axxa-error-btn-primary"
+            onClick={actions.startNewChat}
+          >
+            <Icon name="plus" />
+            {t.ai.startNewChat}
+          </button>
+        )}
+        {!isContextOverflow && (
+          <button
+            type="button"
+            className="axxa-error-btn"
+            onClick={() => actions.retryError(msg.id)}
+          >
+            <Icon name="refresh-cw" />
+            {t.ai.retry}
+          </button>
+        )}
       </div>
     </div>
   );

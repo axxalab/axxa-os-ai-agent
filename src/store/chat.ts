@@ -16,6 +16,7 @@ export type AIErrorCode =
   | "rate-limit"
   | "network"
   | "billing"
+  | "context-overflow"
   | "unknown";
 
 interface BaseMessage {
