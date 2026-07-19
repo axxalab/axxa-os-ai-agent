@@ -65,6 +65,11 @@ export const EN_US = {
     emptyTitle: "No skills yet",
     emptySub:
       "Create .md notes in the skills folder (axxa-ai/skills) — each becomes an app here.",
+    createExamples: "Create example skills",
+    invalidMode: (m: string) =>
+      `Skill has an unknown mode "${m}" — using the current mode instead.`,
+    modeLockedNotice: (m: string) =>
+      `This skill prefers ${m} mode, but the session is locked — start a new conversation to switch.`,
   },
 
   allSet: {

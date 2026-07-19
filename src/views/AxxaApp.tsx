@@ -1180,6 +1180,26 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   const handleStop = () => abortRef.current?.abort();
 
+  // (P1-66/68) Aplicar uma skill: valida o `mode` do frontmatter, avisa
+  // quando a sessão está travada (antes: ignorado em silêncio), troca o modo
+  // SEM persistir defaultMode (era efeito colateral surpresa), e PRESERVA o
+  // rascunho já digitado — o template entra abaixo dele, não por cima.
+  const applySkill = (skill: (typeof plugin.skills)[number]) => {
+    const SKILL_MODES = ["chat", "vault-qa", "agent"];
+    if (skill.mode && skill.mode !== mode) {
+      if (!SKILL_MODES.includes(skill.mode)) {
+        new Notice(t.skills.invalidMode(skill.mode));
+      } else if (isLocked) {
+        new Notice(t.skills.modeLockedNotice(skill.mode));
+      } else {
+        setComposerInject(undefined);
+        setMode(skill.mode);
+      }
+    }
+    const draft = composerDraftRef.current.trim();
+    handlePromptStarter(draft ? `${draft}\n\n${skill.body}` : skill.body);
+  };
+
   // Salva o áudio gravado pelo hold-to-record no Vault e devolve o path
   // relativo (pra usar como wikilink no composer). Cria a pasta se não existir.
   const handleSaveAudio = async (
@@ -1708,10 +1728,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       id: s.id,
       label: s.name,
       description: "Skill · " + (s.description || s.name),
-      execute: () => {
-        if (s.mode && !isLocked) handleStarterMode(s.mode);
-        handlePromptStarter(s.body);
-      },
+      execute: () => applySkill(s),
     })),
   ];
 
@@ -2030,6 +2047,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               onSelectStyle={handleSelectStyle}
               onExploreSkills={() => {
                 setPlusOpen(false);
+                // (P1-67) Abre com a lista FRESCA: notas criadas/editadas na
+                // pasta desde o load passam a aparecer sem reload do plugin.
+                void plugin.reloadSkills().then(() => forceRender((n) => n + 1));
                 setSkillsOpen(true);
               }}
               toggles={plusToggles}
@@ -2145,13 +2165,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             <SkillsScreen
               skills={plugin.skills}
               onClose={() => setSkillsOpen(false)}
+              onCreateExamples={() => {
+                void (async () => {
+                  await plugin.seedExampleSkills();
+                  await plugin.reloadSkills();
+                  forceRender((n) => n + 1);
+                })();
+              }}
               onUse={(skill) => {
                 setSkillsOpen(false);
                 setView("chat");
-                if (skill.mode && skill.mode !== mode) {
-                  void handleStarterMode(skill.mode);
-                }
-                handlePromptStarter(skill.body);
+                applySkill(skill);
               }}
               onOpenNote={(path) => {
                 const file = plugin.app.vault.getAbstractFileByPath(path);

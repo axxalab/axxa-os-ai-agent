@@ -7381,3 +7381,22 @@ body.axxa-reduce-motion *::after {
   font-size: var(--font-ui-smaller);
   color: var(--text-faint);
 }
+
+/* (P1-65) CTA de semear exemplos no empty state da SkillsScreen */
+.axxa-skills-seed-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  cursor: pointer;
+}
+.axxa-skills-seed-btn:hover {
+  background: var(--interactive-accent-hover);
+}
