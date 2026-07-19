@@ -1061,6 +1061,16 @@ body.theme-dark .axxa-root {
   font-size: var(--font-ui-smaller);
   flex: 0 0 auto;
 }
+/* Chip de modelo DENTRO do pill do chat — largura natural (não encolhe com o
+   editor), mas com teto + ellipsis pra nomes longos não engolirem o campo. */
+.axxa-composer-pill .axxa-composer-model {
+  flex: 0 0 auto;
+  max-width: 40%;
+  padding: 0 10px;
+}
+body.is-mobile .axxa-composer-pill .axxa-composer-model-effort {
+  display: none;
+}
 .axxa-root .axxa-composer-send {
   width: 32px;
   height: 32px;
@@ -5515,88 +5525,6 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.axxa-model-toggle-badges {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 7px;
-}
-.axxa-model-toggle-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.axxa-model-toggle-badge .svg-icon {
-  width: 13px;
-  height: 13px;
-}
-.axxa-model-modality-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-.axxa-model-modality-chip {
-  display: inline-flex;
-  align-items: center;
-  font-family: var(--font-monospace);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  padding: 2px 5px;
-  border-radius: 5px;
-  white-space: nowrap;
-  cursor: default;
-}
-.axxa-modality-legend-wrap {
-  margin: 2px 0 8px;
-}
-.axxa-modality-legend-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: none;
-  padding: 2px 0;
-  font-size: 12px;
-  cursor: pointer;
-}
-.axxa-modality-legend-toggle .axxa-modality-legend-ico .svg-icon {
-  width: 14px;
-  height: 14px;
-}
-.axxa-modality-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--background-modifier-border);
-}
-.axxa-modality-legend-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.axxa-modality-legend-row .axxa-model-modality-chip {
-  flex: 0 0 auto;
-  min-width: 62px;
-  justify-content: center;
-}
-.axxa-modality-legend-txt {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.axxa-modality-legend-lbl {
-  font-size: 12px;
-  font-weight: 600;
-}
-.axxa-modality-legend-desc {
-  font-size: 11.5px;
-  line-height: 1.35;
-}
 .axxa-hidden {
   display: none !important;
 }
@@ -6031,51 +5959,6 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
 .axxa-model-toggle-switch.is-on::after {
   transform: translateX(16px);
 }
-.axxa-model-filter-row {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 5px;
-  margin: 8px 0 4px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 3px;
-}
-.axxa-model-filter-row::-webkit-scrollbar {
-  height: 4px;
-}
-.axxa-model-filter-chip {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid
-    color-mix(in srgb, var(--background-modifier-border) 60%, transparent) !important;
-  font-size: var(--font-ui-smaller);
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.13s, color 0.13s, border-color 0.13s;
-}
-.axxa-model-filter-chip .axxa-model-filter-ico {
-  display: inline-flex;
-}
-.axxa-model-filter-chip .svg-icon {
-  width: 12px;
-  height: 12px;
-}
-.axxa-model-filter-count {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 999px;
-}
-.axxa-model-filter-chip.is-empty {
-  opacity: 0.4;
-}
 .axxa-model-hot {
   flex: 0 0 auto;
   font-size: 10px;
@@ -6101,22 +5984,6 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-}
-.axxa-model-star {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border-radius: 6px;
-  padding: 2px;
-  transition: color 0.13s, transform 0.1s;
-}
-.axxa-model-star .svg-icon {
-  width: 16px;
-  height: 16px;
-}
-.axxa-model-star:hover {
-  transform: scale(1.15);
 }
 /* ============================================================
  * CONNECTIONS → MODELS — seleção por papel (cross-provider). v0.1.236
@@ -6154,231 +6021,112 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
 .axxa-models-empty-btn {
   cursor: pointer;
 }
+/* ── Connections v0.1.240 — CRUD básico ─────────────────────────── */
+/* status de conexão no topo de cada provider */
+.axxa-provider-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: var(--font-ui-smaller);
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+.axxa-provider-status.is-connected {
+  color: var(--color-green, #06d6a0);
+  background: rgba(6, 214, 160, 0.12);
+}
+.axxa-provider-status-ico .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+/* CTA "modelos ficam na aba ao lado" no fim da página do provider */
+.axxa-provider-models-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 10px 12px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 10px;
+}
+/* toolbar da aba Models → All (busca + fetch) */
+.axxa-models-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+.axxa-models-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* controles da aba Favorites: mover ↑↓ e remover ✕ */
+.axxa-fav-move,
+.axxa-model-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: none;
+}
+.axxa-fav-move:hover,
+.axxa-model-remove:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.axxa-fav-move[disabled] {
+  opacity: 0.3;
+  cursor: default;
+}
+.axxa-model-remove:hover {
+  color: var(--text-error, #e5484d);
+}
+.axxa-fav-move .svg-icon,
+.axxa-model-remove .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+/* linha da aba Favorites é um div (não button) — cursor normal */
+.axxa-fav-row {
+  cursor: default;
+}
+/* ícone do papel na linha "Defaults by function" e no badge de default */
+.axxa-roledef-ico {
+  display: inline-flex;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+.axxa-roledef-ico .svg-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+.axxa-roledef-btn {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.axxa-model-default-tag .axxa-roledef-ico {
+  margin-right: 3px;
+}
 /* lista por papel */
 .axxa-models-tab {
   display: flex;
   flex-direction: column;
   gap: 18px;
   margin-top: 10px;
-}
-.axxa-role-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.axxa-role-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 4px 2px 8px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--background-modifier-border);
-  cursor: pointer;
-  text-align: left;
-}
-.axxa-role-chev {
-  flex: 0 0 auto;
-  display: inline-flex;
-  color: var(--text-muted);
-  transition: transform 0.15s;
-}
-.axxa-role-chev .svg-icon {
-  width: 17px;
-  height: 17px;
-}
-.axxa-role-head.is-open .axxa-role-chev {
-  transform: rotate(180deg);
-}
-.axxa-role-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: 4px;
-}
-.axxa-role-ico {
-  display: inline-flex;
-  flex: 0 0 auto;
-}
-.axxa-role-ico .svg-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--text-normal);
-}
-.axxa-role-head-txt {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.axxa-role-label {
-  font-weight: 700;
-  color: var(--text-normal);
-}
-.axxa-role-desc {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-.axxa-role-current {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 45%;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-.axxa-role-current-ico .svg-icon {
-  width: 12px;
-  height: 12px;
-  color: var(--interactive-accent);
-}
-.axxa-role-current-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.axxa-role-current.is-unset {
-  font-style: italic;
-  opacity: 0.7;
-}
-/* família colapsável */
-.axxa-fam-group {
-  display: flex;
-  flex-direction: column;
-}
-.axxa-fam-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 8px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  text-align: left;
-  color: var(--text-normal);
-  transition: background 0.12s;
-}
-.axxa-fam-head:hover {
-  background: var(--background-modifier-hover);
-}
-.axxa-fam-ico {
-  display: inline-flex;
-  flex: 0 0 auto;
-}
-.axxa-fam-ico .svg-icon {
-  width: 15px;
-  height: 15px;
-}
-.axxa-fam-label {
-  font-weight: 600;
-  flex: 0 0 auto;
-}
-.axxa-fam-summary {
-  flex: 1 1 auto;
-  font-size: 11px;
-  color: var(--text-faint);
-}
-.axxa-fam-chev {
-  flex: 0 0 auto;
-  display: inline-flex;
-  color: var(--text-muted);
-  transition: transform 0.15s;
-}
-.axxa-fam-chev .svg-icon {
-  width: 16px;
-  height: 16px;
-}
-.axxa-fam-head.is-open .axxa-fam-chev {
-  transform: rotate(180deg);
-}
-.axxa-fam-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 2px 0 6px 8px;
-}
-/* nível VENDOR (accordion intermediário Modo → Vendor → Família) */
-.axxa-vendor-group {
-  display: flex;
-  flex-direction: column;
-}
-.axxa-vendor-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 8px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  text-align: left;
-  color: var(--text-normal);
-  transition: background 0.12s;
-}
-.axxa-vendor-head:hover {
-  background: var(--background-modifier-hover);
-}
-.axxa-vendor-ico {
-  display: inline-flex;
-  flex: 0 0 auto;
-}
-.axxa-vendor-ico .svg-icon {
-  width: 16px;
-  height: 16px;
-}
-.axxa-vendor-label {
-  font-weight: 600;
-  flex: 0 0 auto;
-}
-.axxa-vendor-summary {
-  flex: 1 1 auto;
-  font-size: 11px;
-  color: var(--text-faint);
-}
-.axxa-vendor-chev {
-  flex: 0 0 auto;
-  display: inline-flex;
-  color: var(--text-muted);
-  transition: transform 0.15s;
-}
-.axxa-vendor-chev .svg-icon {
-  width: 15px;
-  height: 15px;
-}
-.axxa-vendor-head.is-open .axxa-vendor-chev {
-  transform: rotate(180deg);
-}
-.axxa-vendor-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-left: 10px;
-}
-/* filtro por família (All / Selected / Not selected) */
-.axxa-fam-filter {
-  display: flex;
-  gap: 4px;
-  padding: 2px 0 6px;
-}
-.axxa-root .axxa-fam-filter-opt {
-  font-size: 11px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--background-modifier-border);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  box-shadow: none;
-}
-.axxa-root .axxa-fam-filter-opt.is-sel {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border-color: var(--interactive-accent);
 }
 /* badge do provider na linha (logo + nome) */
 .axxa-row-provbadge {
@@ -7344,21 +7092,6 @@ body.axxa-reduce-motion *::after {
 }
 .axxa-model-opt-name {
   min-width: 12ch;
-}
-
-/* (P1-20) Badge "Served by" clicável quando há 2+ fontes pro mesmo modelo */
-.axxa-row-provbadge-pick {
-  cursor: pointer;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 999px;
-  padding: 1px 6px;
-}
-.axxa-row-provbadge-pick:hover {
-  background: var(--background-modifier-hover);
-}
-.axxa-row-provbadge-chev .svg-icon {
-  width: 11px;
-  height: 11px;
 }
 
 /* [DS:skin-restore] (P1-29) Popovers portalados pro <body> ficam FORA do

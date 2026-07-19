@@ -1,4 +1,4 @@
-# AXXA OS — Mapa de telas para revisão manual (v0.1.239)
+# AXXA OS — Mapa de telas para revisão manual (v0.1.240)
 
 Checklist de TODAS as superfícies do plugin, com o caminho pra chegar em cada
 uma. Marque conforme revisar. Dica: teste em dark E light, e no mobile também
@@ -43,9 +43,9 @@ uma. Marque conforme revisar. Dica: teste em dark E light, e no mobile também
       (aviso de sessão travada), copiar conversa (EN).
 
 ## C. Sheets e modais
-- [ ] **C1. ModelSheet** (chip do modelo no composer) — favoritos
-      (bookmark), efforts, thinking toggle (anuncia estado), aviso "abre
-      conversa nova" quando travada.
+- [ ] **C1. ModelSheet** (chip do modelo no composer — agora nos TRÊS
+      modos: chat, Q&A e Agent) — favoritos (bookmark), efforts, thinking
+      toggle (anuncia estado), aviso "abre conversa nova" quando travada.
 - [ ] **C2. PlusModal** ("+") — attach, criar imagem, estilos de resposta,
       toggles com estado anunciado, explorar skills.
 - [ ] **C3. ImageGenModal** — prompt editável, radiogroup por setas,
@@ -89,12 +89,17 @@ uma. Marque conforme revisar. Dica: teste em dark E light, e no mobile também
       sessão travada avisa; /comandos no composer em EN.
 
 ## G. Settings (5 tabs)
-- [ ] **G1. Connections → Providers** — 6 sub-tabs com logo+nome+ativo,
-      key (keychain copy), badges de key, fetch de modelos, filtros EN,
-      switch on/off visível, favoritos bookmark ≠ default star.
-- [ ] **G2. Connections → Models** — papéis com ★ (fallback dos defaults
-      legados; "no default" só no Reasoning), badge "Served by" clicável
-      quando 2+ fontes, nome legível no mobile.
+- [ ] **G1. Connections → Providers** (v0.1.240 — CRUD básico) — 6
+      sub-tabs com logo+nome, SÓ key + config básica (admin key, project/
+      workspace, data-sharing/tier, endpoint do Ollama), pill de status
+      "connected/not connected", CTA "Open Models →" no fim. Sem lista de
+      modelos aqui.
+- [ ] **G2. Connections → Models** (v0.1.240 — duas abas) —
+      **All**: catálogo por provider, "Fetch from API", busca, toggle nos
+      que você quer, add manual (agrupado por categoria, FREE/PAID + 🔥).
+      **Favorites**: "Defaults by function" (menu por papel: chat, reasoning,
+      image, tts, embedding), favoritos do composer ordenáveis (↑↓),
+      bookmark adiciona/remove, ✕ tira da seleção.
 - [ ] **G3. Vault** — pastas (autocomplete), skills, RAG (index valida a
       key do provider CERTO, perfis de quantização EN, progresso, stats).
 - [ ] **G4. Agent** — permissões (ask/vault/yolo AGEM diferente), toggle

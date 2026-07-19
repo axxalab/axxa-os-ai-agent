@@ -1238,10 +1238,12 @@ export function Composer({
         </div>
       )}
       {mode === "chat" ? (
-        /* Chat: pill ÚNICO numa linha (ref print ChatGPT) — + · editor · mic · voz.
-           Sem card de 2 linhas; o editor é inline entre o + e os botões. */
+        /* Chat: pill ÚNICO numa linha (ref print ChatGPT) — + · modelo · editor
+           · mic · voz. O chip de modelo (abre o ModelSheet) existe nos TRÊS
+           modos — mesma feature, layouts diferentes. */
         <div className="axxa-composer-pill" data-mode="chat">
           {plusEl}
+          {modelEl}
           {editorEl}
           {sendEl}
           {voiceEl}
@@ -1253,7 +1255,7 @@ export function Composer({
           {editorEl}
           <div className="axxa-composer-bar">
             {plusEl}
-            {mode !== "vault-qa" && modelEl}
+            {modelEl}
             <span className="axxa-composer-bar-spacer" />
             {mode === "vault-qa" && vaultPills}
             {/* voz à esquerda, mic/send à direita (send é a ação primária na ponta) */}

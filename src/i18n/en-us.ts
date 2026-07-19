@@ -804,7 +804,7 @@ export const EN_US = {
       outros: "Other",
     },
     providerIntro:
-      "Configure the API key and select the active models for the chosen provider.",
+      "Connect the provider: API key and basic configuration. Models are picked in the Models tab.",
     defaultProvider: "Default provider",
     defaultProviderDesc: "Which API to use in conversations",
     apiKey: "API Key",
