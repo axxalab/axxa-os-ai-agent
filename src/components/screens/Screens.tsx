@@ -304,6 +304,9 @@ export function PlansScreen({
   const t = useT();
   const [key, setKey] = useState(license);
   const valid = isLicensePro(key);
+  // (P1-44) "Pro active" só depois do Apply de verdade: digitar uma key com
+  // formato válido não pode afirmar ativação — o gate real lê a key SALVA.
+  const applied = valid && key.trim() === license.trim() && license.trim() !== "";
   return (
     <ScreenShell title={t.plans.title} icon="sparkles" onClose={onClose}>
       <div className="axxa-plans-grid">
@@ -365,9 +368,11 @@ export function PlansScreen({
         >
           {key.length === 0
             ? t.plans.licenseHint
-            : valid
+            : applied
               ? t.plans.licenseValid
-              : t.plans.licenseInvalid}
+              : valid
+                ? t.plans.licenseReady
+                : t.plans.licenseInvalid}
         </p>
       </div>
     </ScreenShell>

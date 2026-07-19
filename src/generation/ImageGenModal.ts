@@ -162,6 +162,29 @@ export class ImageGenModal extends Modal {
     // v0.1.228: role=radiogroup p/ a11y (seleção de modelo por teclado/leitor).
     const listEl = contentEl.createDiv({ cls: "axxa-imggen-list" });
     listEl.setAttr("role", "radiogroup");
+    // (P1-34) Roving tabindex de verdade: setas ↑/↓ movem a seleção entre as
+    // linhas — sem isto o tabindex=-1 das não-selecionadas tornava o grupo
+    // inacessível por teclado (padrão WAI-ARIA radiogroup).
+    listEl.addEventListener("keydown", (ev: KeyboardEvent) => {
+      if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") return;
+      ev.preventDefault();
+      const rows = Array.from(
+        listEl.querySelectorAll<HTMLElement>('[role="radio"]')
+      );
+      if (!rows.length) return;
+      const cur = rows.findIndex((r) => r === document.activeElement);
+      const base = cur >= 0 ? cur : rows.findIndex((r) => r.getAttribute("aria-checked") === "true");
+      const next =
+        ev.key === "ArrowDown"
+          ? (base + 1 + rows.length) % rows.length
+          : (base - 1 + rows.length) % rows.length;
+      rows[next]?.click(); // seleção acompanha o foco (padrão radio nativo)
+      // select() re-renderiza a lista (linhas antigas morrem) — re-foca a
+      // linha selecionada recém-criada pra navegação continuar fluida.
+      (
+        listEl.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')
+      )?.focus();
+    });
     listEl.setAttr("aria-label", s.modelLabel);
     this.renderOptions(listEl);
 

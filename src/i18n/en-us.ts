@@ -634,7 +634,8 @@ export const EN_US = {
     licenseLabel: "License key",
     apply: "Apply",
     licenseHint: "Paste your license to unlock Pro.",
-    licenseValid: "✓ Valid key — Pro active.",
+    licenseValid: "✓ Pro active.",
+    licenseReady: "Key format looks good — tap Apply to activate.",
     licenseInvalid: "✗ Invalid format. Use AXXA-PRO-XXXX-XXXX.",
   },
 

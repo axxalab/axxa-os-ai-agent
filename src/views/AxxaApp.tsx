@@ -199,11 +199,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   }, [showAllSet]);
 
   const finishOnboarding = async (openSettings: boolean) => {
+    if (openSettings) {
+      // (P1-40) O CTA "Add my first key" NÃO marca o onboarding como feito:
+      // se o usuário cancelar as Settings sem key, o welcome volta — antes
+      // um clique + cancelar perdia o welcome pra sempre.
+      handleOpenSettings();
+      return;
+    }
     plugin.settings.onboardingDone = true;
     await plugin.saveSettings();
-    if (openSettings) {
-      handleOpenSettings();
-    }
     // (auditoria jul/2026) "You're all set!" no SKIP era celebração invertida:
     // confirmava um setup que não aconteceu (zero keys). O skip agora dispensa
     // em silêncio; a celebração fica reservada pra quando houver key de fato.
@@ -413,6 +417,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // (listAllChats lê todos os .md de qualquer jeito; o limit só corta depois)
   // ============================================================
   const isEmpty = messages.length === 0;
+  // (P1-38) Compartilhado entre o branch de render e o gate do Composer.
+  const showOnboarding =
+    view === "chat" &&
+    isEmpty &&
+    !plugin.settings.onboardingDone &&
+    !hasAnyKey;
 
   // Prompt starters da StarterScreen v2 → injeta texto no Composer + foca.
   // Cada starter bumpa o nonce pra reescrever o doc do editor. v0.1.131
@@ -1397,6 +1407,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         placeholder: t.chat.personaPlaceholder,
         save: t.chat.personaSave,
         clear: t.chat.personaClear,
+        cancel: t.menu.cancel,
       },
       (persona) => {
         useChatStore.getState().setSessionPersona(persona);
@@ -1758,10 +1769,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onSetLicense={handleSetLicense}
             onClose={() => setView("chat")}
           />
-        ) : view === "chat" &&
-          isEmpty &&
-          !plugin.settings.onboardingDone &&
-          !hasAnyKey ? (
+        ) : showOnboarding ? (
           <OnboardingScreen
             onOpenSettings={() => finishOnboarding(true)}
             onDismiss={() => finishOnboarding(false)}
@@ -1795,7 +1803,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onDismiss={() => setDismissedBannerKey(bannerKey)}
           />
         )}
-        {view === "chat" && (
+        {/* (P1-38) Composer some enquanto o onboarding está na tela — enviar
+            por baixo dele matava o welcome sem marcá-lo como concluído. */}
+        {view === "chat" && !showOnboarding && (
           <Composer
             key={activeMode}
             onSend={handleSend}

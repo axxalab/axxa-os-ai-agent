@@ -9,7 +9,9 @@ remove cor,
   padding-top: 0 !important;
   padding-bottom: calc(
         var(--safe-area-inset-bottom, 0px) +
-        var(--copilot-status-bar-clearance, 0px) +
+        /* (P1-37) era --copilot-status-bar-clearance — var de OUTRO plugin;
+           o main.ts publica --axxa-status-bar-clearance e ninguém consumia. */
+        var(--axxa-status-bar-clearance, 0px) +
         var(--size-4-1)
     ) !important;
 }
