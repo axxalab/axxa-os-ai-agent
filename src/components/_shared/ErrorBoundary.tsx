@@ -5,6 +5,7 @@
 // e copiável. v0.1.197
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { getTranslations } from "../../i18n";
 
 interface Props {
   children: ReactNode;
@@ -37,14 +38,15 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
+    // Class component (sem hook useT) — usa getTranslations direto; locale
+    // único EN-US, então o argumento é ignorado pelo registry.
+    const t = getTranslations("en-us");
     return (
       <div className="axxa-errboundary" role="alert">
         <div className="axxa-errboundary-card">
-          <h3 className="axxa-errboundary-title">⚠️ AXXA OS — erro de tela</h3>
+          <h3 className="axxa-errboundary-title">{t.errBoundary.title}</h3>
           <p className="axxa-errboundary-sub">
-            Algo quebrou ao renderizar. Copie o erro abaixo e mande pro dev — ele
-            diz exatamente onde foi. O texto pode conter caminhos de arquivos do
-            seu vault; confira antes de enviar. {/* v0.1.228: aviso de disclosure */}
+            {t.errBoundary.sub} {/* v0.1.228: aviso de disclosure */}
           </p>
           <pre className="axxa-errboundary-msg">
             {error.name}: {error.message}
@@ -54,10 +56,10 @@ export class ErrorBoundary extends Component<Props, State> {
           </pre>
           <div className="axxa-errboundary-actions">
             <button type="button" className="axxa-errboundary-copy" onClick={this.copy}>
-              Copiar erro
+              {t.errBoundary.copy}
             </button>
             <button type="button" className="axxa-errboundary-retry" onClick={this.reset}>
-              Tentar de novo
+              {t.errBoundary.retry}
             </button>
           </div>
         </div>

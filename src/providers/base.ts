@@ -198,6 +198,9 @@ export class ProviderError extends Error {
       | "network"
       // Gemini: API exige billing ativo (assinatura consumer não cobre a API). v0.1.162
       | "billing"
+      // (P1-26) Conversa maior que a janela do modelo — retry é determinístico,
+      // a saída é novo chat / reduzir histórico.
+      | "context-overflow"
       | "unknown"
   ) {
     super(message);

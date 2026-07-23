@@ -42,6 +42,9 @@ PROMPT-MESTRE.md
 VIABILIDADE-FINANCEIRA.md
 
 
+# storybook build (gerado por `npm run storybook`)
+storybook/dist/
+
 # audit/reconcile scratch (não versionar)
 .audit-*.cjs
 .audit-*.mjs

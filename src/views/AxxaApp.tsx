@@ -39,6 +39,7 @@ import {
   ProjectEditor,
 } from "../components/screens/Projects";
 import { makeProjectId, type Project } from "../projects";
+import { PROVIDERS, providerConfigured } from "../components/_shared/providersMeta";
 import { openVaultNotePicker } from "../components/composer/PlusModal";
 import {
   getEffectiveTier,
@@ -72,9 +73,11 @@ import {
 } from "../generation/ImageGenModal";
 import {
   effortToMaxTokensSmart,
+  effortToVaultLookup,
   resolveEffortConfig,
   type EffortLevel,
 } from "../components/_shared/effort";
+import { hybridSearch } from "../rag/hybrid";
 import { getContextWindow } from "../components/_shared/contextWindows";
 import { useWakeLock } from "../components/_shared/useWakeLock";
 import { setCloudTts } from "../components/_shared/speech";
@@ -114,6 +117,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   useEffect(() => {
     const unsub = plugin.onSettingsChange(() => forceRender((n) => n + 1));
     return unsub;
+  }, [plugin]);
+
+  // (P1-48) Armadilha do provider errado: novato adiciona a key do Gemini,
+  // mas o chip ativo segue OpenAI (sem key) e o 1º envio falha com "add your
+  // key in Settings" — que ele ACABOU de fazer. A cada mudança de settings,
+  // se o provider ativo está sem credencial e outro está configurado,
+  // troca automaticamente pro primeiro configurado (com Notice discreto).
+  useEffect(() => {
+    const unsub = plugin.onSettingsChange(() => {
+      const cur = plugin.settings.defaultProvider;
+      if (providerConfigured(plugin, cur)) return;
+      const firstOk = PROVIDERS.find((p) => providerConfigured(plugin, p.id));
+      if (!firstOk) return;
+      plugin.settings.defaultProvider = firstOk.id;
+      setProviderSel(firstOk.id);
+      new Notice(t.starter.providerAutoSwitched(firstOk.name));
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plugin]);
 
   // Cloud TTS: quando o ★ TTS de Connections → Models aponta pra OpenAI e há
@@ -157,7 +179,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Mantém a tela ligada enquanto a IA gera (chat / agent / geração de mídia).
   // Evita que a tela apague por inatividade e congele o stream no mobile.
-  useWakeLock(isLoading);
 
   // View state: chat (default) ou conversations (tela cheia de todas conversas)
   const [view, setView] = useState<AppView>("chat");
@@ -177,6 +198,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // Modo Voz / Skills / "tudo certo" overlays. v0.1.194
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [showAllSet, setShowAllSet] = useState(false);
+  // (P1-13, a11y) Live region: anuncia início/fim da resposta pra leitores de
+  // tela — sem isto o usuário envia e fica no silêncio absoluto.
+  const [srAnnouncement, setSrAnnouncement] = useState("");
+  const prevLoadingRef = useRef(false);
+  useEffect(() => {
+    if (isLoading && !prevLoadingRef.current) {
+      setSrAnnouncement(t.chat.srResponding);
+    } else if (!isLoading && prevLoadingRef.current) {
+      setSrAnnouncement(t.chat.srResponseDone);
+    }
+    prevLoadingRef.current = isLoading;
+  }, [isLoading, t]);
 
   // "Tudo certo!" auto-dispensa em 1.7s — timer com cleanup (evita update em
   // componente desmontado / timers acumulados). v0.1.195
@@ -187,14 +220,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   }, [showAllSet]);
 
   const finishOnboarding = async (openSettings: boolean) => {
+    if (openSettings) {
+      // (P1-40) O CTA "Add my first key" NÃO marca o onboarding como feito:
+      // se o usuário cancelar as Settings sem key, o welcome volta — antes
+      // um clique + cancelar perdia o welcome pra sempre.
+      handleOpenSettings();
+      return;
+    }
     plugin.settings.onboardingDone = true;
     await plugin.saveSettings();
-    if (openSettings) {
-      handleOpenSettings();
-    } else {
-      // "Tudo certo!" (ref: ChatGPT iOS 20) — confirmação breve antes do chat.
-      setShowAllSet(true);
-    }
+    // (auditoria jul/2026) "You're all set!" no SKIP era celebração invertida:
+    // confirmava um setup que não aconteceu (zero keys). O skip agora dispensa
+    // em silêncio; a celebração fica reservada pra quando houver key de fato.
   };
   // License key (#15) — salva e re-renderiza (tier recomputa). Notice do estado.
   const handleSetLicense = async (key: string) => {
@@ -284,6 +321,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // Projeto pendente: ao começar "nova conversa neste projeto", a associação
   // chat↔projeto acontece no 1º send (quando o chat id é criado).
   const pendingProjectIdRef = useRef<string | null>(null);
+  // (P1-28) Anexos do ÚLTIMO envio — repassados no retryError do mesmo turno.
+  const lastSendAttachmentsRef = useRef<MessageAttachment[] | undefined>(undefined);
 
   // Ações de projeto extraídas → useProjectActions (Frente 2). persistProjects é
   // retornado porque handleSend e a edição de mensagem também o reusam.
@@ -302,6 +341,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Modo Voz (ref: ChatGPT iOS 133/140, Grok 63/66). v0.1.192
   const [voiceOpen, setVoiceOpen] = useState(false);
+  // (P1-91/93) Wake lock cobre o stream E o Modo Voz inteiro — no loop
+  // hands-free a tela apagava entre falas e matava a conversa de voz.
+  useWakeLock(isLoading || voiceOpen);
   const [modelSheetOpen, setModelSheetOpen] = useState(false);
   // Favoritos do seletor de modelo — chaves "provider::model" (≤5 por provider).
   // Só esses aparecem no bottom sheet; o resto vive no "More models". v0.1.236
@@ -399,6 +441,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // (listAllChats lê todos os .md de qualquer jeito; o limit só corta depois)
   // ============================================================
   const isEmpty = messages.length === 0;
+  // (P1-38) Compartilhado entre o branch de render e o gate do Composer.
+  const showOnboarding =
+    view === "chat" &&
+    isEmpty &&
+    !plugin.settings.onboardingDone &&
+    !hasAnyKey;
 
   // Prompt starters da StarterScreen v2 → injeta texto no Composer + foca.
   // Cada starter bumpa o nonce pra reescrever o doc do editor. v0.1.131
@@ -414,8 +462,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   // Gaveta lateral (avatar do header) com as conversas. v0.1.145
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Nonce GLOBAL monotônico (v0.1.237): o nonce derivado do prev colidia
+  // quando um setComposerInject(undefined) entrava no mesmo tick (skill com
+  // `mode` via slash: handleStarterMode limpa → handlePromptStarter recomeça
+  // do zero → nonce repete → Composer ignora a injeção silenciosamente).
+  const injectNonceRef = useRef(0);
   const handlePromptStarter = (text: string) => {
-    setComposerInject((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
+    injectNonceRef.current += 1;
+    setComposerInject({ text, nonce: injectNonceRef.current });
   };
 
   // Carregamento ÚNICO das conversas (v0.1.175): UM disk-walk cacheado no
@@ -444,10 +498,24 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // ============================================================
   // Auto-save debounced — escreve .axxa/chats/chat/[id].md
   // ============================================================
+  // (auditoria jul/2026) Dois guarda-chuvas:
+  //  - justLoadedRef: abrir uma conversa antiga dispara o effect (messages
+  //    mudou na reidratação) e REGRAVAVA o arquivo com date=agora — o
+  //    histórico reordenava sozinho. Pula UM ciclo após o load.
+  //  - pendingSaveRef: o debounce de 500ms era só clearTimeout no cleanup —
+  //    fechar a view logo após a última mudança PERDIA o save. No unmount,
+  //    flusha o save pendente em vez de descartar.
+  const justLoadedRef = useRef(false);
+  const pendingSaveRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (messages.length === 0) return;
     if (!currentChatId) return;
-    const timer = window.setTimeout(() => {
+    if (justLoadedRef.current) {
+      justLoadedRef.current = false;
+      return;
+    }
+    const doSave = () => {
+      pendingSaveRef.current = null;
       const userOrAi = messages.filter(
         (m): m is UserMessage | AIResponseMessage =>
           m.type === "user" ||
@@ -500,7 +568,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           });
         })
         .catch((err) => console.error("[axxa] saveChat falhou:", err));
-    }, 500);
+    };
+    pendingSaveRef.current = doSave;
+    const timer = window.setTimeout(doSave, 500);
     return () => window.clearTimeout(timer);
   }, [
     messages,
@@ -516,6 +586,14 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     plugin.app,
     plugin.settings.chatsPath,
   ]);
+  // Flush no unmount: se a view fecha com um save agendado, grava AGORA em
+  // vez de descartar (o clearTimeout do cleanup acima só cobre re-agendamento).
+  useEffect(
+    () => () => {
+      pendingSaveRef.current?.();
+    },
+    []
+  );
 
   // ============================================================
   // Handlers
@@ -614,6 +692,29 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const { addMessage, lockSession, setCurrentChatId, setCurrentChatTitle } =
       useChatStore.getState();
 
+    // (P1-16) Envio attachment-only: o texto vira a lista de anexos — a bolha
+    // e o título do chat não ficam vazios, e o modelo recebe um contexto útil.
+    if (!text.trim() && pendingAttachments.length > 0) {
+      text = pendingAttachments.map((p) => p.name).join(", ");
+    }
+
+    // (P1-49) Pre-flight de key ANTES de travar a sessão/criar o chat id:
+    // sem isto o 1º envio sem key persistia um chat-fantasma (só a pergunta)
+    // nos Recents, e reabri-lo não mostrava erro nenhum.
+    if (
+      messages.length === 0 &&
+      providerNeedsKey(activeProviderId) &&
+      !apiKeyFor(activeProviderId).trim()
+    ) {
+      addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(activeProvider.name)}`,
+        isError: true,
+        errorCode: "no-key",
+      });
+      return;
+    }
+
     // Primeira msg da sessão → cria chat ID, gera título, trava session
     if (messages.length === 0) {
       const newId = makeId();
@@ -645,10 +746,25 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             .map((p) => p.attachment)
             .filter((a) => (a.type === "image" ? caps.vision : true))
         : undefined;
+    // (P1-28) Guarda os anexos do turno pro retry: erro transitório numa msg
+    // com imagem re-tentava SEM a imagem, silenciosamente.
+    lastSendAttachmentsRef.current = attachments;
 
     // User msg salva sem attachments no store (pra simplicidade do auto-save .md).
     // O propagation pro provider acontece via parâmetro adicional pra streamReply/runAgentTurn.
-    addMessage({ type: "user", content: text });
+    // EXCEÇÃO honesta (auditoria jul/2026): áudio ainda não vai pro modelo —
+    // sem isto o chip sumia no send e a gravação desaparecia da conversa.
+    // O wikilink persiste na mensagem (e no .md) até a transcrição real chegar.
+    const audioLinks = pendingAttachments
+      .filter((p) => p.attachment.type === "audio")
+      .map((p) => {
+        const a = p.attachment as { path: string };
+        return `> 🎙 [[${a.path}|${p.name}]] — ${t.composer.audioKeptNote}`;
+      });
+    addMessage({
+      type: "user",
+      content: audioLinks.length ? `${text}\n\n${audioLinks.join("\n")}` : text,
+    });
     setPendingAttachments([]);
 
     // Se o modelo ativo é de generation (imageGen/audioGen/videoGen), roteia
@@ -678,6 +794,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     buildImageModelOptions,
     runImageGeneration,
     handleCreateImage,
+    lastImageGenRef,
   } = useGeneration({
     plugin,
     t,
@@ -691,17 +808,91 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     setPendingAttachments,
   });
 
+  // (P1-57) Reconstrói o contexto do vault pro regenerate/continue no modo
+  // vault-qa — sem isto a nova variante respondia "de cabeça", sem busca,
+  // e a queda de qualidade era silenciosa. Mesmo formato do streamReply.
+  const fetchVaultContextForRetry = async (query: string): Promise<string> => {
+    if (activeMode !== "vault-qa" || !query) return "";
+    try {
+      const { topK, excerptChars } = effortToVaultLookup(
+        effort,
+        plugin.settings.effortConfigs
+      );
+      const hits = await hybridSearch({
+        app: plugin.app,
+        index: plugin.vectorIndex,
+        creds: {
+          openaiApiKey: plugin.settings.openaiApiKey,
+          openrouterApiKey: plugin.settings.openrouterApiKey,
+          geminiApiKey: plugin.settings.geminiApiKey,
+          nimApiKey: plugin.settings.nimApiKey,
+        },
+        query,
+        topK,
+        excerptChars,
+      });
+      if (hits.length === 0) return "";
+      return hits
+        .map((h) => {
+          const base = h.path.replace(/\.md$/i, "").split("/").pop() ?? h.path;
+          return `### [[${base}]]\n_(${h.path})_\n\n${h.text}`;
+        })
+        .join("\n\n---\n\n");
+    } catch {
+      return "";
+    }
+  };
+
   // Regenerar: remove o ai-response (e qualquer msg posterior) e re-roda
   // streamReply usando a user-msg que precedia. Ignora se já tá streamando.
   // Regenerar com BRANCHING: a resposta atual vira uma variante e a nova é
   // gerada NA MESMA bolha — o user navega entre versões com ‹ N/M ›.
   const handleRegenerate = async (aiMessageId: string) => {
     if (useChatStore.getState().isLoading) return;
+    // (P1-57, caso quebrado) Modelo de geração não conversa — streamChat
+    // nele estoura erro depois de já ter esvaziado a bolha. Regenerar mídia
+    // é re-enviar o prompt (o retry da bolha de erro já faz o caminho certo).
+    if (isGenerationModel(getModelCapabilities(activeProviderId, activeModel))) {
+      new Notice(t.ai.regenNotForGeneration);
+      return;
+    }
+    // (P1-58) Pre-flight de key ANTES do beginVariant — sem key o fluxo
+    // esvaziava a bolha e só então falhava.
+    if (
+      providerNeedsKey(activeProviderId) &&
+      !apiKeyFor(activeProviderId).trim()
+    ) {
+      useChatStore.getState().addMessage({
+        type: "ai-response",
+        content: `${t.ai.errorPrefix} ${t.ai.err.noKey(activeProvider.name)}`,
+        isError: true,
+        errorCode: "no-key",
+      });
+      return;
+    }
     const current = useChatStore.getState().messages;
     const aiIdx = current.findIndex(
       (m) => m.id === aiMessageId && m.type === "ai-response"
     );
     if (aiIdx < 0) return;
+
+    // (P1-57) Modo AGENT: regenerar re-roda o TURNO com tools — o streamChat
+    // puro produzia um completion sem tools (o agente "perdia as mãos").
+    // O run recria as mensagens do turno; variantes não se aplicam ao agent.
+    if (activeMode === "agent") {
+      let agentUserIdx = -1;
+      for (let i = aiIdx; i >= 0; i--) {
+        if (current[i].type === "user") {
+          agentUserIdx = i;
+          break;
+        }
+      }
+      if (agentUserIdx < 0) return;
+      const agentUserText = (current[agentUserIdx] as UserMessage).content;
+      useChatStore.getState().setMessages(current.slice(0, agentUserIdx + 1));
+      await runAgentTurn(agentUserText);
+      return;
+    }
 
     // Remove só o que vem DEPOIS da resposta — a bolha fica e vira variante.
     useChatStore.getState().setMessages(current.slice(0, aiIdx + 1));
@@ -725,6 +916,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       .filter(
         (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
       ) as Array<UserMessage | AIResponseMessage>;
+    // (P1-57) Vault Q&A: refaz a busca pro contexto entrar na regeneração.
+    const lastUserBefore = [...before].reverse().find((m) => m.type === "user");
+    const regenVaultBlock = await fetchVaultContextForRetry(
+      lastUserBefore?.content ?? ""
+    );
     const history: ProviderMessage[] = [
       {
         role: "system",
@@ -732,6 +928,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           persona: useChatStore.getState().sessionPersona,
           base: t.systemPrompt.base,
           styleInstruction: resolveStyleInstruction(),
+          vaultSuffix: t.systemPrompt.vaultQaSuffix,
+          vaultBlock: regenVaultBlock,
         }),
       },
       ...storeMessagesToProvider(before),
@@ -769,10 +967,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       syncVariant(aiMessageId);
     } catch (err) {
       syncVariant(aiMessageId);
+      // (P1-58) Variante que ficou VAZIA é descartada — restaura a versão
+      // anterior em vez de exibir uma bolha em branco ‹2/2›.
+      useChatStore.getState().discardEmptyVariant(aiMessageId);
       if (!(err instanceof DOMException && err.name === "AbortError")) {
         console.error("[axxa] regenerar falhou:", err);
-        const { message } = describeProviderError(err, t, activeProvider.name);
-        new Notice(`${t.ai.errorPrefix} ${message}`);
+        const { message, code } = describeProviderError(err, t, activeProvider.name);
+        // Erro como BOLHA acionável (retry/settings), não Notice efêmero.
+        useChatStore.getState().addMessage({
+          type: "ai-response",
+          content: `${t.ai.errorPrefix} ${message}`,
+          isError: true,
+          errorCode: code,
+        });
       }
     } finally {
       setLoading(false);
@@ -825,6 +1032,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       .filter(
         (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
       ) as Array<UserMessage | AIResponseMessage>;
+    // (P1-57) Vault Q&A: a continuação leva o mesmo contexto do vault da
+    // pergunta original — sem isto continuava "de cabeça".
+    const contUserMsg = [...hist].reverse().find((m) => m.type === "user");
+    const contVaultBlock = await fetchVaultContextForRetry(
+      contUserMsg?.content ?? ""
+    );
     const history: ProviderMessage[] = [
       {
         role: "system",
@@ -832,13 +1045,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           persona: useChatStore.getState().sessionPersona,
           base: t.systemPrompt.base,
           styleInstruction: resolveStyleInstruction(),
+          vaultSuffix: t.systemPrompt.vaultQaSuffix,
+          vaultBlock: contVaultBlock,
         }),
       },
       ...storeMessagesToProvider(hist),
       {
         role: "user",
         content:
-          "Continue EXATAMENTE de onde você parou, sem repetir nem reintroduzir o que já escreveu.",
+          "Continue EXACTLY where you left off — do not repeat or reintroduce anything you already wrote.",
       },
     ];
 
@@ -887,7 +1102,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         setTruncated(aiMessageId, true);
       }
     } catch (err) {
-      if (!(err instanceof DOMException && err.name === "AbortError")) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // (P1-72) Abortar a CONTINUAÇÃO não pode matar o botão Continuar
+        // pra sempre — restaura o truncated e o usuário retoma quando quiser.
+        setTruncated(aiMessageId, true);
+      } else {
         console.error("[axxa] continue falhou:", err);
         const { message } = describeProviderError(err, t, activeProvider.name);
         new Notice(`${t.ai.errorPrefix} ${message}`);
@@ -979,10 +1198,41 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     const userText = (current[userIdx] as UserMessage).content;
     // Volta o histórico pro estado logo após a user-msg (remove erro + comments).
     useChatStore.getState().setMessages(current.slice(0, userIdx + 1));
+    // (P1-31) Turno de geração via modal (user msg "🖼️ prompt"): o retry
+    // re-invoca a MESMA geração — antes caía no modelo de CHAT ativo e o
+    // usuário recebia um parágrafo sobre a imagem em vez da imagem.
+    if (userText.startsWith("🖼️") && lastImageGenRef.current) {
+      const { providerId, model } = lastImageGenRef.current;
+      const genPrompt = userText.replace(/^🖼️\s*/, "");
+      useChatStore.getState().setLoading(true);
+      const genController = new AbortController();
+      abortRef.current = genController;
+      try {
+        await runImageGeneration(
+          genPrompt,
+          providerId,
+          model,
+          undefined,
+          genController.signal
+        );
+      } finally {
+        useChatStore.getState().setLoading(false);
+        if (abortRef.current === genController) abortRef.current = null;
+      }
+      return;
+    }
     const caps = getModelCapabilities(activeProviderId, activeModel);
+    // (P1-28) Se o erro pertence ao ÚLTIMO turno enviado, o retry leva os
+    // mesmos anexos do envio original (imagem/nota não somem no re-envio).
+    const lastUserIdx = current.reduce(
+      (acc, m, i) => (m.type === "user" ? i : acc),
+      -1
+    );
+    const retryAttachments =
+      userIdx === lastUserIdx ? lastSendAttachmentsRef.current : undefined;
     if (isGenerationModel(caps)) await runGenerationTurn(userText, caps);
-    else if (activeMode === "agent") await runAgentTurn(userText);
-    else await streamReply(userText);
+    else if (activeMode === "agent") await runAgentTurn(userText, retryAttachments);
+    else await streamReply(userText, retryAttachments);
   };
 
   const chatActions: ChatActions = {
@@ -994,10 +1244,31 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // Arrow defere o lookup pra DEPOIS de handleOpenSettings ser inicializado
     // (ele é declarado mais abaixo — evita o temporal dead zone).
     openSettings: () => handleOpenSettings(),
+    startNewChat: () => handleNewChat(),
     saveResponseAsNote: (content: string) => void handleSaveResponseAsNote(content),
   };
 
   const handleStop = () => abortRef.current?.abort();
+
+  // (P1-66/68) Aplicar uma skill: valida o `mode` do frontmatter, avisa
+  // quando a sessão está travada (antes: ignorado em silêncio), troca o modo
+  // SEM persistir defaultMode (era efeito colateral surpresa), e PRESERVA o
+  // rascunho já digitado — o template entra abaixo dele, não por cima.
+  const applySkill = (skill: (typeof plugin.skills)[number]) => {
+    const SKILL_MODES = ["chat", "vault-qa", "agent"];
+    if (skill.mode && skill.mode !== mode) {
+      if (!SKILL_MODES.includes(skill.mode)) {
+        new Notice(t.skills.invalidMode(skill.mode));
+      } else if (isLocked) {
+        new Notice(t.skills.modeLockedNotice(skill.mode));
+      } else {
+        setComposerInject(undefined);
+        setMode(skill.mode);
+      }
+    }
+    const draft = composerDraftRef.current.trim();
+    handlePromptStarter(draft ? `${draft}\n\n${skill.body}` : skill.body);
+  };
 
   // Salva o áudio gravado pelo hold-to-record no Vault e devolve o path
   // relativo (pra usar como wikilink no composer). Cria a pasta se não existir.
@@ -1099,6 +1370,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
   const handleNewChat = () => {
     abortRef.current?.abort();
+    // (P1-09) Chat novo FORA do fluxo de projeto: descarta a associação
+    // pendente — senão o 1º send entra num projeto que o usuário abandonou.
+    pendingProjectIdRef.current = null;
     useChatStore.getState().newChat();
     setCleanChat(true);
     setView("chat");
@@ -1108,6 +1382,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // da gaveta). Mesma lógica do handleNewChat + fixa o modo da sessão. v0.1.219
   const handleNewChatWithMode = (newMode: string) => {
     abortRef.current?.abort();
+    pendingProjectIdRef.current = null; // (P1-09) idem handleNewChat
     // Limpa um prompt-starter pendente ANTES do remount do Composer (key=mode):
     // sem isso o editor recém-montado re-injeta o texto da sugestão antiga.
     setComposerInject(undefined);
@@ -1232,7 +1507,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       .messages.filter((m) => m.type === "user" || m.type === "ai-response")
       .map((m) => ({
         id: m.id,
-        role: m.type === "user" ? "Você" : "IA",
+        role: m.type === "user" ? t.chat.roleUser : t.chat.roleAI,
         text: (m as { content: string }).content,
       }));
     if (hits.length === 0) return;
@@ -1250,11 +1525,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       .getState()
       .messages.filter((m) => m.type === "user" || m.type === "ai-response");
     if (msgs.length === 0) return;
-    const title = currentChatTitle || "Conversa";
+    const title = currentChatTitle || t.header.conversationFallbackTitle;
     const body = msgs
       .map(
         (m) =>
-          `## ${m.type === "user" ? "Você" : "Assistente"}\n\n${(m as { content: string }).content}`
+          `## ${m.type === "user" ? t.chat.roleUser : t.chat.roleAssistant}\n\n${(m as { content: string }).content}`
       )
       .join("\n\n");
     const text = `# ${title}\n\n${body}\n`;
@@ -1295,6 +1570,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         placeholder: t.chat.personaPlaceholder,
         save: t.chat.personaSave,
         clear: t.chat.personaClear,
+        cancel: t.menu.cancel,
       },
       (persona) => {
         useChatStore.getState().setSessionPersona(persona);
@@ -1426,6 +1702,13 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         setSessionPersona,
       } = useChatStore.getState();
 
+      // Abrir um chat NÃO é atividade: pula o próximo ciclo do auto-save —
+      // senão a reidratação regrava o arquivo com date=agora e o histórico
+      // reordena só de abrir. (auditoria jul/2026)
+      justLoadedRef.current = true;
+      // (P1-09/P1-55) Carregar um chat também sai do fluxo "novo chat no
+      // projeto" — a associação pendente não pode sobreviver à troca.
+      pendingProjectIdRef.current = null;
       setMessages(restored);
       setCurrentChatId(chat.id);
       setCurrentChatTitle(chat.title);
@@ -1454,19 +1737,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     {
       id: "new",
       label: "new",
-      description: "Nova conversa",
+      description: "New conversation",
       execute: () => handleNewChat(),
     },
     {
       id: "clear",
       label: "clear",
-      description: "Limpar conversa atual",
+      description: "Clear the current conversation",
       execute: () => useChatStore.getState().newChat(),
     },
     {
       id: "regen",
       label: "regen",
-      description: "Regenerar última resposta",
+      description: "Regenerate the last response",
       execute: () => {
         const msgs = useChatStore.getState().messages;
         const lastAI = [...msgs].reverse().find((m) => m.type === "ai-response");
@@ -1476,37 +1759,37 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     {
       id: "stop",
       label: "stop",
-      description: "Parar geração em andamento",
+      description: "Stop the current generation",
       execute: () => handleStop(),
     },
     {
       id: "conversations",
       label: "conversations",
-      description: "Ver todas as conversas salvas",
+      description: "View all saved conversations",
       execute: () => handleOpenConversations(),
     },
     {
       id: "settings",
       label: "settings",
-      description: "Abrir Configurações",
+      description: "Open Settings",
       execute: () => handleOpenSettings(),
     },
     {
       id: "mode-chat",
       label: "mode chat",
-      description: "Trocar pro modo Chat (antes da primeira msg)",
+      description: "Switch to Chat mode (before the first message)",
       execute: () => !isLocked && handleStarterMode("chat"),
     },
     {
       id: "mode-vault",
       label: "mode vault-qa",
-      description: "Trocar pro modo Vault Q&A (antes da primeira msg)",
+      description: "Switch to Vault Q&A mode (before the first message)",
       execute: () => !isLocked && handleStarterMode("vault-qa"),
     },
     {
       id: "mode-agent",
       label: "mode agent",
-      description: "Trocar pro modo Agent (antes da primeira msg)",
+      description: "Switch to Agent mode (before the first message)",
       execute: () => !isLocked && handleStarterMode("agent"),
     },
     // Skills do usuário (.md na pasta de skills) → /comando que injeta o
@@ -1515,10 +1798,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       id: s.id,
       label: s.name,
       description: "Skill · " + (s.description || s.name),
-      execute: () => {
-        if (s.mode && !isLocked) handleStarterMode(s.mode);
-        handlePromptStarter(s.body);
-      },
+      execute: () => applySkill(s),
     })),
   ];
 
@@ -1587,7 +1867,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
           canAccess("statistics", tier) ? (
             <StatisticsScreen
               summaries={allChats}
-              onOpenUsage={handleOpenSettings}
+              onOpenUsage={() => {
+                // (P1-69) Aterrissa na aba Usage — antes largava em Connections.
+                plugin.settingsTab?.presetTab("usage");
+                handleOpenSettings();
+              }}
+              billing={{
+                dataSharing: !!plugin.settings.openaiDataSharing,
+                tier: plugin.settings.openaiUsageTier || 1,
+              }}
               onClose={() => setView("chat")}
             />
           ) : (
@@ -1649,10 +1937,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onSetLicense={handleSetLicense}
             onClose={() => setView("chat")}
           />
-        ) : view === "chat" &&
-          isEmpty &&
-          !plugin.settings.onboardingDone &&
-          !hasAnyKey ? (
+        ) : showOnboarding ? (
           <OnboardingScreen
             onOpenSettings={() => finishOnboarding(true)}
             onDismiss={() => finishOnboarding(false)}
@@ -1677,9 +1962,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onSwapModel={(m) => {
               // Se session locked (após primeira msg), não dá pra trocar — avisa.
               if (isLocked) {
-                new Notice(
-                  `Pra trocar pra ${m}, comece uma Nova conversa (botão "+" no topo).`
-                );
+                new Notice(t.composer.compatLockedNotice(m));
                 return;
               }
               handleStarterModel(m);
@@ -1688,7 +1971,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onDismiss={() => setDismissedBannerKey(bannerKey)}
           />
         )}
-        {view === "chat" && (
+        {/* (P1-38) Composer some enquanto o onboarding está na tela — enviar
+            por baixo dele matava o welcome sem marcá-lo como concluído. */}
+        {view === "chat" && !showOnboarding && (
           <Composer
             key={activeMode}
             onSend={handleSend}
@@ -1714,7 +1999,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             mode={activeMode}
             placeholder={placeholderForMode(activeMode, t.composer)}
             onSaveAudio={handleSaveAudio}
-            onAddAudio={(path, durationMs, alias) =>
+            onAddAudio={(path, durationMs, alias) => {
               setPendingAttachments((prev) => [
                 ...prev,
                 {
@@ -1722,8 +2007,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                   attachment: { type: "audio", path, durationMs },
                   name: alias,
                 },
-              ])
-            }
+              ]);
+              // Honestidade (auditoria): áudio ainda não vai pro modelo —
+              // avisa na hora em vez de deixar o chip sumir no send.
+              new Notice(t.composer.audioAttachedNotice);
+            }}
             commands={axxaCommands}
             visibleChips={plugin.settings.composerChips}
             visionEnabled={getModelCapabilities(activeProviderId, activeModel).vision}
@@ -1837,6 +2125,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               onSelectStyle={handleSelectStyle}
               onExploreSkills={() => {
                 setPlusOpen(false);
+                // (P1-67) Abre com a lista FRESCA: notas criadas/editadas na
+                // pasta desde o load passam a aparecer sem reload do plugin.
+                void plugin.reloadSkills().then(() => forceRender((n) => n + 1));
                 setSkillsOpen(true);
               }}
               toggles={plusToggles}
@@ -1899,6 +2190,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               }
               onOpenSettings={handleOpenSettings}
               thinkingCapable={supportsThinking(activeModel)}
+              locked={isLocked}
               onClose={() => setModelSheetOpen(false)}
             />
           )}
@@ -1934,6 +2226,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             return (
               <VoiceScreen
                 onSend={(text) => handleSend(text)}
+                onStop={handleStop}
                 onClose={() => setVoiceOpen(false)}
                 lastAi={lastAi}
                 isStreaming={isLoading}
@@ -1951,13 +2244,17 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             <SkillsScreen
               skills={plugin.skills}
               onClose={() => setSkillsOpen(false)}
+              onCreateExamples={() => {
+                void (async () => {
+                  await plugin.seedExampleSkills();
+                  await plugin.reloadSkills();
+                  forceRender((n) => n + 1);
+                })();
+              }}
               onUse={(skill) => {
                 setSkillsOpen(false);
                 setView("chat");
-                if (skill.mode && skill.mode !== mode) {
-                  void handleStarterMode(skill.mode);
-                }
-                handlePromptStarter(skill.body);
+                applySkill(skill);
               }}
               onOpenNote={(path) => {
                 const file = plugin.app.vault.getAbstractFileByPath(path);
@@ -1967,6 +2264,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               }}
             />
           )}
+          <span className="axxa-sr-only" role="status" aria-live="polite">
+            {srAnnouncement}
+          </span>
           {showAllSet && (
             <div className="axxa-allset" role="status" aria-label={t.allSet.title}>
               <div className="axxa-allset-check">

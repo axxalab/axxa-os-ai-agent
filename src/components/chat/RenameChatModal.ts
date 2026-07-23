@@ -30,6 +30,9 @@ export class RenameChatModal extends Modal {
   }
 
   onOpen() {
+    // (P1-74) Sobe o modal acima do teclado virtual no mobile (mesma
+    // classe keyboard-aware do ConfirmationModal — era o único que tinha).
+    this.modalEl.addClass("axxa-modal-keyboard-aware");
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("axxa-rename-modal");

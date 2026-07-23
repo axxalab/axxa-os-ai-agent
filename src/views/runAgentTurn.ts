@@ -115,7 +115,7 @@ export async function runAgentTurnImpl(
     if (!activeProvider.supportsTools) {
       addMessage({
         type: "ai-response",
-        content: `${t.ai.errorPrefix} O provider "${activeProvider.name}" não suporta tool calling. Use OpenAI (que tem function calling) pro Agent Mode.`,
+        content: `${t.ai.errorPrefix} ${t.agent.needsOpenAI}`,
       });
       return;
     }
@@ -198,6 +198,11 @@ export async function runAgentTurnImpl(
     try {
       while (isUncapped || turn < MAX_TURNS) {
         turn++;
+        // (P1-08) Stop entre turnos: sem isto o abort só era sentido pelo
+        // streamChat — e nos turnos 2+ o run morria em silêncio.
+        if (controller.signal.aborted) {
+          throw new DOMException("Interrupted", "AbortError");
+        }
 
         // Cria msg ai-response que vai ser preenchida token-a-token.
         // Cada turno é um message separado pra ficar claro qual tokens
@@ -343,7 +348,7 @@ export async function runAgentTurnImpl(
             let ok = false;
             if (!choice) {
               resultText =
-                "Usuário cancelou a geração da imagem. NÃO tente de novo automaticamente — pergunte o que ele prefere.";
+                "User cancelled the image generation. Do NOT retry automatically — ask what they prefer.";
             } else {
               const gen = await runImageGeneration(
                 choice.prompt,
@@ -359,8 +364,8 @@ export async function runAgentTurnImpl(
                 setPendingAttachments([]);
               }
               resultText = gen.ok
-                ? `Imagem gerada (${choice.model}) e já renderizada na conversa: ${gen.paths.join(", ")}. NÃO repita a geração; comente o resultado pro usuário.`
-                : `Falha ao gerar imagem: ${gen.error}`;
+                ? `Image generated (${choice.model}) and already rendered in the conversation: ${gen.paths.join(", ")}. Do NOT repeat the generation; comment on the result to the user.`
+                : `Image generation failed: ${gen.error}`;
             }
             history.push({
               role: "tool",
@@ -385,14 +390,14 @@ export async function runAgentTurnImpl(
                 phase: "failed",
                 iconPending: "wrench",
                 iconFailed: "alert-triangle",
-                pendingText: `Tool desconhecida: ${call.name}`,
-                failedText: `Tool desconhecida: ${call.name}`,
+                pendingText: t.agent.unknownTool(call.name),
+                failedText: t.agent.unknownTool(call.name),
               },
             });
             history.push({
               role: "tool",
               toolCallId: call.id,
-              content: `Tool "${call.name}" não existe. Use uma das tools disponíveis.`,
+              content: `Tool "${call.name}" does not exist. Use one of the available tools.`,
             });
             continue;
           }
@@ -400,7 +405,6 @@ export async function runAgentTurnImpl(
           // Gate: roda direto ("auto") ou abre o preview de confirmação.
           // Lógica (permissão + diff-approval + irreversível) em permissions.ts.
           const gate = decideToolGate(def, permissionLevel, {
-            diffApproval,
             approveAll: agentApproveAllRef.current,
           });
           let approved = gate === "auto";
@@ -408,6 +412,8 @@ export async function runAgentTurnImpl(
             const modal = new ConfirmationModal(plugin.app, {
               toolCall: call,
               definition: def,
+              showDiff: diffApproval,
+              strings: t.agent,
             });
             const res = await modal.openAndWait();
             approved = res.approved;
@@ -422,15 +428,15 @@ export async function runAgentTurnImpl(
                 phase: "failed",
                 iconPending: "shield",
                 iconFailed: "ban",
-                pendingText: `Negado: ${call.name}`,
-                failedText: `Negado: ${call.name}`,
+                pendingText: t.agent.deniedTool(call.name),
+                failedText: t.agent.deniedTool(call.name),
               },
             });
             history.push({
               role: "tool",
               toolCallId: call.id,
               content:
-                "User negou esta ação. NÃO tente repetir essa mesma chamada — considere outra abordagem ou pergunte ao user.",
+                "User denied this action. Do NOT repeat this same call — consider another approach or ask the user.",
             });
             continue;
           }
@@ -455,6 +461,24 @@ export async function runAgentTurnImpl(
           prep: (typeof preparedCalls)[number]
         ): Promise<CallResult> => {
           const { call, activityId, spec } = prep;
+          // (P1-08) Stop DURANTE a execução de tools: calls que ainda não
+          // começaram não rodam mais (retorno, não throw — um throw dentro do
+          // Promise.all dos grupos deixaria rejeições órfãs nos irmãos).
+          if (controller.signal.aborted) {
+            updateActivity(activityId, {
+              phase: "failed",
+              iconFailed: "circle-stop",
+              failedText: t.ai.interrupted,
+            });
+            return {
+              callId: call.id,
+              content: "Interrupted by the user — this call did NOT run.",
+              activityId,
+              spec,
+              meta: "",
+              ok: false,
+            };
+          }
           const executor = TOOL_REGISTRY[call.name];
           const maxAttempts = 1 + Math.max(0, effortCfg.toolRetryOnError);
           let lastErr: unknown = null;
@@ -498,22 +522,22 @@ export async function runAgentTurnImpl(
             }
           }
           const msg =
-            lastErr instanceof Error ? lastErr.message : "Erro desconhecido.";
+            lastErr instanceof Error ? lastErr.message : t.ai.unknownError;
           updateActivity(
             activityId,
             {
               phase: "failed",
               iconFailed: "x-circle",
               failedText: spec.pendingText.replace(
-                /^(Lendo|Editando|Criando|Movendo|Deletando|Listando|Executando)/,
-                "Falhou em"
+                /^(Reading|Editing|Creating|Moving|Deleting|Listing|Searching|Running)/,
+                "Failed on"
               ),
             },
             msg
           );
           return {
             callId: call.id,
-            content: `ERRO: ${msg}. NÃO repita essa mesma chamada — ajuste path/args ou tente outra abordagem.`,
+            content: `ERROR: ${msg}. Do NOT repeat this same call — fix path/args or try another approach.`,
             activityId,
             spec,
             meta: "",
@@ -573,6 +597,12 @@ export async function runAgentTurnImpl(
             });
           }
         }
+        // (P1-08) Stop no meio das tools: colheu os resultados (o que rodou,
+        // rodou; o que não rodou ficou marcado) → encerra o run pelo caminho
+        // de interrupção, que anexa os runSteps (P1-06).
+        if (controller.signal.aborted) {
+          throw new DOMException("Interrupted", "AbortError");
+        }
 
         // Se detectou loop, injeta nudge pro LLM e segue um turn — se ele
         // insistir, dá outro turn e o próximo check vai cortar denovo.
@@ -593,11 +623,11 @@ export async function runAgentTurnImpl(
           history.push({
             role: "user",
             content:
-              "⚠️ Detectei que você repetiu a mesma tool call exata várias vezes. " +
-              "Isso indica que sua abordagem atual não está funcionando. " +
-              "PARE de repetir, RECONSIDERE a estratégia (talvez você precise " +
-              "de informação adicional — tente vault_list/vault_read em outro path) " +
-              "OU pergunte ao usuário pra ele esclarecer. Não repita a mesma chamada.",
+              "⚠️ You repeated the exact same tool call several times. " +
+              "This means your current approach is not working. " +
+              "STOP repeating, RECONSIDER your strategy (maybe you need " +
+              "additional information — try vault_list/vault_read on another path) " +
+              "OR ask the user to clarify. Do not repeat the same call.",
           });
           addMessage({
             type: "ai-comment",
@@ -606,8 +636,8 @@ export async function runAgentTurnImpl(
               phase: "failed",
               iconPending: "rotate-cw",
               iconFailed: "alert-triangle",
-              pendingText: "Loop detectado — pedindo reconsideração",
-              failedText: "Loop detectado — pedi reconsideração ao agent",
+              pendingText: t.agent.loopDetectedPending,
+              failedText: t.agent.loopDetectedDone,
             },
           });
           // Limpa o histórico de assinaturas pra dar chance limpa ao retry
@@ -639,19 +669,31 @@ export async function runAgentTurnImpl(
         }
       }
       if (err instanceof DOMException && err.name === "AbortError") {
-        // Abort silencioso — usuário clicou em parar
+        // (P1-08) Interrompido em qualquer turno ganha marcador visível — e
+        // (P1-06) as ações JÁ executadas são anexadas pra persistir no .md e
+        // entrar no replay (o agente não "esquece" o que fez).
+        if (!firstTurn) {
+          const stopId = addMessage({
+            type: "ai-response",
+            content: t.ai.interrupted,
+          });
+          if (runSteps.length > 0) setAgentSteps(stopId, runSteps);
+        }
       } else {
         const { message, code } = describeProviderError(
           err,
           t,
           activeProvider.name
         );
-        addMessage({
+        const errId = addMessage({
           type: "ai-response",
           content: `${t.ai.errorPrefix} ${message}`,
           isError: true,
           errorCode: code,
         });
+        // (P1-06) Erro depois de tools executadas: registra as ações mesmo
+        // assim — sem isto o run errado sumia com o histórico do que tocou.
+        if (runSteps.length > 0) setAgentSteps(errId, runSteps);
       }
     } finally {
       setLoading(false);

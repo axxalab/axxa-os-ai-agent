@@ -67,6 +67,9 @@ export class ImageGenModal extends Modal {
   private generateBtn: HTMLButtonElement | null = null;
   // genTitleEl (não titleEl): Modal já tem titleEl: HTMLElement na base. v0.1.228
   private genTitleEl: HTMLElement | null = null;
+  // (P1-32) ref do checkbox IMG2IMG — select() desmarca/desabilita quando o
+  // modelo escolhido não edita, em vez de descartar a imagem em silêncio.
+  private editCbEl: HTMLInputElement | null = null;
 
   constructor(app: App, opts: Opts) {
     super(app);
@@ -93,6 +96,9 @@ export class ImageGenModal extends Modal {
   }
 
   onOpen() {
+    // (P1-74) Sobe o modal acima do teclado virtual no mobile (mesma
+    // classe keyboard-aware do ConfirmationModal — era o único que tinha).
+    this.modalEl.addClass("axxa-modal-keyboard-aware");
     const { contentEl } = this;
     const s = this.opts.strings;
     contentEl.empty();
@@ -140,6 +146,8 @@ export class ImageGenModal extends Modal {
         attr: { type: "checkbox" },
       }) as HTMLInputElement;
       cb.checked = this.useInputImage;
+      cb.disabled = !this.selected?.supportsEdit;
+      this.editCbEl = cb;
       editRow.createSpan({ text: s.useAttached });
       cb.onchange = () => {
         this.useInputImage = cb.checked;
@@ -157,6 +165,29 @@ export class ImageGenModal extends Modal {
     // v0.1.228: role=radiogroup p/ a11y (seleção de modelo por teclado/leitor).
     const listEl = contentEl.createDiv({ cls: "axxa-imggen-list" });
     listEl.setAttr("role", "radiogroup");
+    // (P1-34) Roving tabindex de verdade: setas ↑/↓ movem a seleção entre as
+    // linhas — sem isto o tabindex=-1 das não-selecionadas tornava o grupo
+    // inacessível por teclado (padrão WAI-ARIA radiogroup).
+    listEl.addEventListener("keydown", (ev: KeyboardEvent) => {
+      if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") return;
+      ev.preventDefault();
+      const rows = Array.from(
+        listEl.querySelectorAll<HTMLElement>('[role="radio"]')
+      );
+      if (!rows.length) return;
+      const cur = rows.findIndex((r) => r === document.activeElement);
+      const base = cur >= 0 ? cur : rows.findIndex((r) => r.getAttribute("aria-checked") === "true");
+      const next =
+        ev.key === "ArrowDown"
+          ? (base + 1 + rows.length) % rows.length
+          : (base - 1 + rows.length) % rows.length;
+      rows[next]?.click(); // seleção acompanha o foco (padrão radio nativo)
+      // select() re-renderiza a lista (linhas antigas morrem) — re-foca a
+      // linha selecionada recém-criada pra navegação continuar fluida.
+      (
+        listEl.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')
+      )?.focus();
+    });
     listEl.setAttr("aria-label", s.modelLabel);
     this.renderOptions(listEl);
 
@@ -237,6 +268,15 @@ export class ImageGenModal extends Modal {
       void badge;
       const select = () => {
         this.selected = opt;
+        // (P1-32) Modelo sem supportsEdit + IMG2IMG marcado = imagem do
+        // usuário descartada em silêncio numa ação paga. Desmarca, volta o
+        // título pra "Generate image" e desabilita o checkbox.
+        if (!opt.supportsEdit && this.useInputImage) {
+          this.useInputImage = false;
+          if (this.editCbEl) this.editCbEl.checked = false;
+          this.genTitleEl?.setText(this.opts.strings.title);
+        }
+        if (this.editCbEl) this.editCbEl.disabled = !opt.supportsEdit;
         this.renderOptions(listEl);
         this.syncGenerate();
       };

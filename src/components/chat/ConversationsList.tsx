@@ -13,6 +13,7 @@ import { SegmentedRow } from "../_shared/SegmentedRow";
 import { useT, type Translations } from "../../i18n";
 import { formatTokens } from "../_shared/contextWindows";
 import { modelVendorLogoId } from "../_shared/modelLogo";
+import { prettyModelName } from "../../providers/modelDescriptions";
 import type { ChatSummary } from "../_shared/chatPersistence";
 
 interface ConversationsListProps {
@@ -176,6 +177,9 @@ export function ConversationsList({
       return (
         c.title.toLowerCase().includes(q) ||
         c.model.toLowerCase().includes(q) ||
+        // (P1-23) O chip exibe prettyModelName — a busca tem que achar pelo
+        // que o usuário VÊ ("sonnet 4.6"), não só pelo id cru.
+        prettyModelName(c.model).toLowerCase().includes(q) ||
         c.provider.toLowerCase().includes(q) ||
         c.mode.toLowerCase().includes(q)
       );
@@ -312,7 +316,13 @@ export function ConversationsList({
           <div className="axxa-conversations-empty">
             <Icon name="inbox" />
             <p>
-              {search ? t.conversations.emptySearch : t.conversations.emptyAll}
+              {/* (P1-24) Filtro de modo ativo sem resultados NÃO é "vault
+                  vazio" — a mensagem 'Send your first message!' era falsa. */}
+              {search
+                ? t.conversations.emptySearch
+                : modeFilter !== "all"
+                  ? t.conversations.emptyFiltered
+                  : t.conversations.emptyAll}
             </p>
           </div>
         )}
@@ -357,7 +367,7 @@ export function ConversationsList({
                         color={CHIP_COLORS.model}
                       >
                         {/* fallback p/ chip não ficar vazio quando falta model. v0.1.228 */}
-                        {c.model || c.provider || "—"}
+                        {c.model ? prettyModelName(c.model) : c.provider || "—"}
                       </InfoChip>
                     )}
                     {visibleChips.includes("messages") && (

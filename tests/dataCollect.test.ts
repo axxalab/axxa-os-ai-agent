@@ -57,6 +57,6 @@ describe("hotLabel", () => {
     expect(hotLabel({ level: 0, score: 0, usedLocally: false })).toBe("");
   });
   it("inclui menção ao uso local quando aplicável", () => {
-    expect(hotLabel({ level: 3, score: 1, usedLocally: true })).toMatch(/você/i);
+    expect(hotLabel({ level: 3, score: 1, usedLocally: true })).toMatch(/you/i);
   });
 });

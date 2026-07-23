@@ -20,6 +20,7 @@ import { useT, type Translations } from "../../i18n";
 import { formatTokens } from "../_shared/contextWindows";
 import { modelVendorLogoId } from "../_shared/modelLogo";
 import { hapticTick } from "../_shared/haptics";
+import { useFocusTrap } from "../_shared/useFocusTrap";
 import type { ChatSummary } from "../_shared/chatPersistence";
 import {
   NAV_ITEMS,
@@ -166,6 +167,13 @@ export function Sidebar({
   // somem por cima e a lista fica mais ampla. Scoped ao scroll da gaveta (não
   // mexe no scroll do Obsidian). v0.1.212
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // (P1-62) role=dialog + aria-modal prometiam foco preso que não existia:
+  // trap de verdade quando aberta (Tab circula dentro; Esc fecha).
+  const asideRef = useRef<HTMLElement | null>(null);
+  useFocusTrap(asideRef as React.RefObject<HTMLElement>, {
+    active: open,
+    onEscape: onClose,
+  });
   const recentsHeadRef = useRef<HTMLDivElement | null>(null);
   const didMountRef = useRef(false);
 
@@ -239,6 +247,7 @@ export function Sidebar({
         // fica sempre montada pra animar). `inert` via ref pq nem todo @types/react
         // tipa o atributo JSX; a propriedade DOM é tipada (lib.dom). v0.1.228
         ref={(el) => {
+          asideRef.current = el;
           if (el) el.inert = !open;
         }}
       >

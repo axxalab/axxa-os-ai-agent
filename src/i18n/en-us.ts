@@ -4,6 +4,9 @@
 
 export const EN_US = {
   composer: {
+    audioKeptNote: "audio saved in your vault (not sent to the AI yet)",
+    audioAttachedNotice:
+      "Audio saved to your vault and linked in the message. Heads-up: audio isn't sent to the AI yet.",
     attachImageNoneValid: "No valid image was attached.",
     attachImageTooLarge: "Image too large (max 20MB).",
     attachmentsLabel: "Pending attachments",
@@ -25,6 +28,8 @@ export const EN_US = {
     attachImageFailed: "Failed to process the image.",
     compatSwapTo: (model: string) => `Switch to ${model}`,
     compatDismiss: "Dismiss",
+    compatLockedNotice: (model: string) =>
+      `To switch to ${model}, start a new conversation ("+" button at the top).`,
   },
 
   recording: {
@@ -60,6 +65,11 @@ export const EN_US = {
     emptyTitle: "No skills yet",
     emptySub:
       "Create .md notes in the skills folder (axxa-ai/skills) — each becomes an app here.",
+    createExamples: "Create example skills",
+    invalidMode: (m: string) =>
+      `Skill has an unknown mode "${m}" — using the current mode instead.`,
+    modeLockedNotice: (m: string) =>
+      `This skill prefers ${m} mode, but the session is locked — start a new conversation to switch.`,
   },
 
   allSet: {
@@ -76,8 +86,9 @@ export const EN_US = {
     feat2Desc: "AXXA's answers are spoken back to you.",
     feat3Title: "Voice and speed",
     feat3Desc: "Pick the voice and reading pace.",
-    feat4Title: "Local and private",
-    feat4Desc: "Voice and speech processed on your device.",
+    feat4Title: "Your keys, your data",
+    feat4Desc:
+      "System voices run on-device. A cloud voice (if you pick one in Models) uses your own API key.",
     start: "Get started",
     close: "Close",
     settings: "Voice settings",
@@ -87,6 +98,10 @@ export const EN_US = {
     statusThinking: "Thinking…",
     statusSpeaking: "Speaking…",
     statusTapToTalk: "Tap the mic to talk",
+    statusMicError:
+      "Couldn't access the microphone — allow it in system settings, then tap the mic to retry.",
+    stopSpeaking: "Stop speaking",
+    stopThinking: "Stop generating",
     statusTtsOnly: "Dictation unavailable — I'll read answers aloud",
     sttUnavailable:
       "Voice dictation isn't available on this device. Answers are still read aloud.",
@@ -116,6 +131,8 @@ export const EN_US = {
     cancel: "Cancel",
     done: "Done",
     deleteProject: "Delete project",
+    deleteConfirm: (name: string) =>
+      `Delete the project "${name}"? Conversations and notes stay in your vault — only the grouping is removed.`,
     tabChats: "Chats",
     tabSources: "Sources",
     chatsEmpty: "No conversations in this project yet.",
@@ -203,10 +220,16 @@ export const EN_US = {
     modelSwitcherLabel: "Switch model",
     modelLockedHint: "Choosing another model opens a new conversation.",
     recents: "Recents",
+    conversationFallbackTitle: "Conversation",
   },
 
   // Clean "new conversation" base screen (no starter screen) — per mode. v0.1.219
   newChatScreen: {
+    noKeyBadge: "no key",
+    ragChipOk: (chunks: number) =>
+      `Semantic index ready · ${chunks.toLocaleString()} chunks`,
+    ragChipOff: "No semantic index — keyword search only. Build it →",
+    ragChipTitle: "Open Settings → Vault to manage the semantic index",
     chatTitle: "New chat",
     chatSub: "Send the first message and we're off.",
     vaultQaTitle: "New Q&A",
@@ -256,6 +279,8 @@ export const EN_US = {
   },
 
   chat: {
+    srResponding: "Assistant is responding…",
+    srResponseDone: "Response finished.",
     copyCode: "Copy code",
     upgradePro: "Upgrade to PRO",
     variantNext: "Next version",
@@ -290,6 +315,12 @@ export const EN_US = {
     actionSaveNote: "Save as note",
     reasoningLive: "Thinking…",
     reasoningDone: "Reasoning",
+    // P1-14/P1-30: rótulos de papel (busca in-chat + cópia de conversa) e
+    // botão back-to-bottom — antes hardcoded em PT.
+    roleUser: "You",
+    roleAssistant: "Assistant",
+    roleAI: "AI",
+    backToBottom: "Back to bottom",
   },
 
   conversations: {
@@ -301,6 +332,7 @@ export const EN_US = {
     emptyAll: "No saved conversations yet. Send your first message!",
     emptyFilter: "No conversations in this mode yet.",
     emptySearch: "No conversations found for that search.",
+    emptyFiltered: "No conversations in this mode yet.",
     endOfList: "end of list",
     untitled: "Untitled",
     scrollTop: "Scroll to top",
@@ -323,6 +355,8 @@ export const EN_US = {
   },
 
   starter: {
+    providerAutoSwitched: (name: string) =>
+      `Switched to ${name} — it's the provider with a key configured.`,
     modeLabel: "Mode",
     providerLabel: "Provider",
     modelLabel: "Model",
@@ -445,15 +479,34 @@ export const EN_US = {
     deniedAction: "🚫 Action denied by user",
     maxTurnsReached: (n: number) =>
       `Agent hit the limit of ${n} turns without finishing. Try rephrasing the task.`,
+    // Chips de activity do agent loop (P1-03/P1-27) — antes hardcoded em PT.
+    unknownTool: (name: string) => `Unknown tool: ${name}`,
+    deniedTool: (name: string) => `Denied: ${name}`,
+    loopDetectedPending: "Loop detected — asking the agent to reconsider",
+    loopDetectedDone: "Loop detected — asked the agent to reconsider",
+    stepsSummary: (n: number) => `${n} agent action${n === 1 ? "" : "s"}`,
+    // ConfirmationModal (aprovação de mudanças do Agent) — P1-03.
+    confirmTitle: "Review Agent change",
+    confirmTitleIrreversible: "⚠️ Irreversible action",
+    confirmDeny: "Deny",
+    confirmApproveAll: "Approve all",
+    confirmApprove: "Approve",
+    confirmDelete: "Yes, delete",
+    confirmLabelEdit: "Edit",
+    confirmLabelCreate: "Create",
+    confirmLabelCreateFolder: "Create folder",
+    confirmLabelFrom: "From",
+    confirmLabelTo: "To",
+    confirmLabelDelete: "Delete",
     permissionLevel: "Agent permission level",
     permissionLevelDesc:
       "How much control the Agent has over the vault. Delete always asks for confirmation regardless of the level.",
     permissionAsk: "Ask — confirm every action that modifies a file",
     permissionVault: "Vault — free read/write, only delete asks",
     permissionYolo: "YOLO — no modals, except delete (irreversible)",
-    diffApproval: "Approve changes (diff)",
+    diffApproval: "Show diff in confirmations",
     diffApprovalDesc:
-      "Every action that WRITES to the vault (edit/create/move/delete) shows a diff/preview to approve before saving. 'Approve all' clears the rest of the run. Recommended on.",
+      "When the Agent asks for confirmation (per the permission level above), include a before/after diff of the change. Off = a simpler confirmation without the preview. Deletes always ask, on every level.",
   },
 
   plus: {
@@ -476,6 +529,7 @@ export const EN_US = {
     attachNoteNotice: "Reference note is coming in Module 5",
     effortTitle: "Effort",
     effortSub: "Processing intensity — affects max_tokens",
+    pickNotePlaceholder: "Search a note to attach...",
     pickNoteEmpty: "No markdown notes in vault.",
     pickNotePrompt: "Paste the note path (e.g. folder/note.md):",
     pickNoteFailed: (msg: string) => `Failed to attach note: ${msg}`,
@@ -497,9 +551,16 @@ export const EN_US = {
   vault: {
     searching: (topK: number, effort: string) =>
       `Searching up to ${topK} notes in vault (effort: ${effort})...`,
+    searchDone: "Search complete",
     foundContext: (count: number) =>
       // v0.1.228: plural por count !== 1 (inglês usa plural para 0: "0 notes")
       `${count} note${count !== 1 ? "s" : ""} found as context`,
+    foundContextSemantic: (count: number) =>
+      `${count} note${count !== 1 ? "s" : ""} found (semantic + keyword)`,
+    foundContextKeyword: (count: number) =>
+      `${count} note${count !== 1 ? "s" : ""} found (keyword — no semantic index)`,
+    foundContextKeywordFallback: (count: number) =>
+      `${count} note${count !== 1 ? "s" : ""} found (keyword — semantic search failed)`,
     notFound:
       "No relevant notes found — answering without vault context",
   },
@@ -520,8 +581,13 @@ export const EN_US = {
       network: "Connection failed. Check your internet and try again.",
       billing:
         "Gemini needs active API billing for this model. Your Google AI Pro/Ultra subscription does NOT cover the API — it's billed separately in AI Studio. Enable billing (Prepay plan, min $10) and try again.",
+      contextOverflow:
+        "This conversation no longer fits the model's context window. Start a new chat (this one stays saved), or delete some messages/attachments before retrying.",
     },
     retry: "Try again",
+    startNewChat: "Start new chat",
+    regenNotForGeneration:
+      "Regenerate isn't available for media generation — send the prompt again instead.",
     openSettings: "Open Settings",
     openBilling: "Enable billing in AI Studio",
     genUnsupported: (type: "image" | "audio" | "video", supported: string) => {
@@ -553,6 +619,28 @@ export const EN_US = {
     menuDesc: "Generates an image in the current chat — no model switch.",
   },
 
+  // Activities/erros do motor de geração de mídia (useGeneration) — P1-27.
+  generation: {
+    interruptedNote:
+      "Stopped — the result was discarded. Heads-up: the provider may still charge for this generation.",
+    generatingImage: "Generating image...",
+    generatingAudio: "Generating audio...",
+    generatingVideo: "Generating video...",
+    editingImage: "Editing image...",
+    generatedCount: (n: number, type: "image" | "audio" | "video") =>
+      `${n} ${type}${n === 1 ? "" : "s"} generated`,
+    providerMissing: (provider: string, method: string) =>
+      `Provider "${provider}" doesn't implement ${method}.`,
+  },
+
+  // ErrorBoundary (painel de erro de render) — P1-27.
+  errBoundary: {
+    title: "⚠️ AXXA OS — render error",
+    sub: "Something broke while rendering. Copy the error below and send it to the dev — it pinpoints where it happened. The text may include file paths from your vault; review it before sharing.",
+    copy: "Copy error",
+    retry: "Try again",
+  },
+
   plans: {
     title: "Plans",
     current: "current",
@@ -572,8 +660,11 @@ export const EN_US = {
     ],
     licenseLabel: "License key",
     apply: "Apply",
-    licenseHint: "Paste your license to unlock Pro. (test: AXXA-PRO-TEST-2026)",
-    licenseValid: "✓ Valid key — Pro active.",
+    licenseHint: "Paste your license to unlock Pro.",
+    licenseValid: "✓ Pro active.",
+    licenseReady: "Key format looks good — tap Apply to activate.",
+    salesSoon:
+      "Pro sales open soon. Already got a key from the AXXA team? Paste it above.",
     licenseInvalid: "✗ Invalid format. Use AXXA-PRO-XXXX-XXXX.",
   },
 
@@ -604,11 +695,13 @@ export const EN_US = {
     less: "Show less",
   },
   screens: {
+    back: "Back",
     mediaEmptyTitle: "No media",
     mediaEmptySub: "Generated or attached images, audio and video show up here.",
     mediaScopeAxxa: "AXXA only",
     mediaScopeAll: "Whole vault",
     statSpend: "Spend",
+    statSpendBilled: "Spend (billed)",
     statChats: "Chats",
     statTokens: "Tokens",
     statTopModels: "Top models",
@@ -645,11 +738,11 @@ export const EN_US = {
     title: "AXXA OS — AI Agent",
     topTabs: {
       providers: "Providers",
-      setup: "Setup & RAG",
+      setup: "Vault",
+      agent: "Agent",
       appearance: "Appearance",
-      effort: "Effort",
       usage: "Usage",
-      outros: "Other",
+      effortSection: "Effort levels",
     },
     setupIntro:
       "Folders where AXXA saves everything in your vault + semantic search (RAG) over your notes.",
@@ -661,11 +754,11 @@ export const EN_US = {
       ui: "Interface",
     },
     effortTabs: {
-      low: "Low 🐢",
-      med: "Med ⚖️",
-      high: "High ⚡",
-      xhigh: "xHigh 🔥",
-      max: "Max 🚀",
+      low: "Low",
+      med: "Med",
+      high: "High",
+      xhigh: "xHigh",
+      max: "Max",
     },
     effortIntro:
       "Fine-tune each Effort level. Each level has its own sub-tab — empty fields fall back to built-in defaults. Max is uncapped by default (200 turns, 80% of context).",
@@ -673,7 +766,7 @@ export const EN_US = {
     effortResetConfirm: "Reset this level to default values? Your overrides will be lost.",
     effortResetDone: "Restored to defaults.",
     effortFields: {
-      maxTokens: "max_tokens (response)",
+      maxTokens: "Max response tokens",
       maxTokensDesc:
         "Max tokens the model can generate. 0 = uncapped (uses % of model's context window).",
       agentMaxTurns: "Agent: max turns",
@@ -711,11 +804,11 @@ export const EN_US = {
       outros: "Other",
     },
     providerIntro:
-      "Configure the API key and select the active models for the chosen provider.",
+      "Connect the provider: API key and basic configuration. Models are picked in the Models tab.",
     defaultProvider: "Default provider",
     defaultProviderDesc: "Which API to use in conversations",
     apiKey: "API Key",
-    apiKeyDescOpenai: "sk-... — stored locally in the vault.",
+    apiKeyDescOpenai: "sk-... — stored in your OS keychain, never in plain text.",
     openaiDataSharing: "Data-sharing program",
     openaiDataSharingDesc:
       "Sharing your API traffic with OpenAI earns free daily tokens on TEXT models. Check this if you're enrolled.",
@@ -725,10 +818,10 @@ export const EN_US = {
       eligible
         ? `Free tokens/day (data-sharing): ~${bigK}k on large models · ~${miniM}M on mini. ⚠️ IMAGE generation isn't covered — billed normally (~$0.04/img).`
         : "Enable data-sharing (Tier 1+) to earn free daily tokens on TEXT models. Image generation is never covered.",
-    apiKeyDescAnthropic: "sk-ant-... — stored locally.",
-    apiKeyDescGemini: "Key from aistudio.google.com/apikey — stored locally.",
-    apiKeyDescOpenrouter: "sk-or-... — stored locally.",
-    apiKeyDescNim: "nvapi-... (from build.nvidia.com) — stored locally.",
+    apiKeyDescAnthropic: "sk-ant-... — stored in your OS keychain.",
+    apiKeyDescGemini: "Key from aistudio.google.com/apikey — stored in your OS keychain.",
+    apiKeyDescOpenrouter: "sk-or-... — stored in your OS keychain.",
+    apiKeyDescNim: "nvapi-... (from build.nvidia.com) — stored in your OS keychain.",
     model: "Default model",
     modelDesc: (provider: string) =>
       `Default model for ${provider}. Use 'Fetch' to see what's available.`,
@@ -768,25 +861,11 @@ export const EN_US = {
     ollamaEndpoint: "Endpoint",
     ollamaEndpointDesc:
       "Ollama server URL (default: http://localhost:11434)",
-    outrosIntro: "General settings — paths, language, appearance.",
-    outrosTabs: {
-      geral: "General",
-      ui: "Interface",
-      agent: "Agent",
-      rag: "RAG",
-      usage: "Usage",
-    },
-    outrosGeralIntro: "Language, vault paths and basic preferences.",
     outrosUiIntro: "Appearance, visible chips, code blocks.",
-    outrosAgentIntro: "Permissions and Agent Mode behavior.",
-    outrosRagIntro: "Semantic search across your notes with embeddings.",
+    outrosAgentIntro:
+      "How the AI behaves: Agent Mode permissions and per-level effort tuning.",
     outrosUsageIntro:
       "Token accounting and estimated cost per conversation. Pricing based on official lab tables (see src/usage/pricing.ts). Exportable to PDF and Markdown.",
-    language: "Language",
-    languageDesc:
-      "Plugin language. The UI updates immediately.",
-    languagePtBr: "Português (Brasil)",
-    languageEnUs: "English (US)",
     chatsPath: "Chats folder",
     chatsPathDesc: "Where chats are saved in the Vault",
     skillsPath: "Skills folder",
@@ -808,13 +887,6 @@ export const EN_US = {
     generationPath: "Generation folder",
     generationPathDesc:
       "Where generated media (image/audio/video) is saved. Each output creates 2 files: the media + a .md sidecar with frontmatter (prompt, model, provider).",
-    comingSoon: "Coming soon",
-    comingSoonItems: [
-      "Audio recorder (mic) — Sprint E",
-      "Agent Mode (file ops) — Module 6",
-      "Skills management — Module 7",
-      "MCP Connect (Notion, ClickUp, Figma) — Module 9",
-    ],
     codeWrap: "Wrap lines in code blocks",
     codeWrapDesc:
       "When enabled, long code blocks wrap instead of scrolling horizontally. Useful on narrow screens (mobile).",
@@ -940,12 +1012,12 @@ export const EN_US = {
     ragIndexingCancel: "Cancel",
     ragIndexingCancelled: "Indexing cancelled.",
     ragIndexingFailed: (msg: string) => `Indexing failed: ${msg}`,
-    ragNoApiKey:
-      "OpenAI API key not configured. Go to Settings → Providers → OpenAI first.",
-    ragNoOpenRouterKey:
-      "OpenRouter API key not configured. Go to Settings → Providers → OpenRouter first.",
+    ragNoProviderKey: (provider: string) =>
+      `${provider} API key not configured. Go to Settings → Connections → ${provider} first.`,
     ragClearConfirm:
       "Are you sure? This deletes the index. You'll need to reindex to use Vault Q&A with embeddings again.",
+    ragClearDone: "Index deleted.",
+    ragClearFailed: (msg: string) => `Failed: ${msg}`,
     usagePeriodLabel: "Period:",
     usagePeriod7d: "Last 7 days",
     usagePeriod30d: "Last 30 days",
@@ -966,6 +1038,10 @@ export const EN_US = {
     usageDsNote:
       "Estimate. The free allowance is daily (resets at midnight) and per pool. ⚠️ It's shared across ALL your OpenAI API usage — the plugin only sees vault chats, so 'free remaining' is optimistic if you use the API elsewhere. Images never count toward the allowance.",
     usageBillingTitle: "Real billing (cross-check)",
+    usageNoGenCosts:
+      "Note: media generation (images/audio) isn't counted here yet — only chat tokens.",
+    usageXcheckWindowNote: (period: string) =>
+      `Estimated covers ${period} of local chats; Real is provider-reported and may span a different window — treat as a sanity check, not an exact match.`,
     usageBillingCross: "Cross-check with API",
     usageBillingCrossing: "Checking…",
     usageBillingEstimate: "Estimated",
@@ -989,10 +1065,6 @@ export const EN_US = {
     adminKeyName: "Admin key (optional)",
     adminKeyDesc:
       "Only for real costs/balance (Admin API). Can't do chat — your project key stays in the field above.",
-    planOverrideName: "Plan (admin test)",
-    planOverrideDesc:
-      "Simulates the plan to test paid screens. 'Auto' uses the account's real plan; 'Free'/'Pro' force the behavior. Doesn't change your real plan.",
-    planAuto: "Auto (real plan)",
     openaiProjectName: "Project ID (optional)",
     openaiProjectDesc:
       "Attributes the real cost to this project only. Create a dedicated AXXA project in the OpenAI dashboard and use a key from it — then balance/cost reflects only the plugin, not the whole org.",
@@ -1018,6 +1090,8 @@ export const EN_US = {
     usageByModel: "By model (top 10)",
     usageByMode: "By mode",
     usageHeatmap: "Last 30 days",
+    usageHeatmapChats: (n: number) => `${n} chat${n === 1 ? "" : "s"}`,
+    usageCellError: "error",
     usageTopChats: "Top 10 most expensive conversations",
     usageColProvider: "Provider",
     usageColModel: "Model",

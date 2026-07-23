@@ -29,6 +29,7 @@ import {
   groupModelsByCategory,
   prettyModelName,
   CATEGORY_ORDER,
+  CATEGORY_LABELS,
   type ModelCategory,
 } from "../../providers/modelDescriptions";
 import { getModelCapabilities } from "../../providers/modelCapabilities";
@@ -48,19 +49,6 @@ const EFFORT_TAGLINES: Record<EffortLevel, string> = {
 // Nível "Default" — baseline fixo (fallback do resolveEffortConfig), separado do
 // check da seleção atual pra os dois não colidirem.
 const DEFAULT_EFFORT: EffortLevel = "med";
-
-// Labels EN das categorias (CATEGORY_LABELS no core ainda é PT) — chips do More.
-const CAT_LABELS_EN: Record<ModelCategory, string> = {
-  "chat-vision": "Multimodal",
-  "chat-text": "Chat",
-  reasoning: "Reasoning",
-  agent: "Agent",
-  "image-gen": "Image",
-  "audio-gen": "Audio",
-  "video-gen": "Video",
-  embedding: "Embedding",
-  other: "Other",
-};
 
 // Ícone por chip (o seletor segmentado é icon-céntrico, mostra o label só no ativo).
 const CHIP_ICON: Record<string, string> = {
@@ -127,6 +115,9 @@ interface ModelSheetProps {
   thinkingCapable?: boolean;
   /** Locale pras descrições — app é EN-only hoje. */
   lang?: string;
+  /** (P1-36) Sessão travada (após 1ª msg): escolher outro modelo abre uma
+   *  conversa NOVA — o sheet avisa antes, em vez de só descartar a tela. */
+  locked?: boolean;
 }
 
 export function ModelSheet({
@@ -144,6 +135,7 @@ export function ModelSheet({
   onOpenSettings,
   thinkingCapable = false,
   lang = "en-US",
+  locked = false,
 }: ModelSheetProps) {
   const [view, setView] = useState<"model" | "effort" | "more">("model");
   const [chip, setChip] = useState<string>("all");
@@ -176,7 +168,7 @@ export function ModelSheet({
   );
   const chipItems: SegmentedItem[] = [
     { id: "all", icon: CHIP_ICON.all, label: "All", iconOnly: true },
-    ...presentCats.map((c) => ({ id: c, icon: CHIP_ICON[c], label: CAT_LABELS_EN[c] })),
+    ...presentCats.map((c) => ({ id: c, icon: CHIP_ICON[c], label: CATEGORY_LABELS[c] })),
     ...(freeModels.length
       ? [{ id: "free", icon: CHIP_ICON.free, label: "Free" }]
       : []),
@@ -228,7 +220,11 @@ export function ModelSheet({
             onToggleFavorite(m);
           }}
         >
-          <Icon name="star" />
+          {/* (P1-61) bookmark = favorito nos DOIS lugares (Settings usa
+              bookmark); star fica exclusivo pra "default" — antes o mesmo
+              ícone significava coisas diferentes e um mis-tap nas Settings
+              trocava o modelo default global. */}
+          <Icon name="bookmark" />
         </button>
       </div>
     );
@@ -287,6 +283,14 @@ export function ModelSheet({
               </button>
               <span className="axxa-sheet-title">Select model</span>
               <span className="axxa-sheet-nav" aria-hidden="true" />
+            </div>
+          )}
+          {/* (P1-36) Mesmo aviso do header: com sessão travada, trocar de
+              modelo abre conversa nova — nada de troca silenciosa. */}
+          {view === "model" && locked && (
+            <div className="axxa-sheet-locked-hint">
+              <Icon name="lock" />
+              <span>Choosing another model opens a new conversation.</span>
             </div>
           )}
           {view === "effort" && (
@@ -432,7 +436,11 @@ export function ModelSheet({
                   <div className="axxa-plus-divider" />
                   <div
                     className="axxa-sheet-row"
-                    role="button"
+                    /* (P1-47) role=switch no elemento FOCÁVEL — o span
+                       interno com o estado nunca era focado pelo leitor. */
+                    role="switch"
+                    aria-checked={thinkingOn}
+                    aria-label="Thinking"
                     tabIndex={0}
                     onClick={() => onToggleThinking(!thinkingOn)}
                     onKeyDown={(e) => {
@@ -453,8 +461,7 @@ export function ModelSheet({
                         "axxa-plus-row-switch" +
                         (thinkingOn ? " axxa-plus-row-switch-on" : "")
                       }
-                      role="switch"
-                      aria-checked={thinkingOn}
+                      aria-hidden="true"
                     >
                       <span className="axxa-plus-row-switch-thumb" />
                     </span>

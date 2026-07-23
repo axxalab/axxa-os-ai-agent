@@ -9,6 +9,7 @@ import { Notice } from "obsidian";
 import type AxxaPlugin from "../main";
 import { makeProjectId, type Project } from "../projects";
 import { openVaultNotePicker } from "../components/composer/PlusModal";
+import { AxxaConfirmModal } from "../components/settings/ConfirmModal";
 import { getTranslations } from "../i18n";
 
 interface ProjectActionsUI {
@@ -62,6 +63,13 @@ export function useProjectActions(
   const handleDeleteProject = async () => {
     const editing = projectEditor?.project;
     if (!editing) return;
+    // (P1-52) Deletar projeto é destrutivo e sem undo — confirma antes.
+    const ok = await new AxxaConfirmModal(
+      plugin.app,
+      t.projects.deleteConfirm(editing.name),
+      t
+    ).openAndWait();
+    if (!ok) return;
     await persistProjects((prev) => prev.filter((p) => p.id !== editing.id));
     setProjectEditor(null);
     setSelectedProjectId(null);

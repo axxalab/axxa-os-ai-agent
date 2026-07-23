@@ -78,9 +78,9 @@ export function generationSupported(
 /** Resumo legível do que dá pra gerar hoje — pra mensagens de erro/onboarding. */
 export function generationSupportSummary(): string {
   const labels: Record<GenerationMediaType, string> = {
-    image: "imagem",
-    audio: "áudio",
-    video: "vídeo",
+    image: "image",
+    audio: "audio",
+    video: "video",
   };
   const names: Record<string, string> = {
     openai: "OpenAI",

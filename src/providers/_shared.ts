@@ -192,11 +192,11 @@ export function mapHttpError(
   if (status >= 200 && status < 300) return null;
   const auth = opts.authStatuses ?? [401];
   if (auth.includes(status)) {
-    return new ProviderError(`API key ${opts.label} inválida.`, "invalid-key");
+    return new ProviderError(`Invalid ${opts.label} API key.`, "invalid-key");
   }
   if (status === 429) {
     return new ProviderError(
-      `Rate limit ${opts.label}. Aguarde alguns segundos.`,
+      `${opts.label} rate limit. Wait a few seconds.`,
       "rate-limit"
     );
   }
@@ -205,11 +205,20 @@ export function mapHttpError(
   // transiente da union e a UI já o re-localiza como "tente de novo". v0.1.228.
   if (status >= 500 || status === 408 || status === 409) {
     return new ProviderError(
-      `Serviço ${opts.label} indisponível. Tente novamente.`,
+      `${opts.label} service unavailable. Try again.`,
       "rate-limit"
     );
   }
   const detail = extractApiMessage(bodyJson) ?? `HTTP ${status}`;
+  // (P1-26) Context-length excedido: todo provider devolve 400 com um texto
+  // próprio — sem este mapeamento caía em "unknown" com retry inútil.
+  if (
+    /context.{0,8}length|maximum context|context window|too many tokens|prompt is too long|exceeds? the (model'?s? )?context/i.test(
+      detail
+    )
+  ) {
+    return new ProviderError(`${opts.label}: ${detail}`, "context-overflow");
+  }
   return new ProviderError(`${opts.label}: ${detail}`, "unknown");
 }
 
@@ -462,7 +471,7 @@ export async function fetchModelIds(
 ): Promise<string[]> {
   if (!apiKey || !apiKey.trim()) {
     if (opts.soft) return [];
-    throw new ProviderError(`API key ${opts.label} não configurada.`, "no-key");
+    throw new ProviderError(`${opts.label} API key not configured.`, "no-key");
   }
   try {
     const res = await opts.requestUrlFn({

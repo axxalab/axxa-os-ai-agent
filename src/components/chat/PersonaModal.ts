@@ -11,6 +11,7 @@ export interface PersonaModalTexts {
   placeholder: string;
   save: string;
   clear: string;
+  cancel: string;
 }
 
 export class PersonaModal extends Modal {
@@ -33,6 +34,9 @@ export class PersonaModal extends Modal {
   }
 
   onOpen() {
+    // (P1-74) Sobe o modal acima do teclado virtual no mobile (mesma
+    // classe keyboard-aware do ConfirmationModal — era o único que tinha).
+    this.modalEl.addClass("axxa-modal-keyboard-aware");
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("axxa-persona-modal");
@@ -60,9 +64,20 @@ export class PersonaModal extends Modal {
       }
     });
 
-    new Setting(contentEl)
+    // (P1-43) Cancel na posição de cancelar; Clear (destrutivo — apaga a
+    // persona salva) fica à esquerda e SÓ aparece quando há algo a limpar.
+    const row = new Setting(contentEl);
+    if (this.value.trim()) {
+      row.addButton((b) => {
+        b.setButtonText(this.texts.clear)
+          .setWarning()
+          .onClick(() => this.submit(""));
+        b.buttonEl.addClass("axxa-persona-clear");
+      });
+    }
+    row
       .addButton((b) =>
-        b.setButtonText(this.texts.clear).onClick(() => this.submit(""))
+        b.setButtonText(this.texts.cancel).onClick(() => this.close())
       )
       .addButton((b) =>
         b

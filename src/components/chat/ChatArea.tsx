@@ -10,6 +10,7 @@ import { useChatStore } from "../../store/chat";
 import { UserBubble, AIResponse, AIComment, AIOptions, ErrorMessage } from "./Messages";
 import { dayKey, formatDayLabel } from "../_shared/timestamps";
 import { Icon } from "../_shared/Icon";
+import { useT } from "../../i18n";
 
 const SCROLL_BOTTOM_THRESHOLD = 30; // px
 
@@ -27,6 +28,7 @@ export function ChatArea({
   /** Mensagem a destacar (resultado da busca). `n` = nonce pra re-disparar. */
   highlightTarget?: { id: string; n: number } | null;
 }) {
+  const t = useT();
   const messages = useChatStore((s) => s.messages);
   const scrollRef = useRef<HTMLDivElement>(null);
   const shouldStickRef = useRef(true);
@@ -138,8 +140,8 @@ export function ChatArea({
           type="button"
           className="axxa-back-to-bottom"
           onClick={handleBackToBottom}
-          aria-label="Voltar pra base"
-          title="Voltar pra base"
+          aria-label={t.chat.backToBottom}
+          title={t.chat.backToBottom}
         >
           <Icon name="arrow-down" />
         </button>

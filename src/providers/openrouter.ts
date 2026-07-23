@@ -50,7 +50,7 @@ export class OpenRouterProvider implements Provider {
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError("API key OpenRouter não configurada.", "no-key");
+      throw new ProviderError("OpenRouter API key not configured.", "no-key");
     }
 
     const body = buildChatBody(req, { provider: "openrouter" });
@@ -66,15 +66,15 @@ export class OpenRouterProvider implements Provider {
         throw: false,
       });
     } catch {
-      throw new ProviderError("Falha de conexão.", "network");
+      throw new ProviderError("Connection failed.", "network");
     }
     ensureOkRequest(res, { label: "OpenRouter" });
 
     const message = res.json?.choices?.[0]?.message;
-    if (!message) throw new ProviderError("Resposta vazia.", "unknown");
+    if (!message) throw new ProviderError("Empty response.", "unknown");
     const { content, toolCalls, reasoning } = parseOpenAIChatMessage(message);
     if (!toolCalls && !content) {
-      throw new ProviderError("Resposta vazia da OpenRouter (sem texto nem tool_calls).", "unknown");
+      throw new ProviderError("Empty response from OpenRouter (no text or tool_calls).", "unknown");
     }
     // v0.1.228: propaga reasoning (DeepSeek R1 & afins expõem reasoning_content
     // em non-stream); antes era descartado aqui.
@@ -90,7 +90,7 @@ export class OpenRouterProvider implements Provider {
     onReasoning?: (delta: string) => void
   ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError("API key OpenRouter não configurada.", "no-key");
+      throw new ProviderError("OpenRouter API key not configured.", "no-key");
     }
 
     const body = buildChatBody(req, {
@@ -123,7 +123,7 @@ export class OpenRouterProvider implements Provider {
       );
     }
     await ensureOkStream(res, { label: "OpenRouter" });
-    if (!res.body) throw new ProviderError("Stream vazio.", "unknown");
+    if (!res.body) throw new ProviderError("Empty stream.", "unknown");
 
     return parseOpenAICompatSSE(res.body, onToken, onUsage, "openrouter_call", onReasoning);
   }
@@ -131,7 +131,7 @@ export class OpenRouterProvider implements Provider {
   /** Lista modelos modernos do OpenRouter (sem free/auto/etc) */
   async listModels(apiKey: string): Promise<string[]> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError("API key OpenRouter não configurada.", "no-key");
+      throw new ProviderError("OpenRouter API key not configured.", "no-key");
     }
     const res = await requestUrl({
       url: OPENROUTER_MODELS_ENDPOINT,
@@ -143,7 +143,7 @@ export class OpenRouterProvider implements Provider {
       throw: false,
     });
     if (res.status === 401) {
-      throw new ProviderError("API key OpenRouter inválida.", "invalid-key");
+      throw new ProviderError("Invalid OpenRouter API key.", "invalid-key");
     }
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`OpenRouter: HTTP ${res.status}`, "unknown");

@@ -12,7 +12,7 @@
 // padrão de IA (ChatGPT/Claude) — usuário quase sempre quer o código puro.
 
 import { useEffect, useRef, useState } from "react";
-import { type App, Component, MarkdownRenderer, setIcon } from "obsidian";
+import { type App, Component, MarkdownRenderer, Notice, setIcon } from "obsidian";
 import { useApp } from "./AppContext";
 import { useT } from "../../i18n";
 import { wireExternalLinkSafety } from "../chat/LinkSafetyModal";
@@ -85,7 +85,7 @@ export function Markdown({ content }: MarkdownProps) {
     ).then(() => {
       if (cancelled) return;
       enhanceCodeBlocks(el, t.chat.copyCode);
-      enhanceInternalLinks(el, app);
+      enhanceInternalLinks(el, app, t.plus.pickNoteNotFound);
       disposeLinks = wireExternalLinkSafety(el, app, {
         title: t.linkSafety.title,
         desc: t.linkSafety.desc,
@@ -111,7 +111,11 @@ export function Markdown({ content }: MarkdownProps) {
 // MarkdownRenderer gera <a.internal-link data-href="...">, mas num view custom
 // o clique não é interceptado por default — aqui ligamos via openLinkText.
 // Ctrl/Cmd-clique abre numa nova aba. v0.1.137
-function enhanceInternalLinks(root: HTMLElement, app: App) {
+function enhanceInternalLinks(
+  root: HTMLElement,
+  app: App,
+  notFoundMsg: (path: string) => string
+) {
   const links = root.querySelectorAll<HTMLAnchorElement>("a.internal-link");
   links.forEach((a) => {
     if (a.dataset.axxaWired) return;
@@ -125,6 +129,13 @@ function enhanceInternalLinks(root: HTMLElement, app: App) {
         a.textContent ||
         "";
       if (!href) return;
+      // (P1-81) Citação que a IA inventou (ou nota renomeada): openLinkText
+      // não-resolvido CRIA uma nota vazia em silêncio — resolve antes e avisa.
+      const dest = app.metadataCache.getFirstLinkpathDest(href, "");
+      if (!dest) {
+        new Notice(notFoundMsg(href));
+        return;
+      }
       const newLeaf = e.ctrlKey || e.metaKey;
       app.workspace.openLinkText(href, "", newLeaf);
     });

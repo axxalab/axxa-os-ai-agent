@@ -28,37 +28,37 @@ describe("agentActivitySpec", () => {
     const s = agentActivitySpec("vault_read", { path: "notas/foo.md" });
     expect(s.iconPending).toBe("eye");
     expect(s.iconDone).toBe("file-check-2");
-    expect(s.pendingText).toBe("Lendo notas/foo.md");
-    expect(s.doneText).toBe("Leu notas/foo.md");
+    expect(s.pendingText).toBe("Reading notas/foo.md");
+    expect(s.doneText).toBe("Read notas/foo.md");
   });
 
   it("tool desconhecida cai no default genérico", () => {
     const s = agentActivitySpec("mystery_tool", {});
     expect(s.iconPending).toBe("wrench");
-    expect(s.pendingText).toBe("Executando mystery_tool");
-    expect(s.doneText).toBe("mystery_tool concluído");
+    expect(s.pendingText).toBe("Running mystery_tool");
+    expect(s.doneText).toBe("mystery_tool completed");
   });
 
   it("encurta path longo mantendo o final (basename visível)", () => {
     const long = "a/".repeat(40) + "alvo.md";
     const s = agentActivitySpec("vault_read", { path: long });
-    expect(s.pendingText.startsWith("Lendo …")).toBe(true);
+    expect(s.pendingText.startsWith("Reading …")).toBe(true);
     expect(s.pendingText.endsWith("alvo.md")).toBe(true);
   });
 
   it("vault_move usa origem → destino, ambos encurtados", () => {
     const s = agentActivitySpec("vault_move", { path: "a.md", to: "b.md" });
-    expect(s.pendingText).toBe("Movendo a.md → b.md");
-    expect(s.doneText).toBe("Moveu a.md → b.md");
+    expect(s.pendingText).toBe("Moving a.md → b.md");
+    expect(s.doneText).toBe("Moved a.md → b.md");
   });
 });
 
 describe("summarizeToolResult", () => {
   it("vault_list extrai a contagem (plural)", () => {
-    expect(summarizeToolResult("vault_list", "Conteúdo de X (8 itens):")).toBe("8 items");
+    expect(summarizeToolResult("vault_list", "Contents of X (8 items):")).toBe("8 items");
   });
-  it("vault_list singular (a regex casa 'itens', a saída é que singulariza)", () => {
-    expect(summarizeToolResult("vault_list", "Conteúdo de X (1 itens):")).toBe("1 item");
+  it("vault_list singular (a regex casa 'items', a saída é que singulariza)", () => {
+    expect(summarizeToolResult("vault_list", "Contents of X (1 items):")).toBe("1 item");
   });
   it("vault_read mostra k chars acima de 1000", () => {
     expect(summarizeToolResult("vault_read", "x".repeat(1200))).toBe("1.2k chars");

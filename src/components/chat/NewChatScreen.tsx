@@ -11,7 +11,7 @@ import { ComposerSuggestions } from "../composer/ComposerSuggestions";
 import { hapticTick } from "../_shared/haptics";
 import { useT } from "../../i18n";
 import type AxxaPlugin from "../../main";
-import { PROVIDERS, providerConfigured } from "./StarterScreen";
+import { PROVIDERS, providerConfigured } from "../_shared/providersMeta";
 
 /** Ícone + textos por modo. chat | vault-qa | agent. */
 function modeBits(mode: string, t: ReturnType<typeof useT>) {
@@ -74,7 +74,15 @@ export function NewChatScreen({
     ? configuredProv
     : [...PROVIDERS.filter((p) => p.id === provider), ...configuredProv];
   const provItems = [
-    ...provBase.map((p) => ({ id: p.id, icon: p.icon, label: p.name })),
+    // (P1-48) Provider atual SEM key entra na lista com marca explícita —
+    // antes era visualmente idêntico aos configurados e o 1º envio falhava.
+    ...provBase.map((p) => ({
+      id: p.id,
+      icon: providerConfigured(plugin, p.id) ? p.icon : "key-round",
+      label: providerConfigured(plugin, p.id)
+        ? p.name
+        : `${p.name} — ${t.newChatScreen.noKeyBadge}`,
+    })),
     { id: PROVIDER_ADD, icon: "plus", label: t.dashboard.providerAdd },
   ];
 
@@ -90,6 +98,33 @@ export function NewChatScreen({
         <p className="axxa-newchat-sub">{sub}</p>
       </div>
 
+      {/* (P1-84) Status do índice semântico direto na New Q&A: um estado, um
+          link — resolve descoberta do indexador e comunica a degradação
+          keyword quando não há índice. */}
+      {mode === "vault-qa" && (
+        <button
+          type="button"
+          className={
+            "axxa-newchat-ragchip" +
+            (plugin.vectorIndex && plugin.vectorIndex.size > 0
+              ? " is-ok"
+              : " is-off")
+          }
+          onClick={onOpenSettings}
+          title={t.newChatScreen.ragChipTitle}
+        >
+          <Icon
+            name={
+              plugin.vectorIndex && plugin.vectorIndex.size > 0
+                ? "radar"
+                : "circle-dashed"
+            }
+          />
+          {plugin.vectorIndex && plugin.vectorIndex.size > 0
+            ? t.newChatScreen.ragChipOk(plugin.vectorIndex.size)
+            : t.newChatScreen.ragChipOff}
+        </button>
+      )}
       <div className="axxa-newchat-provider">
         <div className="axxa-seg-block">
           <span className="axxa-seg-head">

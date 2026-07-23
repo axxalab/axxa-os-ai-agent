@@ -13,10 +13,12 @@ import {
   aggregateFromSummaries,
   sortBucketEntries,
 } from "../../usage/aggregate";
+import { computeBilledUsage } from "../../usage/freeBilling";
 import { formatUsd } from "../../usage/pricing";
 import { formatTokens } from "../_shared/contextWindows";
 import type { ChatSummary } from "../_shared/chatPersistence";
 import { isLicensePro, type AppView, type Tier } from "../../entitlements";
+import { prettyModelName } from "../../providers/modelDescriptions";
 
 // ── Shell comum ────────────────────────────────────────────
 function ScreenShell({
@@ -169,19 +171,40 @@ export function StatisticsScreen({
   summaries,
   onOpenUsage,
   onClose,
+  billing,
 }: {
   summaries: ChatSummary[];
   onOpenUsage: () => void;
   onClose: () => void;
+  /** (P1-70) Config de data-sharing — o Spend daqui usa a MESMA régua do
+   *  Usage tab (billed após a cota grátis) em vez de divergir em gross. */
+  billing?: { dataSharing: boolean; tier: number };
 }) {
   const t = useT();
   const agg = useMemo(() => aggregateFromSummaries(summaries), [summaries]);
+  const billed = useMemo(
+    () =>
+      billing?.dataSharing
+        ? computeBilledUsage(agg.chats, {
+            tier: billing.tier || 1,
+            dataSharing: true,
+          })
+        : null,
+    [agg, billing?.dataSharing, billing?.tier]
+  );
+  const headlineSpend = billed ? billed.billedCost : agg.total.cost;
   const topModels = sortBucketEntries(agg.byModel).slice(0, 5);
 
   return (
     <ScreenShell title={t.nav.statistics} icon="bar-chart-3" onClose={onClose}>
       <div className="axxa-stat-cards">
-        <StatCard label={t.screens.statSpend} value={formatUsd(agg.total.cost)} icon="dollar-sign" />
+        {/* (P1-70/71) MESMO headline do Usage tab (billed com data-sharing;
+            "*" quando há custos desconhecidos) — as duas telas divergiam. */}
+        <StatCard
+          label={billed ? t.screens.statSpendBilled : t.screens.statSpend}
+          value={formatUsd(headlineSpend) + (agg.total.hasUnknownCost ? "*" : "")}
+          icon="dollar-sign"
+        />
         <StatCard label={t.screens.statChats} value={String(agg.total.chats)} icon="message-square" />
         <StatCard label={t.screens.statTokens} value={formatTokens(agg.total.tokensIn + agg.total.tokensOut)} icon="sigma" />
       </div>
@@ -193,7 +216,7 @@ export function StatisticsScreen({
         <div className="axxa-stat-list">
           {topModels.map(([model, b]) => (
             <div key={model} className="axxa-stat-row">
-              <code className="axxa-stat-model">{model}</code>
+              <code className="axxa-stat-model">{prettyModelName(model)}</code>
               <span className="axxa-stat-row-cost">{formatUsd(b.cost)}</span>
             </div>
           ))}
@@ -303,6 +326,9 @@ export function PlansScreen({
   const t = useT();
   const [key, setKey] = useState(license);
   const valid = isLicensePro(key);
+  // (P1-44) "Pro active" só depois do Apply de verdade: digitar uma key com
+  // formato válido não pode afirmar ativação — o gate real lê a key SALVA.
+  const applied = valid && key.trim() === license.trim() && license.trim() !== "";
   return (
     <ScreenShell title={t.plans.title} icon="sparkles" onClose={onClose}>
       <div className="axxa-plans-grid">
@@ -364,10 +390,18 @@ export function PlansScreen({
         >
           {key.length === 0
             ? t.plans.licenseHint
-            : valid
+            : applied
               ? t.plans.licenseValid
-              : t.plans.licenseInvalid}
+              : valid
+                ? t.plans.licenseReady
+                : t.plans.licenseInvalid}
         </p>
+        {/* (P1-45, interim) O funil não pode ser beco sem saída: enquanto a
+            página de venda não existe, a tela diz isso honestamente. O CTA
+            "Get Pro" com preço/URL entra quando o dono definir a loja. */}
+        {tier === "free" && (
+          <p className="axxa-plans-sales-note">{t.plans.salesSoon}</p>
+        )}
       </div>
     </ScreenShell>
   );

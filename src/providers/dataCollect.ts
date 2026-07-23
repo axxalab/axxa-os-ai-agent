@@ -101,9 +101,9 @@ export function getHotLevel(provider: string, model: string): HotInfo {
 /** Label curto do nível pro tooltip. */
 export function hotLabel(info: HotInfo): string {
   switch (info.level) {
-    case 3: return info.usedLocally ? "Em alta · você usa muito" : "Em alta";
-    case 2: return info.usedLocally ? "Popular · você usa" : "Popular";
-    case 1: return "Conhecido";
+    case 3: return info.usedLocally ? "Trending · you use it a lot" : "Trending";
+    case 2: return info.usedLocally ? "Popular · you use it" : "Popular";
+    case 1: return "Well-known";
     default: return "";
   }
 }

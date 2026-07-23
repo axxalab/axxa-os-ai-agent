@@ -7,10 +7,57 @@
 // Enter / blur dispara onRenameChat. Pra UX clara: a versão fica na linha
 // 2 do bloco quando o título tá ativo.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../_shared/Icon";
 import { useT } from "../../i18n";
+
+/**
+ * (P1-29) Teclado nos popovers portalados (WAI-ARIA menu button): ao abrir,
+ * foca o 1º item; setas ↑/↓ + Home/End circulam; ao fechar, o foco volta pro
+ * gatilho. Sem isto o role="menu" prometia navegação que não existia — Tab
+ * pulava pro conteúdo do chat com o menu ainda aberto.
+ */
+function usePopoverKeyboard(
+  open: boolean,
+  popRef: RefObject<HTMLDivElement | null>,
+  triggerRef: RefObject<HTMLElement | null>
+) {
+  useEffect(() => {
+    if (!open) return;
+    const items = () =>
+      Array.from(
+        popRef.current?.querySelectorAll<HTMLElement>(
+          '[role="menuitem"], button'
+        ) ?? []
+      );
+    items()[0]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      const list = items();
+      if (!list.length) return;
+      const idx = list.indexOf(document.activeElement as HTMLElement);
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        list[(idx + 1) % list.length]?.focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        list[(idx - 1 + list.length) % list.length]?.focus();
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        list[0]?.focus();
+      } else if (e.key === "End") {
+        e.preventDefault();
+        list[list.length - 1]?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    const trigger = triggerRef.current;
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      trigger?.focus();
+    };
+  }, [open, popRef, triggerRef]);
+}
 
 interface HeaderProps {
   version: string;
@@ -95,6 +142,7 @@ export function Header({
     setMenuOpen((o) => !o);
   };
 
+  usePopoverKeyboard(menuOpen, popoverRef, moreBtnRef);
   useEffect(() => {
     if (!menuOpen) return;
     const close = () => setMenuOpen(false);
@@ -319,6 +367,7 @@ function HeaderModelSwitcher({
   const wrapRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
+  usePopoverKeyboard(open, popRef, btnRef);
 
   const toggle = () => {
     const r = btnRef.current?.getBoundingClientRect();

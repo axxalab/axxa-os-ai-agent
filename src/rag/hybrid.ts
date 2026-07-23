@@ -35,12 +35,23 @@ export interface HybridOptions {
   creds: EmbedCredentials;
   query: string;
   topK: number;
+  /** (P1-83) Tamanho do trecho por nota — vem do effort (Settings prometia
+   *  e o hybrid fixava 500). Default 500. */
+  excerptChars?: number;
   /** Re-rankeia por co-citação no grafo de links. Default true. */
   useGraph?: boolean;
 }
 
 export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
-  const { app, index, creds, query, topK, useGraph = true } = opts;
+  const {
+    app,
+    index,
+    creds,
+    query,
+    topK,
+    excerptChars = 500,
+    useGraph = true,
+  } = opts;
 
   const acc = new Map<
     string,
@@ -69,7 +80,7 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
       for (const r of sem) {
         if (seen.has(r.entry.path)) continue;
         seen.add(r.entry.path);
-        bump(r.entry.path, rank++, r.entry.text.slice(0, 500), "semantic");
+        bump(r.entry.path, rank++, r.entry.text.slice(0, excerptChars), "semantic");
       }
     } catch (err) {
       // embed falhou (sem key / rate limit) → segue só com keyword.
@@ -79,7 +90,7 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
   }
 
   // ---- Keyword ----
-  const kw = await searchVault(app, query, topK * 3, 500);
+  const kw = await searchVault(app, query, topK * 3, excerptChars);
   kw.forEach((m, rank) => bump(m.path, rank, m.excerpt, "keyword"));
 
   let hits: HybridHit[] = Array.from(acc.entries()).map(([path, v]) => ({

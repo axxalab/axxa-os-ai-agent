@@ -13,6 +13,9 @@ interface SkillsScreenProps {
   onUse: (skill: Skill) => void;
   onOpenNote: (path: string) => void;
   onClose: () => void;
+  /** (P1-65) Semeia os exemplos direto do empty state — antes o botão só
+   *  existia em Settings → Vault e o empty era beco sem saída. */
+  onCreateExamples: () => void;
 }
 
 export function SkillsScreen({
@@ -20,6 +23,7 @@ export function SkillsScreen({
   onUse,
   onOpenNote,
   onClose,
+  onCreateExamples,
 }: SkillsScreenProps) {
   const t = useT();
   return (
@@ -48,6 +52,14 @@ export function SkillsScreen({
             <span className="axxa-skills-404" aria-hidden="true">404</span>
             <p className="axxa-screen-empty-title">{t.skills.emptyTitle}</p>
             <p className="axxa-screen-empty-sub">{t.skills.emptySub}</p>
+            <button
+              type="button"
+              className="axxa-skills-seed-btn"
+              onClick={onCreateExamples}
+            >
+              <Icon name="sparkles" />
+              {t.skills.createExamples}
+            </button>
           </div>
         ) : (
           <div className="axxa-skills-grid">

@@ -199,10 +199,10 @@ export class NimProvider implements Provider {
       // 403 também pode significar "Public API Endpoints" permission falta.
       const hint =
         status === 403
-          ? " (Verifique também se sua conta tem 'Public API Endpoints' habilitado em build.nvidia.com → Organization Settings.)"
+          ? " (Also check that your account has 'Public API Endpoints' enabled at build.nvidia.com → Organization Settings.)"
           : "";
       return new ProviderError(
-        `API key Nvidia NIM inválida ou sem permissão.${hint}`,
+        `Invalid Nvidia NIM API key or missing permission.${hint}`,
         "invalid-key"
       );
     }
@@ -210,14 +210,14 @@ export class NimProvider implements Provider {
       // 404 = modelo não existe no catálogo OU deprecado/não-hospedado.
       const apiMsg = json?.detail ?? json?.error?.message ?? "";
       return new ProviderError(
-        `NIM: modelo "${model}" não encontrado ou não hospedado. ${apiMsg}\n` +
-          `Em Settings → Providers → Nvidia NIM, clique "Buscar da API" pra ver os modelos atualmente disponíveis.`,
+        `NIM: model "${model}" not found or not hosted. ${apiMsg}\n` +
+          `In Settings → Providers → Nvidia NIM, click "Fetch from API" to see the currently available models.`,
         "unknown"
       );
     }
     if (status === 429) {
       return new ProviderError(
-        "Rate limit Nvidia NIM. Aguarde alguns segundos.",
+        "Nvidia NIM rate limit. Wait a few seconds.",
         "rate-limit"
       );
     }
@@ -233,7 +233,7 @@ export class NimProvider implements Provider {
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "API key Nvidia NIM não configurada. Gere uma em build.nvidia.com (prefixo 'nvapi-').",
+        "Nvidia NIM API key not configured. Create one at build.nvidia.com (prefix 'nvapi-').",
         "no-key"
       );
     }
@@ -258,7 +258,7 @@ export class NimProvider implements Provider {
       });
     } catch (err) {
       console.error("[axxa] NIM network error:", err);
-      throw new ProviderError("Falha de conexão NIM.", "network");
+      throw new ProviderError("NIM connection failed.", "network");
     }
 
     // Log de diagnóstico — facilita debug quando user reporta "não funciona"
@@ -274,10 +274,10 @@ export class NimProvider implements Provider {
     }
 
     const message = res.json?.choices?.[0]?.message;
-    if (!message) throw new ProviderError("Resposta vazia do NIM.", "unknown");
+    if (!message) throw new ProviderError("Empty response from NIM.", "unknown");
     const { content, toolCalls, reasoning } = parseOpenAIChatMessage(message);
     if (!toolCalls && !content) {
-      throw new ProviderError("Resposta vazia do NIM (sem texto nem tool_calls).", "unknown");
+      throw new ProviderError("Empty response from NIM (no text or tool_calls).", "unknown");
     }
     return { content, toolCalls, usage: usageFrom(res.json), reasoning };
   }
@@ -304,7 +304,7 @@ export class NimProvider implements Provider {
     }
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "API key Nvidia NIM não configurada. Gere uma em build.nvidia.com (prefixo 'nvapi-').",
+        "Nvidia NIM API key not configured. Create one at build.nvidia.com (prefix 'nvapi-').",
         "no-key"
       );
     }
@@ -359,7 +359,7 @@ export class NimProvider implements Provider {
     } catch (err) {
       if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
       console.error("[axxa] NIM stream network error:", err);
-      throw new ProviderError("Falha de conexão NIM.", "network");
+      throw new ProviderError("NIM connection failed.", "network");
     }
 
     if (resp.status < 200 || resp.status >= 300) {
@@ -415,7 +415,7 @@ export class NimProvider implements Provider {
     apiKey: string
   ): Promise<MediaGenerationItem[]> {
     if (!apiKey || !apiKey.trim()) {
-      throw new ProviderError("API key Nvidia NIM não configurada.", "no-key");
+      throw new ProviderError("Nvidia NIM API key not configured.", "no-key");
     }
     const url = `${NIM_INFER_BASE}/${request.model}`;
     const aspectRatio = sizeToAspectRatio(request.size);
@@ -449,7 +449,7 @@ export class NimProvider implements Provider {
       });
     } catch (err) {
       console.error("[axxa] NIM image gen network error:", err);
-      throw new ProviderError("Falha de conexão NIM image gen.", "network");
+      throw new ProviderError("NIM image gen connection failed.", "network");
     }
     if (res.status < 200 || res.status >= 300) {
       console.error("[axxa] NIM image gen failed:", res.status, res.json ?? res.text);
@@ -484,7 +484,7 @@ export class NimProvider implements Provider {
     if (items.length === 0) {
       console.error("[axxa] NIM unknown response shape:", res.json);
       throw new ProviderError(
-        `NIM não retornou imagens — verifique se "${request.model}" suporta text-to-image. Veja DevTools console pra resposta raw.`,
+        `NIM returned no images — check whether "${request.model}" supports text-to-image. See the DevTools console for the raw response.`,
         "unknown"
       );
     }
@@ -495,7 +495,7 @@ export class NimProvider implements Provider {
   async listModels(apiKey: string): Promise<string[]> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "API key Nvidia NIM não configurada.",
+        "Nvidia NIM API key not configured.",
         "no-key"
       );
     }
@@ -506,7 +506,7 @@ export class NimProvider implements Provider {
       throw: false,
     });
     if (res.status === 401 || res.status === 403) {
-      throw new ProviderError("API key Nvidia NIM inválida.", "invalid-key");
+      throw new ProviderError("Invalid Nvidia NIM API key.", "invalid-key");
     }
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`NIM: HTTP ${res.status}`, "unknown");
@@ -589,7 +589,7 @@ function base64ToBytes(b64: string): Uint8Array {
   try {
     bin = atob(clean);
   } catch {
-    throw new ProviderError("NIM retornou imagem em formato inválido.", "unknown");
+    throw new ProviderError("NIM returned an image in an invalid format.", "unknown");
   }
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);

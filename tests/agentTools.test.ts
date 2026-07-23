@@ -122,7 +122,7 @@ describe("toolVaultCreate", () => {
     const { app } = makeApp();
     await toolVaultCreate(app, { path: "a.md", content: "1" });
     await expect(toolVaultCreate(app, { path: "a.md", content: "2" })).rejects.toThrow(
-      /já existe/i
+      /already exists/i
     );
   });
 });
@@ -146,7 +146,7 @@ describe("toolVaultEdit", () => {
     await toolVaultCreate(app, { path: "a.md", content: "abc" });
     await expect(
       toolVaultEdit(app, { path: "a.md", oldStr: "zzz", newStr: "y" })
-    ).rejects.toThrow(/não encontrada/i);
+    ).rejects.toThrow(/not found/i);
   });
 });
 
@@ -160,7 +160,7 @@ describe("toolVaultMove / Delete", () => {
 
     await toolVaultCreate(app, { path: "c.md", content: "2" });
     await expect(toolVaultMove(app, { from: "c.md", to: "b.md" })).rejects.toThrow(
-      /já existe/i
+      /already exists/i
     );
   });
   it("deleta arquivo existente; erro se não existe", async () => {
@@ -169,7 +169,7 @@ describe("toolVaultMove / Delete", () => {
     await toolVaultDelete(app, { path: "a.md" });
     expect(files.has("a.md")).toBe(false);
     await expect(toolVaultDelete(app, { path: "nope.md" })).rejects.toThrow(
-      /não existe/i
+      /does not exist/i
     );
   });
 });

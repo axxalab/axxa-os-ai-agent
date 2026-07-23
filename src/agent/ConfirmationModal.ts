@@ -13,10 +13,18 @@
 
 import { App, Modal, Setting } from "obsidian";
 import type { ToolCall, ToolDefinition } from "./types";
+import type { Translations } from "../i18n";
 
 interface ConfirmOpts {
   toolCall: ToolCall;
   definition: ToolDefinition;
+  /** Mostra o preview/diff da mudança (Settings → "Approve changes (diff)").
+   *  v0.1.237: o toggle deixou de forçar o GATE (nível decide se confirma) e
+   *  passou a controlar só a riqueza da confirmação. Default true. */
+  showDiff?: boolean;
+  /** Strings i18n (t.agent) — injetadas pelo caller, mesmo padrão do
+   *  ImageGenModal (strings: t.imageGen). Antes eram PT-BR hardcoded. */
+  strings: Translations["agent"];
 }
 
 export interface ConfirmResult {
@@ -55,8 +63,9 @@ export class ConfirmationModal extends Modal {
     this.modalEl.addClass("axxa-modal-keyboard-aware");
 
     const irreversible = !!opts.definition.irreversible;
+    const strings = opts.strings;
     contentEl.createEl("h2", {
-      text: irreversible ? "⚠️ Ação irreversível" : "Revisar mudança do Agent",
+      text: irreversible ? strings.confirmTitleIrreversible : strings.confirmTitle,
     });
 
     const summaryEl = contentEl.createDiv({ cls: "axxa-confirm-summary" });
@@ -69,11 +78,11 @@ export class ConfirmationModal extends Modal {
       text: firstSentence(opts.definition.description),
     });
 
-    this.renderPreview(contentEl);
+    if (this.opts.showDiff !== false) this.renderPreview(contentEl);
 
     const setting = new Setting(contentEl);
     setting.addButton((btn) => {
-      btn.setButtonText("Negar").onClick(() => {
+      btn.setButtonText(strings.confirmDeny).onClick(() => {
         this.resolveOnce(false);
         this.close();
       });
@@ -82,7 +91,7 @@ export class ConfirmationModal extends Modal {
     // "Aprovar todas" — só em ações reversíveis (delete sempre é por ação).
     if (!irreversible) {
       setting.addButton((btn) => {
-        btn.setButtonText("Aprovar todas").onClick(() => {
+        btn.setButtonText(strings.confirmApproveAll).onClick(() => {
           this.resolveOnce(true, true);
           this.close();
         });
@@ -91,7 +100,7 @@ export class ConfirmationModal extends Modal {
     }
     setting.addButton((btn) => {
       btn
-        .setButtonText(irreversible ? "Sim, deletar" : "Aprovar")
+        .setButtonText(irreversible ? strings.confirmDelete : strings.confirmApprove)
         .setCta()
         .onClick(() => {
           this.resolveOnce(true);
@@ -104,6 +113,7 @@ export class ConfirmationModal extends Modal {
   /** Preview/diff conforme a tool. Conteúdo grande é truncado. */
   private renderPreview(root: HTMLElement) {
     const { name, arguments: args } = this.opts.toolCall;
+    const strings = this.opts.strings;
     const path = typeof args.path === "string" ? args.path : "";
     const box = root.createDiv({ cls: "axxa-confirm-preview" });
 
@@ -121,27 +131,27 @@ export class ConfirmationModal extends Modal {
 
     switch (name) {
       case "vault_edit": {
-        pathRow("Editar", path);
+        pathRow(strings.confirmLabelEdit, path);
         block(String(args.oldStr ?? ""), "del");
         block(String(args.newStr ?? ""), "add");
         return;
       }
       case "vault_create": {
-        pathRow("Criar", path, "axxa-confirm-path-add");
+        pathRow(strings.confirmLabelCreate, path, "axxa-confirm-path-add");
         block(String(args.content ?? ""), "add");
         return;
       }
       case "vault_create_folder": {
-        pathRow("Criar pasta", path, "axxa-confirm-path-add");
+        pathRow(strings.confirmLabelCreateFolder, path, "axxa-confirm-path-add");
         return;
       }
       case "vault_move": {
-        pathRow("De", String(args.from ?? ""), "axxa-confirm-path-del");
-        pathRow("Para", String(args.to ?? ""), "axxa-confirm-path-add");
+        pathRow(strings.confirmLabelFrom, String(args.from ?? ""), "axxa-confirm-path-del");
+        pathRow(strings.confirmLabelTo, String(args.to ?? ""), "axxa-confirm-path-add");
         return;
       }
       case "vault_delete": {
-        pathRow("Deletar", path, "axxa-confirm-path-del");
+        pathRow(strings.confirmLabelDelete, path, "axxa-confirm-path-del");
         return;
       }
       default: {

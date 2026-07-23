@@ -5,7 +5,7 @@
 // Turn é retornado porque handleSend/regenerate/retry o reusam. Comportamento
 // idêntico ao inline anterior.
 
-import { type MutableRefObject } from "react";
+import { useRef, type MutableRefObject } from "react";
 import { useChatStore } from "../store/chat";
 import { getProvider } from "../providers";
 import { getModelCapabilities } from "../providers/modelCapabilities";
@@ -86,10 +86,10 @@ export function useGeneration(ctx: GenerationCtx) {
         iconPending: mediaType === "image" ? "image-plus" : mediaType === "audio" ? "volume-2" : "video",
         iconDone: "check",
         pendingText: mediaType === "image"
-          ? "Gerando imagem..."
+          ? t.generation.generatingImage
           : mediaType === "audio"
-            ? "Gerando áudio..."
-            : "Gerando vídeo...",
+            ? t.generation.generatingAudio
+            : t.generation.generatingVideo,
         doneText: "",
       },
     });
@@ -100,7 +100,7 @@ export function useGeneration(ctx: GenerationCtx) {
       let items;
       if (mediaType === "image") {
         if (!provider.generateImage) {
-          throw new Error(`Provider "${provider.name}" não implementa generateImage.`);
+          throw new Error(t.generation.providerMissing(provider.name, "generateImage"));
         }
         items = await provider.generateImage(
           { model: activeModel, prompt, size: "1024x1024" },
@@ -108,7 +108,7 @@ export function useGeneration(ctx: GenerationCtx) {
         );
       } else if (mediaType === "audio") {
         if (!provider.generateAudio) {
-          throw new Error(`Provider "${provider.name}" não implementa generateAudio.`);
+          throw new Error(t.generation.providerMissing(provider.name, "generateAudio"));
         }
         items = await provider.generateAudio(
           { model: activeModel, prompt },
@@ -116,12 +116,25 @@ export function useGeneration(ctx: GenerationCtx) {
         );
       } else {
         if (!provider.generateVideo) {
-          throw new Error(`Provider "${provider.name}" não implementa generateVideo.`);
+          throw new Error(t.generation.providerMissing(provider.name, "generateVideo"));
         }
         items = await provider.generateVideo(
           { model: activeModel, prompt },
           apiKey
         );
+      }
+
+      // (P1-33) Stop durante a geração: o requestUrl do Obsidian não aceita
+      // AbortSignal, então o cancelamento é SOFT — descarta o resultado e
+      // avisa que o provider pode ter cobrado mesmo assim. Sem isto o botão
+      // Stop era um controle ativo que não controlava nada.
+      if (controller.signal.aborted) {
+        updateActivity(activityId, {
+          phase: "failed",
+          iconFailed: "circle-stop",
+          failedText: t.generation.interruptedNote,
+        });
+        return;
       }
 
       const savedPaths: string[] = [];
@@ -153,7 +166,7 @@ export function useGeneration(ctx: GenerationCtx) {
         activityId,
         {
           phase: "done",
-          doneText: `${items.length} ${mediaType === "image" ? "imagem" : mediaType === "audio" ? "áudio" : "vídeo"}${items.length > 1 ? "s" : ""} gerado${items.length > 1 ? "s" : ""}`,
+          doneText: t.generation.generatedCount(items.length, mediaType),
         },
         savedPaths[0]
       );
@@ -212,11 +225,18 @@ export function useGeneration(ctx: GenerationCtx) {
     return opts;
   };
 
+  // (P1-31) Última escolha do ImageGenModal — permite ao retryError re-gerar
+  // a imagem com o MESMO provider/modelo em vez de cair no chat.
+  const lastImageGenRef = useRef<{ providerId: string; model: string } | null>(
+    null
+  );
+
   const runImageGeneration = async (
     prompt: string,
     providerId: string,
     model: string,
-    inputImage?: { data: string; mimeType: string }
+    inputImage?: { data: string; mimeType: string },
+    signal?: AbortSignal
   ): Promise<{ ok: boolean; paths: string[]; error?: string }> => {
     const { addMessage, updateActivity } = useChatStore.getState();
     const provider = getProvider(providerId);
@@ -248,7 +268,7 @@ export function useGeneration(ctx: GenerationCtx) {
         phase: "pending",
         iconPending: inputImage ? "wand-2" : "image-plus",
         iconDone: "check",
-        pendingText: inputImage ? "Editando imagem..." : "Gerando imagem...",
+        pendingText: inputImage ? t.generation.editingImage : t.generation.generatingImage,
         doneText: "",
         placeholder: "image",
       },
@@ -263,6 +283,16 @@ export function useGeneration(ctx: GenerationCtx) {
         },
         apiKey
       );
+      // (P1-33) Soft-cancel: Stop descarta o resultado (requestUrl não
+      // aborta a request — o provider pode ter cobrado; a nota avisa).
+      if (signal?.aborted) {
+        updateActivity(activityId, {
+          phase: "failed",
+          iconFailed: "circle-stop",
+          failedText: t.generation.interruptedNote,
+        });
+        return { ok: false, paths: [], error: "interrupted" };
+      }
       const savedPaths: string[] = [];
       for (const item of items) {
         const r = await saveGeneration(
@@ -290,7 +320,7 @@ export function useGeneration(ctx: GenerationCtx) {
         activityId,
         {
           phase: "done",
-          doneText: `${items.length} imagem${items.length > 1 ? "ns" : ""} gerada${items.length > 1 ? "s" : ""}`,
+          doneText: t.generation.generatedCount(items.length, "image"),
         },
         savedPaths[0]
       );
@@ -344,16 +374,28 @@ export function useGeneration(ctx: GenerationCtx) {
     if (choice.useInputImage && inputImage) {
       setPendingAttachments([]);
     }
+    // (P1-31) Guarda a escolha do modal — o retry de um erro de geração
+    // re-invoca a MESMA geração em vez de mandar o prompt pro modelo de chat.
+    lastImageGenRef.current = {
+      providerId: choice.providerId,
+      model: choice.model,
+    };
     store.setLoading(true);
+    // (P1-33) abortRef ligado também no caminho do modal — o Stop do
+    // composer deixava de ser um no-op numa ação paga.
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       await runImageGeneration(
         choice.prompt,
         choice.providerId,
         choice.model,
-        choice.useInputImage ? inputImage : undefined
+        choice.useInputImage ? inputImage : undefined,
+        controller.signal
       );
     } finally {
       store.setLoading(false);
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
@@ -362,5 +404,6 @@ export function useGeneration(ctx: GenerationCtx) {
     buildImageModelOptions,
     runImageGeneration,
     handleCreateImage,
+    lastImageGenRef,
   };
 }

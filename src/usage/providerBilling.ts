@@ -25,36 +25,36 @@ export interface BillingCapabilityInfo {
 export const BILLING_CAPABILITY: Record<string, BillingCapabilityInfo> = {
   openrouter: {
     capability: "live-key",
-    note: "Uso e crédito reais via API (chave normal).",
+    note: "Real usage and credits via API (normal key).",
   },
   openai: {
     capability: "admin-key",
-    note: "Custos reais exigem uma Admin key (sk-admin-…).",
+    note: "Real costs require an Admin key (sk-admin-…).",
     consoleUrl: "https://platform.openai.com/usage",
   },
   anthropic: {
     capability: "admin-key",
-    note: "Custos reais exigem uma Admin key (sk-ant-admin-…).",
+    note: "Real costs require an Admin key (sk-ant-admin-…).",
     consoleUrl: "https://console.anthropic.com/settings/usage",
   },
   gemini: {
     capability: "console",
-    note: "Billing no Google Cloud Console (sem API por chave).",
+    note: "Billing in the Google Cloud Console (no per-key API).",
     consoleUrl: "https://console.cloud.google.com/billing",
   },
   nim: {
     capability: "console",
-    note: "Créditos no build.nvidia.com (sem API por chave).",
+    note: "Credits at build.nvidia.com (no per-key API).",
     consoleUrl: "https://build.nvidia.com",
   },
-  ollama: { capability: "free", note: "Local — sem custo." },
+  ollama: { capability: "free", note: "Local — no cost." },
 };
 
 export function billingCapabilityFor(providerId: string): BillingCapabilityInfo {
   return (
     BILLING_CAPABILITY[providerId] ?? {
       capability: "console",
-      note: "Sem cross-check disponível.",
+      note: "No cross-check available.",
     }
   );
 }

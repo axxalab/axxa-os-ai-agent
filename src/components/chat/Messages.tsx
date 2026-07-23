@@ -48,6 +48,7 @@ function stepArg(step: AIToolStep): string {
  * continuidade: reabrir o chat e o agente lembra do que já executou. v0.1.160
  */
 function AgentSteps({ steps }: { steps: AIToolStep[] }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <div className={"axxa-agent-steps" + (open ? " is-open" : "")}>
@@ -58,7 +59,7 @@ function AgentSteps({ steps }: { steps: AIToolStep[] }) {
         aria-expanded={open}
       >
         <Icon name="wrench" />
-        <span>{steps.length} ações do agente</span>
+        <span>{t.agent.stepsSummary(steps.length)}</span>
         <Icon name="chevron-right" className="axxa-agent-steps-chevron" />
       </button>
       {open && (
@@ -440,7 +441,6 @@ export function AIResponse({ msg }: { msg: AIResponseMessage }) {
           >
             <Icon name="thumbs-down" />
           </button>
-          <span className="axxa-pro-pill" aria-label={t.chat.upgradePro}>PRO</span>
         </div>
       )}
       {!isStreaming && <Timestamp ts={msg.timestamp} />}
@@ -459,11 +459,29 @@ export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
   const actions = useChatActions();
   const t = useT();
   // Tira o prefixo "[Erro]" do texto — o card já comunica que é erro pelo ícone.
-  const text = msg.content.startsWith(t.ai.errorPrefix)
+  const stripped = msg.content.startsWith(t.ai.errorPrefix)
     ? msg.content.slice(t.ai.errorPrefix.length).trim()
     : msg.content;
+  // Fallback por errorCode (auditoria jul/2026): content vazio deixava o card
+  // só com o ícone ⚠ — cinto de segurança caso algum caminho não preencha.
+  const sessionProvider = useChatStore.getState().sessionProvider ?? "the provider";
+  const fallbackByCode: Partial<Record<NonNullable<AIResponseMessage["errorCode"]>, string>> = {
+    "no-key": t.ai.err.noKey(sessionProvider),
+    "invalid-key": t.ai.err.invalidKey(sessionProvider),
+    "rate-limit": t.ai.err.rateLimit,
+    network: t.ai.err.network,
+    billing: t.ai.err.billing,
+    "context-overflow": t.ai.err.contextOverflow,
+  };
+  const text =
+    stripped.trim() ||
+    (msg.errorCode ? fallbackByCode[msg.errorCode] : undefined) ||
+    t.ai.unknownError;
   const isKeyError =
     msg.errorCode === "no-key" || msg.errorCode === "invalid-key";
+  // (P1-26) Contexto estourado: retry refaz a MESMA request e falha sempre —
+  // a saída real é conversa nova (a atual fica salva).
+  const isContextOverflow = msg.errorCode === "context-overflow";
   // Billing do Gemini: ação dedicada → abre o AI Studio pra ativar billing
   // (a assinatura consumer não cobre a API). v0.1.162
   const isBilling = msg.errorCode === "billing";
@@ -504,14 +522,26 @@ export function ErrorMessage({ msg }: { msg: AIResponseMessage }) {
             {t.ai.openBilling}
           </button>
         )}
-        <button
-          type="button"
-          className="axxa-error-btn"
-          onClick={() => actions.retryError(msg.id)}
-        >
-          <Icon name="refresh-cw" />
-          {t.ai.retry}
-        </button>
+        {isContextOverflow && (
+          <button
+            type="button"
+            className="axxa-error-btn axxa-error-btn-primary"
+            onClick={actions.startNewChat}
+          >
+            <Icon name="plus" />
+            {t.ai.startNewChat}
+          </button>
+        )}
+        {!isContextOverflow && (
+          <button
+            type="button"
+            className="axxa-error-btn"
+            onClick={() => actions.retryError(msg.id)}
+          >
+            <Icon name="refresh-cw" />
+            {t.ai.retry}
+          </button>
+        )}
       </div>
     </div>
   );

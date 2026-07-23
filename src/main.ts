@@ -157,10 +157,10 @@ interface AxxaSettings {
    *  DEFAULT_EFFORT_CONFIGS built-in (src/components/_shared/effort.ts).
    *  Configurado via Settings → Effort → sub-tab por nível. */
   effortConfigs: Partial<Record<EffortLevel, Partial<EffortConfig>>>;
-  // ============ Fullscreen mobile (v0.1.74 — reintroduzido) ============
+  // ============ Fullscreen mobile (v0.1.74 — volta no futuro) ============
   /** Modo fullscreen mobile: drawer direito ocupa 100vw + esconde chrome
-   *  nativo do Obsidian (drawer-header, tabs, footer). Toggle via menu
-   *  "..." no Header. Persiste entre reloads. */
+   *  nativo do Obsidian. A UI de toggle está desativada, mas o setting fica
+   *  reservado — o fullscreen v3 volta (decisão de produto, jul/2026). */
   mobileFullscreen: boolean;
   // ============ OpenAI specifics (v0.1.165) ============
   /** Inscrito no programa de data-sharing da OpenAI — dá tokens grátis diários
@@ -315,6 +315,8 @@ export default class AxxaPlugin extends Plugin {
   /** Índice vetorial RAG carregado em memória — compartilhado entre Settings
    *  (indexação) e AxxaApp (busca). null = ainda não foi carregado/indexado. */
   vectorIndex: VectorIndex | null = null;
+  /** (P1-69) Ref da settings tab — permite abrir numa aba específica. */
+  settingsTab: AxxaSettingsTab | null = null;
   /** Listeners avisados a cada saveSettings — usados pra re-renderizar o
    *  React tree quando o user troca idioma ou outro setting reativo. */
   private settingsListeners = new Set<() => void>();
@@ -508,10 +510,13 @@ export default class AxxaPlugin extends Plugin {
   /** Upsert INCREMENTAL após salvar um chat — evita re-walk do disco. */
   upsertChatSummary(s: ChatSummary): void {
     if (!this.chatSummaries) return;
-    const idx = this.chatSummaries.findIndex((c) => c.id === s.id);
-    if (idx >= 0) this.chatSummaries[idx] = s;
-    else this.chatSummaries.push(s);
-    this.chatSummaries.sort((a, b) => b.date.localeCompare(a.date));
+    // IMUTÁVEL (auditoria jul/2026): mutar in place mantinha a MESMA referência
+    // de array — consumidores React que comparam referência (useEffect deps,
+    // memo) nunca viam a mudança e as listas ficavam stale a sessão inteira.
+    this.chatSummaries = [
+      ...this.chatSummaries.filter((c) => c.id !== s.id),
+      s,
+    ].sort((a, b) => b.date.localeCompare(a.date));
     this.notifyChats();
     this.scheduleChatIndexWrite();
   }
@@ -758,7 +763,8 @@ export default class AxxaPlugin extends Plugin {
     });
 
     // Settings tab — aparece em Settings -> Community Plugins -> AXXA OS.
-    this.addSettingTab(new AxxaSettingsTab(this.app, this));
+    this.settingsTab = new AxxaSettingsTab(this.app, this);
+    this.addSettingTab(this.settingsTab);
 
     // Mede a navbar mobile pra compensar layout (--axxa-status-bar-clearance)
     this.setupStatusBarClearance();

@@ -99,7 +99,10 @@ export function useChatEngine(ctx: ChatEngineCtx) {
     // Senão → fallback pra busca keyword (busca por título + ocorrências).
     let vaultContextBlock = "";
     if (activeMode === "vault-qa") {
-      const { topK } = effortToVaultLookup(effort, plugin.settings.effortConfigs);
+      const { topK, excerptChars } = effortToVaultLookup(
+        effort,
+        plugin.settings.effortConfigs
+      );
 
       // Activity de busca — pulsa enquanto procura, vira check com resumo
       const searchActivityId = addMessage({
@@ -109,8 +112,8 @@ export function useChatEngine(ctx: ChatEngineCtx) {
           phase: "pending",
           iconPending: "radar",
           iconDone: "check",
-          pendingText: `Buscando até ${topK} trechos (híbrido)`,
-          doneText: `Busca concluída`,
+          pendingText: t.vault.searching(topK, effort),
+          doneText: t.vault.searchDone,
         },
       });
 
@@ -128,6 +131,8 @@ export function useChatEngine(ctx: ChatEngineCtx) {
           },
           query: userText,
           topK,
+          // (P1-83) O trecho por nota agora respeita o effort de verdade.
+          excerptChars,
         });
         if (hits.length > 0) {
           // Cabeçalho com o título CITÁVEL ([[basename]]) + path de referência,
@@ -138,9 +143,18 @@ export function useChatEngine(ctx: ChatEngineCtx) {
               return `### [[${base}]]\n_(${h.path})_\n\n${h.text}`;
             })
             .join("\n\n---\n\n");
+          // (P1-82) A origem REAL da busca fica visível: semântica+keyword,
+          // ou keyword puro (sem índice / embed falhou) — a degradação era
+          // invisível e o label sempre dizia "híbrido".
+          const semanticUsed = hits.some((h) => h.via.includes("semantic"));
+          const hasIndex = !!plugin.vectorIndex && plugin.vectorIndex.size > 0;
           updateActivity(searchActivityId, {
             phase: "done",
-            doneText: `${hits.length} trecho${hits.length > 1 ? "s" : ""} encontrado${hits.length > 1 ? "s" : ""}`,
+            doneText: semanticUsed
+              ? t.vault.foundContextSemantic(hits.length)
+              : hasIndex
+                ? t.vault.foundContextKeywordFallback(hits.length)
+                : t.vault.foundContextKeyword(hits.length),
           });
         } else {
           updateActivity(searchActivityId, {
@@ -287,6 +301,11 @@ export function useChatEngine(ctx: ChatEngineCtx) {
             iconFailed: "circle-stop",
             failedText: t.ai.interrupted,
           });
+        } else {
+          // (P1-72) Stop com resposta PARCIAL: marca truncated — o chip e o
+          // botão Continuar deixam claro que a resposta foi interrompida e
+          // dão o caminho pra retomar (antes parecia uma resposta completa).
+          useChatStore.getState().setTruncated(responseId, true);
         }
       } else {
         if (responseId === null) {
