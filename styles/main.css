@@ -7170,3 +7170,71 @@ body.axxa-reduce-motion *::after {
   width: 13px;
   height: 13px;
 }
+
+/* ============================================================================
+   [DS:claude] Claude Parity — fundação de tokens (P0)
+   Contrato: docs/CLAUDE_PARITY_SPEC.md. Componentes da paridade consomem
+   SOMENTE --axxa-cl-* (nunca hard-codam cor/fonte/raio). Paleta própria —
+   não herda do tema do Obsidian (exceção registrada no DESIGN_SYSTEM.md).
+   Light = default na .axxa-root; dark via body.theme-dark.
+   ========================================================================== */
+.axxa-root {
+  /* superfícies */
+  --axxa-cl-bg: #faf9f5;
+  --axxa-cl-surface: #ffffff;
+  --axxa-cl-surface-2: #f0eee6;
+  --axxa-cl-sidebar: #f0eee6;
+  --axxa-cl-border: rgba(20, 20, 19, 0.09);
+  /* tinta */
+  --axxa-cl-ink: #141413;
+  --axxa-cl-ink-2: #6b6a66;
+  --axxa-cl-ink-3: #91908c;
+  /* accent (terracotta Claude) + semânticas */
+  --axxa-cl-accent: #c96442;
+  --axxa-cl-accent-hover: #b0553a;
+  --axxa-cl-on-accent: #ffffff;
+  --axxa-cl-select: #3667d6; /* estado selecionado em sheets (azul do app) */
+  --axxa-cl-success: #2e7d4f;
+  --axxa-cl-danger: #c23a3a;
+  --axxa-cl-warn: #b0802b;
+  --axxa-cl-diff-add-bg: rgba(46, 160, 67, 0.14);
+  --axxa-cl-diff-del-bg: rgba(248, 81, 73, 0.13);
+  /* tipografia (stacks métricas próximas; proprietárias só se instaladas) */
+  --axxa-cl-font-display: "Copernicus", "Tiempos Text", Georgia,
+    "Iowan Old Style", serif;
+  --axxa-cl-font-ui: "Styrene B", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  --axxa-cl-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo,
+    Consolas, monospace;
+  --axxa-cl-fs-body: 15px;
+  --axxa-cl-lh-body: 1.65;
+  --axxa-cl-fs-caption: 12px;
+  --axxa-cl-fs-greeting: clamp(24px, 6vw, 30px);
+  /* formas & métricas */
+  --axxa-cl-radius-bubble: 18px;
+  --axxa-cl-radius-card: 12px;
+  --axxa-cl-radius-composer: 26px;
+  --axxa-cl-radius-full: 999px;
+  --axxa-cl-send-size: 34px;
+  --axxa-cl-content-max: 48rem;
+}
+
+/* [DS:claude] dark — paleta noturna do app do Claude */
+body.theme-dark .axxa-root {
+  --axxa-cl-bg: #262624;
+  --axxa-cl-surface: #30302e;
+  --axxa-cl-surface-2: #3a3a38;
+  --axxa-cl-sidebar: #1f1e1d;
+  --axxa-cl-border: rgba(255, 255, 255, 0.09);
+  --axxa-cl-ink: #eeede9;
+  --axxa-cl-ink-2: #b3b1ac;
+  --axxa-cl-ink-3: #83817c;
+  --axxa-cl-accent: #d97757;
+  --axxa-cl-accent-hover: #e08b6d;
+  --axxa-cl-select: #6b9bef; /* calibrado do print do app (dark) */
+  --axxa-cl-success: #4caf77;
+  --axxa-cl-danger: #e5645a;
+  --axxa-cl-warn: #d9a94c;
+  --axxa-cl-diff-add-bg: rgba(63, 185, 80, 0.16);
+  --axxa-cl-diff-del-bg: rgba(248, 81, 73, 0.16);
+}
