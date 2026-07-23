@@ -24,7 +24,7 @@ Pra varrer o que ainda é legado (sem tag), procure blocos `.axxa-*` em
 não apagamos nada que não tenha certeza.
 
 Index de tags ativas: `pill`, `badge`, `list-compact`, `seg-accent`, `density`,
-`motion`. (cresce conforme criamos.)
+`motion`, `claude`. (cresce conforme criamos.)
 
 ---
 
@@ -171,6 +171,22 @@ O ícone do modelo vem de `modelVendorLogoId(provider, model)` (logo do vendor;
 fallback `message-square` pra chats sem provider — ex: estrangeiros).
 
 ---
+
+### [DS:claude] — Claude Parity (paleta/tipografia/formas dos apps da Anthropic)
+**Regra:** os modos do app espelham as superfícies da Anthropic — Chat = app do
+Claude, Vault Q&A = Cowork, Agent = Claude Code. Todos os tokens vivem em
+`--axxa-cl-*` na `.axxa-root` (light) com override em `body.theme-dark`.
+Componentes da paridade consomem **somente** esses tokens — nunca hard-codam
+cor/fonte/raio.
+
+⚠️ **Exceção à regra de herança do tema:** diferente do resto do DS, a camada
+`[DS:claude]` **não herda cores/tipografia do Obsidian** — paridade pixel
+perfect exige paleta própria (ivory `#FAF9F5` / dark `#262624`, terracotta
+`#C96442`/`#D97757`, serif no display). Densidade (`[DS:density]`) e motion
+(`[DS:motion]`) continuam valendo por cima.
+
+Contrato completo (inventário de elementos/estados por modo, fases P0–P4 e
+metodologia de calibração pixel-perfect): **`docs/CLAUDE_PARITY_SPEC.md`**.
 
 ## 3. Componentes
 
