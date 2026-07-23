@@ -44,6 +44,11 @@ VIABILIDADE-FINANCEIRA.md
 
 # storybook build (gerado por `npm run storybook`)
 storybook/dist/
+storybook-static/
+.sb-shots/
+
+# Credenciais do túnel Cloudflare (TunnelSecret — NUNCA versionar)
+cloudflared/
 
 # audit/reconcile scratch (não versionar)
 .audit-*.cjs
