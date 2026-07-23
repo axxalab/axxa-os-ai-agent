@@ -8713,6 +8713,7 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   --axxa-cl-accent: #c96442;
   --axxa-cl-accent-hover: #b0553a;
   --axxa-cl-on-accent: #ffffff;
+  --axxa-cl-select: #3667d6; /* estado selecionado em sheets (azul do app) */
   --axxa-cl-success: #2e7d4f;
   --axxa-cl-danger: #c23a3a;
   --axxa-cl-warn: #b0802b;
@@ -8750,6 +8751,7 @@ body.theme-dark .axxa-root {
   --axxa-cl-ink-3: #83817c;
   --axxa-cl-accent: #d97757;
   --axxa-cl-accent-hover: #e08b6d;
+  --axxa-cl-select: #6b9bef; /* calibrado do print do app (dark) */
   --axxa-cl-success: #4caf77;
   --axxa-cl-danger: #e5645a;
   --axxa-cl-warn: #d9a94c;

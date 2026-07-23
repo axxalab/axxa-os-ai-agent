@@ -142,7 +142,32 @@ Estados globais por elemento: `default · hover · pressed · focus · disabled 
 
 ---
 
-## 7. Fases de implementação
+## 7. Calibração — achados de referência (fonte: `print/Screenshot_*_Claude.png`)
+
+Referências reais do app Claude Android (dark) já no repo. Achados que
+**corrigem/complementam** a fundação:
+
+1. **Seleção em sheets é AZUL, não terracotta.** No "Select model" e "Effort",
+   o item ativo fica com nome+descrição em azul (~`#6B9BEF`) + check azul à
+   direita. Terracotta é reservado ao send/CTA. → novo token:
+   `--axxa-cl-select: #6b9bef` (dark) / `#3667d6` (light, a calibrar).
+2. **Anatomia dos sheets (bottom sheet):** fundo quase-preto (mais escuro que
+   o canvas), handle no topo, header com ação à esquerda (X ou ←) + título
+   centrado semibold; linhas SEM card (texto direto), título ~22px regular,
+   descrição muted; divisor 1px hairline entre grupos; linha de navegação com
+   chevron `›` à direita.
+3. **Badges** ("Default", "Currently unavailable"): pill radius full, fundo
+   cinza-escuro elevado, texto claro 13px, ao lado do título da linha.
+4. **Toggle** (Thinking): track escuro, knob branco — estilo Android/Material
+   do app oficial.
+5. **Composer AXXA atual** (1º print) já está próximo: bolha escura radius
+   grande, `+` circular à esquerda, pill de modelo preto ("Sonnet 4.6 Max"),
+   send circular terracotta com ↑ branco. Calibrar: tons exatos e espaçamentos.
+
+> Processo: novos prints entram em `print/`, achados entram aqui, tokens são
+> ajustados no CSS e o componente ganha ✅ no inventário.
+
+## 8. Fases de implementação
 
 | Fase | Escopo | Sai quando |
 |------|--------|-----------|
