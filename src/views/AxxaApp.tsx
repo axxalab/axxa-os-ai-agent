@@ -90,7 +90,7 @@ import {
   type ChatData,
   type ChatSummary,
 } from "../components/_shared/chatPersistence";
-import { Notice, TFile } from "obsidian";
+import { Notice, Platform, TFile } from "obsidian";
 import { ensureFolder } from "../components/_shared/chatPersistence";
 import type { AxxaCommand } from "../components/composer/completions";
 import type { ChatMessage, UserMessage, AIResponseMessage, AIErrorCode } from "../store/chat";
@@ -153,8 +153,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   }, [ttsRole?.provider, ttsRole?.model, plugin.settings.openaiApiKey]);
 
-  // (v0.1.127) Fullscreen REMOVIDO — o plugin não mexe mais no layout/chrome
-  // do Obsidian. Fullscreen v3 virá depois via snippet do dev.
+  // (v0.1.242) Fullscreen v3: voltou como opt-in pelo menu do header. O toggle
+  // só grava settings.mobileFullscreen; quem alterna as classes no chrome do
+  // Obsidian é o AxxaView.applyFullscreen(). Default OFF e reversível.
 
   // Lê traduções na hora — atualiza no próximo render (após forceRender acima)
   const t = getTranslations(plugin.settings.language);
@@ -1368,6 +1369,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
   };
 
+  // Fullscreen mobile: o setting é a fonte da verdade; quem aplica as classes
+  // no chrome do Obsidian é o AxxaView (via onSettingsChange). Aqui só
+  // persistimos o toggle — o re-render vem do mesmo listener. v0.1.242
+  const handleToggleFullscreen = () => {
+    plugin.settings.mobileFullscreen = !plugin.settings.mobileFullscreen;
+    void plugin
+      .saveSettings()
+      .catch((err) => console.error("[axxa] salvar fullscreen falhou:", err));
+  };
+
   const handleNewChat = () => {
     abortRef.current?.abort();
     // (P1-09) Chat novo FORA do fluxo de projeto: descarta a associação
@@ -1839,6 +1850,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onSelectModel={handleHeaderModelSelect}
             modelLocked={isLocked}
             onOpenVoice={() => setVoiceOpen(true)}
+            fullscreen={!!plugin.settings.mobileFullscreen}
+            onToggleFullscreen={handleToggleFullscreen}
+            showFullscreen={Platform.isMobile}
           />
         {view === "conversations" ? (
           <ConversationsList

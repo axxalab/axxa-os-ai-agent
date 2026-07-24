@@ -15,6 +15,7 @@ export class AxxaView extends ItemView {
   root: Root | null = null;
   plugin: AxxaPlugin;
   private keyboardObserver: MutationObserver | null = null;
+  private settingsUnsub: (() => void) | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: AxxaPlugin) {
     super(leaf);
@@ -48,12 +49,60 @@ export class AxxaView extends ItemView {
     // body / drawer / leaf-content / navbar, nem o theme-color do OS —
     // zero toque em elemento ou variável nativa do Obsidian.
     this.setupMobileKeyboardObserver();
+
+    // Fullscreen é opt-in e reativo: re-aplica a cada saveSettings (o toggle
+    // vive no menu do header) e a cada troca de aba do drawer — senão a classe
+    // ficaria no drawer com OUTRA view ativa, escondendo o chrome dela.
+    this.applyFullscreen();
+    this.settingsUnsub = this.plugin.onSettingsChange(() =>
+      this.applyFullscreen()
+    );
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => this.applyFullscreen())
+    );
   }
 
   async onClose() {
     this.teardownMobileKeyboardObserver();
+    this.settingsUnsub?.();
+    this.settingsUnsub = null;
+    this.clearFullscreen();
     this.root?.unmount();
     this.root = null; // v0.1.228: zera a ref pra não segurar Root já desmontado
+  }
+
+  /**
+   * Fullscreen mobile (opt-in, default OFF) — mesma técnica do keyboard
+   * observer: só alterna classes em ancestrais, sem tocar em API interna nem
+   * em variável nativa do Obsidian.
+   *
+   * - `.workspace-drawer.axxa-fullscreen` esconde o header do drawer, que é
+   *   redundante quando o AXXA está ativo (temos header e navegação próprios).
+   * - `body.axxa-fullscreen` esconde a navbar global e, de quebra, desliga a
+   *   reserva de padding do composer — a regra `:not(.axxa-fullscreen)` que já
+   *   existia no CSS estava reservada exatamente pra isso.
+   *
+   * Garantias anti-armadilha (docs/MOBILE-FULLSCREEN.md): só mobile, saída
+   * sempre visível no menu do header, gesto de swipe-fechar-drawer intocado
+   * (só `display:none` no header, nunca no layer de gesto) e classes removidas
+   * no onClose — fechar a view devolve o chrome mesmo se algo der errado.
+   */
+  applyFullscreen() {
+    if (!Platform.isMobile) return;
+    const drawer = this.containerEl.closest(".workspace-drawer");
+    // Multi-tab: só vale quando a AXXA é a aba ativa do drawer.
+    const active = !!this.containerEl.closest(
+      ".workspace-drawer-active-tab-content"
+    );
+    const on = active && !!this.plugin.settings.mobileFullscreen;
+    drawer?.classList.toggle("axxa-fullscreen", on);
+    this.containerEl.doc.body.classList.toggle("axxa-fullscreen", on);
+  }
+
+  private clearFullscreen() {
+    const drawer = this.containerEl.closest(".workspace-drawer");
+    drawer?.classList.remove("axxa-fullscreen");
+    this.containerEl.doc.body.classList.remove("axxa-fullscreen");
   }
 
   /**

@@ -1,7 +1,11 @@
 # Módulo: Fullscreen Mobile — estudo do DOM + arquitetura native-first
 
-> Status: **estudo / design** (v0.1.233). NÃO implementado ainda — decisão em aberto.
-> Pré-requisito que estava travando: "estudar o DOM do drawer". Este doc faz isso.
+> Status: **implementado** (v0.1.242) — Fases 2 e 3 atrás do toggle
+> `mobileFullscreen`, exposto no menu "…" do header (só mobile, default OFF).
+> Motor: `AxxaView.applyFullscreen()`; CSS no bloco `[DS:fullscreen]`.
+> **Pendente:** validação no device (checklist da seção "O que PRECISA de
+> validação") — em especial o selector da `.mobile-navbar` da Fase 3.
+> O estudo do DOM abaixo segue valendo como fundamentação.
 
 ## Por que esse módulo existe
 

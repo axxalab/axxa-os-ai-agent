@@ -39,6 +39,28 @@ body.is-mobile
         ) !important;
   }
 }
+/* ============================================================
+   [DS:fullscreen] Fullscreen mobile — opt-in pelo menu do header.
+   Classes aplicadas pelo AxxaView (applyFullscreen): `axxa-fullscreen` no
+   .workspace-drawer e no body. Só escondemos chrome REDUNDANTE quando a AXXA
+   está ativa; nada de !important novo — a classe no ancestral já dá
+   especificidade. Reversível: o AxxaView remove as classes no onClose.
+   ============================================================ */
+/* Header do drawer: redundante, temos header + navegação próprios. Apenas
+   display:none no header — o layer de gesto (swipe pra fechar) fica intacto. */
+.workspace-drawer.axxa-fullscreen .workspace-drawer-header {
+  display: none;
+}
+/* Sem o header do drawer o conteúdo encostaria no relógio/notch do SO. */
+.workspace-drawer.axxa-fullscreen .axxa-root {
+  padding-top: var(--safe-area-inset-top, 0px);
+}
+/* Navbar global do Obsidian. A saída do modo vive no menu do header da AXXA,
+   que continua visível — o usuário nunca fica preso. */
+body.is-mobile.axxa-fullscreen .mobile-navbar {
+  display: none;
+}
+
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] {
   position: relative;
   isolation: auto;

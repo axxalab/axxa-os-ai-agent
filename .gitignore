@@ -55,3 +55,6 @@ cloudflared/
 .audit-*.mjs
 .recon-*.json
 .recon-*.cjs
+
+# helper temporario de screenshot do storybook (container Linux)
+scripts/_shot.cjs

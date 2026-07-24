@@ -91,6 +91,12 @@ interface HeaderProps {
   modelLocked: boolean;
   /** Abre o Modo Voz (conversa por voz). */
   onOpenVoice: () => void;
+  /** Fullscreen mobile ligado — item do menu vira "sair da tela cheia". */
+  fullscreen: boolean;
+  /** Alterna o fullscreen mobile (persiste em settings.mobileFullscreen). */
+  onToggleFullscreen: () => void;
+  /** Só mobile: no desktop não há chrome de drawer/navbar pra recuperar. */
+  showFullscreen: boolean;
 }
 
 export function Header({
@@ -111,6 +117,9 @@ export function Header({
   onSelectModel,
   modelLocked,
   onOpenVoice,
+  fullscreen,
+  onToggleFullscreen,
+  showFullscreen,
 }: HeaderProps) {
   const t = useT();
   const [draft, setDraft] = useState(chatTitle);
@@ -315,6 +324,28 @@ export function Header({
                     <Icon name="copy" />
                     <span className="axxa-popover-label">
                       {t.header.copyConversation}
+                    </span>
+                  </button>
+                )}
+                {showFullscreen && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    aria-pressed={fullscreen}
+                    className={
+                      "axxa-popover-item" +
+                      (fullscreen ? " axxa-popover-item-active" : "")
+                    }
+                    onClick={() => {
+                      onToggleFullscreen();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <Icon name={fullscreen ? "minimize-2" : "maximize-2"} />
+                    <span className="axxa-popover-label">
+                      {fullscreen
+                        ? t.header.exitFullscreen
+                        : t.header.fullscreen}
                     </span>
                   </button>
                 )}
