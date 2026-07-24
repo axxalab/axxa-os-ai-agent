@@ -42,18 +42,29 @@ body.is-mobile
 /* ============================================================
    [DS:fullscreen] Fullscreen mobile — opt-in pelo menu do header.
    Classes aplicadas pelo AxxaView (applyFullscreen): `axxa-fullscreen` no
-   .workspace-drawer e no body. Só escondemos chrome REDUNDANTE quando a AXXA
-   está ativa; nada de !important novo — a classe no ancestral já dá
-   especificidade. Reversível: o AxxaView remove as classes no onClose.
+   .workspace-drawer e no body. Só escondemos chrome REDUNDANTE (headers do
+   drawer + navbar) e dimensionamos a gaveta pra viewport inteira quando a AXXA
+   está ativa. !important aqui vence layout nativo/inline do Obsidian (largura
+   da gaveta, chrome). Reversível: o AxxaView remove as classes no onClose.
    ============================================================ */
-/* Header do drawer: redundante, temos header + navegação próprios. Apenas
-   display:none no header — o layer de gesto (swipe pra fechar) fica intacto. */
-.workspace-drawer.axxa-fullscreen .workspace-drawer-header {
-  display: none;
+/* Chrome do drawer: no mobile o Obsidian mostra DOIS pedaços redundantes —
+   o header do drawer (topo) e a barra de "tab ativa" na BASE (ícone da view +
+   "AXXA OS" + seletor de abas ⇕). Ambos somem no fullscreen: temos header e
+   navegação próprios. Escondê-los cola a nossa top bar abaixo da status bar do
+   SO e limpa a base. Só display:none nesses chromes — o layer de gesto (swipe
+   pra fechar) fica intacto. Ancorado no body.axxa-fullscreen (sempre aplicado,
+   mesmo se o closest do drawer variar) e escopado ao drawer que hospeda a AXXA
+   pra não afetar outro drawer. */
+body.is-mobile.axxa-fullscreen .workspace-drawer-header,
+body.is-mobile.axxa-fullscreen .workspace-drawer-active-tab-header,
+body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-header,
+body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-active-tab-header {
+  display: none !important;
 }
-/* Sem o header do drawer o conteúdo encostaria no relógio/notch do SO. */
-.workspace-drawer.axxa-fullscreen .axxa-root {
-  padding-top: var(--safe-area-inset-top, 0px);
+/* Cola a top bar logo abaixo da status bar do SO: sem o chrome do drawer, só o
+   safe-area (altura do relógio/notch) fica acima da nossa header. */
+body.is-mobile.axxa-fullscreen .axxa-root {
+  padding-top: var(--safe-area-inset-top, 0px) !important;
 }
 /* Navbar global do Obsidian. A saída do modo vive no menu do header da AXXA,
    que continua visível — o usuário nunca fica preso. */
