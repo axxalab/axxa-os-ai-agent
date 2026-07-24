@@ -68,12 +68,29 @@ body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-header,
 body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-tab-options {
   display: none !important;
 }
-/* Cola a top bar logo abaixo da status bar do SO: sem o chrome do drawer, só o
-   safe-area (altura do relógio/notch) fica acima da nossa header. Escopado ao
-   drawer da AXXA (a .axxa-root já é exclusiva da nossa view, mas mantemos a
-   âncora no drawer por consistência). */
+/* Header NATIVO da ItemView (.view-header) — separado do chrome do drawer. No
+   mobile ele pode renderizar acima do nosso conteúdo e empurrar a top bar pra
+   baixo (era o gap que sobrava depois de limpar drawer-header + tab-options).
+   Escondido no fullscreen: temos header próprio. Escopado ao data-type da AXXA
+   pra nunca tocar outra view. */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-header {
+  display: none !important;
+}
+/* Cola a top bar logo abaixo da status bar do SO: sem chrome do drawer nem
+   view-header, só o safe-area (altura do relógio/notch) fica acima da nossa
+   header — e zeramos qualquer padding/margin herdado da view-content. */
 body.is-mobile .workspace-drawer.axxa-fullscreen .axxa-root {
   padding-top: var(--safe-area-inset-top, 0px) !important;
+}
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
 }
 /* Navbar global do Obsidian — é IRMÃ dos drawers (não descendente), então não
    dá pra escopar via `.workspace-drawer`. Fica no body de propósito: a classe
@@ -108,6 +125,8 @@ body.is-mobile
   width: 100vw !important;
   max-width: 100vw !important;
   height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] {
