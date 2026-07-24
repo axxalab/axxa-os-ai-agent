@@ -60,6 +60,31 @@ body.is-mobile
 body.is-mobile.axxa-fullscreen .mobile-navbar {
   display: none;
 }
+/* Tela cheia de verdade — 100vw × 100vh. O drawer direito no mobile é uma
+   gaveta de largura PARCIAL (deixa uma faixa do editor atrás); esconder o
+   chrome não bastava. Aqui o drawer passa a ocupar a viewport inteira.
+   - dvh acompanha a barra dinâmica do WebView; cai pra vh onde dvh não existe.
+   - Sem position:fixed de propósito: preservamos o transform nativo de
+     abrir/fechar, então o gesto de swipe-pra-fechar continua (o drawer fechado
+     sai 100% pra fora). !important vence uma largura inline que o Obsidian
+     possa ter setado no drawer. */
+body.is-mobile .workspace-drawer.axxa-fullscreen {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+}
+/* Propaga a viewport pela cadeia de containers até a view da AXXA. */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-container,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-content {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100% !important;
+}
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] {
   position: relative;
