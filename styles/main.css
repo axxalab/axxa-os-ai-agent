@@ -47,18 +47,20 @@ body.is-mobile
    está ativa. !important aqui vence layout nativo/inline do Obsidian (largura
    da gaveta, chrome). Reversível: o AxxaView remove as classes no onClose.
    ============================================================ */
-/* Chrome do drawer: no mobile o Obsidian mostra DOIS pedaços redundantes —
-   o header do drawer (topo) e a barra de "tab ativa" na BASE (ícone da view +
-   "AXXA OS" + seletor de abas ⇕). Ambos somem no fullscreen: temos header e
-   navegação próprios. Escondê-los cola a nossa top bar abaixo da status bar do
-   SO e limpa a base. Só display:none nesses chromes — o layer de gesto (swipe
-   pra fechar) fica intacto. Ancorado no body.axxa-fullscreen (sempre aplicado,
-   mesmo se o closest do drawer variar) e escopado ao drawer que hospeda a AXXA
-   pra não afetar outro drawer. */
+/* Chrome do drawer: no mobile o Obsidian mostra DOIS pedaços redundantes — o
+   header do drawer (topo) e a barra de opções de tab na BASE (ícone da view +
+   "AXXA OS" + seletor de abas ⇕). Essa dupla `.workspace-drawer-header` +
+   `.workspace-drawer-tab-options` é EXATAMENTE a que a regra axxa-keyboard-open
+   já esconde em produção quando o teclado abre — aqui espelhamos a mesma dupla
+   comprovada (a v0.1.244 chutou `-active-tab-header` e errou o nome da barra da
+   base). Ambos somem no fullscreen: temos header e navegação próprios. Escondê-
+   los cola a top bar abaixo da status bar do SO e limpa a base. Só display:none
+   — o layer de gesto (swipe pra fechar) fica intacto. Ancorado no
+   body.axxa-fullscreen (classe sempre aplicada) além da classe no drawer. */
 body.is-mobile.axxa-fullscreen .workspace-drawer-header,
-body.is-mobile.axxa-fullscreen .workspace-drawer-active-tab-header,
+body.is-mobile.axxa-fullscreen .workspace-drawer-tab-options,
 body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-header,
-body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-active-tab-header {
+body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-tab-options {
   display: none !important;
 }
 /* Cola a top bar logo abaixo da status bar do SO: sem o chrome do drawer, só o
