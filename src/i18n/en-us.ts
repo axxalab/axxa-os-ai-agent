@@ -947,19 +947,13 @@ export const EN_US = {
     chips: "Visible chips",
     chipsDesc:
       "Pick which info shows in lists and the status line. Default is compact — check what you want to see.",
-    chipsComposer: "Composer status line",
-    chipsComposerDesc: "Appears under the message field (single line).",
     chipsList: "Chat list cards",
     chipsListDesc: "Appears on each Recent Chats and Conversations item.",
+    // Só os chips dos cards de conversa — a status line do composer saiu em
+    // 0.1.253 e levou junto effort/context/in/out/total/speed.
     chipsLabels: {
       mode: "Mode (chat / agent / vault-qa)",
       model: "Model",
-      effort: "Effort",
-      context: "Context used / total",
-      in: "Tokens in",
-      out: "Tokens out",
-      total: "Tokens total",
-      speed: "Tokens per second (live)",
       date: "Relative date",
       messages: "Message count",
       tokens: "Total tokens",

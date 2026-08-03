@@ -2188,30 +2188,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
   // Chips section — toggles pro composer + listas
   // ============================================================
   private renderChipsSection(parent: HTMLElement, t: Translations) {
-    const COMPOSER_IDS = [
-      "mode",
-      "model",
-      "effort",
-      "context",
-      "in",
-      "out",
-      "total",
-      "speed",
-    ] as const;
+    // A status line do composer saiu em 0.1.253 — sobrou só a curadoria dos
+    // chips dos cards de conversa. Checklist sem efeito é setting que engana.
     const LIST_IDS = ["mode", "model", "date", "messages", "tokens"] as const;
-
-    const composerSection = parent.createDiv({ cls: "axxa-chips-section" });
-    composerSection.createEl("h4", { text: t.settings.chipsComposer });
-    composerSection.createEl("p", {
-      text: t.settings.chipsComposerDesc,
-      cls: "setting-item-description",
-    });
-    this.renderChipChecklist(
-      composerSection,
-      t,
-      COMPOSER_IDS as readonly string[],
-      "composerChips"
-    );
 
     const listSection = parent.createDiv({ cls: "axxa-chips-section" });
     listSection.createEl("h4", { text: t.settings.chipsList });
@@ -2232,7 +2211,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     parent: HTMLElement,
     t: Translations,
     chipIds: readonly string[],
-    settingKey: "composerChips" | "listChips"
+    settingKey: "listChips"
   ) {
     const grid = parent.createDiv({ cls: "axxa-chips-grid" });
     const labels = t.settings.chipsLabels as Record<string, string>;

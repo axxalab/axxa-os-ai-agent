@@ -56,16 +56,10 @@ function ComposerMock({ mode = "chat", streaming = false }: { mode?: string; str
       onOpenModel={noop}
       onOpenVoice={noop}
       streaming={streaming}
-      providerName="OpenAI"
       modelName="gpt-5"
       effort="med"
-      tokensIn={5230}
-      tokensOut={1810}
-      tokensPerSec={streaming ? 42 : 0}
-      contextUsed={7040}
       mode={mode}
       placeholder="Message AXXA…"
-      visibleChips={["model", "effort", "speed", "in", "out"]}
       visionEnabled
       commands={[]}
     />

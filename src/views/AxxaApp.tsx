@@ -171,8 +171,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const isLoading = useChatStore((s) => s.isLoading);
   const tokensIn = useChatStore((s) => s.tokensIn);
   const tokensOut = useChatStore((s) => s.tokensOut);
-  const lastPromptTokens = useChatStore((s) => s.lastPromptTokens);
-  const tokensPerSec = useChatStore((s) => s.tokensPerSec);
   const messages = useChatStore((s) => s.messages);
   const sessionProvider = useChatStore((s) => s.sessionProvider);
   const sessionModel = useChatStore((s) => s.sessionModel);
@@ -2066,14 +2064,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             }}
             injectText={composerInject}
             streaming={isLoading}
-            providerName={activeProvider.name}
             modelName={activeModel}
             effort={effort}
-            tokensIn={tokensIn}
-            tokensOut={tokensOut}
-            tokensPerSec={tokensPerSec}
-            contextUsed={lastPromptTokens}
-            locked={isLocked}
             mode={activeMode}
             placeholder={placeholderForMode(activeMode, t.composer)}
             onSaveAudio={handleSaveAudio}
@@ -2097,7 +2089,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               );
             }}
             commands={axxaCommands}
-            visibleChips={plugin.settings.composerChips}
             visionEnabled={getModelCapabilities(activeProviderId, activeModel).vision}
             pdfEnabled={
               !!getModelCapabilities(activeProviderId, activeModel).pdf

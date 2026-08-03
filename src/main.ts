@@ -157,9 +157,6 @@ interface AxxaSettings {
    *  Default true. */
   agentDiffApproval: boolean;
   // ============ Chip visibility (v0.1.38) ============
-  /** Quais chips aparecem na status line do Composer.
-   *  IDs válidos: mode, model, effort, context, in, out, total */
-  composerChips: string[];
   /** Quais chips aparecem nos cards da lista de chats (recent + conversations).
    *  IDs válidos: mode, model, date, messages, tokens */
   listChips: string[];
@@ -303,7 +300,6 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   agentPermissionLevel: "ask",
   agentDiffApproval: true,
   // Defaults slim — user pode adicionar mais via Settings → Outros → Chips
-  composerChips: ["model", "effort", "speed", "in", "out"],
   listChips: ["mode", "model", "date"],
   // Vazio = usa DEFAULT_EFFORT_CONFIGS sem overrides. User edita via Settings.
   effortConfigs: {},

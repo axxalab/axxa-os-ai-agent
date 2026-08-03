@@ -7245,15 +7245,6 @@ body.axxa-reduce-motion *::after {
 
 /* [DS:skin-restore] (P1-18) Status row do composer — chips curados em
    Settings → Appearance → Chips. Linha discreta abaixo do pill/card. */
-.axxa-composer-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 4px 8px 0 8px;
-  min-height: 0;
-}
 
 /* [DS:skin-restore] (P1-22) A linha do modelo priorizava badges fixos e o
    NOME (dado principal) virava "cla..." no mobile. Nome ganha piso de 12ch

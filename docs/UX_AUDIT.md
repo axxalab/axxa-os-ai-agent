@@ -259,7 +259,8 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 ### gestor de custos (2/3 ok)
 
-**CST-01** ✅ — Como gestor de custos, quero um dashboard de uso (por provider/modelo/modo/dia) com export e chips de tokens/TPS ao vivo para saber o que estou gastando.
+**CST-01** ✅ *(ajustado em 0.1.253)* — Como gestor de custos, quero um dashboard de uso (por provider/modelo/modo/dia) com export para saber o que estou gastando.
+> **Nota:** os chips de tokens/TPS ao vivo no composer foram REMOVIDOS por decisão de produto (a status line saiu de todos os modos). A contabilidade continua inteira: tokens por conversa seguem persistidos no .md e o dashboard de Uso/Statistics não mudou.
 
 **CST-02** ✅ — Como gestor de custos, quero cruzar minha estimativa local com o gasto REAL das APIs de billing (admin keys) e lançar recargas para ver saldo verdadeiro.
 
@@ -532,6 +533,12 @@ O guard anti-acidente exige 180ms parado antes de gravar; tap rápido cancela o 
 - **Nota do verificador:** Confirmado no código: Composer.tsx:880-883 arma o hold em 180ms; endMic (897-904) limpa o timer e retorna sem nenhum feedback; onstop descarta gravação <300ms em silêncio (774-777). Nenhuma Notice em nenhum dos caminhos de tap curto. Como o mic é o botão principal do composer quando vazio no mobile, P1 é justo. Fix é de fato um if no early-return (S).
 
 #### P1-18 · Setting "Chips do composer" é morto: a status row nunca é renderizada
+> **Desfecho (0.1.253):** a decisão pendente foi tomada pelo dono — opção **(b)**
+> da recomendação abaixo. A status line saiu de TODOS os modos e levou junto o
+> setting `composerChips`, a seção "Composer status line" das Settings, o CSS
+> `.axxa-composer-status` e as props mortas (`visibleChips`, `tokensPerSec`,
+> `contextUsed`, `providerName`, `locked`). O que ficou no composer é o pill de
+> modelo+effort, que sempre foi controle e não status.
 
 **Área:** Composer / status chips · **Tipo:** state · **Esforço:** M
 
