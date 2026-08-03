@@ -48,9 +48,12 @@ import {
   type AppView,
 } from "../entitlements";
 import { AppContext } from "../components/_shared/AppContext";
+import { prettyModelName } from "../providers/modelDescriptions";
 import {
   keptAttachmentLines,
   withKeptAttachmentNotes,
+  approxBase64Bytes,
+  PDF_MAX_BYTES,
 } from "../components/_shared/attachmentNotes";
 import {
   ChatActionsContext,
@@ -742,14 +745,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     // Prepara attachments pra envio. Filtros aplicados em streamReply/runAgentTurn:
     //  - imagens só vão se o modelo aceita vision
+    //  - PDF só vai se o modelo/transporte aceita (caps.pdf) — v0.1.248
     //  - notas viram bloco de contexto markdown no system prompt
-    //  - pdf/audio passam como meta (ignorados no wire por enquanto)
+    //  - áudio passa como meta (ignorado no wire por enquanto)
     const caps = getModelCapabilities(activeProviderId, activeModel);
     const attachments =
       pendingAttachments.length > 0
         ? pendingAttachments
             .map((p) => p.attachment)
-            .filter((a) => (a.type === "image" ? caps.vision : true))
+            .filter((a) =>
+              a.type === "image"
+                ? caps.vision
+                : a.type === "pdf"
+                ? !!caps.pdf
+                : true
+            )
         : undefined;
     // (P1-28) Guarda os anexos do turno pro retry: erro transitório numa msg
     // com imagem re-tentava SEM a imagem, silenciosamente.
@@ -757,16 +767,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     // User msg salva sem attachments no store (pra simplicidade do auto-save .md).
     // O propagation pro provider acontece via parâmetro adicional pra streamReply/runAgentTurn.
-    // EXCEÇÃO honesta (auditoria jul/2026): áudio e PDF ainda não vão pro modelo —
-    // sem isto o chip sumia no send e o anexo desaparecia da conversa.
-    // A nota persiste na mensagem (e no .md) até o envio real chegar.
+    // O rastro em texto sobrevive ao reload: recibo quando o PDF FOI enviado,
+    // aviso honesto quando o modelo não aceita (e sempre, no áudio — que ainda
+    // não vai pro wire). Sem isso o chip sumia no send e o anexo desaparecia.
     const keptLines = keptAttachmentLines(
       pendingAttachments.map((p) => ({
         type: p.attachment.type,
         path: (p.attachment as { path?: string }).path,
         name: p.name,
+        sent: p.attachment.type === "pdf" && !!caps.pdf,
       })),
-      { audio: t.composer.audioKeptNote, pdf: t.composer.pdfKeptNote }
+      {
+        audio: t.composer.audioKeptNote,
+        pdf: t.composer.pdfKeptNote,
+        pdfSent: t.composer.pdfSentNote,
+      }
     );
     addMessage({
       type: "user",
@@ -2027,6 +2042,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             commands={axxaCommands}
             visibleChips={plugin.settings.composerChips}
             visionEnabled={getModelCapabilities(activeProviderId, activeModel).vision}
+            pdfEnabled={
+              !!getModelCapabilities(activeProviderId, activeModel).pdf
+            }
             pendingAttachments={pendingAttachments.map((p) => {
               const a = p.attachment;
               switch (a.type) {
@@ -2182,11 +2200,26 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                       };
                   }
                 })();
-                setPendingAttachments((prev) => [...prev, entry]);
-                // Honestidade (auditoria): o conteúdo do PDF ainda não vai pro
-                // modelo — avisa na hora do anexo, como já é feito com áudio.
                 if (picked.type === "pdf") {
-                  new Notice(t.composer.pdfAttachedNotice);
+                  // Teto de 30MB: o limite de request é 32MB (Anthropic) / 50MB
+                  // (OpenAI) e o base64 já infla ~33% — melhor barrar aqui do
+                  // que levar um 413 no meio da conversa. v0.1.248
+                  const bytes = approxBase64Bytes(picked.dataUrl);
+                  if (bytes > PDF_MAX_BYTES) {
+                    new Notice(t.composer.pdfTooLarge(bytes / (1024 * 1024)));
+                    return;
+                  }
+                }
+                setPendingAttachments((prev) => [...prev, entry]);
+                // O usuário fica sabendo AGORA se o modelo ativo lê o PDF —
+                // não depois, por uma resposta que ignorou o arquivo. v0.1.248
+                if (picked.type === "pdf") {
+                  const label = prettyModelName(activeModel) || activeModel;
+                  new Notice(
+                    getModelCapabilities(activeProviderId, activeModel).pdf
+                      ? t.composer.pdfAttachedNotice(label)
+                      : t.composer.pdfUnsupportedNotice(label)
+                  );
                 }
               }}
             />

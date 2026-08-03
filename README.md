@@ -2,7 +2,7 @@
 
 > **Your AI workspace, native to Obsidian.** Chat, ask your vault, and let an agent act on your notes — across 6 LLM providers, with your own API keys. Mobile-first.
 
-[![Version](https://img.shields.io/badge/version-0.1.247-6c5ce7)](manifest.json)
+[![Version](https://img.shields.io/badge/version-0.1.248-6c5ce7)](manifest.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Obsidian](https://img.shields.io/badge/Obsidian-1.11.4%2B-7c3aed)](https://obsidian.md)
 [![Mobile](https://img.shields.io/badge/mobile-supported-success)](#)
@@ -19,6 +19,7 @@ AXXA OS — AI Agent turns Obsidian into a full AI workspace. It feels like a na
 - **6 providers, bring your own key** — OpenAI, Anthropic (Claude), Google Gemini, OpenRouter, Nvidia NIM, and local Ollama. Switch freely; your keys never leave your device.
 - **Talk to your vault** — local semantic search (RAG) with hybrid keyword + vector ranking and wikilink-graph awareness. 8 embedding models across 4 providers, including free options.
 - **An agent that acts** — create, read, edit, move, and delete notes through a safe, permissioned tool layer. Destructive actions always ask first.
+- **Attach images, notes, and PDFs** — PDFs go straight to the model on Claude, GPT-4o-class models, and OpenRouter. Where a model can't read them, the plugin says so instead of pretending.
 - **Image generation** — generate images right in the chat (OpenAI & Gemini) and save them into your vault with metadata sidecars.
 - **Real cost tracking** — a Usage dashboard estimates spend in USD per provider, model, mode, and day, with PDF / Markdown / HTML export.
 - **Everything is Markdown** — chats, generated media, and skills are saved as `.md` files in your vault. Portable, versionable, yours.
@@ -168,7 +169,7 @@ When you use a third-party provider, your data is subject to **that provider's**
 ## 🗺️ Roadmap
 
 - **Now:** validation & stabilization across all 6 providers; real screenshots. (Skills as `.md` and Projects already shipped.)
-- **Next:** sending attached PDFs and recorded audio to the model (today they're kept in the chat but the content isn't sent — the UI says so); Coder mode with diff previews; Portuguese UI.
+- **Next:** sending recorded audio to the model (today it's kept in the chat but not transcribed — the UI says so); PDFs on Gemini/NIM/Ollama; Coder mode with diff previews; Portuguese UI.
 - **Later:** MCP connectors (Notion, Linear, GitHub, …); optional Premium (cross-device sync, automatic media transcription).
 
 ---
@@ -198,6 +199,7 @@ O AXXA OS — AI Agent transforma o Obsidian num workspace de IA completo. Parec
 - **6 provedores, com sua própria chave** — OpenAI, Anthropic (Claude), Google Gemini, OpenRouter, Nvidia NIM e Ollama local. Troque à vontade; suas chaves não saem do seu aparelho.
 - **Converse com o vault** — busca semântica local (RAG) com ranqueamento híbrido (palavra-chave + vetor) e consciência do grafo de wikilinks. 8 modelos de embedding em 4 provedores, incluindo opções gratuitas.
 - **Um agente que age** — criar, ler, editar, mover e deletar notas por uma camada de ferramentas com permissões. Ações destrutivas sempre pedem confirmação.
+- **Anexe imagens, notas e PDFs** — o PDF vai direto pro modelo no Claude, nos modelos classe GPT-4o e no OpenRouter. Onde o modelo não lê PDF, o plugin avisa em vez de fingir.
 - **Geração de imagem** — gere imagens direto no chat (OpenAI e Gemini) e salve no vault com metadados.
 - **Controle de custo real** — painel de Uso estima o gasto em USD por provedor, modelo, modo e dia, com export em PDF / Markdown / HTML.
 - **Tudo é Markdown** — conversas, mídia gerada e skills viram arquivos `.md` no seu vault. Portátil, versionável, seu.

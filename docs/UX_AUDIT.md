@@ -73,7 +73,7 @@ aggregate — feature L; o disclosure honesto já está no lugar).
   Ollama local, cada rota selecionando o provider e abrindo as Settings. As
   chaves i18n órfãs (`freeStartTitle`/`freeStartSub`/`trustLine`) ganharam
   consumidor e o README parou de prometer o que a UI não fazia.
-- **CHT-12 (PDF)** 🟡 — o anexo continua sem ir pro wire, mas parou de
+- **CHT-12 (PDF)** 🟡 — *(superado pelo lote 2 / 0.1.248, abaixo)* o anexo continua sem ir pro wire, mas parou de
   enganar: aviso no momento do anexo, aviso no chip e linha persistida na
   mensagem (`> 📄 arquivo.pdf — not sent to the AI yet`), mesmo tratamento
   honesto que o áudio já tinha. O envio real virá num lote próprio.
@@ -85,6 +85,20 @@ aggregate — feature L; o disclosure honesto já está no lugar).
 - **MOB-01 (fullscreen)** ✅ — entregue no 0.1.242→0.1.246 (v3: toggle no menu
   do header, 100vw × 100dvh, escopado ao drawer direito). Status abaixo
   mantido só como histórico da auditoria.
+
+**Lote de polimento 2 (release 0.1.248)** — PDF anexado passa a ser ENVIADO:
+- **CHT-12 (PDF)** ✅ — bloco `document` (Anthropic), content part `file`
+  (OpenAI e OpenRouter) e plugin file-parser com engine explícito no
+  OpenRouter — `native` quando o modelo tem visão, `cloudflare-ai` (grátis)
+  no resto, nunca o default `mistral-ocr` cobrado por página. A capability
+  `pdf` é derivada (`supportsPdf`) em vez de tabelada, então modelo novo
+  entra sozinho. Gemini/NIM/Ollama seguem fora — limitação do transporte, e
+  a UI diz isso com o nome do modelo na hora do anexo.
+- Rastro na conversa virou de mão dupla: recibo quando o PDF foi enviado,
+  aviso honesto quando não foi. Guard de 30MB antes de anexar (o limite de
+  request é 32MB no Anthropic e o base64 infla ~33%).
+- 27 testes novos cobrindo data URLs, a capability por família de modelo, o
+  shape dos 3 wires e a escolha de engine do OpenRouter.
 
 ## 1. Método
 
@@ -152,10 +166,11 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 **CHT-11** ✅ — Como usuário diário, quero anexar notas do vault (via [[, @ ou picker) para dar contexto ao modelo.
 
-**CHT-12** 🟡 *(parcial em 0.1.247; era 🔴)* — Como usuário diário, quero anexar PDF (e áudio) e ter o conteúdo realmente enviado ao modelo.
-> **Status parcial:** o conteúdo ainda NÃO vai pro wire (src/providers/_shared.ts só serializa imagem), mas o engano silencioso acabou: ao anexar, um Notice avisa que o conteúdo não é enviado; o chip repete o aviso; e no envio a mensagem guarda a linha `> 📄 arquivo.pdf — not sent to the AI yet` (src/components/_shared/attachmentNotes.ts), que persiste no .md junto com o wikilink do áudio. Envio real (bloco `document` nativo dos providers) fica pro próximo lote.
+**CHT-12** 🟡 *(PDF resolvido em 0.1.248; áudio segue pendente. Era 🔴)* — Como usuário diário, quero anexar PDF (e áudio) e ter o conteúdo realmente enviado ao modelo.
+> **Status do PDF — resolvido:** o arquivo vai pro wire de verdade onde o transporte permite — bloco `document` base64 no Anthropic (Claude 3.5+), content part `file` no Chat Completions da OpenAI (modelos com visão) e no OpenRouter (com o plugin file-parser, engine `native` pra modelo com visão e `cloudflare-ai` — grátis — pro resto; o engine é sempre explícito pra nunca cair no default pago `mistral-ocr`). Gemini/NIM/Ollama ficam de fora por limitação do NOSSO transporte (o chat do Gemini roda no endpoint OpenAI-compat, que não documenta parts de arquivo) — e aí a UI avisa no ato do anexo, com o nome do modelo, e a mensagem guarda a nota honesta. Quando o envio acontece, a mesma linha vira recibo (`> 📄 contrato.pdf — PDF sent to the model`). Guard de 30MB antes de anexar.
+> **Status do áudio — pendente:** continua sem transcrição; o wikilink + aviso seguem sendo o rastro honesto.
 > - [x] Chip de PDF no composer com preview e remoção
-> - [ ] O conteúdo do PDF chega ao provider (texto extraído ou bloco nativo)
+> - [x] O conteúdo do PDF chega ao provider (bloco nativo — Anthropic/OpenAI/OpenRouter)
 > - [x] Se o modelo não suporta, o usuário é avisado ao anexar
 
 **CHT-13** ⬜ *(README corrigido em 0.1.247 — a UI em PT-BR continua no roadmap)* — Como usuário PT-BR, quero a UI em português (auto-detectada pelo locale).

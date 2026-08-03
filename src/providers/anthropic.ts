@@ -30,7 +30,12 @@ import {
   ReasoningHandler,
 } from "./base";
 import { resolveTemperature, resolveMaxTokens } from "./paramPolicy";
-import { ensureOkRequest, ensureOkStream, streamFallbackToChat } from "./_shared";
+import {
+  ensureOkRequest,
+  ensureOkStream,
+  streamFallbackToChat,
+  parseDataUrl,
+} from "./_shared";
 
 const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -63,7 +68,23 @@ interface ImageBlock {
     url?: string;
   };
 }
-type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock | ImageBlock;
+/** PDF anexado — bloco nativo do Messages API (Claude 3.5+). v0.1.248 */
+interface DocumentBlock {
+  type: "document";
+  source: {
+    type: "base64";
+    media_type: "application/pdf";
+    data: string;
+  };
+  /** Nome do arquivo — ajuda o modelo a se referir ao documento. */
+  title?: string;
+}
+type ContentBlock =
+  | TextBlock
+  | ToolUseBlock
+  | ToolResultBlock
+  | ImageBlock
+  | DocumentBlock;
 
 interface AnthropicMessage {
   role: "user" | "assistant";
@@ -147,14 +168,34 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
       continue;
     }
 
-    // User normal — pode ter attachments (imagens) em content array.
-    // Note/audio/pdf vêm inlinados como texto pelo caller (não wire).
+    // User normal — pode ter attachments (imagens e PDFs) em content array.
+    // Note/audio vêm inlinados como texto pelo caller (não wire).
     const imageAtt =
       m.role === "user" && m.attachments
         ? m.attachments.filter((a) => a.type === "image")
         : [];
-    if (m.role === "user" && imageAtt.length > 0) {
+    const pdfAtt =
+      m.role === "user" && m.attachments
+        ? m.attachments.filter((a) => a.type === "pdf")
+        : [];
+    if (m.role === "user" && (imageAtt.length > 0 || pdfAtt.length > 0)) {
       const blocks: ContentBlock[] = [];
+      // PDF ANTES do texto: a doc do Anthropic recomenda o documento primeiro
+      // (a pergunta depois costuma render resposta melhor).
+      for (const att of pdfAtt) {
+        if (att.type !== "pdf" || !att.dataUrl) continue;
+        const parsed = parseDataUrl(att.dataUrl);
+        if (!parsed) continue;
+        blocks.push({
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: "application/pdf",
+            data: parsed.base64,
+          },
+          title: att.name,
+        });
+      }
       if (m.content) blocks.push({ type: "text", text: m.content });
       for (const att of imageAtt) {
         if (att.type === "image") {
@@ -181,10 +222,11 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
           }
         }
       }
-      // Se TODAS as imagens falharam o parse (data URL malformada) e não havia
-      // texto, blocks fica []. Anthropic rejeita content[] vazio com 400 →
-      // cai pro text-only (string vazia vira " " pra não quebrar). v0.1.227
-      if (blocks.length === 0) {
+      // Se TODOS os anexos falharam o parse (data URL malformada), sobra no
+      // máximo o bloco de texto — e aí a mensagem volta a ser string simples.
+      // blocks vazio seria 400 do Anthropic (string vazia vira " "). v0.1.227
+      const onlyText = blocks.every((b) => b.type === "text");
+      if (onlyText) {
         converted.push({ role: "user", content: m.content || " " });
       } else {
         converted.push({ role: "user", content: blocks });

@@ -8,6 +8,25 @@
 // (o arquivo está no vault); PDF é escolhido do dispositivo e não tem caminho
 // de vault, então fica só o nome.
 
+/**
+ * Teto de tamanho do PDF anexado. O limite de request é 32MB no Anthropic e
+ * 50MB na OpenAI, e o base64 infla ~33% — 30MB de arquivo original é o maior
+ * valor que cabe nos dois com folga pro resto do payload.
+ */
+export const PDF_MAX_BYTES = 30 * 1024 * 1024;
+
+/**
+ * Bytes aproximados de uma data URL base64 (4 chars ≈ 3 bytes, menos o padding).
+ * Serve pro guard de tamanho — não precisa ser exato, precisa ser barato.
+ */
+export function approxBase64Bytes(dataUrl: string | undefined): number {
+  if (!dataUrl) return 0;
+  const comma = dataUrl.indexOf(",");
+  const b64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  const padding = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((b64.length * 3) / 4) - padding);
+}
+
 /** Anexo pendente, no mínimo que estas notas precisam saber. */
 export interface KeptAttachment {
   type: string;
@@ -15,6 +34,8 @@ export interface KeptAttachment {
   path?: string;
   /** Nome exibido no chip. */
   name: string;
+  /** O anexo FOI enviado ao modelo neste turno? (PDF, desde 0.1.248) */
+  sent?: boolean;
 }
 
 export interface KeptAttachmentLabels {
@@ -22,6 +43,8 @@ export interface KeptAttachmentLabels {
   audio: string;
   /** Ex.: "PDF attached locally (not sent to the AI yet)". */
   pdf: string;
+  /** Ex.: "PDF sent to the model". Usado quando o modelo aceita PDF. */
+  pdfSent?: string;
 }
 
 /**
@@ -38,7 +61,10 @@ export function keptAttachmentLines(
       const link = att.path ? `[[${att.path}|${att.name}]]` : att.name;
       lines.push(`> 🎙 ${link} — ${labels.audio}`);
     } else if (att.type === "pdf") {
-      lines.push(`> 📄 ${att.name} — ${labels.pdf}`);
+      // Enviado: a linha vira RECIBO (o .md guarda o que o modelo viu).
+      // Não enviado: continua sendo o aviso honesto.
+      const label = att.sent ? labels.pdfSent : labels.pdf;
+      lines.push(label ? `> 📄 ${att.name} — ${label}` : `> 📄 ${att.name}`);
     }
   }
   return lines;

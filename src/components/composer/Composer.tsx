@@ -123,6 +123,9 @@ interface ComposerProps {
   /** True se o modelo selecionado aceita imagens. Habilita botão de attach
    *  + paste de imagem. */
   visionEnabled?: boolean;
+  /** True se o modelo selecionado lê PDF anexado. Quando false, o chip de PDF
+   *  avisa que o conteúdo não vai pro modelo. v0.1.248 */
+  pdfEnabled?: boolean;
   /** Anexos pendentes (qualquer tipo). Renderizados como chips acima do composer. */
   pendingAttachments?: PendingAttachment[];
   /** Callback chamado quando user adiciona imagem via paste. */
@@ -257,6 +260,7 @@ export function Composer({
   commands,
   visibleChips,
   visionEnabled = false,
+  pdfEnabled = false,
   pendingAttachments = [],
   onAddImage,
   onRemoveAttachment,
@@ -1241,7 +1245,9 @@ export function Composer({
                 // é enviado ao modelo — o chip diz isso, sem esperar o envio.
                 hint={
                   att.kind === "pdf"
-                    ? t.composer.pdfKeptNote
+                    ? pdfEnabled
+                      ? undefined
+                      : t.composer.pdfKeptNote
                     : att.kind === "audio"
                     ? t.composer.audioKeptNote
                     : undefined

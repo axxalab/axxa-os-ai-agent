@@ -2,11 +2,14 @@ import { describe, it, expect } from "vitest";
 import {
   keptAttachmentLines,
   withKeptAttachmentNotes,
+  approxBase64Bytes,
+  PDF_MAX_BYTES,
 } from "../src/components/_shared/attachmentNotes";
 
 const LABELS = {
   audio: "audio saved in your vault (not sent to the AI yet)",
-  pdf: "PDF attached locally (not sent to the AI yet)",
+  pdf: "PDF attached locally (this model can't read PDFs)",
+  pdfSent: "PDF sent to the model",
 };
 
 describe("attachmentNotes — rastro honesto dos anexos não enviados", () => {
@@ -63,6 +66,31 @@ describe("attachmentNotes — rastro honesto dos anexos não enviados", () => {
     expect(lines[1]).toContain("b.webm");
   });
 
+  it("PDF ENVIADO vira recibo, não aviso (0.1.248)", () => {
+    const [line] = keptAttachmentLines(
+      [{ type: "pdf", name: "contrato.pdf", sent: true }],
+      LABELS
+    );
+    expect(line).toBe(`> 📄 contrato.pdf — ${LABELS.pdfSent}`);
+    expect(line).not.toContain("can't read");
+  });
+
+  it("PDF não enviado mantém o aviso honesto", () => {
+    const [line] = keptAttachmentLines(
+      [{ type: "pdf", name: "contrato.pdf", sent: false }],
+      LABELS
+    );
+    expect(line).toBe(`> 📄 contrato.pdf — ${LABELS.pdf}`);
+  });
+
+  it("sem label de enviado, o recibo fica só com o nome (nunca 'undefined')", () => {
+    const [line] = keptAttachmentLines(
+      [{ type: "pdf", name: "contrato.pdf", sent: true }],
+      { audio: LABELS.audio, pdf: LABELS.pdf }
+    );
+    expect(line).toBe("> 📄 contrato.pdf");
+  });
+
   it("sem anexos rastreáveis o texto passa intacto", () => {
     expect(withKeptAttachmentNotes("oi", [])).toBe("oi");
   });
@@ -76,6 +104,30 @@ describe("attachmentNotes — rastro honesto dos anexos não enviados", () => {
   it("texto vazio (envio só com anexo) não deixa quebra de linha órfã", () => {
     expect(withKeptAttachmentNotes("", ["> 📄 a.pdf — x"])).toBe(
       "> 📄 a.pdf — x"
+    );
+  });
+});
+
+describe("approxBase64Bytes — guard de tamanho do PDF", () => {
+  it("estima o tamanho do arquivo a partir da data URL", () => {
+    // "AAAA" = 3 bytes; o header da data URL não entra na conta.
+    expect(approxBase64Bytes("data:application/pdf;base64,AAAA")).toBe(3);
+    expect(approxBase64Bytes("data:application/pdf;base64,AAAA==")).toBe(2);
+  });
+
+  it("string vazia/ausente vale zero (nunca NaN)", () => {
+    expect(approxBase64Bytes(undefined)).toBe(0);
+    expect(approxBase64Bytes("")).toBe(0);
+  });
+
+  it("o teto cabe no limite de request dos providers (32MB Anthropic)", () => {
+    expect(PDF_MAX_BYTES).toBeLessThan(32 * 1024 * 1024);
+  });
+
+  it("arquivo de 31MB é barrado pelo teto", () => {
+    const b64 = "A".repeat(Math.ceil((31 * 1024 * 1024 * 4) / 3));
+    expect(approxBase64Bytes(`data:application/pdf;base64,${b64}`)).toBeGreaterThan(
+      PDF_MAX_BYTES
     );
   });
 });

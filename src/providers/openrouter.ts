@@ -28,7 +28,9 @@ import {
   usageFrom,
   parseOpenAICompatSSE,
   streamFallbackToChat,
+  hasPdfAttachment,
 } from "./_shared";
+import { getModelCapabilities } from "./modelCapabilities";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODELS_ENDPOINT = "https://openrouter.ai/api/v1/models";
@@ -39,6 +41,30 @@ const APP_HEADERS = {
   "HTTP-Referer": "https://github.com/axxalab/axxa-os-ai-agent",
   "X-Title": "AXXA OS - AI Agent",
 };
+
+/**
+ * Plugin file-parser do OpenRouter — só quando a request leva PDF. (v0.1.248)
+ *
+ * O engine é SEMPRE explícito de propósito: sem ele o OpenRouter cai no
+ * `mistral-ocr`, que custa US$ 2 por 1.000 páginas — cobrança silenciosa num
+ * plugin que promete "sua key, seu custo". Modelo com visão lê o PDF
+ * nativamente (`native`, cobrado como tokens de entrada, que é o esperado);
+ * os demais usam `cloudflare-ai`, que é grátis.
+ */
+export function applyPdfPlugin(
+  body: Record<string, unknown>,
+  req: ProviderRequest
+): Record<string, unknown> {
+  if (!hasPdfAttachment(req.messages)) return body;
+  const caps = getModelCapabilities("openrouter", req.model);
+  body.plugins = [
+    {
+      id: "file-parser",
+      pdf: { engine: caps.vision ? "native" : "cloudflare-ai" },
+    },
+  ];
+  return body;
+}
 
 export class OpenRouterProvider implements Provider {
   id = "openrouter";
@@ -53,7 +79,10 @@ export class OpenRouterProvider implements Provider {
       throw new ProviderError("OpenRouter API key not configured.", "no-key");
     }
 
-    const body = buildChatBody(req, { provider: "openrouter" });
+    const body = applyPdfPlugin(
+      buildChatBody(req, { provider: "openrouter" }),
+      req
+    );
 
     let res;
     try {
@@ -93,11 +122,14 @@ export class OpenRouterProvider implements Provider {
       throw new ProviderError("OpenRouter API key not configured.", "no-key");
     }
 
-    const body = buildChatBody(req, {
-      provider: "openrouter",
-      stream: true,
-      includeUsage: true,
-    });
+    const body = applyPdfPlugin(
+      buildChatBody(req, {
+        provider: "openrouter",
+        stream: true,
+        includeUsage: true,
+      }),
+      req
+    );
 
     let res: Response;
     try {

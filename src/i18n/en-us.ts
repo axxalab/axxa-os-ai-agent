@@ -7,9 +7,13 @@ export const EN_US = {
     audioKeptNote: "audio saved in your vault (not sent to the AI yet)",
     audioAttachedNotice:
       "Audio saved to your vault and linked in the message. Heads-up: audio isn't sent to the AI yet.",
-    pdfKeptNote: "PDF attached locally (not sent to the AI yet)",
-    pdfAttachedNotice:
-      "PDF attached to the message. Heads-up: its content isn't sent to the AI yet — paste the relevant text or attach a note instead.",
+    pdfKeptNote: "PDF attached locally (this model can't read PDFs)",
+    pdfSentNote: "PDF sent to the model",
+    pdfAttachedNotice: (model: string) => `PDF attached — ${model} will read it.`,
+    pdfUnsupportedNotice: (model: string) =>
+      `${model} can't read PDFs. The file stays in the conversation, but its content won't be sent — switch to Claude, a GPT-4o-class model, or OpenRouter.`,
+    pdfTooLarge: (mb: number) =>
+      `PDF too large (${mb.toFixed(0)} MB — max 30 MB). Split it or send the relevant pages.`,
     attachImageNoneValid: "No valid image was attached.",
     attachImageTooLarge: "Image too large (max 20MB).",
     attachmentsLabel: "Pending attachments",
