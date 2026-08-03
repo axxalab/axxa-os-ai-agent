@@ -191,3 +191,26 @@ navbar, o conteúdo do sheet cairia embaixo da barra de gestos. Agora ele també
 considera a var do Obsidian (`max(env(), var())`), então o sheet continua colado
 na borda (edge-to-edge) com o conteúdo acima dos gestos: no harness, card
 terminando em y=915 (base da tela) com `padding-bottom` de 34px (10 + 24).
+
+### v0.1.252 — correção: o inset estava sendo contado DUAS vezes
+
+Print do device depois do 0.1.250/0.1.251 mostrou o que o harness não podia
+mostrar: **o container do drawer já começa abaixo da status bar e termina acima
+da barra de gestos** — o Obsidian aplica o safe-area na própria árvore. Somar
+`safe-area-inset-*` por dentro da nossa header e do composer contava o mesmo
+espaço duas vezes:
+
+- **Topo**: a superfície preta da header subia até o topo do container (certo),
+  mas avatar/título/botões desciam ~40px, sobrando espaço morto acima deles.
+- **Base**: o composer ganhava `18px + inset`, reabrindo parte da faixa que
+  este modo veio eliminar.
+
+Correção: no fullscreen a header mantém o padding normal (12px) e o composer o
+respiro normal (18px). O override do sheet do Q&A (0.1.251) saiu pelo mesmo
+motivo. **Quem garante que nada fica sob os system bars é o container do
+Obsidian**; a nós cabe só não reservar o espaço de novo — e não pintar faixa
+alguma, que era o bug original.
+
+Regra pra quem mexer aqui depois: antes de somar `env(safe-area-*)` ou
+`var(--safe-area-*)` dentro do fullscreen, confira se o container já não fez
+isso. Neste modo, quase sempre já fez.

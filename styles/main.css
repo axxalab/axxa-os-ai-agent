@@ -89,14 +89,15 @@ body.is-mobile
 body.is-mobile .workspace-drawer.axxa-fullscreen .axxa-root {
   padding-top: 0 !important;
 }
-/* A header sobe ATÉ o topo da tela e carrega o inset por dentro — a superfície
-   dela é que fica sob o relógio/notch, sem faixa de outra cor no meio.
-   `max(env, var)`: o env é o do WebView, a var é a que o Obsidian publica;
-   em iOS e Android um dos dois responde. */
+/* A header ocupa o topo do container e mantém o padding NORMAL.
+   v0.1.252 — corrigido com print do device: o container do drawer JÁ começa
+   abaixo da status bar do SO (o Obsidian aplica o inset na própria árvore), e
+   somar `safe-area-inset-top` aqui contava o mesmo espaço duas vezes: a
+   superfície preta subia certo, mas empurrava avatar/título/botões pra baixo,
+   deixando ~40px mortos acima do conteúdo. O inset por dentro da header só
+   faria sentido se o container desenhasse SOB o relógio — não é o caso. */
 body.is-mobile .workspace-drawer.axxa-fullscreen .axxa-header {
-  padding-top: calc(
-    12px + max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px))
-  ) !important;
+  padding-top: 12px !important;
 }
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
@@ -146,30 +147,18 @@ body.is-mobile.theme-dark
   .view-content {
   background: var(--background-secondary);
 }
-/* Composer: o canvas pinta até a borda de baixo, mas o CONTROLE não pode ficar
-   embaixo da barra de gestos — o inset entra aqui, não como faixa morta.
-   O Vault Q&A é um sheet colado na base e já resolve o inset no próprio card. */
+/* Composer: mantém o respiro NORMAL da base (18px), sem somar safe-area.
+   v0.1.252 — mesma lição do topo: o container do drawer já termina acima da
+   barra de gestos, então somar o inset aqui reabria a faixa morta que este
+   modo veio justamente eliminar. Quem garante que nada fica embaixo dos
+   gestos é o container do Obsidian; a nós cabe não reservar o espaço duas
+   vezes. (O Vault Q&A é um sheet colado na base e resolve o próprio respiro
+   no padding do card.) */
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .axxa-root
   .axxa-composer:not([data-mode="vault-qa"]) {
-  bottom: calc(
-    18px +
-      max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px))
-  );
-}
-/* O sheet do Vault Q&A encosta na base por design e resolve o inset no próprio
-   padding — mas só com `env()`, que no WebView Android costuma ser 0. Sem a
-   navbar reservando espaço (fullscreen), o conteúdo do sheet cairia embaixo da
-   barra de gestos. Aqui ele passa a considerar também a var do Obsidian. */
-body.is-mobile
-  .workspace-drawer.axxa-fullscreen
-  .axxa-root
-  .axxa-composer-card[data-mode="vault-qa"] {
-  padding-bottom: calc(
-    10px +
-      max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px))
-  );
+  bottom: 18px;
 }
 /* Navbar global do Obsidian — é IRMÃ dos drawers (não descendente), então não
    dá pra escopar via `.workspace-drawer`. Fica no body de propósito: a classe
