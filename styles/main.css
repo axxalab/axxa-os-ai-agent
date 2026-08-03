@@ -79,11 +79,24 @@ body.is-mobile
   .view-header {
   display: none !important;
 }
-/* Cola a top bar logo abaixo da status bar do SO: sem chrome do drawer nem
-   view-header, só o safe-area (altura do relógio/notch) fica acima da nossa
-   header — e zeramos qualquer padding/margin herdado da view-content. */
+/* ── EDGE-TO-EDGE (v0.1.250) ──────────────────────────────────────────────
+   A superfície do app vai de BORDA A BORDA; quem respeita o safe-area é o
+   CONTEÚDO (padding dentro do header e do composer), nunca um espaçamento
+   externo. Antes o `padding-top` morava no .axxa-root: a faixa da status bar
+   era pintada com o CANVAS (secondary no dark) enquanto a header é primary —
+   e a base ganhava outra faixa vinda do padding-bottom da view-content. Eram
+   exatamente as duas barras que sobravam na tela cheia. */
 body.is-mobile .workspace-drawer.axxa-fullscreen .axxa-root {
-  padding-top: var(--safe-area-inset-top, 0px) !important;
+  padding-top: 0 !important;
+}
+/* A header sobe ATÉ o topo da tela e carrega o inset por dentro — a superfície
+   dela é que fica sob o relógio/notch, sem faixa de outra cor no meio.
+   `max(env, var)`: o env é o do WebView, a var é a que o Obsidian publica;
+   em iOS e Android um dos dois responde. */
+body.is-mobile .workspace-drawer.axxa-fullscreen .axxa-header {
+  padding-top: calc(
+    12px + max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px))
+  ) !important;
 }
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
@@ -91,6 +104,59 @@ body.is-mobile
   .view-content {
   padding-top: 0 !important;
   margin-top: 0 !important;
+  /* A reserva da navbar/safe-area some: no fullscreen não há navbar, e o
+     inset de baixo é responsabilidade do composer (regra mais abaixo). Sem
+     isto sobra a faixa preta na base, acima da barra de gestos. */
+  padding-bottom: 0 !important;
+}
+/* Continuidade de superfície: toda a cadeia do drawer passa a pintar o MESMO
+   canvas do app. Sem isto, qualquer píxel não coberto pelo .axxa-root (cantos,
+   área da barra de gestos, o instante do transform de abrir) aparece como
+   faixa preta da leaf nativa. */
+body.is-mobile .workspace-drawer.axxa-fullscreen,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-container,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-content,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+  background: var(--background-primary);
+}
+/* mesma regra do canvas do chat: primary no light, secondary no dark */
+body.is-mobile.theme-dark .workspace-drawer.axxa-fullscreen,
+body.is-mobile.theme-dark
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-container,
+body.is-mobile.theme-dark
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-content,
+body.is-mobile.theme-dark
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+body.is-mobile.theme-dark
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+  background: var(--background-secondary);
+}
+/* Composer: o canvas pinta até a borda de baixo, mas o CONTROLE não pode ficar
+   embaixo da barra de gestos — o inset entra aqui, não como faixa morta.
+   O Vault Q&A é um sheet colado na base e já resolve o inset no próprio card. */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .axxa-root
+  .axxa-composer:not([data-mode="vault-qa"]) {
+  bottom: calc(
+    18px +
+      max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px))
+  );
 }
 /* Navbar global do Obsidian — é IRMÃ dos drawers (não descendente), então não
    dá pra escopar via `.workspace-drawer`. Fica no body de propósito: a classe

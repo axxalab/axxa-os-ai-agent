@@ -132,3 +132,52 @@ private applyFullscreen() {
 Fazer a **Fase 1 agora** (risco zero, ganho real, review-safe) e deixar Fases 2–3 atrás
 do toggle `mobileFullscreen` pra validar no device. Assim o default continua native-clean
 (o que protege a submissão) e o power-user que quer o máximo opta conscientemente.
+
+
+---
+
+## v0.1.250 — edge-to-edge + escopo do drawer direito
+
+Feedback do device (print do usuário): o modo tela cheia ainda deixava **duas
+faixas** — uma no topo (área da status bar) e outra na base (acima da barra de
+gestos) — e o modo precisava valer **só** para o drawer direito.
+
+### As faixas: quem as pintava
+- **Topo**: `padding-top: var(--safe-area-inset-top)` morava no `.axxa-root`.
+  Padding pinta com o fundo do PRÓPRIO elemento, então a faixa saía com a cor
+  do canvas (secondary no dark) e a header (primary) começava abaixo dela —
+  duas cores, uma barra visível.
+- **Base**: `padding-bottom: safe-area + navbar-clearance` na `.view-content`.
+  No fullscreen não há navbar, mas a reserva continuava lá e a área ficava
+  fora da pintura do `.axxa-root`.
+
+### O que passou a valer
+1. O inset de cima entrou POR DENTRO da `.axxa-header`
+   (`padding-top: calc(12px + max(env(), var()))`) — a superfície da header vai
+   até y=0, sob o relógio/notch, sem faixa intermediária.
+2. `padding-bottom: 0` na `.view-content` do fullscreen; quem respeita a barra
+   de gestos agora é o composer (`bottom: calc(18px + inset)`), então o canvas
+   pinta até a última linha de píxel.
+3. Toda a cadeia do drawer (drawer → tab-container → tab-content →
+   leaf-content → view-content) passou a pintar o mesmo canvas do app, pra não
+   sobrar preto da leaf nativa em canto nenhum nem durante o transform.
+
+### O escopo
+- `isRightDrawer()`: `mod-left` explícito nunca liga o modo. Sem marca de lado
+  não travamos (a AXXA só monta no drawer direito).
+- `body.axxa-fullscreen` (a classe que esconde a navbar GLOBAL) agora exige que
+  a gaveta da AXXA esteja **visível na tela**: abrir o drawer esquerdo ou
+  fechar o nosso no swipe devolve a navbar na hora. A checagem é geométrica
+  (`isDrawerOnScreen`, testada) porque nome de classe de estado do drawer muda
+  entre versões — e falha pro lado seguro (na dúvida, considera visível, então
+  o modo continua funcionando).
+- Um `MutationObserver` nos atributos das gavetas (mesma técnica do keyboard
+  observer) reavalia depois da animação, além dos eventos
+  layout-change/resize/active-leaf-change.
+
+Validado num harness que reproduz a árvore do drawer mobile com o chrome
+nativo pintado de cores berrantes: header em y=0 com `padding-top` 56px
+(12 + 44 de inset), `view-content` sem padding-bottom, composer a 42px
+(18 + 24 de inset) da borda, chrome nativo `display:none` e todas as
+superfícies no mesmo canvas. Com as classes removidas, o modo normal volta
+exatamente ao que era (header 12px, reserva de 28px na base, chrome visível).

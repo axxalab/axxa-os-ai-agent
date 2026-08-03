@@ -228,7 +228,7 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 ### usuário mobile (3/4 ok)
 
 **MOB-01** ✅ *(resolvido em 0.1.242→0.1.246; era ⬜ na auditoria)* — Como usuário mobile, quero o modo fullscreen (drawer 100vw sem chrome do Obsidian) para uma experiência de app imersiva.
-> **Status resolvido:** fullscreen v3 entregue — toggle no menu do header, 100vw × 100dvh, escopado ao drawer DIREITO (não vaza pro esquerdo) e escondendo o chrome nativo (view-header + tab-options). Default OFF, opt-in explícito.
+> **Status resolvido:** fullscreen v3 entregue — toggle no menu do header, 100vw × 100dvh, escopado ao drawer DIREITO (não vaza pro esquerdo) e escondendo o chrome nativo (view-header + tab-options). Default OFF, opt-in explícito. **v0.1.250 (feedback de device):** virou edge-to-edge de verdade — o inset da status bar entrou por dentro da header e a reserva da base saiu da view-content, acabando com as duas faixas; o escopo ficou explícito (`isRightDrawer` + a navbar global só some enquanto a gaveta da AXXA está visível, então abrir o drawer esquerdo devolve a navegação).
 > - [x] Toggle mobileFullscreen aplica .axxa-fullscreen no drawer
 > - [x] Esconde header do drawer e compensa safe-area
 > - [x] Default OFF, opt-in explícito
