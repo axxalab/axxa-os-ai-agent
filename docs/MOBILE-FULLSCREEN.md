@@ -181,3 +181,13 @@ nativo pintado de cores berrantes: header em y=0 com `padding-top` 56px
 (18 + 24 de inset) da borda, chrome nativo `display:none` e todas as
 superfícies no mesmo canvas. Com as classes removidas, o modo normal volta
 exatamente ao que era (header 12px, reserva de 28px na base, chrome visível).
+
+### v0.1.251 — o sheet do Vault Q&A no fullscreen
+
+Mesma classe de bug, outro caminho: o sheet do Q&A encosta na base por design e
+resolvia o inset só com `env(safe-area-inset-bottom)` — que no WebView Android
+costuma ser 0. Fora do fullscreen a reserva da navbar escondia o problema; sem
+navbar, o conteúdo do sheet cairia embaixo da barra de gestos. Agora ele também
+considera a var do Obsidian (`max(env(), var())`), então o sheet continua colado
+na borda (edge-to-edge) com o conteúdo acima dos gestos: no harness, card
+terminando em y=915 (base da tela) com `padding-bottom` de 34px (10 + 24).

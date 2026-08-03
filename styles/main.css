@@ -158,6 +158,19 @@ body.is-mobile
       max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px))
   );
 }
+/* O sheet do Vault Q&A encosta na base por design e resolve o inset no próprio
+   padding — mas só com `env()`, que no WebView Android costuma ser 0. Sem a
+   navbar reservando espaço (fullscreen), o conteúdo do sheet cairia embaixo da
+   barra de gestos. Aqui ele passa a considerar também a var do Obsidian. */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .axxa-root
+  .axxa-composer-card[data-mode="vault-qa"] {
+  padding-bottom: calc(
+    10px +
+      max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px))
+  );
+}
 /* Navbar global do Obsidian — é IRMÃ dos drawers (não descendente), então não
    dá pra escopar via `.workspace-drawer`. Fica no body de propósito: a classe
    `body.axxa-fullscreen` só existe quando a AXXA é a aba ATIVA do drawer
