@@ -214,3 +214,30 @@ alguma, que era o bug original.
 Regra pra quem mexer aqui depois: antes de somar `env(safe-area-*)` ou
 `var(--safe-area-*)` dentro do fullscreen, confira se o container já não fez
 isso. Neste modo, quase sempre já fez.
+
+### v0.1.254 — o teclado voltou a empurrar o composer
+
+Regressão introduzida pelo próprio fullscreen: ao fixar a altura do drawer em
+`100dvh`, a caixa do app deixou de encolher quando o teclado abre. O composer
+de **chat** e **agent** é `absolute` dentro da `.axxa-root`, então ele só sobe
+se a caixa encolher — e o Obsidian mobile NÃO encolhe a viewport: publica
+`--keyboard-height` no `<html>` e deixa o teclado por cima. Resultado: campo
+atrás do teclado nos dois modos. O Vault Q&A escapava por ser `fixed` e já
+consumir a var.
+
+Correção: a altura do drawer no fullscreen passou a ser
+`calc(100dvh - var(--keyboard-height, 0px))`. Canvas e composer sobem juntos, e
+as últimas mensagens deixam de ficar escondidas. A mudança fica na altura que
+JÁ é nossa — a cadeia do modo normal não é tocada.
+
+E o sheet do Vault Q&A voltou a encostar na borda: no fullscreen ele usava
+`max(--keyboard-height, --axxa-status-bar-clearance)`, mas não existe navbar
+pra compensar ali — e a var guarda a ÚLTIMA altura medida da navbar, então o
+sheet ficava boiando acima do fim da tela. Agora, no fullscreen, só o teclado
+entra na conta (`left/right: 0` explícitos junto). O clearance também passou a
+ser remedido quando um setting muda, porque ligar/desligar o fullscreen
+esconde/mostra a navbar e a medida ficava velha.
+
+Medido no harness (viewport 412×915, teclado 320): chat/agent com o composer
+terminando em 577 (18px acima do teclado, que começa em 595), Q&A colado em
+595, e com o teclado fechado Q&A em 915 (borda real) ocupando 0→412.

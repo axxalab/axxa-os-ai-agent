@@ -180,8 +180,15 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
 body.is-mobile .workspace-drawer.axxa-fullscreen {
   width: 100vw !important;
   max-width: 100vw !important;
-  height: 100vh !important;
-  height: 100dvh !important;
+  /* Menos a altura do teclado (v0.1.254): o composer de chat/agent é `absolute`
+     dentro da .axxa-root, então só sobe se a CAIXA encolher — e o Obsidian
+     mobile não encolhe a viewport, ele publica `--keyboard-height` no <html> e
+     deixa o teclado por cima. Como aqui a altura passou a ser NOSSA (100dvh),
+     era ela que segurava o composer atrás do teclado. Descontando, canvas e
+     composer sobem juntos e as últimas mensagens não ficam escondidas. O Vault
+     Q&A escapava do bug por ser `fixed` e já consumir a var. */
+  height: calc(100vh - var(--keyboard-height, 0px)) !important;
+  height: calc(100dvh - var(--keyboard-height, 0px)) !important;
 }
 /* Propaga a viewport pela cadeia de containers até a view da AXXA. */
 body.is-mobile
@@ -1321,6 +1328,19 @@ body.is-mobile .axxa-root .axxa-composer[data-mode="vault-qa"] {
     var(--keyboard-height, 0px),
     var(--axxa-status-bar-clearance, 0px)
   );
+}
+/* FULLSCREEN: não existe navbar pra compensar, então o clearance NÃO entra na
+   conta — só o teclado. Era ele que deixava o sheet flutuando acima da borda
+   (a var guarda a última altura medida da navbar). E left/right 0 explícitos
+   garantem o sheet de ponta a ponta mesmo se alguma regra de largura do
+   composer base vencer. v0.1.254 */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .axxa-root
+  .axxa-composer[data-mode="vault-qa"] {
+  left: 0;
+  right: 0;
+  bottom: var(--keyboard-height, 0px);
 }
 .axxa-composer-card[data-mode="vault-qa"] {
   gap: 16px;

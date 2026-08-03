@@ -849,6 +849,13 @@ export default class AxxaPlugin extends Plugin {
     // Atualiza quando o layout muda (mostrar/esconder navbar, popout, etc)
     this.registerEvent(this.app.workspace.on("layout-change", update));
     this.registerEvent(this.app.workspace.on("resize", update));
+    // ...e quando um setting muda: ligar/desligar o fullscreen esconde/mostra a
+    // navbar, e sem esta medida a var guardava a altura ANTIGA — o sheet do
+    // Vault Q&A ficava boiando acima da borda. O toggle roda no mesmo tick que
+    // aplica as classes, então medimos no frame seguinte. v0.1.254
+    this.settingsListeners.add(() =>
+      window.requestAnimationFrame(() => update())
+    );
   }
 
   /**
