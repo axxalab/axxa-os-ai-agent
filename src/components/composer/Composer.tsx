@@ -198,21 +198,28 @@ function AttachmentGenericChip({
   icon,
   name,
   tone,
+  hint,
   onRemove,
   removeLabel,
 }: {
   icon: string;
   name: string;
   tone: "note" | "pdf" | "audio";
+  /** Aviso do chip (ex.: anexo que ainda não vai pro modelo). */
+  hint?: string;
   onRemove: () => void;
   removeLabel: string;
 }) {
   return (
-    <div className={"axxa-attachment-chip axxa-attachment-chip-" + tone}>
+    <div
+      className={"axxa-attachment-chip axxa-attachment-chip-" + tone}
+      title={hint || undefined}
+    >
       <span className="axxa-attachment-icon-wrap">
         <Icon name={icon} />
       </span>
       <span className="axxa-attachment-name">{name}</span>
+      {hint && <span className="axxa-attachment-hint">{hint}</span>}
       <button
         type="button"
         className="axxa-attachment-remove"
@@ -1230,6 +1237,15 @@ export function Composer({
                 icon={attachmentIcon(att)}
                 name={att.name}
                 tone={att.kind}
+                // Honestidade: pdf/áudio ficam no chip mas o conteúdo ainda não
+                // é enviado ao modelo — o chip diz isso, sem esperar o envio.
+                hint={
+                  att.kind === "pdf"
+                    ? t.composer.pdfKeptNote
+                    : att.kind === "audio"
+                    ? t.composer.audioKeptNote
+                    : undefined
+                }
                 onRemove={() => onRemoveAttachment?.(att.id)}
                 removeLabel={t.composer.attachImageRemoveLabel}
               />

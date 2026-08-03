@@ -63,10 +63,28 @@ cross-check), 77-disclosure (nota honesta de que custos de geração de
 imagem/áudio não entram no agregado), 88 (tap no orb durante 'thinking'
 interrompe a geração). **Total: 91/93 P1 implementados.**
 
-**P1 pendentes (2 — decisão de produto)**: 41 (caminho Ollama no
-onboarding) e 45-final (preço + URL da loja do Pro). Backlog documentado:
-77-completo (contabilizar custo de geração no aggregate — feature L; o
-disclosure honesto já está no lugar).
+**P1 pendentes (1 — decisão de produto)**: 45-final (preço + URL da loja do
+Pro). Backlog documentado: 77-completo (contabilizar custo de geração no
+aggregate — feature L; o disclosure honesto já está no lugar).
+
+**Lote de polimento (release 0.1.247)** — 5 pendências fechadas:
+- **NOV-03 / P1-41** ✅ — bloco "Start free, no card" na NewChatScreen (só
+  quando NENHUM provider tem key): Gemini free tier · OpenRouter free ·
+  Ollama local, cada rota selecionando o provider e abrindo as Settings. As
+  chaves i18n órfãs (`freeStartTitle`/`freeStartSub`/`trustLine`) ganharam
+  consumidor e o README parou de prometer o que a UI não fazia.
+- **CHT-12 (PDF)** 🟡 — o anexo continua sem ir pro wire, mas parou de
+  enganar: aviso no momento do anexo, aviso no chip e linha persistida na
+  mensagem (`> 📄 arquivo.pdf — not sent to the AI yet`), mesmo tratamento
+  honesto que o áudio já tinha. O envio real virá num lote próprio.
+- **SKL-03** ✅ — watcher do vault com debounce de 600ms recarrega as skills
+  ao criar/editar/renomear/apagar `.md` na pasta configurada.
+- **CHT-15 (ModelArena)** ✅ — decidido REMOVER: handler órfão
+  (`handleArenaConfirm`) e bloco i18n `arena` saíram; docs/FEATURES.md agora
+  diz que a arena está no backlog em vez de anunciá-la como entregue.
+- **MOB-01 (fullscreen)** ✅ — entregue no 0.1.242→0.1.246 (v3: toggle no menu
+  do header, 100vw × 100dvh, escopado ao drawer direito). Status abaixo
+  mantido só como histórico da auditoria.
 
 ## 1. Método
 
@@ -100,11 +118,11 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 **NOV-02** ✅ — Como novato, quero que minha API key fique no keychain do SO para não vazar via Obsidian Sync ou backup do vault.
 
-**NOV-03** 🟡 — Como novato sem cartão, quero ver destacado o caminho grátis (Gemini free tier, modelos free do OpenRouter, Ollama local) para experimentar sem gastar.
-> **Status parcial:** As chaves i18n do bloco free existem mas estão ÓRFÃS (src/i18n/en-us.ts:406-409 freeStartTitle/freeStartSub/trustLine — grep sem nenhum uso em src/); o onboarding só menciona Ollama de passagem (en-us.ts:590-591). A StarterScreen que destacava isso foi removida (src/components/_shared/providersMeta.ts:3). README.md:55 promete.
-> - [ ] O onboarding/nova conversa destaca explicitamente as 3 rotas grátis
-> - [ ] Um toque leva à configuração da rota escolhida
-> - [ ] README ('Start free, no credit card') é cumprido na UI
+**NOV-03** ✅ *(resolvido em 0.1.247; era 🟡)* — Como novato sem cartão, quero ver destacado o caminho grátis (Gemini free tier, modelos free do OpenRouter, Ollama local) para experimentar sem gastar.
+> **Status resolvido:** bloco "Start free, no card" na NewChatScreen (src/components/chat/NewChatScreen.tsx), visível só enquanto NENHUM provider tem credencial. As 3 rotas viraram botões que selecionam o provider e abrem as Settings; as chaves i18n órfãs (freeStartTitle/freeStartSub/trustLine) finalmente têm consumidor.
+> - [x] O onboarding/nova conversa destaca explicitamente as 3 rotas grátis
+> - [x] Um toque leva à configuração da rota escolhida
+> - [x] README ('Start free, no credit card') é cumprido na UI
 
 **NOV-04** ✅ — Como novato, quero um erro acionável ao enviar sem key para saber exatamente como resolver.
 
@@ -134,25 +152,22 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 **CHT-11** ✅ — Como usuário diário, quero anexar notas do vault (via [[, @ ou picker) para dar contexto ao modelo.
 
-**CHT-12** 🔴 — Como usuário diário, quero anexar PDF (e áudio) e ter o conteúdo realmente enviado ao modelo.
-> **Status quebrado:** A UI aceita e mostra o chip (src/views/AxxaApp.tsx:1748-1763, PlusModal 1860-1869), mas o anexo NUNCA vai pro wire: comentário 'pdf/audio passam como meta (ignorados no wire por enquanto)' (AxxaApp.tsx:637-640) e o conversor de mensagens só serializa imagens (src/providers/_shared.ts:74-78). O usuário anexa um PDF, o modelo responde sem tê-lo visto — engano silencioso.
-> - [ ] Chip de PDF no composer com preview e remoção
+**CHT-12** 🟡 *(parcial em 0.1.247; era 🔴)* — Como usuário diário, quero anexar PDF (e áudio) e ter o conteúdo realmente enviado ao modelo.
+> **Status parcial:** o conteúdo ainda NÃO vai pro wire (src/providers/_shared.ts só serializa imagem), mas o engano silencioso acabou: ao anexar, um Notice avisa que o conteúdo não é enviado; o chip repete o aviso; e no envio a mensagem guarda a linha `> 📄 arquivo.pdf — not sent to the AI yet` (src/components/_shared/attachmentNotes.ts), que persiste no .md junto com o wikilink do áudio. Envio real (bloco `document` nativo dos providers) fica pro próximo lote.
+> - [x] Chip de PDF no composer com preview e remoção
 > - [ ] O conteúdo do PDF chega ao provider (texto extraído ou bloco nativo)
-> - [ ] Se o modelo não suporta, o usuário é avisado ao anexar
+> - [x] Se o modelo não suporta, o usuário é avisado ao anexar
 
-**CHT-13** ⬜ — Como usuário PT-BR, quero a UI em português (auto-detectada pelo locale) como o README promete.
+**CHT-13** ⬜ *(README corrigido em 0.1.247 — a UI em PT-BR continua no roadmap)* — Como usuário PT-BR, quero a UI em português (auto-detectada pelo locale).
 > **Status faltando:** src/main.ts:939-940 força language='en-us' e migra quem estava em pt-br ('PT-BR removido (base 1.0)'); src/i18n/ contém apenas en-us.ts + index.ts. README.md:26 e 205 ainda prometem UI bilíngue — ou volta o pt-br ou o README precisa parar de prometer.
 > - [ ] Locale pt-BR carrega strings pt-br
 > - [ ] Setting de idioma permite alternar PT/EN
-> - [ ] README ('Bilingual UI — auto-detected') condiz com o produto
+> - [x] README condiz com o produto (a promessa de UI bilíngue virou "English UI · PT-BR no roadmap", EN e PT)
 
 **CHT-14** ✅ — Como usuário de modelos reasoning (R1, o-series, extended thinking), quero ver o raciocínio num painel colapsável para auditar a resposta.
 
-**CHT-15** ⬜ — Como usuário diário, quero o seletor ModelArena (character select com stats por modelo) anunciado como diferencial #5.
-> **Status faltando:** docs/FEATURES.md:31-35 anuncia; restou só o handler órfão handleArenaConfirm (src/views/AxxaApp.tsx:1368-1374, não referenciado no JSX) e strings i18n (src/i18n/en-us.ts:229). A StarterScreen que a hospedava foi removida (src/components/_shared/providersMeta.ts:3). Decidir: reintroduzir na NewChatScreen ou remover handler+i18n+FEATURES.md.
-> - [ ] Arena navegável entre providers com ficha de 6 barras
-> - [ ] Confirmação define provider+modelo juntos
-> - [ ] Acessível a partir da nova conversa
+**CHT-15** ⬜ *(decidido em 0.1.247: fica no backlog)* — Como usuário diário, quero o seletor ModelArena (character select com stats por modelo) anunciado como diferencial #5.
+> **Status decidido:** a decisão pendente foi tomada — REMOVER o resíduo em vez de reintroduzir a tela agora. Saíram o handler órfão handleArenaConfirm e o bloco i18n `arena`; docs/FEATURES.md deixou de anunciar a arena como entregue e passou a listá-la como backlog. A UI de seleção segue no ModelPicker (abas + favoritos + hot + famílias com cor).
 
 **NAV-01** ✅ — Como usuário, quero uma gaveta lateral com módulos de nova conversa por modo, navegação (Conversas/Projects/Media/Statistics/Profile) e badge de plano.
 
@@ -184,11 +199,11 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 ### usuário mobile (3/4 ok)
 
-**MOB-01** ⬜ — Como usuário mobile, quero o modo fullscreen (drawer 100vw sem chrome do Obsidian) para uma experiência de app imersiva.
-> **Status faltando:** Temporariamente desativado: o runtime não aplica mais a classe (src/views/AxxaApp.tsx:134-135 'Fullscreen REMOVIDO... v3 virá depois'), mas o setting está reservado por decisão de produto (src/main.ts:160-164 'volta no futuro — jul/2026') e o plano técnico existe em docs/MOBILE-FULLSCREEN.md:81-129. Manter o setting e a classe; não remover.
-> - [ ] Toggle mobileFullscreen aplica .axxa-fullscreen no drawer
-> - [ ] Esconde header do drawer e compensa safe-area
-> - [ ] Default OFF, opt-in explícito
+**MOB-01** ✅ *(resolvido em 0.1.242→0.1.246; era ⬜ na auditoria)* — Como usuário mobile, quero o modo fullscreen (drawer 100vw sem chrome do Obsidian) para uma experiência de app imersiva.
+> **Status resolvido:** fullscreen v3 entregue — toggle no menu do header, 100vw × 100dvh, escopado ao drawer DIREITO (não vaza pro esquerdo) e escondendo o chrome nativo (view-header + tab-options). Default OFF, opt-in explícito.
+> - [x] Toggle mobileFullscreen aplica .axxa-fullscreen no drawer
+> - [x] Esconde header do drawer e compensa safe-area
+> - [x] Default OFF, opt-in explícito
 
 **MOB-02** ✅ — Como usuário mobile, quero layout que respeite a navbar/teclado e a tela acesa durante a geração para o stream não congelar.
 
@@ -232,10 +247,10 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 **SKL-02** ✅ — Como autor de skills, quero uma tela pra explorar/usar skills e exemplos semeados para aprender o formato.
 
-**SKL-03** ⬜ — Como autor de skills, quero que uma skill recém-criada/editada no vault apareça como /comando sem recarregar o plugin.
-> **Status faltando:** reloadSkills só roda no onload e em ações de Settings (src/main.ts:705, src/components/settings/AxxaSettingsTab.ts:2214,2239); não há vault.on('modify'/'create') pra skillsPath (src/main.ts:836-857 só observa pro auto-reindex do RAG). Autor edita a skill e o slash-command continua com o template velho até reabrir o Obsidian.
-> - [ ] Criar/editar/renomear .md na pasta de skills recarrega a lista automaticamente
-> - [ ] O /comando reflete o corpo atualizado no próximo uso
+**SKL-03** ✅ *(resolvido em 0.1.247; era ⬜)* — Como autor de skills, quero que uma skill recém-criada/editada no vault apareça como /comando sem recarregar o plugin.
+> **Status resolvido:** setupSkillsWatcher (src/main.ts) registra modify/create/delete/rename e, quando o .md está dentro de settings.skillsPath (isSkillFilePath, coberto por teste), agenda reloadSkills com debounce de 600ms. O rename também checa o caminho ANTIGO, então tirar uma nota da pasta atualiza a lista. O reload notifica os listeners → a árvore React re-renderiza sozinha.
+> - [x] Criar/editar/renomear .md na pasta de skills recarrega a lista automaticamente
+> - [x] O /comando reflete o corpo atualizado no próximo uso
 
 ### usuário de projects (2/2 ok)
 

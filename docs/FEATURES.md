@@ -28,11 +28,12 @@
    por modelo com **overlay do catálogo OpenRouter** (auto-fetch): o gating de
    Agent/vision fica mais preciso conforme o uso. Curadoria por provider com
    filtros, fetch da API, badges e preços.
-5. **ModelArena** — seletor de modelo estilo "character select" de luta: arena
-   temática por provider, ficha de status com 6 barras (Coding/Thinking/Tooling/
-   Research/Speed/Vision) curadas de benchmarks reais, ranking "hot", famílias
-   com identidade visual (Opus, GPT-5, Mythos…), roster em 3 tiers (Hall of
-   Fame/Creators/Soldiers), SCAN de modelos novos.
+5. **Seletor de modelo com identidade** — ModelPicker com abas por categoria,
+   favoritos, ranking "hot" atualizado semanalmente e famílias com cor própria
+   (Opus, GPT-5, Mythos…) vindas de `modelFamily`. A **ModelArena** (o
+   "character select" com ficha de 6 barras e roster em 3 tiers) saiu na
+   limpeza pós-DS-1.0 junto com a StarterScreen e está no backlog — não existe
+   na UI hoje.
 6. **Sistema de Effort** — 5 níveis (🐢→🚀) que controlam TUDO num knob só:
    max_tokens, temperatura, turnos do agente, top-K do RAG, tool retry,
    paralelismo, reserva de contexto — cada nível 100% editável em Settings.
@@ -108,8 +109,9 @@
 ### 5. Seleção de modelo
 - **ModelPicker**: card do modelo + tabs por categoria (estilo gaveta) + aba
   Favoritos + lista; favoritar com bookmark.
-- **ModelArena**: ver diferencial #5 — navegação entre providers `< >`, dupla
-  ID visual (host + vendor do modelo), animação sai/entra, stats de game.
+- **ModelArena**: *backlog* — a tela não existe na UI atual (ver diferencial
+  #5). O que sobreviveu dela: famílias de modelo com cor/identidade e o
+  ranking "hot".
 - Card de info com pills de capability, specs (contexto, preço/1M, modalidades)
   e "Fetch info" (enriquecimento via OpenRouter).
 - **Session lock**: trocou de modelo após a 1ª mensagem → nova conversa
@@ -192,5 +194,5 @@ Connections) entregam *chat + um provider + talvez RAG simples*. O AXXA OS
 cobre as **5 apostas** (citações com fonte, agente com diff-approval,
 onboarding grátis, skills .md, local-first) **mais** a camada de produto
 (usage/billing real, effort, voice, projects, monetização) **mais** uma
-identidade visual própria (DS, arena, motion). O diferencial não é uma feature
+identidade visual própria (DS, famílias de modelo, motion). O diferencial não é uma feature
 — é o conjunto operando como um OS de IA dentro do vault.

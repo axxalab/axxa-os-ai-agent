@@ -7,6 +7,9 @@ export const EN_US = {
     audioKeptNote: "audio saved in your vault (not sent to the AI yet)",
     audioAttachedNotice:
       "Audio saved to your vault and linked in the message. Heads-up: audio isn't sent to the AI yet.",
+    pdfKeptNote: "PDF attached locally (not sent to the AI yet)",
+    pdfAttachedNotice:
+      "PDF attached to the message. Heads-up: its content isn't sent to the AI yet — paste the relevant text or attach a note instead.",
     attachImageNoneValid: "No valid image was attached.",
     attachImageTooLarge: "Image too large (max 20MB).",
     attachmentsLabel: "Pending attachments",
@@ -236,6 +239,11 @@ export const EN_US = {
     vaultQaSub: "Ask anything about your notes.",
     agentTitle: "New Agent",
     agentSub: "Tell me what to do — I read and edit your vault.",
+    // Caminho grátis (NOV-03) — só aparece quando NENHUM provider tem key.
+    freeRouteGemini: "free tier",
+    freeRouteOpenrouter: "free models",
+    freeRouteOllama: "local, offline",
+    freeRouteHint: (provider: string) => `Set up ${provider}`,
   },
 
   // Redesigned model selector (category tabs + modal + favorites). v0.1.222
@@ -249,25 +257,10 @@ export const EN_US = {
     empty: "No models in this category.",
   },
 
-  // "Mortal Kombat" model selector (ModelArena). v0.1.223
-  arena: {
-    scan: "Scan new",
-    scanning: "Scanning…",
-    scanNone: "No new models found.",
-    scanFound: (n: number) =>
-      `${n} new ${n === 1 ? "fighter" : "fighters"} on the roster!`,
-    scanErr: "Scan failed (check the provider API key).",
-    close: "Close",
-    prev: "Previous",
-    next: "Next",
-    prevProvider: "Previous provider",
-    nextProvider: "Next provider",
-    choose: "Choose",
-    power: "Power",
-    hall: "Hall of Fame",
-    creators: "Creators",
-    soldiers: "Soldiers",
-  },
+  // (ModelArena removida na limpeza pós-DS-1.0 — a tela que consumia estas
+  // strings saiu junto com a StarterScreen. Bloco removido em 0.1.247 para o
+  // dicionário refletir só o que existe na UI; o histórico do git guarda o
+  // texto original se a arena voltar.)
 
   account: {
     label: "Your account",

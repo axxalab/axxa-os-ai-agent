@@ -49,6 +49,10 @@ import {
 } from "../entitlements";
 import { AppContext } from "../components/_shared/AppContext";
 import {
+  keptAttachmentLines,
+  withKeptAttachmentNotes,
+} from "../components/_shared/attachmentNotes";
+import {
   ChatActionsContext,
   type ChatActions,
 } from "../components/chat/ChatActionsContext";
@@ -753,18 +757,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     // User msg salva sem attachments no store (pra simplicidade do auto-save .md).
     // O propagation pro provider acontece via parâmetro adicional pra streamReply/runAgentTurn.
-    // EXCEÇÃO honesta (auditoria jul/2026): áudio ainda não vai pro modelo —
-    // sem isto o chip sumia no send e a gravação desaparecia da conversa.
-    // O wikilink persiste na mensagem (e no .md) até a transcrição real chegar.
-    const audioLinks = pendingAttachments
-      .filter((p) => p.attachment.type === "audio")
-      .map((p) => {
-        const a = p.attachment as { path: string };
-        return `> 🎙 [[${a.path}|${p.name}]] — ${t.composer.audioKeptNote}`;
-      });
+    // EXCEÇÃO honesta (auditoria jul/2026): áudio e PDF ainda não vão pro modelo —
+    // sem isto o chip sumia no send e o anexo desaparecia da conversa.
+    // A nota persiste na mensagem (e no .md) até o envio real chegar.
+    const keptLines = keptAttachmentLines(
+      pendingAttachments.map((p) => ({
+        type: p.attachment.type,
+        path: (p.attachment as { path?: string }).path,
+        name: p.name,
+      })),
+      { audio: t.composer.audioKeptNote, pdf: t.composer.pdfKeptNote }
+    );
     addMessage({
       type: "user",
-      content: audioLinks.length ? `${text}\n\n${audioLinks.join("\n")}` : text,
+      content: withKeptAttachmentNotes(text, keptLines),
     });
     setPendingAttachments([]);
 
@@ -1652,14 +1658,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await setModelForProvider(providerSel, m);
   };
 
-  // Arena: confirma provider + modelo JUNTOS (a arena navega entre providers).
-  // v0.1.224
-  const handleArenaConfirm = async (p: string, m: string) => {
-    setProviderSel(p);
-    plugin.settings.defaultProvider = p;
-    await setModelForProvider(p, m); // já faz saveSettings
-  };
-
   // Switcher do header (ref: Claude iOS 16). Troca o modelo. Se a sessão já
   // está locked (continuidade), abrir outro modelo inicia uma NOVA conversa
   // nele — preservando a sessão atual intacta.
@@ -2185,6 +2183,11 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                   }
                 })();
                 setPendingAttachments((prev) => [...prev, entry]);
+                // Honestidade (auditoria): o conteúdo do PDF ainda não vai pro
+                // modelo — avisa na hora do anexo, como já é feito com áudio.
+                if (picked.type === "pdf") {
+                  new Notice(t.composer.pdfAttachedNotice);
+                }
               }}
             />
           )}

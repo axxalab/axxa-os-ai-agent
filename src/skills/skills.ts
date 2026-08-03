@@ -50,13 +50,28 @@ function parseSkillFile(path: string, raw: string): Skill | null {
   };
 }
 
+/** Prefixo normalizado da pasta de skills (sempre terminando em "/"). */
+export function skillsFolderPrefix(folderPath: string): string {
+  const folder = normalizePath(folderPath || "axxa-ai/skills");
+  return folder.endsWith("/") ? folder : folder + "/";
+}
+
+/**
+ * O caminho é uma nota de skill? Usado pelo watcher do vault (SKL-03) pra só
+ * recarregar quando o .md mexido está DENTRO da pasta de skills — sem isso,
+ * qualquer edição no vault dispararia um reload da lista.
+ */
+export function isSkillFilePath(path: string, folderPath: string): boolean {
+  if (!path || !path.toLowerCase().endsWith(".md")) return false;
+  return normalizePath(path).startsWith(skillsFolderPrefix(folderPath));
+}
+
 /** Lê todos os skills (.md) da pasta. Ordena por nome. */
 export async function loadSkills(
   app: App,
   folderPath: string
 ): Promise<Skill[]> {
-  const folder = normalizePath(folderPath || "axxa-ai/skills");
-  const prefix = folder.endsWith("/") ? folder : folder + "/";
+  const prefix = skillsFolderPrefix(folderPath);
   const files = app.vault
     .getMarkdownFiles()
     .filter((f) => f.path.startsWith(prefix));

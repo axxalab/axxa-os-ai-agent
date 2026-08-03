@@ -27,7 +27,12 @@ import {
   fetchAndCacheModelInfo,
   type EnrichedModelInfo,
 } from "./providers/modelInfoStore";
-import { loadSkills, seedExampleSkills, type Skill } from "./skills/skills";
+import {
+  loadSkills,
+  seedExampleSkills,
+  isSkillFilePath,
+  type Skill,
+} from "./skills/skills";
 import type { Project } from "./projects";
 import type {
   EffortConfig,
@@ -326,6 +331,8 @@ export default class AxxaPlugin extends Plugin {
 
   /** Skills carregados da pasta (settings.skillsPath) — viram slash-commands. */
   skills: Skill[] = [];
+  /** Debounce do hot reload das skills (watcher do vault). v0.1.247 */
+  private skillsReloadTimer: number | null = null;
 
   // ============================================================
   // Cache ÚNICO de summaries de conversa (v0.1.175) — UMA fonte da verdade
@@ -772,6 +779,9 @@ export default class AxxaPlugin extends Plugin {
     // Auto-reindex do RAG (opt-in) — re-embeda notas modificadas em background
     this.setupAutoReindex();
 
+    // Skills editadas no vault recarregam sozinhas (SKL-03)
+    this.setupSkillsWatcher();
+
     // Abre na sidebar direita quando o Obsidian termina de montar o layout.
     this.app.workspace.onLayoutReady(() => {
       this.activateView();
@@ -790,6 +800,10 @@ export default class AxxaPlugin extends Plugin {
     if (this.chatIndexWriteTimer !== null) {
       window.clearTimeout(this.chatIndexWriteTimer);
       this.chatIndexWriteTimer = null;
+    }
+    if (this.skillsReloadTimer !== null) {
+      window.clearTimeout(this.skillsReloadTimer);
+      this.skillsReloadTimer = null;
     }
     this.autoReindexController?.abort();
     this.autoReindexController = null;
@@ -860,6 +874,39 @@ export default class AxxaPlugin extends Plugin {
     this.registerEvent(this.app.vault.on("create", schedule));
     this.registerEvent(this.app.vault.on("delete", schedule));
     this.registerEvent(this.app.vault.on("rename", schedule));
+  }
+
+  /**
+   * Hot reload das skills (SKL-03). Criar/editar/renomear/apagar um .md dentro
+   * de settings.skillsPath recarrega a lista sozinho — antes o autor editava a
+   * skill e o /comando continuava com o corpo velho até reabrir o Obsidian.
+   *
+   * Debounce de 600ms: salvar no Obsidian dispara `modify` em rajada, e ler a
+   * pasta inteira a cada tecla seria desperdício. O rename entrega o caminho
+   * ANTIGO no 2º argumento — checa os dois pra pegar a saída da pasta também.
+   */
+  private setupSkillsWatcher() {
+    const schedule = (file: TAbstractFile, oldPath?: string) => {
+      const path = file?.path ?? "";
+      const inFolder =
+        isSkillFilePath(path, this.settings.skillsPath) ||
+        (!!oldPath && isSkillFilePath(oldPath, this.settings.skillsPath));
+      if (!inFolder) return;
+      if (this.skillsReloadTimer !== null) {
+        window.clearTimeout(this.skillsReloadTimer);
+      }
+      this.skillsReloadTimer = window.setTimeout(() => {
+        this.skillsReloadTimer = null;
+        void this.reloadSkills();
+      }, 600);
+    };
+
+    this.registerEvent(this.app.vault.on("modify", (f) => schedule(f)));
+    this.registerEvent(this.app.vault.on("create", (f) => schedule(f)));
+    this.registerEvent(this.app.vault.on("delete", (f) => schedule(f)));
+    this.registerEvent(
+      this.app.vault.on("rename", (f, oldPath) => schedule(f, oldPath))
+    );
   }
 
   /** Reindex incremental em background (re-embeda só o que mudou via hash). */

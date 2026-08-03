@@ -2,7 +2,7 @@
 
 > **Your AI workspace, native to Obsidian.** Chat, ask your vault, and let an agent act on your notes — across 6 LLM providers, with your own API keys. Mobile-first.
 
-[![Version](https://img.shields.io/badge/version-0.1.228-6c5ce7)](manifest.json)
+[![Version](https://img.shields.io/badge/version-0.1.247-6c5ce7)](manifest.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Obsidian](https://img.shields.io/badge/Obsidian-1.11.4%2B-7c3aed)](https://obsidian.md)
 [![Mobile](https://img.shields.io/badge/mobile-supported-success)](#)
@@ -23,7 +23,7 @@ AXXA OS — AI Agent turns Obsidian into a full AI workspace. It feels like a na
 - **Real cost tracking** — a Usage dashboard estimates spend in USD per provider, model, mode, and day, with PDF / Markdown / HTML export.
 - **Everything is Markdown** — chats, generated media, and skills are saved as `.md` files in your vault. Portable, versionable, yours.
 - **Mobile-first** — built for the Obsidian mobile drawer first: edge-to-edge composer, hold-to-record audio, haptics, keyboard-aware layout, screen wake-lock during generation.
-- **Bilingual UI** — Portuguese (BR) and English, auto-detected from your locale.
+- **English UI** — the interface ships in English (this README is also in Portuguese). A Portuguese UI is on the roadmap.
 
 ### 📸 Screenshots
 
@@ -167,8 +167,8 @@ When you use a third-party provider, your data is subject to **that provider's**
 
 ## 🗺️ Roadmap
 
-- **Now:** validation & stabilization across all 6 providers; real screenshots.
-- **Next:** Coder mode with diff previews; Skills (custom system prompts as `.md`); Projects (link chats to `[[projects]]`); Whisper audio transcription.
+- **Now:** validation & stabilization across all 6 providers; real screenshots. (Skills as `.md` and Projects already shipped.)
+- **Next:** sending attached PDFs and recorded audio to the model (today they're kept in the chat but the content isn't sent — the UI says so); Coder mode with diff previews; Portuguese UI.
 - **Later:** MCP connectors (Notion, Linear, GitHub, …); optional Premium (cross-device sync, automatic media transcription).
 
 ---
@@ -202,7 +202,7 @@ O AXXA OS — AI Agent transforma o Obsidian num workspace de IA completo. Parec
 - **Controle de custo real** — painel de Uso estima o gasto em USD por provedor, modelo, modo e dia, com export em PDF / Markdown / HTML.
 - **Tudo é Markdown** — conversas, mídia gerada e skills viram arquivos `.md` no seu vault. Portátil, versionável, seu.
 - **Mobile-first** — feito pro drawer do Obsidian mobile primeiro: composer edge-to-edge, gravação de áudio segurando, háptico, layout que respeita o teclado, wake-lock de tela durante a geração.
-- **Interface bilíngue** — Português (BR) e Inglês, detectados pelo locale.
+- **Interface em inglês** — a UI do plugin é em inglês (este README também está em português). A UI em PT-BR está no roadmap.
 
 ## 🚀 Instalação
 
