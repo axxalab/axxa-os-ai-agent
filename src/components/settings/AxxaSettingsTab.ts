@@ -2101,6 +2101,40 @@ export class AxxaSettingsTab extends PluginSettingTab {
         this.attachFolderAutocomplete(text.inputEl);
       });
 
+    // Transcrição do áudio anexado — o que faz o modelo de fato "ouvir" a
+    // gravação. Fica junto da pasta de gravações porque é o mesmo fluxo. v0.1.249
+    new Setting(parent)
+      .setName(t.settings.transcribeAudio)
+      .setDesc(t.settings.transcribeAudioDesc)
+      .addToggle((tg) =>
+        tg
+          .setValue(this.plugin.settings.transcribeAudio)
+          .onChange(async (value) => {
+            this.plugin.settings.transcribeAudio = value;
+            await this.plugin.saveSettings();
+            this.display();
+          })
+      );
+
+    if (this.plugin.settings.transcribeAudio) {
+      new Setting(parent)
+        .setName(t.settings.transcribeModel)
+        .setDesc(t.settings.transcribeModelDesc)
+        .addDropdown((dd) =>
+          dd
+            .addOption("gpt-4o-mini-transcribe", "gpt-4o-mini-transcribe")
+            .addOption("gpt-4o-transcribe", "gpt-4o-transcribe")
+            .addOption("whisper-1", "whisper-1")
+            .setValue(
+              this.plugin.settings.transcribeModel || "gpt-4o-mini-transcribe"
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.transcribeModel = value;
+              await this.plugin.saveSettings();
+            })
+        );
+    }
+
     new Setting(parent)
       .setName(t.settings.generationPath)
       .setDesc(t.settings.generationPathDesc)

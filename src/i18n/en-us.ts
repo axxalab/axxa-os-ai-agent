@@ -7,6 +7,14 @@ export const EN_US = {
     audioKeptNote: "audio saved in your vault (not sent to the AI yet)",
     audioAttachedNotice:
       "Audio saved to your vault and linked in the message. Heads-up: audio isn't sent to the AI yet.",
+    audioAttachedTranscribeNotice:
+      "Audio saved to your vault. It'll be transcribed and sent with your message.",
+    audioTranscriptNote: "transcript",
+    transcribing: "Transcribing audio…",
+    transcribeFailed: (detail: string) =>
+      detail
+        ? `Transcription failed (${detail}). The recording stays in the conversation, but the AI won't hear it.`
+        : "Transcription failed. The recording stays in the conversation, but the AI won't hear it.",
     pdfKeptNote: "PDF attached locally (this model can't read PDFs)",
     pdfSentNote: "PDF sent to the model",
     pdfAttachedNotice: (model: string) => `PDF attached — ${model} will read it.`,
@@ -881,6 +889,12 @@ export const EN_US = {
       `${n} skill${n === 1 ? "" : "s"} loaded`,
     recordingsPath: "Recordings folder",
     recordingsPathDesc: "Where audio recordings from the mic button are saved",
+    transcribeAudio: "Transcribe attached audio",
+    transcribeAudioDesc:
+      "Turns a recording into text (OpenAI Whisper) so the model actually hears it. Needs your OpenAI key; costs a fraction of a cent per minute. Off = the recording is only linked in the chat.",
+    transcribeModel: "Transcription model",
+    transcribeModelDesc:
+      "gpt-4o-mini-transcribe (default, cheapest), gpt-4o-transcribe or whisper-1.",
     generationPath: "Generation folder",
     generationPathDesc:
       "Where generated media (image/audio/video) is saved. Each output creates 2 files: the media + a .md sidecar with frontmatter (prompt, model, provider).",

@@ -49,6 +49,7 @@ import {
 } from "../entitlements";
 import { AppContext } from "../components/_shared/AppContext";
 import { prettyModelName } from "../providers/modelDescriptions";
+import { transcribeAudio } from "../providers/transcribe";
 import {
   keptAttachmentLines,
   withKeptAttachmentNotes,
@@ -765,22 +766,30 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     // com imagem re-tentava SEM a imagem, silenciosamente.
     lastSendAttachmentsRef.current = attachments;
 
+    // Áudio → TEXTO antes do envio (v0.1.249). O transcript entra no corpo da
+    // mensagem, então é literalmente o que o modelo lê — fim do "gravei, mandei
+    // e a IA ignorou". Falha de transcrição não derruba o envio: cai no aviso
+    // honesto de antes.
+    const transcripts = await transcribePendingAudio(pendingAttachments);
+
     // User msg salva sem attachments no store (pra simplicidade do auto-save .md).
     // O propagation pro provider acontece via parâmetro adicional pra streamReply/runAgentTurn.
-    // O rastro em texto sobrevive ao reload: recibo quando o PDF FOI enviado,
-    // aviso honesto quando o modelo não aceita (e sempre, no áudio — que ainda
-    // não vai pro wire). Sem isso o chip sumia no send e o anexo desaparecia.
+    // O rastro em texto sobrevive ao reload: transcript do áudio, recibo do PDF
+    // enviado, aviso honesto quando o modelo não aceita. Sem isso o chip sumia
+    // no send e o anexo desaparecia da conversa.
     const keptLines = keptAttachmentLines(
       pendingAttachments.map((p) => ({
         type: p.attachment.type,
         path: (p.attachment as { path?: string }).path,
         name: p.name,
         sent: p.attachment.type === "pdf" && !!caps.pdf,
+        transcript: transcripts.get(p.id),
       })),
       {
         audio: t.composer.audioKeptNote,
         pdf: t.composer.pdfKeptNote,
         pdfSent: t.composer.pdfSentNote,
+        audioTranscript: t.composer.audioTranscriptNote,
       }
     );
     addMessage({
@@ -1290,6 +1299,48 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }
     const draft = composerDraftRef.current.trim();
     handlePromptStarter(draft ? `${draft}\n\n${skill.body}` : skill.body);
+  };
+
+  /**
+   * Transcreve os áudios pendentes (VOZ-03). Devolve id do anexo → texto.
+   *
+   * Silenciosamente vazio quando o setting está off ou não há key OpenAI — e aí
+   * a mensagem cai no aviso honesto de sempre, sem inventar conteúdo. Uma falha
+   * por arquivo não cancela o envio nem os outros áudios: o usuário vê o Notice
+   * e a gravação continua na conversa. v0.1.249
+   */
+  const transcribePendingAudio = async (
+    pending: PendingAttachmentEntry[]
+  ): Promise<Map<string, string>> => {
+    const out = new Map<string, string>();
+    const audios = pending.filter((p) => p.attachment.type === "audio");
+    if (audios.length === 0) return out;
+    const apiKey = plugin.settings.openaiApiKey?.trim();
+    if (!plugin.settings.transcribeAudio || !apiKey) return out;
+
+    new Notice(t.composer.transcribing);
+    for (const p of audios) {
+      const path = (p.attachment as { path?: string }).path;
+      if (!path) continue;
+      try {
+        const buf = await plugin.app.vault.adapter.readBinary(path);
+        const text = await transcribeAudio({
+          apiKey,
+          model: plugin.settings.transcribeModel || "gpt-4o-mini-transcribe",
+          data: new Uint8Array(buf),
+          filename: path.split("/").pop() ?? "audio.webm",
+        });
+        if (text) out.set(p.id, text);
+      } catch (err) {
+        console.error("[axxa] transcrição falhou:", err);
+        new Notice(
+          t.composer.transcribeFailed(
+            err instanceof Error ? err.message : ""
+          )
+        );
+      }
+    }
+    return out;
   };
 
   // Salva o áudio gravado pelo hold-to-record no Vault e devolve o path
@@ -2035,9 +2086,15 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                   name: alias,
                 },
               ]);
-              // Honestidade (auditoria): áudio ainda não vai pro modelo —
-              // avisa na hora em vez de deixar o chip sumir no send.
-              new Notice(t.composer.audioAttachedNotice);
+              // O aviso diz a VERDADE do estado atual: com transcrição ligada
+              // (e key OpenAI), o áudio vira texto e é enviado; sem isso, fica
+              // só o wikilink na conversa. v0.1.249
+              new Notice(
+                plugin.settings.transcribeAudio &&
+                  plugin.settings.openaiApiKey?.trim()
+                  ? t.composer.audioAttachedTranscribeNotice
+                  : t.composer.audioAttachedNotice
+              );
             }}
             commands={axxaCommands}
             visibleChips={plugin.settings.composerChips}

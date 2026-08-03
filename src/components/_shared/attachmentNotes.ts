@@ -36,6 +36,9 @@ export interface KeptAttachment {
   name: string;
   /** O anexo FOI enviado ao modelo neste turno? (PDF, desde 0.1.248) */
   sent?: boolean;
+  /** Transcrição do áudio, quando houve (0.1.249). Vai junto no corpo da
+   *  mensagem — é ELA que o modelo lê. */
+  transcript?: string;
 }
 
 export interface KeptAttachmentLabels {
@@ -45,6 +48,8 @@ export interface KeptAttachmentLabels {
   pdf: string;
   /** Ex.: "PDF sent to the model". Usado quando o modelo aceita PDF. */
   pdfSent?: string;
+  /** Ex.: "transcript". Cabeçalho da linha quando o áudio foi transcrito. */
+  audioTranscript?: string;
 }
 
 /**
@@ -59,7 +64,21 @@ export function keptAttachmentLines(
   for (const att of attachments) {
     if (att.type === "audio") {
       const link = att.path ? `[[${att.path}|${att.name}]]` : att.name;
-      lines.push(`> 🎙 ${link} — ${labels.audio}`);
+      const transcript = att.transcript?.trim();
+      if (transcript) {
+        // O transcript entra DENTRO da citação: fica legível na conversa e,
+        // por estar no corpo da mensagem, é o que o modelo realmente lê.
+        const head = labels.audioTranscript
+          ? `> 🎙 ${link} — ${labels.audioTranscript}:`
+          : `> 🎙 ${link}:`;
+        const body = transcript
+          .split("\n")
+          .map((l) => `> ${l}`)
+          .join("\n");
+        lines.push(`${head}\n${body}`);
+      } else {
+        lines.push(`> 🎙 ${link} — ${labels.audio}`);
+      }
     } else if (att.type === "pdf") {
       // Enviado: a linha vira RECIBO (o .md guarda o que o modelo viu).
       // Não enviado: continua sendo o aviso honesto.

@@ -100,6 +100,19 @@ aggregate — feature L; o disclosure honesto já está no lugar).
 - 27 testes novos cobrindo data URLs, a capability por família de modelo, o
   shape dos 3 wires e a escolha de engine do OpenRouter.
 
+**Lote de polimento 3 (release 0.1.249)** — áudio gravado vira TEXTO:
+- **VOZ-03 / P0-01 (áudio)** ✅ — transcrição via OpenAI antes do envio; o
+  transcript entra no corpo da mensagem (o modelo lê de verdade) e fica no
+  .md. Multipart montado à mão porque o requestUrl do Obsidian — necessário
+  pra furar CORS no mobile — não aceita FormData.
+- Setting novo em Settings → pastas: `Transcribe attached audio` (on por
+  padrão, precisa da key OpenAI) + seletor do modelo de transcrição.
+- Falha de transcrição é degradação graciosa: Notice + o aviso honesto de
+  antes, sem cancelar o envio nem os outros anexos do turno.
+- 18 testes novos (420 no total): multipart byte a byte (inclusive binário
+  não-UTF8), mapa de mime por extensão, parsing do transcript e o contrato de
+  erro (no-key/invalid-key/rate-limit/arquivo grande/resposta vazia).
+
 ## 1. Método
 
 - **Inventário**: 49 user stories formais (10 personas) com critérios de aceite e
@@ -232,11 +245,11 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 **VOZ-02** ✅ — Como usuário de voz, quero ler qualquer resposta em voz alta (e usar TTS de nuvem quando configurado) para consumir respostas sem ler.
 
-**VOZ-03** 🟡 — Como usuário de voz, quero gravar áudio segurando o mic e ter esse áudio transcrito/entendido pelo modelo.
-> **Status parcial:** Gravar e salvar funciona (src/components/composer/Composer.tsx:722-814, src/views/AxxaApp.tsx:1004-1030), mas o áudio nunca chega ao modelo: só imagens vão pro wire (src/providers/_shared.ts:74-78) e transcrição não existe ('Not yet supported in AXXA' — src/providers/modelModality.ts:72; pipeline Whisper é 'sprint próprio' — src/rag/indexer.ts:10-11; README.md:171 lista Whisper como 'Next').
-> - [ ] Hold-to-record grava via MediaRecorder e salva em recordingsPath
-> - [ ] O áudio anexado é transcrito (Whisper) ou enviado a modelo que entende áudio
-> - [ ] O chat responde sobre o conteúdo do áudio
+**VOZ-03** ✅ *(resolvido em 0.1.249; era 🟡)* — Como usuário de voz, quero gravar áudio segurando o mic e ter esse áudio transcrito/entendido pelo modelo.
+> **Status resolvido:** o áudio anexado é transcrito antes do envio (OpenAI /v1/audio/transcriptions, mesma key do cloud TTS) e o transcript entra no CORPO da mensagem — ou seja, é literalmente o que o modelo lê, e fica salvo no .md junto do wikilink da gravação. Transporte via requestUrl com multipart montado à mão (FormData não sobrevive ao requestUrl), o que faz funcionar também no WebView mobile. Setting `transcribeAudio` (on por padrão, exige key OpenAI) + escolha do modelo (gpt-4o-mini-transcribe / gpt-4o-transcribe / whisper-1). Falha de transcrição não derruba o envio: volta pro aviso honesto e avisa por Notice.
+> - [x] Hold-to-record grava via MediaRecorder e salva em recordingsPath
+> - [x] O áudio anexado é transcrito (Whisper) ou enviado a modelo que entende áudio
+> - [x] O chat responde sobre o conteúdo do áudio
 
 ### gerador de imagem (2/2 ok)
 

@@ -103,6 +103,12 @@ interface AxxaSettings {
   reducedMotionMobile: boolean;
   /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
   recordingsPath: string;
+  /** Transcreve o áudio anexado (OpenAI /v1/audio/transcriptions) antes de
+   *  enviar, pra o modelo receber o CONTEÚDO da gravação e não só um link.
+   *  Precisa da key OpenAI (a mesma do cloud TTS). v0.1.249 */
+  transcribeAudio: boolean;
+  /** Modelo de transcrição usado quando transcribeAudio está ligado. */
+  transcribeModel: string;
   /** Pasta no Vault onde respostas da IA salvas como nota (footer) vão. */
   notesPath: string;
   /** Estilo de resposta global (normal/concise/explanatory/formal/friendly).
@@ -277,6 +283,8 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   reduceMotion: false,
   reducedMotionMobile: false,
   recordingsPath: "axxa-ai/recordings",
+  transcribeAudio: true,
+  transcribeModel: "gpt-4o-mini-transcribe",
   notesPath: "axxa-ai/notes",
   responseStyle: "normal",
   projects: [],

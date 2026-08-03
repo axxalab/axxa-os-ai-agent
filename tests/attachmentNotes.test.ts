@@ -66,6 +66,33 @@ describe("attachmentNotes — rastro honesto dos anexos não enviados", () => {
     expect(lines[1]).toContain("b.webm");
   });
 
+  it("áudio TRANSCRITO leva o texto dentro da citação (0.1.249)", () => {
+    const [line] = keptAttachmentLines(
+      [
+        {
+          type: "audio",
+          path: "R/a.webm",
+          name: "Audio 0:12",
+          transcript: "comprar pão\ne ligar pro João",
+        },
+      ],
+      { ...LABELS, audioTranscript: "transcript" }
+    );
+    expect(line).toBe(
+      "> 🎙 [[R/a.webm|Audio 0:12]] — transcript:\n> comprar pão\n> e ligar pro João"
+    );
+    // O aviso de "não enviado" NÃO pode sobrar quando o áudio virou texto.
+    expect(line).not.toContain("not sent");
+  });
+
+  it("transcript só de espaços cai no aviso honesto (não vira citação vazia)", () => {
+    const [line] = keptAttachmentLines(
+      [{ type: "audio", path: "R/a.webm", name: "Audio", transcript: "   " }],
+      { ...LABELS, audioTranscript: "transcript" }
+    );
+    expect(line).toBe(`> 🎙 [[R/a.webm|Audio]] — ${LABELS.audio}`);
+  });
+
   it("PDF ENVIADO vira recibo, não aviso (0.1.248)", () => {
     const [line] = keptAttachmentLines(
       [{ type: "pdf", name: "contrato.pdf", sent: true }],
