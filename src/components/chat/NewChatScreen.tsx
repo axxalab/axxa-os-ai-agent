@@ -54,6 +54,18 @@ interface NewChatScreenProps {
 
 const PROVIDER_ADD = "__add__";
 
+/** Rotas grátis destacadas quando o usuário ainda não configurou nada (NOV-03). */
+const FREE_ROUTES = [
+  { id: "gemini", icon: "logo-gemini", name: "Gemini", key: "freeRouteGemini" },
+  {
+    id: "openrouter",
+    icon: "logo-openrouter",
+    name: "OpenRouter",
+    key: "freeRouteOpenrouter",
+  },
+  { id: "ollama", icon: "logo-ollama", name: "Ollama", key: "freeRouteOllama" },
+] as const;
+
 export function NewChatScreen({
   mode,
   plugin,
@@ -125,6 +137,41 @@ export function NewChatScreen({
             : t.newChatScreen.ragChipOff}
         </button>
       )}
+      {/* (NOV-03) Caminho grátis — o README promete "start free, no credit
+          card" e até agora isso não existia na UI (as chaves i18n estavam
+          órfãs). Só aparece quando NENHUM provider tem credencial: com key
+          configurada o bloco sai do caminho. Cada rota seleciona o provider e
+          abre as Settings pra colar a key (ou o endpoint, no Ollama). */}
+      {configuredProv.length === 0 && (
+        <div className="axxa-newchat-free">
+          <span className="axxa-newchat-free-title">
+            {t.dashboard.freeStartTitle}
+          </span>
+          <p className="axxa-newchat-free-sub">{t.dashboard.freeStartSub}</p>
+          <div className="axxa-newchat-free-routes">
+            {FREE_ROUTES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className="axxa-newchat-free-route"
+                title={t.newChatScreen.freeRouteHint(r.name)}
+                aria-label={t.newChatScreen.freeRouteHint(r.name)}
+                onClick={() => {
+                  hapticTick();
+                  onProviderChange(r.id);
+                  onOpenSettings();
+                }}
+              >
+                <Icon name={r.icon} />
+                <b>{r.name}</b>
+                <span>{t.newChatScreen[r.key]}</span>
+              </button>
+            ))}
+          </div>
+          <span className="axxa-newchat-free-trust">{t.dashboard.trustLine}</span>
+        </div>
+      )}
+
       <div className="axxa-newchat-provider">
         <div className="axxa-seg-block">
           <span className="axxa-seg-head">

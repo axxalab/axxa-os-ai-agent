@@ -27,6 +27,8 @@ export interface ModelCapabilities {
   audioGen?: boolean;
   /** Gera vídeo (Veo, Sora, Cosmos, etc). Salvos em axxa-ai/generation/video/ */
   videoGen?: boolean;
+  /** Aceita PDF anexado no wire (bloco document / content part `file`). v0.1.248 */
+  pdf?: boolean;
 }
 
 const DEFAULT_CAPS: ModelCapabilities = {
@@ -286,7 +288,52 @@ export function getModelCapabilities(
     caps.streaming = true;
   }
 
+  // PDF anexado: derivado (provider + modelo + vision), nunca da tabela.
+  caps.pdf = supportsPdf(provider, model, caps);
+
   return caps;
+}
+
+/**
+ * O modelo aceita um PDF anexado indo pro wire? (v0.1.248)
+ *
+ * Derivado em vez de tabelado porque a regra é por FAMÍLIA e por transporte,
+ * não por modelo — e a tabela de caps tem centenas de linhas que ficariam
+ * desatualizadas a cada modelo novo.
+ *
+ *  - **anthropic**: bloco `document` nativo, suportado do Claude 3.5 em diante.
+ *    Os Claude 3 originais (opus/sonnet/haiku), o Claude 2 e o Instant ficam de
+ *    fora — mandar PDF pra eles é 400 na cara do usuário.
+ *  - **openai**: content part `file` no Chat Completions; a doc exige modelo com
+ *    visão (gpt-4o em diante), então `vision` é o gate exato.
+ *  - **openrouter**: o roteador aceita `file` em qualquer modelo de chat — quando
+ *    o modelo não lê PDF nativamente, o plugin file-parser extrai (ver
+ *    openrouter.ts, que escolhe o engine e NUNCA deixa cair no default pago).
+ *  - **gemini/nim/ollama**: `false`. Não é limitação do modelo — é do nosso
+ *    transporte: o chat do Gemini aqui roda no endpoint OpenAI-compat, que não
+ *    documenta parts de arquivo; NIM e Ollama idem. A UI avisa e o anexo fica
+ *    registrado na conversa em vez de sumir.
+ */
+export function supportsPdf(
+  provider: string,
+  model: string,
+  caps: Pick<ModelCapabilities, "vision" | "imageGen" | "audioGen" | "videoGen">
+): boolean {
+  if (!model) return false;
+  // Modelo de geração não recebe anexo de entrada — o turno vira mídia.
+  if (caps.imageGen || caps.audioGen || caps.videoGen) return false;
+  const lower = model.toLowerCase();
+  switch (provider) {
+    case "anthropic":
+      if (!lower.startsWith("claude")) return false;
+      return !/^claude-(2|instant|3-(opus|sonnet|haiku))/.test(lower);
+    case "openai":
+      return !!caps.vision;
+    case "openrouter":
+      return true;
+    default:
+      return false;
+  }
 }
 
 /**

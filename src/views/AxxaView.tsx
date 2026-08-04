@@ -8,6 +8,7 @@ import { Root, createRoot } from "react-dom/client";
 import { AxxaApp } from "./AxxaApp";
 import { ErrorBoundary } from "../components/_shared/ErrorBoundary";
 import type AxxaPlugin from "../main";
+import { isRightDrawer, isDrawerOnScreen } from "./fullscreenScope";
 
 export const VIEW_TYPE_AXXA = "axxa-os-ai-agent";
 
@@ -16,6 +17,9 @@ export class AxxaView extends ItemView {
   plugin: AxxaPlugin;
   private keyboardObserver: MutationObserver | null = null;
   private settingsUnsub: (() => void) | null = null;
+  /** Observa abrir/fechar de drawer pra escopar o fullscreen. v0.1.250 */
+  private drawerObserver: MutationObserver | null = null;
+  private drawerCheckTimer: number | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: AxxaPlugin) {
     super(leaf);
@@ -60,10 +64,18 @@ export class AxxaView extends ItemView {
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", () => this.applyFullscreen())
     );
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => this.applyFullscreen())
+    );
+    this.registerEvent(
+      this.app.workspace.on("resize", () => this.applyFullscreen())
+    );
+    this.setupDrawerObserver();
   }
 
   async onClose() {
     this.teardownMobileKeyboardObserver();
+    this.teardownDrawerObserver();
     this.settingsUnsub?.();
     this.settingsUnsub = null;
     this.clearFullscreen();
@@ -94,15 +106,81 @@ export class AxxaView extends ItemView {
     const active = !!this.containerEl.closest(
       ".workspace-drawer-active-tab-content"
     );
-    const on = active && !!this.plugin.settings.mobileFullscreen;
+    const on =
+      active && isRightDrawer(drawer) && !!this.plugin.settings.mobileFullscreen;
     drawer?.classList.toggle("axxa-fullscreen", on);
-    this.containerEl.doc.body.classList.toggle("axxa-fullscreen", on);
+    // A navbar global é a ÚNICA coisa que mora no body (ela é irmã dos drawers,
+    // não descendente). Some só ENQUANTO a gaveta da AXXA está de fato na tela:
+    // abrir o drawer esquerdo (ou fechar o nosso no swipe) devolve a navegação
+    // global na hora, em vez de deixar o Obsidian sem chrome. v0.1.250
+    this.containerEl.doc.body.classList.toggle(
+      "axxa-fullscreen",
+      on && this.hostDrawerVisible(drawer)
+    );
   }
 
   private clearFullscreen() {
     const drawer = this.containerEl.closest(".workspace-drawer");
     drawer?.classList.remove("axxa-fullscreen");
     this.containerEl.doc.body.classList.remove("axxa-fullscreen");
+  }
+
+  /**
+   * A gaveta que hospeda a AXXA está VISÍVEL na tela agora?
+   *
+   * Pergunta geométrica de propósito: nome de classe de estado do drawer muda
+   * entre versões do Obsidian, mas "o retângulo intersecta a viewport" não. No
+   * mobile só uma gaveta fica aberta por vez, então isto responde de uma vez os
+   * dois casos que tiravam a navbar sem motivo: abrir o drawer ESQUERDO e
+   * fechar o nosso no swipe.
+   *
+   * Falha pro lado seguro: qualquer dúvida geométrica conta como visível, então
+   * o modo continua funcionando em vez de virar um fullscreen que não liga.
+   */
+  private hostDrawerVisible(host: Element | null): boolean {
+    if (!host) return false;
+    const win = this.containerEl.doc.defaultView;
+    if (!win) return true;
+    const style = win.getComputedStyle(host);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    return isDrawerOnScreen(host.getBoundingClientRect(), win.innerWidth);
+  }
+
+  /**
+   * Observa a abertura/fechamento dos drawers pra devolver a navbar assim que o
+   * drawer esquerdo entra em cena (e tirá-la de novo quando ele sai). O
+   * Obsidian anima os drawers por transform/classe no próprio elemento — então
+   * observamos atributos, a mesma técnica (não-invasiva) do keyboard observer.
+   */
+  private setupDrawerObserver() {
+    if (!Platform.isMobile) return;
+    const host = this.containerEl.closest(".workspace-drawer")?.parentElement;
+    if (!host) return;
+    this.drawerObserver = new MutationObserver(() => {
+      if (this.drawerCheckTimer !== null) {
+        window.clearTimeout(this.drawerCheckTimer);
+      }
+      // A checagem roda DEPOIS da animação do drawer — durante o transform a
+      // geometria ainda diz "aberto" mesmo indo pra fora da tela.
+      this.drawerCheckTimer = window.setTimeout(() => {
+        this.drawerCheckTimer = null;
+        this.applyFullscreen();
+      }, 260);
+    });
+    this.drawerObserver.observe(host, {
+      attributes: true,
+      attributeFilter: ["class", "style"],
+      subtree: true,
+    });
+  }
+
+  private teardownDrawerObserver() {
+    this.drawerObserver?.disconnect();
+    this.drawerObserver = null;
+    if (this.drawerCheckTimer !== null) {
+      window.clearTimeout(this.drawerCheckTimer);
+      this.drawerCheckTimer = null;
+    }
   }
 
   /**

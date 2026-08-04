@@ -56,16 +56,10 @@ function ComposerMock({ mode = "chat", streaming = false }: { mode?: string; str
       onOpenModel={noop}
       onOpenVoice={noop}
       streaming={streaming}
-      providerName="OpenAI"
       modelName="gpt-5"
       effort="med"
-      tokensIn={5230}
-      tokensOut={1810}
-      tokensPerSec={streaming ? 42 : 0}
-      contextUsed={7040}
       mode={mode}
       placeholder="Message AXXA…"
-      visibleChips={["model", "effort", "speed", "in", "out"]}
       visionEnabled
       commands={[]}
     />
@@ -122,7 +116,22 @@ function SidebarStory() {
   );
 }
 
-function NewChatStory({ mode }: { mode: string }) {
+// Plugin SEM nenhuma credencial — é o estado que revela o bloco do caminho
+// grátis (NOV-03) na NewChatScreen. v0.1.247
+const mockPluginNoKeys: any = {
+  ...mockPlugin,
+  settings: {
+    ...mockPlugin.settings,
+    openaiApiKey: "",
+    anthropicApiKey: "",
+    geminiApiKey: "",
+    openrouterApiKey: "",
+    nimApiKey: "",
+    ollamaEndpoint: "",
+  },
+};
+
+function NewChatStory({ mode, noKeys }: { mode: string; noKeys?: boolean }) {
   const [provider, setProvider] = useState("openai");
   return (
     <>
@@ -147,7 +156,7 @@ function NewChatStory({ mode }: { mode: string }) {
       />
       <NewChatScreen
         mode={mode}
-        plugin={mockPlugin}
+        plugin={noKeys ? mockPluginNoKeys : mockPlugin}
         provider={provider}
         onProviderChange={setProvider}
         onOpenSettings={noop}
@@ -198,6 +207,12 @@ export const STORIES: Story[] = [
     title: "New chat (modo Chat)",
     group: "Telas principais",
     render: () => <NewChatStory mode="chat" />,
+  },
+  {
+    id: "newchat-free",
+    title: "New chat (sem key — caminho grátis)",
+    group: "Telas principais",
+    render: () => <NewChatStory mode="chat" noKeys />,
   },
   {
     id: "newchat-qa",

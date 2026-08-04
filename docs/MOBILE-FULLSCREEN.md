@@ -132,3 +132,112 @@ private applyFullscreen() {
 Fazer a **Fase 1 agora** (risco zero, ganho real, review-safe) e deixar Fases 2–3 atrás
 do toggle `mobileFullscreen` pra validar no device. Assim o default continua native-clean
 (o que protege a submissão) e o power-user que quer o máximo opta conscientemente.
+
+
+---
+
+## v0.1.250 — edge-to-edge + escopo do drawer direito
+
+Feedback do device (print do usuário): o modo tela cheia ainda deixava **duas
+faixas** — uma no topo (área da status bar) e outra na base (acima da barra de
+gestos) — e o modo precisava valer **só** para o drawer direito.
+
+### As faixas: quem as pintava
+- **Topo**: `padding-top: var(--safe-area-inset-top)` morava no `.axxa-root`.
+  Padding pinta com o fundo do PRÓPRIO elemento, então a faixa saía com a cor
+  do canvas (secondary no dark) e a header (primary) começava abaixo dela —
+  duas cores, uma barra visível.
+- **Base**: `padding-bottom: safe-area + navbar-clearance` na `.view-content`.
+  No fullscreen não há navbar, mas a reserva continuava lá e a área ficava
+  fora da pintura do `.axxa-root`.
+
+### O que passou a valer
+1. O inset de cima entrou POR DENTRO da `.axxa-header`
+   (`padding-top: calc(12px + max(env(), var()))`) — a superfície da header vai
+   até y=0, sob o relógio/notch, sem faixa intermediária.
+2. `padding-bottom: 0` na `.view-content` do fullscreen; quem respeita a barra
+   de gestos agora é o composer (`bottom: calc(18px + inset)`), então o canvas
+   pinta até a última linha de píxel.
+3. Toda a cadeia do drawer (drawer → tab-container → tab-content →
+   leaf-content → view-content) passou a pintar o mesmo canvas do app, pra não
+   sobrar preto da leaf nativa em canto nenhum nem durante o transform.
+
+### O escopo
+- `isRightDrawer()`: `mod-left` explícito nunca liga o modo. Sem marca de lado
+  não travamos (a AXXA só monta no drawer direito).
+- `body.axxa-fullscreen` (a classe que esconde a navbar GLOBAL) agora exige que
+  a gaveta da AXXA esteja **visível na tela**: abrir o drawer esquerdo ou
+  fechar o nosso no swipe devolve a navbar na hora. A checagem é geométrica
+  (`isDrawerOnScreen`, testada) porque nome de classe de estado do drawer muda
+  entre versões — e falha pro lado seguro (na dúvida, considera visível, então
+  o modo continua funcionando).
+- Um `MutationObserver` nos atributos das gavetas (mesma técnica do keyboard
+  observer) reavalia depois da animação, além dos eventos
+  layout-change/resize/active-leaf-change.
+
+Validado num harness que reproduz a árvore do drawer mobile com o chrome
+nativo pintado de cores berrantes: header em y=0 com `padding-top` 56px
+(12 + 44 de inset), `view-content` sem padding-bottom, composer a 42px
+(18 + 24 de inset) da borda, chrome nativo `display:none` e todas as
+superfícies no mesmo canvas. Com as classes removidas, o modo normal volta
+exatamente ao que era (header 12px, reserva de 28px na base, chrome visível).
+
+### v0.1.251 — o sheet do Vault Q&A no fullscreen
+
+Mesma classe de bug, outro caminho: o sheet do Q&A encosta na base por design e
+resolvia o inset só com `env(safe-area-inset-bottom)` — que no WebView Android
+costuma ser 0. Fora do fullscreen a reserva da navbar escondia o problema; sem
+navbar, o conteúdo do sheet cairia embaixo da barra de gestos. Agora ele também
+considera a var do Obsidian (`max(env(), var())`), então o sheet continua colado
+na borda (edge-to-edge) com o conteúdo acima dos gestos: no harness, card
+terminando em y=915 (base da tela) com `padding-bottom` de 34px (10 + 24).
+
+### v0.1.252 — correção: o inset estava sendo contado DUAS vezes
+
+Print do device depois do 0.1.250/0.1.251 mostrou o que o harness não podia
+mostrar: **o container do drawer já começa abaixo da status bar e termina acima
+da barra de gestos** — o Obsidian aplica o safe-area na própria árvore. Somar
+`safe-area-inset-*` por dentro da nossa header e do composer contava o mesmo
+espaço duas vezes:
+
+- **Topo**: a superfície preta da header subia até o topo do container (certo),
+  mas avatar/título/botões desciam ~40px, sobrando espaço morto acima deles.
+- **Base**: o composer ganhava `18px + inset`, reabrindo parte da faixa que
+  este modo veio eliminar.
+
+Correção: no fullscreen a header mantém o padding normal (12px) e o composer o
+respiro normal (18px). O override do sheet do Q&A (0.1.251) saiu pelo mesmo
+motivo. **Quem garante que nada fica sob os system bars é o container do
+Obsidian**; a nós cabe só não reservar o espaço de novo — e não pintar faixa
+alguma, que era o bug original.
+
+Regra pra quem mexer aqui depois: antes de somar `env(safe-area-*)` ou
+`var(--safe-area-*)` dentro do fullscreen, confira se o container já não fez
+isso. Neste modo, quase sempre já fez.
+
+### v0.1.254 — o teclado voltou a empurrar o composer
+
+Regressão introduzida pelo próprio fullscreen: ao fixar a altura do drawer em
+`100dvh`, a caixa do app deixou de encolher quando o teclado abre. O composer
+de **chat** e **agent** é `absolute` dentro da `.axxa-root`, então ele só sobe
+se a caixa encolher — e o Obsidian mobile NÃO encolhe a viewport: publica
+`--keyboard-height` no `<html>` e deixa o teclado por cima. Resultado: campo
+atrás do teclado nos dois modos. O Vault Q&A escapava por ser `fixed` e já
+consumir a var.
+
+Correção: a altura do drawer no fullscreen passou a ser
+`calc(100dvh - var(--keyboard-height, 0px))`. Canvas e composer sobem juntos, e
+as últimas mensagens deixam de ficar escondidas. A mudança fica na altura que
+JÁ é nossa — a cadeia do modo normal não é tocada.
+
+E o sheet do Vault Q&A voltou a encostar na borda: no fullscreen ele usava
+`max(--keyboard-height, --axxa-status-bar-clearance)`, mas não existe navbar
+pra compensar ali — e a var guarda a ÚLTIMA altura medida da navbar, então o
+sheet ficava boiando acima do fim da tela. Agora, no fullscreen, só o teclado
+entra na conta (`left/right: 0` explícitos junto). O clearance também passou a
+ser remedido quando um setting muda, porque ligar/desligar o fullscreen
+esconde/mostra a navbar e a medida ficava velha.
+
+Medido no harness (viewport 412×915, teclado 320): chat/agent com o composer
+terminando em 577 (18px acima do teclado, que começa em 595), Q&A colado em
+595, e com o teclado fechado Q&A em 915 (borda real) ocupando 0→412.

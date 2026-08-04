@@ -7,6 +7,21 @@ export const EN_US = {
     audioKeptNote: "audio saved in your vault (not sent to the AI yet)",
     audioAttachedNotice:
       "Audio saved to your vault and linked in the message. Heads-up: audio isn't sent to the AI yet.",
+    audioAttachedTranscribeNotice:
+      "Audio saved to your vault. It'll be transcribed and sent with your message.",
+    audioTranscriptNote: "transcript",
+    transcribing: "Transcribing audio…",
+    transcribeFailed: (detail: string) =>
+      detail
+        ? `Transcription failed (${detail}). The recording stays in the conversation, but the AI won't hear it.`
+        : "Transcription failed. The recording stays in the conversation, but the AI won't hear it.",
+    pdfKeptNote: "PDF attached locally (this model can't read PDFs)",
+    pdfSentNote: "PDF sent to the model",
+    pdfAttachedNotice: (model: string) => `PDF attached — ${model} will read it.`,
+    pdfUnsupportedNotice: (model: string) =>
+      `${model} can't read PDFs. The file stays in the conversation, but its content won't be sent — switch to Claude, a GPT-4o-class model, or OpenRouter.`,
+    pdfTooLarge: (mb: number) =>
+      `PDF too large (${mb.toFixed(0)} MB — max 30 MB). Split it or send the relevant pages.`,
     attachImageNoneValid: "No valid image was attached.",
     attachImageTooLarge: "Image too large (max 20MB).",
     attachmentsLabel: "Pending attachments",
@@ -236,6 +251,11 @@ export const EN_US = {
     vaultQaSub: "Ask anything about your notes.",
     agentTitle: "New Agent",
     agentSub: "Tell me what to do — I read and edit your vault.",
+    // Caminho grátis (NOV-03) — só aparece quando NENHUM provider tem key.
+    freeRouteGemini: "free tier",
+    freeRouteOpenrouter: "free models",
+    freeRouteOllama: "local, offline",
+    freeRouteHint: (provider: string) => `Set up ${provider}`,
   },
 
   // Redesigned model selector (category tabs + modal + favorites). v0.1.222
@@ -249,25 +269,10 @@ export const EN_US = {
     empty: "No models in this category.",
   },
 
-  // "Mortal Kombat" model selector (ModelArena). v0.1.223
-  arena: {
-    scan: "Scan new",
-    scanning: "Scanning…",
-    scanNone: "No new models found.",
-    scanFound: (n: number) =>
-      `${n} new ${n === 1 ? "fighter" : "fighters"} on the roster!`,
-    scanErr: "Scan failed (check the provider API key).",
-    close: "Close",
-    prev: "Previous",
-    next: "Next",
-    prevProvider: "Previous provider",
-    nextProvider: "Next provider",
-    choose: "Choose",
-    power: "Power",
-    hall: "Hall of Fame",
-    creators: "Creators",
-    soldiers: "Soldiers",
-  },
+  // (ModelArena removida na limpeza pós-DS-1.0 — a tela que consumia estas
+  // strings saiu junto com a StarterScreen. Bloco removido em 0.1.247 para o
+  // dicionário refletir só o que existe na UI; o histórico do git guarda o
+  // texto original se a arena voltar.)
 
   account: {
     label: "Your account",
@@ -884,6 +889,12 @@ export const EN_US = {
       `${n} skill${n === 1 ? "" : "s"} loaded`,
     recordingsPath: "Recordings folder",
     recordingsPathDesc: "Where audio recordings from the mic button are saved",
+    transcribeAudio: "Transcribe attached audio",
+    transcribeAudioDesc:
+      "Turns a recording into text (OpenAI Whisper) so the model actually hears it. Needs your OpenAI key; costs a fraction of a cent per minute. Off = the recording is only linked in the chat.",
+    transcribeModel: "Transcription model",
+    transcribeModelDesc:
+      "gpt-4o-mini-transcribe (default, cheapest), gpt-4o-transcribe or whisper-1.",
     generationPath: "Generation folder",
     generationPathDesc:
       "Where generated media (image/audio/video) is saved. Each output creates 2 files: the media + a .md sidecar with frontmatter (prompt, model, provider).",
@@ -936,19 +947,13 @@ export const EN_US = {
     chips: "Visible chips",
     chipsDesc:
       "Pick which info shows in lists and the status line. Default is compact — check what you want to see.",
-    chipsComposer: "Composer status line",
-    chipsComposerDesc: "Appears under the message field (single line).",
     chipsList: "Chat list cards",
     chipsListDesc: "Appears on each Recent Chats and Conversations item.",
+    // Só os chips dos cards de conversa — a status line do composer saiu em
+    // 0.1.253 e levou junto effort/context/in/out/total/speed.
     chipsLabels: {
       mode: "Mode (chat / agent / vault-qa)",
       model: "Model",
-      effort: "Effort",
-      context: "Context used / total",
-      in: "Tokens in",
-      out: "Tokens out",
-      total: "Tokens total",
-      speed: "Tokens per second (live)",
       date: "Relative date",
       messages: "Message count",
       tokens: "Total tokens",

@@ -158,7 +158,6 @@ export const mockPlugin: any = {
     codeWrap: false,
     agentPermissionLevel: "ask",
     agentDiffApproval: true,
-    composerChips: ["model", "effort", "speed", "in", "out"],
     listChips: ["mode", "model", "date"],
     effortConfigs: {},
     mobileFullscreen: false,

@@ -67,10 +67,12 @@ describe("getModelCapabilities — overlay :free do OpenRouter", () => {
 
 describe("getModelCapabilities — fallbacks seguros", () => {
   it("provider desconhecido → default conservador (só streaming)", () => {
+    // pdf entrou em 0.1.248 — derivado, e provider fora da lista nunca recebe PDF.
     expect(getModelCapabilities("provider-fake", "x")).toEqual({
       vision: false,
       tools: false,
       streaming: true,
+      pdf: false,
     });
   });
 

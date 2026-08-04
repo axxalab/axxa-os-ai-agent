@@ -63,10 +63,55 @@ cross-check), 77-disclosure (nota honesta de que custos de geração de
 imagem/áudio não entram no agregado), 88 (tap no orb durante 'thinking'
 interrompe a geração). **Total: 91/93 P1 implementados.**
 
-**P1 pendentes (2 — decisão de produto)**: 41 (caminho Ollama no
-onboarding) e 45-final (preço + URL da loja do Pro). Backlog documentado:
-77-completo (contabilizar custo de geração no aggregate — feature L; o
-disclosure honesto já está no lugar).
+**P1 pendentes (1 — decisão de produto)**: 45-final (preço + URL da loja do
+Pro). Backlog documentado: 77-completo (contabilizar custo de geração no
+aggregate — feature L; o disclosure honesto já está no lugar).
+
+**Lote de polimento (release 0.1.247)** — 5 pendências fechadas:
+- **NOV-03 / P1-41** ✅ — bloco "Start free, no card" na NewChatScreen (só
+  quando NENHUM provider tem key): Gemini free tier · OpenRouter free ·
+  Ollama local, cada rota selecionando o provider e abrindo as Settings. As
+  chaves i18n órfãs (`freeStartTitle`/`freeStartSub`/`trustLine`) ganharam
+  consumidor e o README parou de prometer o que a UI não fazia.
+- **CHT-12 (PDF)** 🟡 — *(superado pelo lote 2 / 0.1.248, abaixo)* o anexo continua sem ir pro wire, mas parou de
+  enganar: aviso no momento do anexo, aviso no chip e linha persistida na
+  mensagem (`> 📄 arquivo.pdf — not sent to the AI yet`), mesmo tratamento
+  honesto que o áudio já tinha. O envio real virá num lote próprio.
+- **SKL-03** ✅ — watcher do vault com debounce de 600ms recarrega as skills
+  ao criar/editar/renomear/apagar `.md` na pasta configurada.
+- **CHT-15 (ModelArena)** ✅ — decidido REMOVER: handler órfão
+  (`handleArenaConfirm`) e bloco i18n `arena` saíram; docs/FEATURES.md agora
+  diz que a arena está no backlog em vez de anunciá-la como entregue.
+- **MOB-01 (fullscreen)** ✅ — entregue no 0.1.242→0.1.246 (v3: toggle no menu
+  do header, 100vw × 100dvh, escopado ao drawer direito). Status abaixo
+  mantido só como histórico da auditoria.
+
+**Lote de polimento 2 (release 0.1.248)** — PDF anexado passa a ser ENVIADO:
+- **CHT-12 (PDF)** ✅ — bloco `document` (Anthropic), content part `file`
+  (OpenAI e OpenRouter) e plugin file-parser com engine explícito no
+  OpenRouter — `native` quando o modelo tem visão, `cloudflare-ai` (grátis)
+  no resto, nunca o default `mistral-ocr` cobrado por página. A capability
+  `pdf` é derivada (`supportsPdf`) em vez de tabelada, então modelo novo
+  entra sozinho. Gemini/NIM/Ollama seguem fora — limitação do transporte, e
+  a UI diz isso com o nome do modelo na hora do anexo.
+- Rastro na conversa virou de mão dupla: recibo quando o PDF foi enviado,
+  aviso honesto quando não foi. Guard de 30MB antes de anexar (o limite de
+  request é 32MB no Anthropic e o base64 infla ~33%).
+- 27 testes novos cobrindo data URLs, a capability por família de modelo, o
+  shape dos 3 wires e a escolha de engine do OpenRouter.
+
+**Lote de polimento 3 (release 0.1.249)** — áudio gravado vira TEXTO:
+- **VOZ-03 / P0-01 (áudio)** ✅ — transcrição via OpenAI antes do envio; o
+  transcript entra no corpo da mensagem (o modelo lê de verdade) e fica no
+  .md. Multipart montado à mão porque o requestUrl do Obsidian — necessário
+  pra furar CORS no mobile — não aceita FormData.
+- Setting novo em Settings → pastas: `Transcribe attached audio` (on por
+  padrão, precisa da key OpenAI) + seletor do modelo de transcrição.
+- Falha de transcrição é degradação graciosa: Notice + o aviso honesto de
+  antes, sem cancelar o envio nem os outros anexos do turno.
+- 18 testes novos (420 no total): multipart byte a byte (inclusive binário
+  não-UTF8), mapa de mime por extensão, parsing do transcript e o contrato de
+  erro (no-key/invalid-key/rate-limit/arquivo grande/resposta vazia).
 
 ## 1. Método
 
@@ -100,11 +145,11 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 **NOV-02** ✅ — Como novato, quero que minha API key fique no keychain do SO para não vazar via Obsidian Sync ou backup do vault.
 
-**NOV-03** 🟡 — Como novato sem cartão, quero ver destacado o caminho grátis (Gemini free tier, modelos free do OpenRouter, Ollama local) para experimentar sem gastar.
-> **Status parcial:** As chaves i18n do bloco free existem mas estão ÓRFÃS (src/i18n/en-us.ts:406-409 freeStartTitle/freeStartSub/trustLine — grep sem nenhum uso em src/); o onboarding só menciona Ollama de passagem (en-us.ts:590-591). A StarterScreen que destacava isso foi removida (src/components/_shared/providersMeta.ts:3). README.md:55 promete.
-> - [ ] O onboarding/nova conversa destaca explicitamente as 3 rotas grátis
-> - [ ] Um toque leva à configuração da rota escolhida
-> - [ ] README ('Start free, no credit card') é cumprido na UI
+**NOV-03** ✅ *(resolvido em 0.1.247; era 🟡)* — Como novato sem cartão, quero ver destacado o caminho grátis (Gemini free tier, modelos free do OpenRouter, Ollama local) para experimentar sem gastar.
+> **Status resolvido:** bloco "Start free, no card" na NewChatScreen (src/components/chat/NewChatScreen.tsx), visível só enquanto NENHUM provider tem credencial. As 3 rotas viraram botões que selecionam o provider e abrem as Settings; as chaves i18n órfãs (freeStartTitle/freeStartSub/trustLine) finalmente têm consumidor.
+> - [x] O onboarding/nova conversa destaca explicitamente as 3 rotas grátis
+> - [x] Um toque leva à configuração da rota escolhida
+> - [x] README ('Start free, no credit card') é cumprido na UI
 
 **NOV-04** ✅ — Como novato, quero um erro acionável ao enviar sem key para saber exatamente como resolver.
 
@@ -134,25 +179,23 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 **CHT-11** ✅ — Como usuário diário, quero anexar notas do vault (via [[, @ ou picker) para dar contexto ao modelo.
 
-**CHT-12** 🔴 — Como usuário diário, quero anexar PDF (e áudio) e ter o conteúdo realmente enviado ao modelo.
-> **Status quebrado:** A UI aceita e mostra o chip (src/views/AxxaApp.tsx:1748-1763, PlusModal 1860-1869), mas o anexo NUNCA vai pro wire: comentário 'pdf/audio passam como meta (ignorados no wire por enquanto)' (AxxaApp.tsx:637-640) e o conversor de mensagens só serializa imagens (src/providers/_shared.ts:74-78). O usuário anexa um PDF, o modelo responde sem tê-lo visto — engano silencioso.
-> - [ ] Chip de PDF no composer com preview e remoção
-> - [ ] O conteúdo do PDF chega ao provider (texto extraído ou bloco nativo)
-> - [ ] Se o modelo não suporta, o usuário é avisado ao anexar
+**CHT-12** 🟡 *(PDF resolvido em 0.1.248; áudio segue pendente. Era 🔴)* — Como usuário diário, quero anexar PDF (e áudio) e ter o conteúdo realmente enviado ao modelo.
+> **Status do PDF — resolvido:** o arquivo vai pro wire de verdade onde o transporte permite — bloco `document` base64 no Anthropic (Claude 3.5+), content part `file` no Chat Completions da OpenAI (modelos com visão) e no OpenRouter (com o plugin file-parser, engine `native` pra modelo com visão e `cloudflare-ai` — grátis — pro resto; o engine é sempre explícito pra nunca cair no default pago `mistral-ocr`). Gemini/NIM/Ollama ficam de fora por limitação do NOSSO transporte (o chat do Gemini roda no endpoint OpenAI-compat, que não documenta parts de arquivo) — e aí a UI avisa no ato do anexo, com o nome do modelo, e a mensagem guarda a nota honesta. Quando o envio acontece, a mesma linha vira recibo (`> 📄 contrato.pdf — PDF sent to the model`). Guard de 30MB antes de anexar.
+> **Status do áudio — pendente:** continua sem transcrição; o wikilink + aviso seguem sendo o rastro honesto.
+> - [x] Chip de PDF no composer com preview e remoção
+> - [x] O conteúdo do PDF chega ao provider (bloco nativo — Anthropic/OpenAI/OpenRouter)
+> - [x] Se o modelo não suporta, o usuário é avisado ao anexar
 
-**CHT-13** ⬜ — Como usuário PT-BR, quero a UI em português (auto-detectada pelo locale) como o README promete.
+**CHT-13** ⬜ *(README corrigido em 0.1.247 — a UI em PT-BR continua no roadmap)* — Como usuário PT-BR, quero a UI em português (auto-detectada pelo locale).
 > **Status faltando:** src/main.ts:939-940 força language='en-us' e migra quem estava em pt-br ('PT-BR removido (base 1.0)'); src/i18n/ contém apenas en-us.ts + index.ts. README.md:26 e 205 ainda prometem UI bilíngue — ou volta o pt-br ou o README precisa parar de prometer.
 > - [ ] Locale pt-BR carrega strings pt-br
 > - [ ] Setting de idioma permite alternar PT/EN
-> - [ ] README ('Bilingual UI — auto-detected') condiz com o produto
+> - [x] README condiz com o produto (a promessa de UI bilíngue virou "English UI · PT-BR no roadmap", EN e PT)
 
 **CHT-14** ✅ — Como usuário de modelos reasoning (R1, o-series, extended thinking), quero ver o raciocínio num painel colapsável para auditar a resposta.
 
-**CHT-15** ⬜ — Como usuário diário, quero o seletor ModelArena (character select com stats por modelo) anunciado como diferencial #5.
-> **Status faltando:** docs/FEATURES.md:31-35 anuncia; restou só o handler órfão handleArenaConfirm (src/views/AxxaApp.tsx:1368-1374, não referenciado no JSX) e strings i18n (src/i18n/en-us.ts:229). A StarterScreen que a hospedava foi removida (src/components/_shared/providersMeta.ts:3). Decidir: reintroduzir na NewChatScreen ou remover handler+i18n+FEATURES.md.
-> - [ ] Arena navegável entre providers com ficha de 6 barras
-> - [ ] Confirmação define provider+modelo juntos
-> - [ ] Acessível a partir da nova conversa
+**CHT-15** ⬜ *(decidido em 0.1.247: fica no backlog)* — Como usuário diário, quero o seletor ModelArena (character select com stats por modelo) anunciado como diferencial #5.
+> **Status decidido:** a decisão pendente foi tomada — REMOVER o resíduo em vez de reintroduzir a tela agora. Saíram o handler órfão handleArenaConfirm e o bloco i18n `arena`; docs/FEATURES.md deixou de anunciar a arena como entregue e passou a listá-la como backlog. A UI de seleção segue no ModelPicker (abas + favoritos + hot + famílias com cor).
 
 **NAV-01** ✅ — Como usuário, quero uma gaveta lateral com módulos de nova conversa por modo, navegação (Conversas/Projects/Media/Statistics/Profile) e badge de plano.
 
@@ -184,11 +227,11 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 ### usuário mobile (3/4 ok)
 
-**MOB-01** ⬜ — Como usuário mobile, quero o modo fullscreen (drawer 100vw sem chrome do Obsidian) para uma experiência de app imersiva.
-> **Status faltando:** Temporariamente desativado: o runtime não aplica mais a classe (src/views/AxxaApp.tsx:134-135 'Fullscreen REMOVIDO... v3 virá depois'), mas o setting está reservado por decisão de produto (src/main.ts:160-164 'volta no futuro — jul/2026') e o plano técnico existe em docs/MOBILE-FULLSCREEN.md:81-129. Manter o setting e a classe; não remover.
-> - [ ] Toggle mobileFullscreen aplica .axxa-fullscreen no drawer
-> - [ ] Esconde header do drawer e compensa safe-area
-> - [ ] Default OFF, opt-in explícito
+**MOB-01** ✅ *(resolvido em 0.1.242→0.1.246; era ⬜ na auditoria)* — Como usuário mobile, quero o modo fullscreen (drawer 100vw sem chrome do Obsidian) para uma experiência de app imersiva.
+> **Status resolvido:** fullscreen v3 entregue — toggle no menu do header, 100vw × 100dvh, escopado ao drawer DIREITO (não vaza pro esquerdo) e escondendo o chrome nativo (view-header + tab-options). Default OFF, opt-in explícito. **v0.1.250 (feedback de device):** virou edge-to-edge de verdade — o inset da status bar entrou por dentro da header e a reserva da base saiu da view-content, acabando com as duas faixas; o escopo ficou explícito (`isRightDrawer` + a navbar global só some enquanto a gaveta da AXXA está visível, então abrir o drawer esquerdo devolve a navegação).
+> - [x] Toggle mobileFullscreen aplica .axxa-fullscreen no drawer
+> - [x] Esconde header do drawer e compensa safe-area
+> - [x] Default OFF, opt-in explícito
 
 **MOB-02** ✅ — Como usuário mobile, quero layout que respeite a navbar/teclado e a tela acesa durante a geração para o stream não congelar.
 
@@ -202,11 +245,11 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 **VOZ-02** ✅ — Como usuário de voz, quero ler qualquer resposta em voz alta (e usar TTS de nuvem quando configurado) para consumir respostas sem ler.
 
-**VOZ-03** 🟡 — Como usuário de voz, quero gravar áudio segurando o mic e ter esse áudio transcrito/entendido pelo modelo.
-> **Status parcial:** Gravar e salvar funciona (src/components/composer/Composer.tsx:722-814, src/views/AxxaApp.tsx:1004-1030), mas o áudio nunca chega ao modelo: só imagens vão pro wire (src/providers/_shared.ts:74-78) e transcrição não existe ('Not yet supported in AXXA' — src/providers/modelModality.ts:72; pipeline Whisper é 'sprint próprio' — src/rag/indexer.ts:10-11; README.md:171 lista Whisper como 'Next').
-> - [ ] Hold-to-record grava via MediaRecorder e salva em recordingsPath
-> - [ ] O áudio anexado é transcrito (Whisper) ou enviado a modelo que entende áudio
-> - [ ] O chat responde sobre o conteúdo do áudio
+**VOZ-03** ✅ *(resolvido em 0.1.249; era 🟡)* — Como usuário de voz, quero gravar áudio segurando o mic e ter esse áudio transcrito/entendido pelo modelo.
+> **Status resolvido:** o áudio anexado é transcrito antes do envio (OpenAI /v1/audio/transcriptions, mesma key do cloud TTS) e o transcript entra no CORPO da mensagem — ou seja, é literalmente o que o modelo lê, e fica salvo no .md junto do wikilink da gravação. Transporte via requestUrl com multipart montado à mão (FormData não sobrevive ao requestUrl), o que faz funcionar também no WebView mobile. Setting `transcribeAudio` (on por padrão, exige key OpenAI) + escolha do modelo (gpt-4o-mini-transcribe / gpt-4o-transcribe / whisper-1). Falha de transcrição não derruba o envio: volta pro aviso honesto e avisa por Notice.
+> - [x] Hold-to-record grava via MediaRecorder e salva em recordingsPath
+> - [x] O áudio anexado é transcrito (Whisper) ou enviado a modelo que entende áudio
+> - [x] O chat responde sobre o conteúdo do áudio
 
 ### gerador de imagem (2/2 ok)
 
@@ -216,7 +259,8 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 ### gestor de custos (2/3 ok)
 
-**CST-01** ✅ — Como gestor de custos, quero um dashboard de uso (por provider/modelo/modo/dia) com export e chips de tokens/TPS ao vivo para saber o que estou gastando.
+**CST-01** ✅ *(ajustado em 0.1.253)* — Como gestor de custos, quero um dashboard de uso (por provider/modelo/modo/dia) com export para saber o que estou gastando.
+> **Nota:** os chips de tokens/TPS ao vivo no composer foram REMOVIDOS por decisão de produto (a status line saiu de todos os modos). A contabilidade continua inteira: tokens por conversa seguem persistidos no .md e o dashboard de Uso/Statistics não mudou.
 
 **CST-02** ✅ — Como gestor de custos, quero cruzar minha estimativa local com o gasto REAL das APIs de billing (admin keys) e lançar recargas para ver saldo verdadeiro.
 
@@ -232,10 +276,10 @@ Legenda: ✅ ok · 🟡 parcial · ⬜ faltando · 🔴 quebrado
 
 **SKL-02** ✅ — Como autor de skills, quero uma tela pra explorar/usar skills e exemplos semeados para aprender o formato.
 
-**SKL-03** ⬜ — Como autor de skills, quero que uma skill recém-criada/editada no vault apareça como /comando sem recarregar o plugin.
-> **Status faltando:** reloadSkills só roda no onload e em ações de Settings (src/main.ts:705, src/components/settings/AxxaSettingsTab.ts:2214,2239); não há vault.on('modify'/'create') pra skillsPath (src/main.ts:836-857 só observa pro auto-reindex do RAG). Autor edita a skill e o slash-command continua com o template velho até reabrir o Obsidian.
-> - [ ] Criar/editar/renomear .md na pasta de skills recarrega a lista automaticamente
-> - [ ] O /comando reflete o corpo atualizado no próximo uso
+**SKL-03** ✅ *(resolvido em 0.1.247; era ⬜)* — Como autor de skills, quero que uma skill recém-criada/editada no vault apareça como /comando sem recarregar o plugin.
+> **Status resolvido:** setupSkillsWatcher (src/main.ts) registra modify/create/delete/rename e, quando o .md está dentro de settings.skillsPath (isSkillFilePath, coberto por teste), agenda reloadSkills com debounce de 600ms. O rename também checa o caminho ANTIGO, então tirar uma nota da pasta atualiza a lista. O reload notifica os listeners → a árvore React re-renderiza sozinha.
+> - [x] Criar/editar/renomear .md na pasta de skills recarrega a lista automaticamente
+> - [x] O /comando reflete o corpo atualizado no próximo uso
 
 ### usuário de projects (2/2 ok)
 
@@ -489,6 +533,12 @@ O guard anti-acidente exige 180ms parado antes de gravar; tap rápido cancela o 
 - **Nota do verificador:** Confirmado no código: Composer.tsx:880-883 arma o hold em 180ms; endMic (897-904) limpa o timer e retorna sem nenhum feedback; onstop descarta gravação <300ms em silêncio (774-777). Nenhuma Notice em nenhum dos caminhos de tap curto. Como o mic é o botão principal do composer quando vazio no mobile, P1 é justo. Fix é de fato um if no early-return (S).
 
 #### P1-18 · Setting "Chips do composer" é morto: a status row nunca é renderizada
+> **Desfecho (0.1.253):** a decisão pendente foi tomada pelo dono — opção **(b)**
+> da recomendação abaixo. A status line saiu de TODOS os modos e levou junto o
+> setting `composerChips`, a seção "Composer status line" das Settings, o CSS
+> `.axxa-composer-status` e as props mortas (`visibleChips`, `tokensPerSec`,
+> `contextUsed`, `providerName`, `locked`). O que ficou no composer é o pill de
+> modelo+effort, que sempre foi controle e não status.
 
 **Área:** Composer / status chips · **Tipo:** state · **Esforço:** M
 

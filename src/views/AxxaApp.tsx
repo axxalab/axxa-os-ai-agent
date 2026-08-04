@@ -48,6 +48,14 @@ import {
   type AppView,
 } from "../entitlements";
 import { AppContext } from "../components/_shared/AppContext";
+import { prettyModelName } from "../providers/modelDescriptions";
+import { transcribeAudio } from "../providers/transcribe";
+import {
+  keptAttachmentLines,
+  withKeptAttachmentNotes,
+  approxBase64Bytes,
+  PDF_MAX_BYTES,
+} from "../components/_shared/attachmentNotes";
 import {
   ChatActionsContext,
   type ChatActions,
@@ -163,8 +171,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const isLoading = useChatStore((s) => s.isLoading);
   const tokensIn = useChatStore((s) => s.tokensIn);
   const tokensOut = useChatStore((s) => s.tokensOut);
-  const lastPromptTokens = useChatStore((s) => s.lastPromptTokens);
-  const tokensPerSec = useChatStore((s) => s.tokensPerSec);
   const messages = useChatStore((s) => s.messages);
   const sessionProvider = useChatStore((s) => s.sessionProvider);
   const sessionModel = useChatStore((s) => s.sessionModel);
@@ -738,33 +744,55 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
 
     // Prepara attachments pra envio. Filtros aplicados em streamReply/runAgentTurn:
     //  - imagens só vão se o modelo aceita vision
+    //  - PDF só vai se o modelo/transporte aceita (caps.pdf) — v0.1.248
     //  - notas viram bloco de contexto markdown no system prompt
-    //  - pdf/audio passam como meta (ignorados no wire por enquanto)
+    //  - áudio passa como meta (ignorado no wire por enquanto)
     const caps = getModelCapabilities(activeProviderId, activeModel);
     const attachments =
       pendingAttachments.length > 0
         ? pendingAttachments
             .map((p) => p.attachment)
-            .filter((a) => (a.type === "image" ? caps.vision : true))
+            .filter((a) =>
+              a.type === "image"
+                ? caps.vision
+                : a.type === "pdf"
+                ? !!caps.pdf
+                : true
+            )
         : undefined;
     // (P1-28) Guarda os anexos do turno pro retry: erro transitório numa msg
     // com imagem re-tentava SEM a imagem, silenciosamente.
     lastSendAttachmentsRef.current = attachments;
 
+    // Áudio → TEXTO antes do envio (v0.1.249). O transcript entra no corpo da
+    // mensagem, então é literalmente o que o modelo lê — fim do "gravei, mandei
+    // e a IA ignorou". Falha de transcrição não derruba o envio: cai no aviso
+    // honesto de antes.
+    const transcripts = await transcribePendingAudio(pendingAttachments);
+
     // User msg salva sem attachments no store (pra simplicidade do auto-save .md).
     // O propagation pro provider acontece via parâmetro adicional pra streamReply/runAgentTurn.
-    // EXCEÇÃO honesta (auditoria jul/2026): áudio ainda não vai pro modelo —
-    // sem isto o chip sumia no send e a gravação desaparecia da conversa.
-    // O wikilink persiste na mensagem (e no .md) até a transcrição real chegar.
-    const audioLinks = pendingAttachments
-      .filter((p) => p.attachment.type === "audio")
-      .map((p) => {
-        const a = p.attachment as { path: string };
-        return `> 🎙 [[${a.path}|${p.name}]] — ${t.composer.audioKeptNote}`;
-      });
+    // O rastro em texto sobrevive ao reload: transcript do áudio, recibo do PDF
+    // enviado, aviso honesto quando o modelo não aceita. Sem isso o chip sumia
+    // no send e o anexo desaparecia da conversa.
+    const keptLines = keptAttachmentLines(
+      pendingAttachments.map((p) => ({
+        type: p.attachment.type,
+        path: (p.attachment as { path?: string }).path,
+        name: p.name,
+        sent: p.attachment.type === "pdf" && !!caps.pdf,
+        transcript: transcripts.get(p.id),
+      })),
+      {
+        audio: t.composer.audioKeptNote,
+        pdf: t.composer.pdfKeptNote,
+        pdfSent: t.composer.pdfSentNote,
+        audioTranscript: t.composer.audioTranscriptNote,
+      }
+    );
     addMessage({
       type: "user",
-      content: audioLinks.length ? `${text}\n\n${audioLinks.join("\n")}` : text,
+      content: withKeptAttachmentNotes(text, keptLines),
     });
     setPendingAttachments([]);
 
@@ -1271,6 +1299,48 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     handlePromptStarter(draft ? `${draft}\n\n${skill.body}` : skill.body);
   };
 
+  /**
+   * Transcreve os áudios pendentes (VOZ-03). Devolve id do anexo → texto.
+   *
+   * Silenciosamente vazio quando o setting está off ou não há key OpenAI — e aí
+   * a mensagem cai no aviso honesto de sempre, sem inventar conteúdo. Uma falha
+   * por arquivo não cancela o envio nem os outros áudios: o usuário vê o Notice
+   * e a gravação continua na conversa. v0.1.249
+   */
+  const transcribePendingAudio = async (
+    pending: PendingAttachmentEntry[]
+  ): Promise<Map<string, string>> => {
+    const out = new Map<string, string>();
+    const audios = pending.filter((p) => p.attachment.type === "audio");
+    if (audios.length === 0) return out;
+    const apiKey = plugin.settings.openaiApiKey?.trim();
+    if (!plugin.settings.transcribeAudio || !apiKey) return out;
+
+    new Notice(t.composer.transcribing);
+    for (const p of audios) {
+      const path = (p.attachment as { path?: string }).path;
+      if (!path) continue;
+      try {
+        const buf = await plugin.app.vault.adapter.readBinary(path);
+        const text = await transcribeAudio({
+          apiKey,
+          model: plugin.settings.transcribeModel || "gpt-4o-mini-transcribe",
+          data: new Uint8Array(buf),
+          filename: path.split("/").pop() ?? "audio.webm",
+        });
+        if (text) out.set(p.id, text);
+      } catch (err) {
+        console.error("[axxa] transcrição falhou:", err);
+        new Notice(
+          t.composer.transcribeFailed(
+            err instanceof Error ? err.message : ""
+          )
+        );
+      }
+    }
+    return out;
+  };
+
   // Salva o áudio gravado pelo hold-to-record no Vault e devolve o path
   // relativo (pra usar como wikilink no composer). Cria a pasta se não existir.
   const handleSaveAudio = async (
@@ -1652,14 +1722,6 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     await setModelForProvider(providerSel, m);
   };
 
-  // Arena: confirma provider + modelo JUNTOS (a arena navega entre providers).
-  // v0.1.224
-  const handleArenaConfirm = async (p: string, m: string) => {
-    setProviderSel(p);
-    plugin.settings.defaultProvider = p;
-    await setModelForProvider(p, m); // já faz saveSettings
-  };
-
   // Switcher do header (ref: Claude iOS 16). Troca o modelo. Se a sessão já
   // está locked (continuidade), abrir outro modelo inicia uma NOVA conversa
   // nele — preservando a sessão atual intacta.
@@ -2002,14 +2064,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             }}
             injectText={composerInject}
             streaming={isLoading}
-            providerName={activeProvider.name}
             modelName={activeModel}
             effort={effort}
-            tokensIn={tokensIn}
-            tokensOut={tokensOut}
-            tokensPerSec={tokensPerSec}
-            contextUsed={lastPromptTokens}
-            locked={isLocked}
             mode={activeMode}
             placeholder={placeholderForMode(activeMode, t.composer)}
             onSaveAudio={handleSaveAudio}
@@ -2022,13 +2078,21 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                   name: alias,
                 },
               ]);
-              // Honestidade (auditoria): áudio ainda não vai pro modelo —
-              // avisa na hora em vez de deixar o chip sumir no send.
-              new Notice(t.composer.audioAttachedNotice);
+              // O aviso diz a VERDADE do estado atual: com transcrição ligada
+              // (e key OpenAI), o áudio vira texto e é enviado; sem isso, fica
+              // só o wikilink na conversa. v0.1.249
+              new Notice(
+                plugin.settings.transcribeAudio &&
+                  plugin.settings.openaiApiKey?.trim()
+                  ? t.composer.audioAttachedTranscribeNotice
+                  : t.composer.audioAttachedNotice
+              );
             }}
             commands={axxaCommands}
-            visibleChips={plugin.settings.composerChips}
             visionEnabled={getModelCapabilities(activeProviderId, activeModel).vision}
+            pdfEnabled={
+              !!getModelCapabilities(activeProviderId, activeModel).pdf
+            }
             pendingAttachments={pendingAttachments.map((p) => {
               const a = p.attachment;
               switch (a.type) {
@@ -2184,7 +2248,27 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                       };
                   }
                 })();
+                if (picked.type === "pdf") {
+                  // Teto de 30MB: o limite de request é 32MB (Anthropic) / 50MB
+                  // (OpenAI) e o base64 já infla ~33% — melhor barrar aqui do
+                  // que levar um 413 no meio da conversa. v0.1.248
+                  const bytes = approxBase64Bytes(picked.dataUrl);
+                  if (bytes > PDF_MAX_BYTES) {
+                    new Notice(t.composer.pdfTooLarge(bytes / (1024 * 1024)));
+                    return;
+                  }
+                }
                 setPendingAttachments((prev) => [...prev, entry]);
+                // O usuário fica sabendo AGORA se o modelo ativo lê o PDF —
+                // não depois, por uma resposta que ignorou o arquivo. v0.1.248
+                if (picked.type === "pdf") {
+                  const label = prettyModelName(activeModel) || activeModel;
+                  new Notice(
+                    getModelCapabilities(activeProviderId, activeModel).pdf
+                      ? t.composer.pdfAttachedNotice(label)
+                      : t.composer.pdfUnsupportedNotice(label)
+                  );
+                }
               }}
             />
           )}

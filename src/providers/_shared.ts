@@ -53,7 +53,58 @@ export async function streamFallbackToChat(
 }
 
 // ============================================================
-// Mensagens → formato wire OpenAI (text + tool_calls + vision)
+// Data URLs (anexos) — parse único usado por imagem e PDF
+// ============================================================
+
+/**
+ * `data:application/pdf;base64,AAAA` → `{ mediaType, base64 }`. null quando não
+ * é data URL base64 (URL externa, string vazia, base64 truncado). Os providers
+ * pulam o anexo em vez de mandar lixo pro wire.
+ */
+export function parseDataUrl(
+  dataUrl: string | undefined
+): { mediaType: string; base64: string } | null {
+  if (!dataUrl) return null;
+  const m = /^data:([^;,]+);base64,(.+)$/.exec(dataUrl);
+  if (!m) return null;
+  return { mediaType: m[1], base64: m[2] };
+}
+
+/**
+ * Data URL de PDF pronta pro wire OpenAI-compat (`file_data`). Aceita tanto a
+ * data URL completa quanto base64 cru (normaliza o prefixo). null se não dá.
+ */
+export function pdfFileData(dataUrl: string | undefined): string | null {
+  if (!dataUrl) return null;
+  if (dataUrl.startsWith("data:")) {
+    const parsed = parseDataUrl(dataUrl);
+    if (!parsed) return null;
+    // Alguns WebViews (Android) devolvem application/octet-stream pro .pdf
+    // escolhido — o picker já validou que é PDF, então re-rotulamos. Qualquer
+    // outro mime (image/*, text/*) é recusado pra não virar arquivo mentiroso.
+    const mime = parsed.mediaType.toLowerCase();
+    const isPdf = mime.includes("pdf") || mime === "application/octet-stream";
+    if (!isPdf) return null;
+    return `data:application/pdf;base64,${parsed.base64}`;
+  }
+  // Base64 cru (sem prefixo) — aceita se parecer base64.
+  if (/^[A-Za-z0-9+/=\r\n]+$/.test(dataUrl) && dataUrl.length > 16) {
+    return `data:application/pdf;base64,${dataUrl.replace(/\s+/g, "")}`;
+  }
+  return null;
+}
+
+/** Alguma mensagem carrega PDF? (decide o plugin file-parser no OpenRouter) */
+export function hasPdfAttachment(messages: ProviderMessage[]): boolean {
+  return messages.some(
+    (m) =>
+      m.role === "user" &&
+      !!m.attachments?.some((a) => a.type === "pdf" && pdfFileData(a.dataUrl))
+  );
+}
+
+// ============================================================
+// Mensagens → formato wire OpenAI (text + tool_calls + vision + PDF)
 // ============================================================
 export function toOpenAIMessages(messages: ProviderMessage[]): unknown[] {
   return messages.map((m) => {
@@ -75,12 +126,27 @@ export function toOpenAIMessages(messages: ProviderMessage[]): unknown[] {
       const imageAtt = m.attachments.filter(
         (a): a is ImageAttachment => a.type === "image"
       );
-      if (imageAtt.length === 0) return { role: "user", content: m.content };
+      // PDF vira content part `file` com data URL (OpenAI Chat Completions e
+      // OpenRouter usam o mesmo shape). Anexos ilegíveis são pulados. v0.1.248
+      const pdfParts: Array<Record<string, unknown>> = [];
+      for (const a of m.attachments) {
+        if (a.type !== "pdf") continue;
+        const fileData = pdfFileData(a.dataUrl);
+        if (!fileData) continue;
+        pdfParts.push({
+          type: "file",
+          file: { filename: a.name, file_data: fileData },
+        });
+      }
+      if (imageAtt.length === 0 && pdfParts.length === 0) {
+        return { role: "user", content: m.content };
+      }
       const parts: Array<Record<string, unknown>> = [];
       if (m.content) parts.push({ type: "text", text: m.content });
       for (const att of imageAtt) {
         parts.push({ type: "image_url", image_url: { url: att.dataUrl } });
       }
+      parts.push(...pdfParts);
       return { role: "user", content: parts };
     }
     return { role: m.role, content: m.content };
