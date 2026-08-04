@@ -1244,15 +1244,30 @@ body.is-mobile .axxa-composer-pill .axxa-composer-model-effort {
   bottom: 0;
   padding: 0;
 }
-/* MOBILE: fixed no viewport real, subindo com o teclado — e compensando a
-   navbar nativa quando o teclado está fechado (antes o sheet cobria a
-   navegação global do Obsidian). */
+/* MOBILE: fixed pra virar um bottom sheet colado na base real da tela. O fixed
+   ancora no .workspace-drawer (transform nativo de abrir/fechar → é o containing
+   block), NÃO no viewport.
+   - Teclado FECHADO: compensa a navbar global do Obsidian (clearance) pra não
+     cobrir a navegação.
+   - Teclado ABERTO: o próprio drawer JÁ encolhe pro topo do teclado — é o que
+     mantém os outros modos (absolute + bottom) corretos. Como este composer é
+     `fixed` ancorado NESSE mesmo drawer, somar `--keyboard-height` no `bottom`
+     contava o teclado DUAS vezes e jogava o sheet pro topo da tela (bug 0.1.246).
+     Por isso o offset do teclado sai daqui e vira zero na regra .axxa-keyboard-open
+     abaixo: encosta na base já elevada, logo acima do teclado — igual aos outros. */
 body.is-mobile .axxa-root .axxa-composer[data-mode="vault-qa"] {
   position: fixed;
-  bottom: max(
-    var(--keyboard-height, 0px),
-    var(--axxa-status-bar-clearance, 0px)
-  );
+  bottom: var(--axxa-status-bar-clearance, 0px);
+}
+/* Teclado aberto: base já subiu com o drawer → zera o clearance (a navbar fica
+   atrás do teclado) e não soma --keyboard-height (double-count). O escopo por
+   `.workspace-drawer.axxa-keyboard-open` (classe posta pelo AxxaView) garante que
+   só vale enquanto o teclado está aberto E a AXXA é a aba ativa do drawer. */
+body.is-mobile
+  .workspace-drawer.axxa-keyboard-open
+  .axxa-root
+  .axxa-composer[data-mode="vault-qa"] {
+  bottom: 0;
 }
 .axxa-composer-card[data-mode="vault-qa"] {
   gap: 16px;
