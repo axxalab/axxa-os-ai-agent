@@ -9,6 +9,7 @@ import { geminiProvider } from "./gemini";
 import { openrouterProvider } from "./openrouter";
 import { nimProvider } from "./nim";
 import { ollamaProvider } from "./ollama";
+import { remoteAgentProvider } from "./remoteAgent";
 
 export const providers: Record<string, Provider> = {
   openai: openaiProvider,
@@ -17,6 +18,7 @@ export const providers: Record<string, Provider> = {
   openrouter: openrouterProvider,
   nim: nimProvider,
   ollama: ollamaProvider,
+  "remote-agent": remoteAgentProvider,
 };
 
 export const providerIds = Object.keys(providers) as Array<keyof typeof providers>;
@@ -36,4 +38,5 @@ export {
   openrouterProvider,
   nimProvider,
   ollamaProvider,
+  remoteAgentProvider,
 };

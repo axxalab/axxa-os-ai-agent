@@ -4,6 +4,7 @@
 
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { getProvider } from "./providers";
+import { configureRemoteAgent } from "./providers/remoteAgent";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 import { VectorIndex, loadIndex, RAG_SHARD_SIZE } from "./rag/vectorIndex";
@@ -208,6 +209,15 @@ interface AxxaSettings {
   licenseKey: string;
   /** Emblema "Founder" no rodapé da gaveta (acima de Premium/Free). v0.1.206 */
   founder: boolean;
+  // ============ Remote Agent (provider virtual — Claude Code no vault) ============
+  /** Raiz do protocolo `_agent/` no vault (inbox/outbox/approvals/state). O runtime
+   *  do usuário (Claude Code headless na PRÓPRIA assinatura Max) materializa o vault
+   *  e opera aqui; o transporte é o próprio vault via LiveSync. Default "_agent".
+   *  Ver docs/AGENT_PROTOCOL.md. v0.1.257 */
+  remoteAgentPath: string;
+  /** Modelo lógico enviado ao runtime (mapeado pra `claude -p --model`). MVP:
+   *  "claude-code". */
+  remoteAgentModel: string;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -264,6 +274,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
       "black-forest-labs/flux.1-schnell",
     ],
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
+    "remote-agent": ["claude-code"],
   },
   favoriteModels: [],
   roleModels: {},
@@ -317,6 +328,8 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   founder: false,
   onboardingDone: false,
   licenseKey: "",
+  remoteAgentPath: "_agent",
+  remoteAgentModel: "claude-code",
 };
 
 export default class AxxaPlugin extends Plugin {
@@ -707,6 +720,15 @@ export default class AxxaPlugin extends Plugin {
     registerBrandIcons();
     // Logos de marca coloridos (providers + modelos) — <Icon name="logo-openai" />
     registerBrandLogos();
+
+    // Remote Agent (provider virtual): injeta acesso ao vault. O provider escreve/lê
+    // o protocolo `_agent/` (transporte via LiveSync) — o runtime do usuário (Claude
+    // Code headless, própria assinatura Max) opera do outro lado. Ver docs/AGENT_PROTOCOL.md.
+    configureRemoteAgent({
+      getApp: () => this.app,
+      getRoot: () => this.settings.remoteAgentPath || "_agent",
+      getDevice: () => (Platform.isMobile ? "mobile" : "desktop"),
+    });
 
     // Cache de specs dos modelos (Fetch info / OpenRouter) — hidrata o store.
     await this.loadModelInfoCache();

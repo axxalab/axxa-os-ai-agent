@@ -261,6 +261,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [openrouterModelSel, setOpenrouterModelSel] = useState(plugin.settings.openrouterModel);
   const [nimModelSel, setNimModelSel] = useState(plugin.settings.nimModel);
   const [ollamaModelSel, setOllamaModelSel] = useState(plugin.settings.ollamaModel);
+  const [remoteAgentModelSel, setRemoteAgentModelSel] = useState(
+    plugin.settings.remoteAgentModel
+  );
   const [effort, setEffort] = useState(plugin.settings.defaultEffort);
   const [mode, setMode] = useState(
     plugin.settings.defaultMode === "vault-qa" ? "vault-qa" : "chat"
@@ -283,6 +286,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       case "openrouter": return openrouterModelSel;
       case "nim": return nimModelSel;
       case "ollama": return ollamaModelSel;
+      case "remote-agent": return remoteAgentModelSel;
       default: return openaiModelSel;
     }
   };
@@ -296,6 +300,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       case "openrouter": return plugin.settings.openrouterApiKey;
       case "nim": return plugin.settings.nimApiKey;
       case "ollama": return plugin.settings.ollamaEndpoint;
+      case "remote-agent": return ""; // auth vive no runtime, não no plugin
       default: return plugin.settings.openaiApiKey;
     }
   };
@@ -1710,6 +1715,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       case "ollama":
         setOllamaModelSel(m);
         plugin.settings.ollamaModel = m;
+        break;
+      case "remote-agent":
+        setRemoteAgentModelSel(m);
+        plugin.settings.remoteAgentModel = m;
         break;
       default:
         setOpenaiModelSel(m);
