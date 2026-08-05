@@ -1582,6 +1582,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     }).open();
   };
 
+  // Rename/Delete do chat ATUAL — usados pelo menu ⋮ do header (estilo Claude).
+  const handleRenameCurrent = () => {
+    if (!currentChatId) return;
+    handleRenameChatFromList(currentChatId, activeMode, currentChatTitle);
+  };
+  const handleDeleteCurrent = () => {
+    if (!currentChatId) return;
+    void handleDeleteChat(currentChatId, activeMode);
+  };
+
   const handleOpenSearch = () => {
     const hits = useChatStore
       .getState()
@@ -1915,6 +1925,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             fullscreen={!!plugin.settings.mobileFullscreen}
             onToggleFullscreen={handleToggleFullscreen}
             showFullscreen={Platform.isMobile}
+            onRename={handleRenameCurrent}
+            onDeleteChat={handleDeleteCurrent}
           />
         {view === "conversations" ? (
           <ConversationsList

@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { useT } from "../../i18n";
 
@@ -97,6 +98,10 @@ interface HeaderProps {
   onToggleFullscreen: () => void;
   /** Só mobile: no desktop não há chrome de drawer/navbar pra recuperar. */
   showFullscreen: boolean;
+  /** Abre o modal de rename do chat atual (item "Rename" do menu ⋮). */
+  onRename: () => void;
+  /** Deleta o chat atual (item "Delete" do menu ⋮, vermelho). */
+  onDeleteChat: () => void;
 }
 
 export function Header({
@@ -120,6 +125,8 @@ export function Header({
   fullscreen,
   onToggleFullscreen,
   showFullscreen,
+  onRename,
+  onDeleteChat,
 }: HeaderProps) {
   const t = useT();
   const [draft, setDraft] = useState(chatTitle);
@@ -192,71 +199,19 @@ export function Header({
 
   return (
     <header className="axxa-header">
-      {/* Avatar (mock) à ESQUERDA → abre a gaveta de conversas. v0.1.145 */}
+      {/* Hambúrguer à ESQUERDA → abre a gaveta (ref: Claude). */}
       <button
         type="button"
-        className="axxa-header-avatar"
+        className="axxa-header-hamburger"
         onClick={onOpenSidebar}
         aria-label={t.header.conversations}
         title={t.header.conversations}
       >
-        <Icon name="user-round" />
+        <Icon name="menu" />
       </button>
-      <div className="axxa-header-title">
-        {hasChat ? (
-          <div className="axxa-header-center">
-            <input
-              ref={inputRef}
-              type="text"
-              className="axxa-header-chat-title"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  (e.target as HTMLInputElement).blur();
-                } else if (e.key === "Escape") {
-                  setDraft(chatTitle);
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              aria-label={t.conversations.renameAria}
-              title={t.conversations.renameTitle}
-              placeholder={t.conversations.renameInputLabel}
-            />
-            {modelName && (
-              <HeaderModelSwitcher
-                modelName={modelName}
-                modelOptions={modelOptions}
-                onSelectModel={onSelectModel}
-                locked={modelLocked}
-              />
-            )}
-          </div>
-        ) : (
-          <span className="axxa-header-brand">
-            <span className="axxa-header-brand-dot" />
-            <span className="axxa-header-name">AXXA OS</span>
-          </span>
-        )}
-      </div>
+      {/* Centro vazio — o título da conversa vive no menu ⋮ (ref: Claude). */}
+      <div className="axxa-header-spacer" />
       <div className="axxa-header-actions">
-        {/* Search só faz sentido DENTRO de uma conversa */}
-        {hasChat && (
-          <button
-            type="button"
-            className={
-              "axxa-header-gear" +
-              (searchActive ? " axxa-header-gear-active" : "")
-            }
-            onClick={onToggleSearch}
-            aria-label={t.header.search}
-            title={t.header.search}
-          >
-            <Icon name="search" />
-          </button>
-        )}
         <button
           type="button"
           className="axxa-header-gear axxa-header-gear-primary"
@@ -264,7 +219,7 @@ export function Header({
           aria-label={t.header.newChat}
           title={t.header.newChat}
         >
-          <Icon name="message-square-plus" />
+          <Icon name="message-circle-plus" />
         </button>
         <div className="axxa-header-more" ref={moreRef}>
           <button
@@ -285,7 +240,7 @@ export function Header({
             createPortal(
               <div
                 ref={popoverRef}
-                className="axxa-popover-menu"
+                className="axxa-popover-menu axxa-chat-menu"
                 role="menu"
                 style={
                   menuPos
@@ -293,79 +248,83 @@ export function Header({
                     : undefined
                 }
               >
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={
-                    "axxa-popover-item" +
-                    (personaActive ? " axxa-popover-item-active" : "")
-                  }
-                  onClick={() => {
-                    onEditPersona();
-                    setMenuOpen(false);
-                  }}
-                >
-                  <Icon name="drama" />
-                  <span className="axxa-popover-label">
-                    {personaActive ? t.header.personaActive : t.header.persona}
-                  </span>
-                  <Icon name="chevron-right" className="axxa-popover-chevron" />
-                </button>
+                {hasChat && (
+                  <div className="axxa-chat-menu-title">{chatTitle}</div>
+                )}
                 {canCopy && (
                   <button
                     type="button"
                     role="menuitem"
-                    className="axxa-popover-item"
+                    className="axxa-popover-item axxa-chat-menu-item"
                     onClick={() => {
                       onCopyConversation();
                       setMenuOpen(false);
                     }}
                   >
-                    <Icon name="copy" />
-                    <span className="axxa-popover-label">
-                      {t.header.copyConversation}
-                    </span>
+                    <span className="axxa-popover-label">Share</span>
+                    <Icon name="forward" className="axxa-chat-menu-icon" />
                   </button>
                 )}
-                {showFullscreen && (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    aria-pressed={fullscreen}
-                    className={
-                      "axxa-popover-item" +
-                      (fullscreen ? " axxa-popover-item-active" : "")
-                    }
-                    onClick={() => {
-                      onToggleFullscreen();
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <Icon name={fullscreen ? "minimize-2" : "maximize-2"} />
-                    <span className="axxa-popover-label">
-                      {fullscreen
-                        ? t.header.exitFullscreen
-                        : t.header.fullscreen}
-                    </span>
-                  </button>
-                )}
-                <div className="axxa-popover-divider" />
                 <button
                   type="button"
                   role="menuitem"
-                  className="axxa-popover-item"
+                  className="axxa-popover-item axxa-chat-menu-item"
                   onClick={() => {
-                    onOpenSettings();
+                    onRename();
                     setMenuOpen(false);
                   }}
                 >
-                  <Icon name="settings" />
-                  <span className="axxa-popover-label">
-                    {t.header.openSettings}
-                  </span>
-                  <Icon name="chevron-right" className="axxa-popover-chevron" />
+                  <span className="axxa-popover-label">Rename</span>
+                  <Icon name="pencil" className="axxa-chat-menu-icon" />
                 </button>
-                <div className="axxa-popover-footer">AXXA OS · v{version}</div>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="axxa-popover-item axxa-chat-menu-item"
+                  onClick={() => {
+                    new Notice("Coming soon");
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span className="axxa-popover-label">Star</span>
+                  <Icon name="star" className="axxa-chat-menu-icon" />
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="axxa-popover-item axxa-chat-menu-item"
+                  onClick={() => {
+                    new Notice("Coming soon");
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span className="axxa-popover-label">Add to project</span>
+                  <Icon name="layers" className="axxa-chat-menu-icon" />
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="axxa-popover-item axxa-chat-menu-item"
+                  onClick={() => {
+                    new Notice("Coming soon");
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span className="axxa-popover-label">Add to home</span>
+                  <Icon name="home" className="axxa-chat-menu-icon" />
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="axxa-popover-item axxa-chat-menu-item axxa-chat-menu-item-danger"
+                  onClick={() => {
+                    onDeleteChat();
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span className="axxa-popover-label">Delete</span>
+                  <Icon name="trash-2" className="axxa-chat-menu-icon" />
+                </button>
               </div>,
               (moreRef.current?.ownerDocument ?? document).body
             )}

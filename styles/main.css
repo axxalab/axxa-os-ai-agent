@@ -6667,6 +6667,87 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ═══ Header estilo Claude (branch `final`): hambúrguer · centro vazio · +balão · ⋮ ═══ */
+.axxa-header-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.axxa-root .axxa-header-hamburger {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--text-normal);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.axxa-root .axxa-header-hamburger:hover {
+  color: var(--text-muted);
+}
+.axxa-header-hamburger .svg-icon {
+  width: 22px;
+  height: 22px;
+}
+/* "+" em balão PREENCHIDO (claro, ícone escuro) — ref Claude. */
+.axxa-root .axxa-header-gear-primary {
+  background: var(--text-normal);
+  color: var(--background-primary);
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+}
+.axxa-root .axxa-header-gear-primary:hover {
+  background: var(--text-muted);
+  color: var(--background-primary);
+}
+.axxa-root .axxa-header-gear-primary .svg-icon {
+  width: 18px;
+  height: 18px;
+  color: inherit;
+}
+/* Menu ⋮ do chat: título grayed + itens (label à esquerda, ícone à direita). */
+.axxa-chat-menu {
+  min-width: 244px;
+  padding: 6px;
+}
+.axxa-chat-menu-title {
+  padding: 10px 14px 8px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-root .axxa-chat-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+.axxa-chat-menu-item .axxa-popover-label {
+  flex: 1 1 auto;
+  font-size: var(--font-ui-medium);
+  text-align: left;
+}
+.axxa-chat-menu-icon {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+  flex: 0 0 auto;
+}
+.axxa-root .axxa-chat-menu-item-danger .axxa-popover-label,
+.axxa-chat-menu-item-danger .axxa-chat-menu-icon {
+  color: var(--text-error);
+}
 /* New chat / Q&A / Agent: ícone E texto em ACCENT, SEM fundo em nenhum estado
    (nem no hover do desktop). Feedback de hover = accent mais forte, sem fill. */
 .axxa-root .axxa-sidebar-new,
