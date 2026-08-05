@@ -201,7 +201,5 @@ export function describeProviderError(
 
 /** Providers que exigem API key (Ollama roda local via endpoint, dispensa). */
 export function providerNeedsKey(providerId: string): boolean {
-  // Ollama (endpoint local) e Remote Agent (auth vive no runtime do user, via a
-  // própria assinatura Max) não precisam de API key no plugin.
-  return providerId !== "ollama" && providerId !== "remote-agent";
+  return providerId !== "ollama";
 }
