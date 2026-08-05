@@ -28,6 +28,24 @@ import {
   type AppView,
   type Tier,
 } from "../../entitlements";
+import { isEnabled } from "../../features";
+
+/** Feature-lock de uma tela de nav (recomeço: só conversas ativas; o resto
+ *  aparece travado/não-clicável até a feature voltar). */
+function navFeatureLocked(view: AppView): boolean {
+  switch (view) {
+    case "conversations":
+      return !isEnabled("conversations");
+    case "projects":
+      return !isEnabled("projects");
+    case "media":
+      return !isEnabled("media");
+    case "statistics":
+      return !isEnabled("statistics");
+    default:
+      return true; // profile etc. — sem feature própria ainda
+  }
+}
 
 interface SidebarProps {
   open: boolean;
@@ -274,15 +292,22 @@ export function Sidebar({
               certo (chat / vault-qa / agent). Mesma lógica, modo diferente. */}
           <div className="axxa-sidebar-new-group">
             {[
-              { mode: "chat", icon: "circle-plus", label: t.header.newChat },
-              { mode: "vault-qa", icon: "library", label: t.header.newQa },
-              { mode: "agent", icon: "bot", label: t.header.newAgent },
+              { mode: "chat", icon: "circle-plus", label: t.header.newChat, on: isEnabled("chat") },
+              { mode: "vault-qa", icon: "library", label: t.header.newQa, on: isEnabled("vaultQa") },
+              { mode: "agent", icon: "bot", label: t.header.newAgent, on: isEnabled("agent") },
             ].map((b) => (
               <button
                 key={b.mode}
                 type="button"
-                className={"axxa-sidebar-new axxa-sidebar-new-" + b.mode}
+                disabled={!b.on}
+                aria-disabled={!b.on}
+                title={b.on ? undefined : "Coming soon"}
+                className={
+                  "axxa-sidebar-new axxa-sidebar-new-" + b.mode +
+                  (b.on ? "" : " is-locked")
+                }
                 onClick={() => {
+                  if (!b.on) return;
                   hapticTick();
                   onNewChatMode(b.mode);
                   onClose();
@@ -290,6 +315,7 @@ export function Sidebar({
               >
                 <Icon name={b.icon} />
                 <span>{b.label}</span>
+                {!b.on && <Icon name="lock" className="axxa-sidebar-new-lock" />}
               </button>
             ))}
           </div>
@@ -297,18 +323,24 @@ export function Sidebar({
           {/* Navegação das seções — todas FLAT, a ativa com pílula sutil. */}
           <nav className="axxa-sidebar-nav">
             {NAV_ITEMS.map((item) => {
-              const locked = tier === "free" && viewRequiresPro(item.view);
+              const locked =
+                (tier === "free" && viewRequiresPro(item.view)) ||
+                navFeatureLocked(item.view);
               const isActive = activeView === item.view;
               return (
                 <button
                   key={item.view}
                   type="button"
+                  disabled={locked}
+                  aria-disabled={locked}
+                  title={locked ? "Coming soon" : undefined}
                   className={
                     "axxa-sidebar-nav-item" +
                     (isActive ? " is-active" : "") +
                     (locked ? " is-locked" : "")
                   }
                   onClick={() => {
+                    if (locked) return;
                     onNavigate(item.view);
                     onClose();
                   }}

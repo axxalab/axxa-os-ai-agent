@@ -4,6 +4,7 @@
 
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { getProvider } from "./providers";
+import { isEnabled } from "./features";
 import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
 import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
 import { VectorIndex, loadIndex, RAG_SHARD_SIZE } from "./rag/vectorIndex";
@@ -712,19 +713,19 @@ export default class AxxaPlugin extends Plugin {
     await this.loadModelInfoCache();
 
     // Embeddings descobertos (fetch anterior) → registro global do RAG.
-    this.refreshDiscoveredEmbeddings();
+    if (isEnabled("rag")) this.refreshDiscoveredEmbeddings();
 
     // "Hot" dos modelos a partir do uso local — fire-and-forget (não bloqueia).
     void this.refreshLocalUsageHot();
 
     // Skills (.md na pasta de skills) → slash-commands no composer.
-    await this.reloadSkills();
+    if (isEnabled("skills")) await this.reloadSkills();
 
     // Carrega índice RAG do disco se já existe. Falhas são silenciosas —
     // só significa que o user ainda não rodou "Indexar vault".
     // No MOBILE, gateia por tamanho: um índice grande estoura o heap do WebView
     // e derruba o Obsidian no parse (OOM). Acima do teto, pula → keyword. v0.1.198
-    try {
+    if (isEnabled("rag")) try {
       const mobileGuard = Platform.isMobile
         ? {
             maxBytes: 16 * 1024 * 1024,
@@ -781,10 +782,10 @@ export default class AxxaPlugin extends Plugin {
     this.setupStatusBarClearance();
 
     // Auto-reindex do RAG (opt-in) — re-embeda notas modificadas em background
-    this.setupAutoReindex();
+    if (isEnabled("rag")) this.setupAutoReindex();
 
     // Skills editadas no vault recarregam sozinhas (SKL-03)
-    this.setupSkillsWatcher();
+    if (isEnabled("skills")) this.setupSkillsWatcher();
 
     // Abre na sidebar direita quando o Obsidian termina de montar o layout.
     this.app.workspace.onLayoutReady(() => {

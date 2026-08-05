@@ -103,6 +103,7 @@ import {
   saveUsageHtml,
   printUsageReport,
 } from "../../usage/export";
+import { isEnabled } from "../../features";
 
 export type TopTabId =
   | "connections"
@@ -214,11 +215,15 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // Top-level tabs (Providers / Outros)
     // ============================================================
     const topTabsEl = containerEl.createDiv({ cls: "axxa-settings-tabs" });
+    // Recomeço (branch `final`): abas de features dormentes ficam travadas. Se a
+    // aba ativa salva estiver travada, cai pra Connections pra não render vazio.
+    if (this.activeTopTab === "agent" && !isEnabled("agent")) this.activeTopTab = "connections";
+    if (this.activeTopTab === "usage" && !isEnabled("usage")) this.activeTopTab = "connections";
     this.createTopTabButton(topTabsEl, "connections", "Connections");
     this.createTopTabButton(topTabsEl, "setup", t.settings.topTabs.setup);
-    this.createTopTabButton(topTabsEl, "agent", t.settings.topTabs.agent);
+    this.createTopTabButton(topTabsEl, "agent", t.settings.topTabs.agent, !isEnabled("agent"));
     this.createTopTabButton(topTabsEl, "appearance", t.settings.topTabs.appearance);
-    this.createTopTabButton(topTabsEl, "usage", t.settings.topTabs.usage);
+    this.createTopTabButton(topTabsEl, "usage", t.settings.topTabs.usage, !isEnabled("usage"));
 
     // ============================================================
     // Conteúdo da top-tab ativa
@@ -684,13 +689,23 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private createTopTabButton(
     parent: HTMLElement,
     id: TopTabId,
-    label: string
+    label: string,
+    locked = false
   ) {
     const btn = parent.createEl("button", {
       cls:
-        "axxa-tab-btn" + (this.activeTopTab === id ? " axxa-tab-active" : ""),
+        "axxa-tab-btn" +
+        (this.activeTopTab === id ? " axxa-tab-active" : "") +
+        (locked ? " axxa-tab-locked" : ""),
       text: label,
     });
+    if (locked) {
+      // Feature dormente: visível mas não-clicável (destrava virando a flag).
+      btn.setAttribute("disabled", "true");
+      btn.setAttribute("aria-disabled", "true");
+      btn.title = "Coming soon";
+      return;
+    }
     btn.onclick = () => {
       hapticTick();
       this.activeTopTab = id;

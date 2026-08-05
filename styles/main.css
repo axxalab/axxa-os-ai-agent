@@ -6648,6 +6648,25 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   width: 18px;
   height: 18px;
 }
+/* Feature travada (recomeço na branch `final`): visível mas não-clicável. O
+   atributo `disabled` já bloqueia o clique — aqui é só o visual + o cadeado. */
+.axxa-root .axxa-sidebar-new.is-locked {
+  opacity: 0.4;
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.axxa-sidebar-new-lock,
+.axxa-sidebar-nav-lock {
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  opacity: 0.65;
+}
+/* Aba de settings travada (feature dormente). */
+.axxa-tab-locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 /* New chat / Q&A / Agent: ícone E texto em ACCENT, SEM fundo em nenhum estado
    (nem no hover do desktop). Feedback de hover = accent mais forte, sem fill. */
 .axxa-root .axxa-sidebar-new,
