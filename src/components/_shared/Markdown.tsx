@@ -179,6 +179,7 @@ function openCodeOverlay(app: App, pre: HTMLPreElement, lang: string, copyLabel:
   // Modal NATIVO do Obsidian (bottom sheet no mobile, posição de fábrica). Clona
   // o <pre> pra manter o syntax highlight.
   const modal = new Modal(app);
+  modal.modalEl.addClass("axxa-code-modal-wrap");
   modal.onOpen = () => {
     const { contentEl } = modal;
     contentEl.empty();
@@ -192,7 +193,12 @@ function openCodeOverlay(app: App, pre: HTMLPreElement, lang: string, copyLabel:
     actions.className = "axxa-code-actions";
     const copyBtn = codeActionBtn("copy", copyLabel);
     wireCopy(copyBtn, () => pre.querySelector("code")?.textContent ?? pre.textContent ?? "");
-    actions.append(copyBtn);
+    const fullBtn = codeActionBtn("maximize-2", "Fullscreen");
+    fullBtn.addEventListener("click", () => {
+      const full = modal.modalEl.classList.toggle("axxa-code-modal-full");
+      setIcon(fullBtn, full ? "minimize-2" : "maximize-2");
+    });
+    actions.append(copyBtn, fullBtn);
     header.append(langEl, actions);
     contentEl.append(header, pre.cloneNode(true));
   };
