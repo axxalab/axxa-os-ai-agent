@@ -6762,6 +6762,48 @@ body.axxa-reduce-motion .axxa-popover-menu {
   color: var(--text-normal);
   padding: 0 8px;
 }
+
+/* ═══ Raciocínio: chip concluído → bottom sheet "Summary" (ref Claude) ═══ */
+.axxa-reasoning-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin: 2px 0 10px;
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+.axxa-reasoning-chip:hover {
+  color: var(--text-normal);
+}
+.axxa-reasoning-chip-ico .svg-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+.axxa-reasoning-chip-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-reasoning-chip-caret .svg-icon {
+  width: 15px;
+  height: 15px;
+  opacity: 0.7;
+  flex: 0 0 auto;
+}
+.axxa-reasoning-sheet-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+  color: var(--text-normal);
+  padding: 4px 2px 24px;
+}
 .axxa-root .axxa-header-gear-primary:hover {
   background: var(--text-muted);
   color: var(--background-primary);
