@@ -209,13 +209,14 @@ export function Header({
       >
         <Icon name="menu" />
       </button>
-      {/* Centro: nome da conversa (só em chat iniciado), centralizado e truncado
-          com "…" pra nomes grandes. Editar = item Rename do menu ⋮. */}
-      <div className="axxa-header-spacer" />
-      {hasChat && (
+      {/* Centro: nome da conversa (chat iniciado) ocupa o meio (flex:1) e
+          centraliza, truncado com "…". Novo chat → espaçador vazio. */}
+      {hasChat ? (
         <div className="axxa-header-title-center" title={chatTitle}>
           {chatTitle}
         </div>
+      ) : (
+        <div className="axxa-header-spacer" />
       )}
       <div className="axxa-header-actions">
         <button

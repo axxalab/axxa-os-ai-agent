@@ -6571,13 +6571,17 @@ body.axxa-reduce-motion .axxa-popover-menu {
   line-height: 1.2;
   text-align: left;
   cursor: pointer;
-  /* Repouso SEM fundo (antes herdava o fundo do button nativo, "redesenhando"
-     um bloco por item). O fundo só aparece no hover/pressed. */
+}
+/* Item SEM fundo em repouso — igual ao Claude (sem "card" por opção). O button
+   nativo do Obsidian (.theme-dark button = 0,0,1,1) vencia .axxa-popover-item
+   (0,0,1,0) e pintava cinza; subimos a especificidade com .axxa-popover-menu
+   (0,0,2,0). Fundo só no hover/pressed. */
+.axxa-popover-menu .axxa-popover-item {
   background: transparent;
 }
-.axxa-popover-item:hover,
-.axxa-popover-item:focus-visible,
-.axxa-popover-item:active {
+.axxa-popover-menu .axxa-popover-item:hover,
+.axxa-popover-menu .axxa-popover-item:focus-visible,
+.axxa-popover-menu .axxa-popover-item:active {
   background: var(--background-modifier-hover);
 }
 .axxa-popover-item .axxa-icon svg {
@@ -6737,13 +6741,12 @@ body.axxa-reduce-motion .axxa-popover-menu {
   -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23fff' d='M50 0 C79.5 0 88.8 3.5 94 13.2 C99.2 22.9 100 32.4 100 50 C100 67.6 99.2 77.1 94 86.8 C88.8 96.5 79.5 100 50 100 C20.5 100 11.2 96.5 6 86.8 C0.8 77.1 0 67.6 0 50 C0 32.4 0.8 22.9 6 13.2 C11.2 3.5 20.5 0 50 0 Z'/></svg>") center / 100% 100% no-repeat;
   mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23fff' d='M50 0 C79.5 0 88.8 3.5 94 13.2 C99.2 22.9 100 32.4 100 50 C100 67.6 99.2 77.1 94 86.8 C88.8 96.5 79.5 100 50 100 C20.5 100 11.2 96.5 6 86.8 C0.8 77.1 0 67.6 0 50 C0 32.4 0.8 22.9 6 13.2 C11.2 3.5 20.5 0 50 0 Z'/></svg>") center / 100% 100% no-repeat;
 }
-/* Nome da conversa centralizado no header (chat iniciado), truncado com "…". */
+/* Nome da conversa no header (chat iniciado): ocupa o espaço ENTRE hambúrguer e
+   ações (flex:1) e centraliza; trunca com "…". `min-width: 0` é o que permite o
+   ellipsis dentro do flex. */
 .axxa-header-title-center {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  max-width: calc(100% - 170px);
+  flex: 1 1 auto;
+  min-width: 0;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -6751,7 +6754,7 @@ body.axxa-reduce-motion .axxa-popover-menu {
   font-weight: 600;
   font-size: var(--font-ui-medium);
   color: var(--text-normal);
-  pointer-events: none;
+  padding: 0 8px;
 }
 .axxa-root .axxa-header-gear-primary:hover {
   background: var(--text-muted);
@@ -6763,8 +6766,11 @@ body.axxa-reduce-motion .axxa-popover-menu {
   color: inherit;
 }
 /* Menu ⋮ do chat: título grayed + itens (label à esquerda, ícone à direita). */
+/* Largura do menu medida pelos ITENS (fixa), não pelo nome longo da nota — o
+   título trunca dentro dela (…). */
 .axxa-chat-menu {
-  min-width: 244px;
+  width: 264px;
+  max-width: calc(100vw - 24px);
   padding: 6px;
 }
 .axxa-chat-menu-title {
