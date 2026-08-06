@@ -792,10 +792,10 @@ export default class AxxaPlugin extends Plugin {
     // Skills editadas no vault recarregam sozinhas (SKL-03)
     if (isEnabled("skills")) this.setupSkillsWatcher();
 
-    // Abre na sidebar direita quando o Obsidian termina de montar o layout.
-    this.app.workspace.onLayoutReady(() => {
-      this.activateView();
-    });
+    // NÃO auto-abrimos o painel no startup — o Obsidian abre "normal". O AI
+    // Agent abre sob demanda pela ribbon (ícone do robô) ou pelo comando
+    // "Abrir AI Agent". Se o painel estava aberto ao fechar o Obsidian, o
+    // próprio Obsidian restaura o layout — respeitando o que o usuário deixou.
   }
 
   onunload() {
