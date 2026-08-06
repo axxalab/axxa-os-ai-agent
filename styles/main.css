@@ -1023,6 +1023,12 @@ body.theme-dark .axxa-root {
 .axxa-header {
   background: var(--background-primary);
 }
+/* Header segue o mapeamento nativo por tema: DARK = --background-secondary.
+   Sem isto ele ficava --background-primary (o mais escuro / preto em temas
+   AMOLED) enquanto o resto do app era secondary — só o header parecia preto. */
+body.theme-dark .axxa-header {
+  background: var(--background-secondary);
+}
 
 /* ============================================================
  * COMPOSER — DS 1.0 (ref: print do Claude Agent composer)
