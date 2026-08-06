@@ -6766,12 +6766,14 @@ body.axxa-reduce-motion .axxa-popover-menu {
   color: inherit;
 }
 /* Menu ⋮ do chat: título grayed + itens (label à esquerda, ícone à direita). */
-/* Largura do menu medida pelos ITENS (fixa), não pelo nome longo da nota — o
-   título trunca dentro dela (…). */
+/* Largura medida pelos NOMES das opções (max-content) — o nome da nota saiu do
+   menu. Radius agressivo (squircle-feel). */
 .axxa-chat-menu {
-  width: 264px;
+  width: max-content;
+  min-width: 200px;
   max-width: calc(100vw - 24px);
   padding: 6px;
+  border-radius: 26px;
 }
 .axxa-chat-menu-title {
   padding: 10px 14px 8px;

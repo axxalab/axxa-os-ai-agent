@@ -255,83 +255,105 @@ export function Header({
                     : undefined
                 }
               >
+                {/* Conversa EXISTENTE: ações do chat. Chat novo pula tudo isso. */}
                 {hasChat && (
-                  <div className="axxa-chat-menu-title">{chatTitle}</div>
+                  <>
+                    {canCopy && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="axxa-popover-item axxa-chat-menu-item"
+                        onClick={() => {
+                          onCopyConversation();
+                          setMenuOpen(false);
+                        }}
+                      >
+                        <span className="axxa-popover-label">Share</span>
+                        <Icon name="forward" className="axxa-chat-menu-icon" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="axxa-popover-item axxa-chat-menu-item"
+                      onClick={() => {
+                        onRename();
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <span className="axxa-popover-label">Rename</span>
+                      <Icon name="pencil" className="axxa-chat-menu-icon" />
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="axxa-popover-item axxa-chat-menu-item"
+                      onClick={() => {
+                        new Notice("Coming soon");
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <span className="axxa-popover-label">Star</span>
+                      <Icon name="star" className="axxa-chat-menu-icon" />
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="axxa-popover-item axxa-chat-menu-item"
+                      onClick={() => {
+                        new Notice("Coming soon");
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <span className="axxa-popover-label">Add to project</span>
+                      <Icon name="layers" className="axxa-chat-menu-icon" />
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="axxa-popover-item axxa-chat-menu-item"
+                      onClick={() => {
+                        new Notice("Coming soon");
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <span className="axxa-popover-label">Add to home</span>
+                      <Icon name="home" className="axxa-chat-menu-icon" />
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="axxa-popover-item axxa-chat-menu-item axxa-chat-menu-item-danger"
+                      onClick={() => {
+                        onDeleteChat();
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <span className="axxa-popover-label">Delete</span>
+                      <Icon name="trash-2" className="axxa-chat-menu-icon" />
+                    </button>
+                  </>
                 )}
-                {canCopy && (
+                {/* Fullscreen aparece nos DOIS (chat novo e existente) — só mobile. */}
+                {showFullscreen && (
                   <button
                     type="button"
                     role="menuitem"
                     className="axxa-popover-item axxa-chat-menu-item"
                     onClick={() => {
-                      onCopyConversation();
+                      onToggleFullscreen();
                       setMenuOpen(false);
                     }}
                   >
-                    <span className="axxa-popover-label">Share</span>
-                    <Icon name="forward" className="axxa-chat-menu-icon" />
+                    <span className="axxa-popover-label">
+                      {fullscreen ? "Exit fullscreen" : "Fullscreen"}
+                    </span>
+                    <Icon
+                      name={fullscreen ? "minimize-2" : "maximize-2"}
+                      className="axxa-chat-menu-icon"
+                    />
                   </button>
                 )}
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="axxa-popover-item axxa-chat-menu-item"
-                  onClick={() => {
-                    onRename();
-                    setMenuOpen(false);
-                  }}
-                >
-                  <span className="axxa-popover-label">Rename</span>
-                  <Icon name="pencil" className="axxa-chat-menu-icon" />
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="axxa-popover-item axxa-chat-menu-item"
-                  onClick={() => {
-                    new Notice("Coming soon");
-                    setMenuOpen(false);
-                  }}
-                >
-                  <span className="axxa-popover-label">Star</span>
-                  <Icon name="star" className="axxa-chat-menu-icon" />
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="axxa-popover-item axxa-chat-menu-item"
-                  onClick={() => {
-                    new Notice("Coming soon");
-                    setMenuOpen(false);
-                  }}
-                >
-                  <span className="axxa-popover-label">Add to project</span>
-                  <Icon name="layers" className="axxa-chat-menu-icon" />
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="axxa-popover-item axxa-chat-menu-item"
-                  onClick={() => {
-                    new Notice("Coming soon");
-                    setMenuOpen(false);
-                  }}
-                >
-                  <span className="axxa-popover-label">Add to home</span>
-                  <Icon name="home" className="axxa-chat-menu-icon" />
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="axxa-popover-item axxa-chat-menu-item axxa-chat-menu-item-danger"
-                  onClick={() => {
-                    onDeleteChat();
-                    setMenuOpen(false);
-                  }}
-                >
-                  <span className="axxa-popover-label">Delete</span>
-                  <Icon name="trash-2" className="axxa-chat-menu-icon" />
-                </button>
               </div>,
               (moreRef.current?.ownerDocument ?? document).body
             )}

@@ -1891,8 +1891,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         <ChatActionsContext.Provider value={chatActions}>
         <div
           className={
-            "axxa-root axxa-bg-" +
-            (plugin.settings.background || "none") +
+            // Backgrounds é feature DORMENTE na branch `final` → força "none"
+            // (só os 2 temas nativos, sem preset/blur verde). Reativar: features.ts.
+            "axxa-root axxa-bg-none" +
             (plugin.settings.codeWrap ? " axxa-code-wrap" : "") +
             (isLoading ? " axxa-bg-active" : "") +
             (view === "chat" && isEmpty && cleanChat
