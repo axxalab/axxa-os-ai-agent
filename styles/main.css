@@ -4681,6 +4681,96 @@ body.theme-dark .axxa-root .axxa-composer-pill {
 .axxa-markdown pre.axxa-code-block {
   position: relative;
 }
+
+/* ═══ Bloco de código estilo Claude: wrapper + header (linguagem + copiar/expandir) ═══ */
+.axxa-code-block-wrap {
+  margin: 10px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+}
+.axxa-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 6px 5px 14px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.axxa-code-lang {
+  min-width: 0;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  font-family: var(--font-monospace, monospace);
+  text-transform: lowercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-code-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.axxa-root .axxa-code-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.axxa-root .axxa-code-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.axxa-code-btn .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.axxa-code-btn.axxa-code-copy-active .svg-icon {
+  color: var(--text-success, #4ade80);
+}
+/* O <pre> dentro do wrapper: sem margem/borda/radius próprios (o wrapper cuida). */
+.axxa-code-block-wrap > pre.axxa-code-block {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+/* Overlay fullscreen do "expandir" — centralizado (sobrescreve o align do sheet). */
+.axxa-code-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.axxa-code-overlay-panel {
+  width: min(920px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  box-shadow: var(--shadow-l, 0 8px 28px rgba(0, 0, 0, 0.4));
+}
+.axxa-code-overlay-panel > pre.axxa-code-block {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  overflow: auto;
+  flex: 1 1 auto;
+}
 .axxa-code-copy,
 .axxa-code-copy:hover,
 .axxa-code-copy:focus,

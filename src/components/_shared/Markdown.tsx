@@ -142,40 +142,112 @@ function enhanceInternalLinks(
   });
 }
 
-// Anexa botão "copy" em cada <pre> do bloco renderizado.
-// Idempotente: se já tem botão, skip (proteção contra duplicação em re-renders).
+// Botão de ação do code block (copy/expand/close) — ícone Lucide, sem borda.
+function codeActionBtn(icon: string, label: string): HTMLButtonElement {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "axxa-code-btn";
+  b.setAttribute("aria-label", label);
+  b.setAttribute("title", label);
+  setIcon(b, icon);
+  return b;
+}
+
+// Liga o "copiar" num botão: ícone vira check por 1.5s ao copiar.
+function wireCopy(btn: HTMLButtonElement, getText: () => string): void {
+  btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(getText());
+      setIcon(btn, "check");
+      btn.classList.add("axxa-code-copy-active");
+      window.setTimeout(() => {
+        if (!btn.isConnected) return;
+        setIcon(btn, "copy");
+        btn.classList.remove("axxa-code-copy-active");
+      }, 1500);
+    } catch (err) {
+      console.error("[axxa] copy code falhou:", err);
+    }
+  });
+}
+
+// Overlay fullscreen do "expandir": clona o <pre> (mantém o highlight) num
+// painel com header (linguagem + copiar + fechar). v0.2.10
+function openCodeOverlay(pre: HTMLPreElement, lang: string, copyLabel: string): void {
+  const overlay = document.createElement("div");
+  overlay.className = "axxa-plus-overlay axxa-code-overlay";
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") close();
+  };
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  document.addEventListener("keydown", onKey);
+
+  const header = document.createElement("div");
+  header.className = "axxa-code-header";
+  const langEl = document.createElement("span");
+  langEl.className = "axxa-code-lang";
+  langEl.textContent = lang;
+  const actions = document.createElement("div");
+  actions.className = "axxa-code-actions";
+  const copyBtn = codeActionBtn("copy", copyLabel);
+  wireCopy(copyBtn, () => pre.querySelector("code")?.textContent ?? pre.textContent ?? "");
+  const closeBtn = codeActionBtn("x", "Close");
+  closeBtn.addEventListener("click", close);
+  actions.append(copyBtn, closeBtn);
+  header.append(langEl, actions);
+
+  const panel = document.createElement("div");
+  panel.className = "axxa-code-overlay-panel";
+  panel.append(header, pre.cloneNode(true));
+  overlay.append(panel);
+  document.body.appendChild(overlay);
+}
+
+// Envolve cada <pre> num wrapper com HEADER (linguagem + copiar + expandir),
+// estilo Claude. Idempotente: se já está no wrapper, skip.
 function enhanceCodeBlocks(root: HTMLElement, copyLabel: string) {
   const pres = root.querySelectorAll<HTMLPreElement>("pre");
   pres.forEach((pre) => {
-    if (pre.querySelector(":scope > .axxa-code-copy")) return;
+    if (pre.parentElement?.classList.contains("axxa-code-block-wrap")) return;
 
     pre.classList.add("axxa-code-block");
 
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "axxa-code-copy";
-    btn.setAttribute("aria-label", copyLabel);
-    btn.setAttribute("title", copyLabel);
-    setIcon(btn, "copy");
+    // Linguagem via <code class="language-xxx"> (renderer do Obsidian).
+    const code = pre.querySelector("code");
+    const langClass = code
+      ? Array.from(code.classList).find((c) => c.startsWith("language-"))
+      : undefined;
+    const lang = langClass ? langClass.slice("language-".length) : "text";
 
-    btn.addEventListener("click", async (e) => {
+    const wrap = document.createElement("div");
+    wrap.className = "axxa-code-block-wrap";
+    pre.parentElement?.insertBefore(wrap, pre);
+
+    const header = document.createElement("div");
+    header.className = "axxa-code-header";
+    const langEl = document.createElement("span");
+    langEl.className = "axxa-code-lang";
+    langEl.textContent = lang;
+
+    const actions = document.createElement("div");
+    actions.className = "axxa-code-actions";
+    const copyBtn = codeActionBtn("copy", copyLabel);
+    wireCopy(copyBtn, () => code?.textContent ?? pre.textContent ?? "");
+    const expandBtn = codeActionBtn("maximize-2", "Expand");
+    expandBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const code = pre.querySelector("code");
-      const text = code?.textContent ?? pre.textContent ?? "";
-      try {
-        await navigator.clipboard.writeText(text);
-        setIcon(btn, "check");
-        btn.classList.add("axxa-code-copy-active");
-        window.setTimeout(() => {
-          if (!btn.isConnected) return;
-          setIcon(btn, "copy");
-          btn.classList.remove("axxa-code-copy-active");
-        }, 1500);
-      } catch (err) {
-        console.error("[axxa] copy code falhou:", err);
-      }
+      openCodeOverlay(pre, lang, copyLabel);
     });
+    actions.append(copyBtn, expandBtn);
+    header.append(langEl, actions);
 
-    pre.appendChild(btn);
+    wrap.append(header, pre); // move o <pre> pra dentro do wrapper
   });
 }
