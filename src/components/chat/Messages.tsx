@@ -21,9 +21,8 @@ import {
   isCloudTtsActive,
 } from "../_shared/speech";
 import { ThinkingGlyph } from "../_shared/ThinkingGlyph";
-import { createPortal } from "react-dom";
-import { useFocusTrap } from "../_shared/useFocusTrap";
-import { useBottomSheet } from "../_shared/useBottomSheet";
+import { useApp } from "../_shared/AppContext";
+import { ReasoningModal } from "./ReasoningModal";
 import { hapticTick } from "../_shared/haptics";
 import { Markdown } from "../_shared/Markdown";
 import { formatTime } from "../_shared/timestamps";
@@ -90,7 +89,7 @@ function AgentSteps({ steps }: { steps: AIToolStep[] }) {
  */
 function ReasoningPanel({ text, live }: { text: string; live: boolean }) {
   const t = useT();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const app = useApp();
 
   // AO VIVO: streaming inline (o user vê pensar), auto-aberto e pulsando.
   if (live) {
@@ -105,67 +104,19 @@ function ReasoningPanel({ text, live }: { text: string; live: boolean }) {
     );
   }
 
-  // CONCLUÍDO: chip colapsado → abre o bottom sheet "Summary" (ref Claude).
+  // CONCLUÍDO: chip → abre o modal NATIVO do Obsidian (bottom sheet no mobile,
+  // posição/animação de fábrica — o sheet custom portalado abria no topo).
   return (
-    <>
-      <button
-        type="button"
-        className="axxa-reasoning-chip"
-        onClick={() => setSheetOpen(true)}
-        aria-haspopup="dialog"
-      >
-        <Icon name="clock" className="axxa-reasoning-chip-ico" />
-        <span className="axxa-reasoning-chip-label">{t.chat.reasoningDone}</span>
-        <Icon name="chevron-right" className="axxa-reasoning-chip-caret" />
-      </button>
-      {sheetOpen && (
-        <ReasoningSheet text={text} onClose={() => setSheetOpen(false)} />
-      )}
-    </>
-  );
-}
-
-/**
- * Bottom sheet "Summary" com o raciocínio completo — mesmo shell dos outros
- * sheets (useBottomSheet + .axxa-plus-sheet). Portalado pro <body> pra o overlay
- * `fixed` cobrir a viewport de verdade (escapa transform de ancestral). v0.2.9
- */
-function ReasoningSheet({ text, onClose }: { text: string; onClose: () => void }) {
-  const sheetRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(sheetRef, { onEscape: onClose, autoFocus: false });
-  const sheet = useBottomSheet(onClose);
-  return createPortal(
-    <div className="axxa-plus-overlay" onClick={onClose}>
-      <div
-        ref={sheetRef}
-        className={"axxa-plus-sheet axxa-sheet" + sheet.sheetClass}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        tabIndex={-1}
-        aria-label="Summary"
-      >
-        <div className="axxa-sheet-top" {...sheet.topProps}>
-          <div className="axxa-plus-handle" />
-          <div className="axxa-sheet-header">
-            <button
-              type="button"
-              className="axxa-sheet-nav"
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <Icon name="x" />
-            </button>
-            <span className="axxa-sheet-title">Summary</span>
-            <span className="axxa-sheet-nav" aria-hidden="true" />
-          </div>
-        </div>
-        <div className="axxa-sheet-body" ref={sheet.bodyRef}>
-          <div className="axxa-reasoning-sheet-text">{text}</div>
-        </div>
-      </div>
-    </div>,
-    document.body
+    <button
+      type="button"
+      className="axxa-reasoning-chip"
+      onClick={() => new ReasoningModal(app, text).open()}
+      aria-haspopup="dialog"
+    >
+      <Icon name="clock" className="axxa-reasoning-chip-ico" />
+      <span className="axxa-reasoning-chip-label">{t.chat.reasoningDone}</span>
+      <Icon name="chevron-right" className="axxa-reasoning-chip-caret" />
+    </button>
   );
 }
 

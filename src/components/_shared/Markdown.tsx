@@ -12,7 +12,7 @@
 // padrão de IA (ChatGPT/Claude) — usuário quase sempre quer o código puro.
 
 import { useEffect, useRef, useState } from "react";
-import { type App, Component, MarkdownRenderer, Notice, setIcon } from "obsidian";
+import { type App, Component, MarkdownRenderer, Modal, Notice, setIcon } from "obsidian";
 import { useApp } from "./AppContext";
 import { useT } from "../../i18n";
 import { wireExternalLinkSafety } from "../chat/LinkSafetyModal";
@@ -85,7 +85,7 @@ export function Markdown({ content }: MarkdownProps) {
     ).then(() => {
       if (cancelled) return;
       enhanceArtifacts(el);
-      enhanceCodeBlocks(el, t.chat.copyCode);
+      enhanceCodeBlocks(el, t.chat.copyCode, app);
       enhanceInternalLinks(el, app, t.plus.pickNoteNotFound);
       disposeLinks = wireExternalLinkSafety(el, app, {
         title: t.linkSafety.title,
@@ -175,50 +175,43 @@ function wireCopy(btn: HTMLButtonElement, getText: () => string): void {
 
 // Overlay fullscreen do "expandir": clona o <pre> (mantém o highlight) num
 // painel com header (linguagem + copiar + fechar). v0.2.10
-function openCodeOverlay(pre: HTMLPreElement, lang: string, copyLabel: string): void {
-  const overlay = document.createElement("div");
-  overlay.className = "axxa-plus-overlay axxa-code-overlay";
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") close();
+function openCodeOverlay(app: App, pre: HTMLPreElement, lang: string, copyLabel: string): void {
+  // Modal NATIVO do Obsidian (bottom sheet no mobile, posição de fábrica). Clona
+  // o <pre> pra manter o syntax highlight.
+  const modal = new Modal(app);
+  modal.onOpen = () => {
+    const { contentEl } = modal;
+    contentEl.empty();
+    contentEl.addClass("axxa-code-modal");
+    const header = document.createElement("div");
+    header.className = "axxa-code-header";
+    const langEl = document.createElement("span");
+    langEl.className = "axxa-code-lang";
+    langEl.textContent = lang;
+    const actions = document.createElement("div");
+    actions.className = "axxa-code-actions";
+    const copyBtn = codeActionBtn("copy", copyLabel);
+    wireCopy(copyBtn, () => pre.querySelector("code")?.textContent ?? pre.textContent ?? "");
+    actions.append(copyBtn);
+    header.append(langEl, actions);
+    contentEl.append(header, pre.cloneNode(true));
   };
-  const close = () => {
-    overlay.remove();
-    document.removeEventListener("keydown", onKey);
-  };
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) close();
-  });
-  document.addEventListener("keydown", onKey);
-
-  const header = document.createElement("div");
-  header.className = "axxa-code-header";
-  const langEl = document.createElement("span");
-  langEl.className = "axxa-code-lang";
-  langEl.textContent = lang;
-  const actions = document.createElement("div");
-  actions.className = "axxa-code-actions";
-  const copyBtn = codeActionBtn("copy", copyLabel);
-  wireCopy(copyBtn, () => pre.querySelector("code")?.textContent ?? pre.textContent ?? "");
-  const closeBtn = codeActionBtn("x", "Close");
-  closeBtn.addEventListener("click", close);
-  actions.append(copyBtn, closeBtn);
-  header.append(langEl, actions);
-
-  const panel = document.createElement("div");
-  panel.className = "axxa-code-overlay-panel";
-  panel.append(header, pre.cloneNode(true));
-  overlay.append(panel);
-  document.body.appendChild(overlay);
+  modal.onClose = () => modal.contentEl.empty();
+  modal.open();
 }
 
 // Envolve cada <pre> num wrapper com HEADER (linguagem + copiar + expandir),
 // estilo Claude. Idempotente: se já está no wrapper, skip.
-function enhanceCodeBlocks(root: HTMLElement, copyLabel: string) {
+function enhanceCodeBlocks(root: HTMLElement, copyLabel: string, app: App) {
   const pres = root.querySelectorAll<HTMLPreElement>("pre");
   pres.forEach((pre) => {
     if (pre.parentElement?.classList.contains("axxa-code-block-wrap")) return;
 
     pre.classList.add("axxa-code-block");
+
+    // Remove o botão "copy" NATIVO do Obsidian (fica dentro do <pre>) — a gente
+    // tem o nosso no header; senão aparecem 2 copiar.
+    pre.querySelectorAll("button").forEach((b) => b.remove());
 
     // Linguagem via <code class="language-xxx"> (renderer do Obsidian).
     const code = pre.querySelector("code");
@@ -244,7 +237,7 @@ function enhanceCodeBlocks(root: HTMLElement, copyLabel: string) {
     const expandBtn = codeActionBtn("maximize-2", "Expand");
     expandBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      openCodeOverlay(pre, lang, copyLabel);
+      openCodeOverlay(app, pre, lang, copyLabel);
     });
     actions.append(copyBtn, expandBtn);
     header.append(langEl, actions);

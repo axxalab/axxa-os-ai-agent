@@ -6949,6 +6949,33 @@ body.axxa-reduce-motion .axxa-popover-menu {
   color: var(--text-normal);
   padding: 4px 2px 24px;
 }
+/* Modal NATIVO do raciocínio ("Summary") — herda o .modal do Obsidian. */
+.axxa-reasoning-modal-title {
+  margin: 0 0 10px;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+}
+.axxa-reasoning-modal-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+  color: var(--text-normal);
+  max-height: 70vh;
+  overflow: auto;
+}
+/* Modal NATIVO do "expandir" code — header + o <pre> clonado. */
+.axxa-code-modal > pre.axxa-code-block {
+  margin: 8px 0 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  max-height: 70vh;
+  overflow: auto;
+}
+/* Esconde o botão "copy" NATIVO do Obsidian (backup — a gente já remove no JS). */
+.axxa-markdown .copy-code-button {
+  display: none;
+}
 .axxa-root .axxa-header-gear-primary:hover {
   background: var(--text-muted);
   color: var(--background-primary);
