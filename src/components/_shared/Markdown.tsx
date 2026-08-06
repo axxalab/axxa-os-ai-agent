@@ -193,12 +193,7 @@ function openCodeOverlay(app: App, pre: HTMLPreElement, lang: string, copyLabel:
     actions.className = "axxa-code-actions";
     const copyBtn = codeActionBtn("copy", copyLabel);
     wireCopy(copyBtn, () => pre.querySelector("code")?.textContent ?? pre.textContent ?? "");
-    const fullBtn = codeActionBtn("maximize-2", "Fullscreen");
-    fullBtn.addEventListener("click", () => {
-      const full = modal.modalEl.classList.toggle("axxa-code-modal-full");
-      setIcon(fullBtn, full ? "minimize-2" : "maximize-2");
-    });
-    actions.append(copyBtn, fullBtn);
+    actions.append(copyBtn);
     header.append(langEl, actions);
     contentEl.append(header, pre.cloneNode(true));
   };
