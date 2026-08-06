@@ -919,11 +919,10 @@ layout no
   background: var(--background-primary);
   color: var(--text-normal);
 }
-/* Canvas herda o fundo NATIVO do Obsidian (--background-primary) nos dois temas.
-   O dark deixou de forçar secondary — que virava preto em temas AMOLED e não
-   parecia nativo. O composer se separa por borda/sombra. (branch `final`) */
+/* Superfície nativa por tema (regra do owner): LIGHT = --background-primary
+   (base acima), DARK = --background-secondary. */
 body.theme-dark .axxa-root {
-  background: var(--background-primary);
+  background: var(--background-secondary);
 }
 /* tipografia semântica: apoio = muted, carimbos/versão = faint */
 .axxa-root :is([class*="-sub"], [class*="-desc"], [class*="-meta"], [class*="-hint"]) {
