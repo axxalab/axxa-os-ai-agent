@@ -7058,6 +7058,23 @@ body {
 .axxa-chat-menu-item-danger .axxa-chat-menu-icon {
   color: var(--text-error);
 }
+/* Star LIGADO: estrela preenchida em accent (o resto do item fica neutro — só
+   o ícone comunica o estado, igual à referência). */
+.axxa-root .axxa-chat-menu-item-on .axxa-chat-menu-icon {
+  color: var(--interactive-accent);
+  fill: var(--interactive-accent);
+  opacity: 1;
+}
+/* Item do menu ⋮ travado (feature dormente) — mesma linguagem da nav da gaveta
+   e das abas do settings: apagado, sem cursor de clique, cadeado no lugar do
+   ícone próprio. */
+.axxa-root .axxa-chat-menu-item.is-locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.axxa-root .axxa-chat-menu-item.is-locked:hover {
+  background: transparent;
+}
 /* New chat / Q&A / Agent: ícone E texto em ACCENT, SEM fundo em nenhum estado
    (nem no hover do desktop). Feedback de hover = accent mais forte, sem fill. */
 .axxa-root .axxa-sidebar-new,
@@ -7295,6 +7312,18 @@ body {
 .axxa-sidebar-item-date {
   flex: 0 0 auto;
   font-size: var(--font-ui-smaller);
+}
+/* Estrela da conversa favoritada — entre o título e a data, discreta. */
+.axxa-sidebar-item-star {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  color: var(--interactive-accent);
+  fill: var(--interactive-accent);
+}
+.axxa-sidebar-item-star .svg-icon {
+  width: 13px;
+  height: 13px;
 }
 .axxa-sidebar-empty {
   flex: 1 1 auto;

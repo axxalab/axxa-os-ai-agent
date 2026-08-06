@@ -94,6 +94,7 @@ import {
   loadChat,
   renameChat,
   deleteChat,
+  setChatStarred,
   generateTitle,
   type ChatData,
   type ChatSummary,
@@ -178,6 +179,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const sessionPersona = useChatStore((s) => s.sessionPersona);
   const currentChatId = useChatStore((s) => s.currentChatId);
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
+  const currentChatStarred = useChatStore((s) => s.currentChatStarred);
   const abortRef = useRef<AbortController | null>(null);
   /** Rascunho atual do composer — pra prefill do modal de imagem. #9 */
   const composerDraftRef = useRef("");
@@ -541,6 +543,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         tokensIn,
         tokensOut,
         persona: useChatStore.getState().sessionPersona || undefined,
+        // O save reescreve o .md INTEIRO — sem isto, favoritar e depois mandar
+        // outra mensagem apagaria a estrela silenciosamente.
+        starred: currentChatStarred || undefined,
         messages: userOrAi.map((m) => ({
           type: m.type as "user" | "ai-response",
           content: m.content,
@@ -572,6 +577,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             tokensOut: chat.tokensOut,
             messageCount: chat.messages.length,
             filePath: path,
+            starred: chat.starred === true,
           });
         })
         .catch((err) => console.error("[axxa] saveChat falhou:", err));
@@ -590,6 +596,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     tokensIn,
     tokensOut,
     sessionPersona,
+    currentChatStarred,
     plugin.app,
     plugin.settings.chatsPath,
   ]);
@@ -1592,6 +1599,36 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     void handleDeleteChat(currentChatId, activeMode);
   };
 
+  // Favoritar/desfavoritar o chat ATUAL (item "Star" do menu ⋮). Otimista: o
+  // store vira primeiro (menu fecha já refletindo), e só depois o .md é
+  // reescrito — se a escrita falhar, desfaz e avisa.
+  const handleToggleStarCurrent = async () => {
+    if (!currentChatId) return;
+    const next = !currentChatStarred;
+    const { setCurrentChatStarred } = useChatStore.getState();
+    setCurrentChatStarred(next);
+    try {
+      await setChatStarred(
+        plugin.app,
+        plugin.settings.chatsPath,
+        activeMode,
+        currentChatId,
+        next
+      );
+      // Mantém o cache compartilhado em dia → Sidebar/Conversas re-sincronizam
+      // sem re-ler o disco (mesmo caminho do rename). v0.1.175
+      const cur = plugin.chatSummaries?.find((c) => c.id === currentChatId);
+      if (cur) plugin.upsertChatSummary({ ...cur, starred: next });
+      new Notice(next ? t.chat.starred : t.chat.unstarred);
+    } catch (err) {
+      setCurrentChatStarred(!next);
+      console.error("[axxa] setChatStarred falhou:", err);
+      new Notice(
+        `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`
+      );
+    }
+  };
+
   const handleOpenSearch = () => {
     const hits = useChatStore
       .getState()
@@ -1779,6 +1816,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         setMessages,
         setCurrentChatId,
         setCurrentChatTitle,
+        setCurrentChatStarred,
         lockSession,
         resetUsage,
         addUsage,
@@ -1801,6 +1839,7 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       addUsage(chat.tokensIn, chat.tokensOut);
       setEffort(chat.effort);
       setSessionPersona(chat.persona ?? "");
+      setCurrentChatStarred(chat.starred === true);
       // v0.1.228: reidratação gera ids novos (makeId) p/ cada msg → um highlight
       // pendente apontaria pra id inexistente. Reseta o destaque no load.
       setSearchTarget(null);
@@ -1928,6 +1967,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             showFullscreen={Platform.isMobile}
             onRename={handleRenameCurrent}
             onDeleteChat={handleDeleteCurrent}
+            starred={currentChatStarred}
+            onToggleStar={() => void handleToggleStarCurrent()}
           />
         {view === "conversations" ? (
           <ConversationsList

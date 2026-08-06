@@ -44,7 +44,16 @@ export interface ChatData {
   tokensOut: number;
   /** Persona / system prompt custom do chat ("" ou ausente = prompt padrão). */
   persona?: string;
+  /** Favoritada (item "Star" do menu ⋮). Ausente = não favoritada. */
+  starred?: boolean;
   messages: ChatMessageStored[];
+}
+
+/** Lê um booleano do frontmatter tolerando as DUAS origens: o metadataCache do
+ *  Obsidian entrega `true` (boolean), o nosso parseSimpleYaml entrega "true"
+ *  (string). Qualquer outra coisa = false. */
+function yamlBool(v: unknown): boolean {
+  return v === true || v === "true";
 }
 
 export interface ChatSummary {
@@ -60,6 +69,8 @@ export interface ChatSummary {
   tokensOut: number;
   messageCount: number;
   filePath: string;
+  /** Favoritada — sobe pro topo dos recentes e ganha estrela na lista. */
+  starred: boolean;
 }
 
 const TAG_LIST = ["axxa-chat"];
@@ -136,7 +147,7 @@ mode: ${yamlString(chat.mode)}
 provider: ${yamlString(chat.provider)}
 model: ${yamlString(chat.model)}
 effort: ${yamlString(chat.effort)}
-${chat.persona ? `persona: ${yamlString(chat.persona)}\n` : ""}tokens_in: ${chat.tokensIn}
+${chat.persona ? `persona: ${yamlString(chat.persona)}\n` : ""}${chat.starred ? "starred: true\n" : ""}tokens_in: ${chat.tokensIn}
 tokens_out: ${chat.tokensOut}
 message_count: ${chat.messages.length}
 ${toolsBlock}tags:
@@ -349,6 +360,9 @@ export function parseChatMarkdown(content: string): ChatData {
     model: String(fm.model ?? ""),
     effort: String(fm.effort ?? "med"),
     persona: fm.persona ? String(fm.persona) : undefined,
+    // Ausente fica undefined (não `false`) — mantém o round-trip exato, igual
+    // à persona: o que não foi escrito não volta como campo.
+    starred: yamlBool(fm.starred) ? true : undefined,
     tokensIn: Number(fm.tokens_in ?? 0),
     tokensOut: Number(fm.tokens_out ?? 0),
     messages,
@@ -400,6 +414,7 @@ export function summaryFromFrontmatter(
     tokensOut: Number(fm.tokens_out ?? 0),
     messageCount: Number(fm.message_count ?? 0),
     filePath,
+    starred: yamlBool(fm.starred),
   };
 }
 
@@ -519,4 +534,35 @@ export async function renameChat(
   body = body.replace(/^# .+(?=\n|$)/, () => `# ${clean}`);
   const updated = `---\n${updatedFm}\n---\n${body}`;
   await app.vault.adapter.write(path, updated);
+}
+
+/**
+ * Liga/desliga o `starred` de um chat (item "Star" do menu ⋮). Mexe SÓ na linha
+ * do frontmatter — não toca no body, então é seguro em conversa longa.
+ *
+ * Estratégia: tira qualquer `starred:` que exista (idempotente, tolera arquivo
+ * hand-editado com o campo em outra posição) e, se for pra favoritar, reinsere
+ * antes de `tokens_in:` — a mesma posição que o renderFrontmatter usa, pra um
+ * arquivo reescrito depois sair byte-idêntico ao de um save normal.
+ */
+export async function setChatStarred(
+  app: App,
+  chatsPath: string,
+  mode: string,
+  chatId: string,
+  starred: boolean
+): Promise<void> {
+  const path = chatFilePath(chatsPath, mode, chatId);
+  const content = await app.vault.adapter.read(path);
+  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) throw new Error("Frontmatter inválido nesse chat.");
+  let fm = match[1].replace(/^starred:\s*.*$\n?/m, "");
+  if (starred) {
+    // Reinsere antes de tokens_in. Se o arquivo não tiver tokens_in (formato
+    // antigo/quebrado), cai pro fim do frontmatter em vez de perder a marca.
+    fm = /^tokens_in:/m.test(fm)
+      ? fm.replace(/^tokens_in:/m, "starred: true\ntokens_in:")
+      : `${fm.replace(/\n+$/, "")}\nstarred: true`;
+  }
+  await app.vault.adapter.write(path, `---\n${fm}\n---\n${match[2]}`);
 }

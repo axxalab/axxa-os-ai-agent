@@ -22,6 +22,11 @@ export const FEATURES = {
   voice: false,
   projects: false,
   skills: false,
+  // Atalho da conversa na "home" (item "Add to home" do menu ⋮). No Claude
+  // mobile isso cria atalho na home do ANDROID — não existe equivalente no
+  // Obsidian, então a semântica aqui ainda está por definir (pin na tela de
+  // nova conversa? bookmark do Obsidian?). Travado até decidir.
+  homeShortcut: false,
   rag: false,
   media: false,
   statistics: false,

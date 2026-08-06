@@ -405,7 +405,12 @@ export default class AxxaPlugin extends Plugin {
           typeof (it as ChatSummary).date === "string"
       );
       if (!valid) return null;
-      return items as ChatSummary[];
+      // Normaliza o `starred` — caches gravados antes do campo existir não o
+      // trazem, e um undefined vazaria pro tipo (que promete boolean).
+      return (items as ChatSummary[]).map((it) => ({
+        ...it,
+        starred: it.starred === true,
+      }));
     } catch (err) {
       console.error("[axxa] readChatIndex falhou:", err);
       return null;

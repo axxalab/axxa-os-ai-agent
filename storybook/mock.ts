@@ -36,6 +36,7 @@ export const mockChats: ChatSummary[] = [
     tokensOut: 1810,
     messageCount: 14,
     filePath: "axxa-ai/chats/chat/c1.md",
+    starred: false,
   },
   {
     id: "c2",
@@ -49,6 +50,7 @@ export const mockChats: ChatSummary[] = [
     tokensOut: 940,
     messageCount: 6,
     filePath: "axxa-ai/chats/vault-qa/c2.md",
+    starred: false,
   },
   {
     id: "c3",
@@ -62,6 +64,8 @@ export const mockChats: ChatSummary[] = [
     tokensOut: 8120,
     messageCount: 22,
     filePath: "axxa-ai/chats/agent/c3.md",
+    // Favoritada — cobre o estado "Star" na Sidebar (sobe pro topo + estrela).
+    starred: true,
   },
   {
     id: "c4",
@@ -75,6 +79,7 @@ export const mockChats: ChatSummary[] = [
     tokensOut: 3400,
     messageCount: 9,
     filePath: "axxa-ai/chats/chat/c4.md",
+    starred: false,
   },
   {
     id: "c5",
@@ -88,6 +93,7 @@ export const mockChats: ChatSummary[] = [
     tokensOut: 12800,
     messageCount: 31,
     filePath: "axxa-ai/chats/vault-qa/c5.md",
+    starred: false,
   },
   {
     id: "c6",
@@ -101,6 +107,7 @@ export const mockChats: ChatSummary[] = [
     tokensOut: 1500,
     messageCount: 5,
     filePath: "axxa-ai/chats/chat/c6.md",
+    starred: false,
   },
 ];
 

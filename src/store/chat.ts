@@ -144,6 +144,10 @@ interface ChatState {
   currentChatId: string | null;
   /** Título do chat atual (auto-gerado da primeira msg do user). */
   currentChatTitle: string;
+  /** Chat atual favoritado (item "Star" do menu ⋮). Faz parte da identidade do
+   *  chat — o auto-save reescreve o .md inteiro, então precisa vir daqui pra
+   *  não apagar a marca a cada mensagem nova. */
+  currentChatStarred: boolean;
   addMessage: (msg: NewMessageInput) => string;
   removeMessage: (id: string) => void;
   appendToMessage: (id: string, text: string) => void;
@@ -190,6 +194,7 @@ interface ChatState {
   setSessionPersona: (persona: string) => void;
   setCurrentChatId: (id: string | null) => void;
   setCurrentChatTitle: (title: string) => void;
+  setCurrentChatStarred: (starred: boolean) => void;
   /** Substitui o array de mensagens inteiro (usado ao carregar chat do disco). */
   setMessages: (msgs: ChatMessage[]) => void;
   /** Reset completo pra "Nova conversa" — limpa msgs, lock, IDs, tokens. */
@@ -237,6 +242,7 @@ export const useChatStore = create<ChatState>((set) => ({
   sessionPersona: "",
   currentChatId: null,
   currentChatTitle: "",
+  currentChatStarred: false,
   addMessage: (msg) => {
     const id = makeId();
     set((state) => ({
@@ -427,8 +433,14 @@ export const useChatStore = create<ChatState>((set) => ({
   setSessionPersona: (persona) => set({ sessionPersona: persona }),
   setCurrentChatId: (id) => set({ currentChatId: id }),
   setCurrentChatTitle: (title) => set({ currentChatTitle: title }),
+  setCurrentChatStarred: (starred) => set({ currentChatStarred: starred }),
   setMessages: (msgs) => set({ messages: msgs }),
   newChat: () =>
     // Reset completo: BASE_RESET + zera a identidade do chat. v0.1.228
-    set({ ...BASE_RESET, currentChatId: null, currentChatTitle: "" }),
+    set({
+      ...BASE_RESET,
+      currentChatId: null,
+      currentChatTitle: "",
+      currentChatStarred: false,
+    }),
 }));

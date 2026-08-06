@@ -298,6 +298,8 @@ export const EN_US = {
     continueLabel: "Continue",
     continueTitle: "Response cut at the limit — continue where it stopped",
     deletedToTrash: "Conversation moved to trash.",
+    starred: "Added to starred",
+    unstarred: "Removed from starred",
     personaTitle: "Chat persona",
     personaDesc:
       "Custom system instruction for this conversation — sets role, tone and rules. Empty = use the default.",

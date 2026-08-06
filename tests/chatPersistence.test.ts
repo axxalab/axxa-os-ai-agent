@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   renderChatMarkdown,
   parseChatMarkdown,
+  summaryFromFrontmatter,
   type ChatData,
 } from "../src/components/_shared/chatPersistence";
 
@@ -121,5 +122,41 @@ describe("chat persistence round-trip", () => {
     const r = parseChatMarkdown(renderChatMarkdown(chat));
     expect(r.provider).toBe(provider);
     expect(r.model).toBe(model);
+  });
+});
+
+// Star (menu ⋮): a marca vive no frontmatter. O risco real é o auto-save —
+// ele reescreve o .md INTEIRO a cada mensagem, então se o campo não sobrevive
+// ao round-trip a estrela some sozinha depois de favoritar.
+describe("chat starred", () => {
+  it("sobrevive ao round-trip quando favoritado", () => {
+    const starred: ChatData = { ...baseChat, starred: true };
+    const md = renderChatMarkdown(starred);
+    expect(md).toContain("starred: true");
+    expect(parseChatMarkdown(md).starred).toBe(true);
+  });
+
+  it("ausente volta como undefined (não vira false) — round-trip exato", () => {
+    const md = renderChatMarkdown(baseChat);
+    expect(md).not.toContain("starred:");
+    const r = parseChatMarkdown(md);
+    expect(r.starred).toBeUndefined();
+    expect(r).toEqual(baseChat);
+  });
+
+  it("desfavoritar não deixa resíduo no frontmatter", () => {
+    const off: ChatData = { ...baseChat, starred: false };
+    const md = renderChatMarkdown(off);
+    expect(md).not.toContain("starred:");
+    expect(parseChatMarkdown(md).starred).toBeUndefined();
+  });
+
+  it("summaryFromFrontmatter aceita boolean (metadataCache) e string (nosso parse)", () => {
+    const base = { id: "x", date: "2026-01-01", title: "t" };
+    expect(summaryFromFrontmatter({ ...base, starred: true }, "chat", "p.md").starred).toBe(true);
+    expect(summaryFromFrontmatter({ ...base, starred: "true" }, "chat", "p.md").starred).toBe(true);
+    expect(summaryFromFrontmatter(base, "chat", "p.md").starred).toBe(false);
+    // Só `true`/"true" contam — qualquer outro valor é não-favoritado.
+    expect(summaryFromFrontmatter({ ...base, starred: "sim" }, "chat", "p.md").starred).toBe(false);
   });
 });

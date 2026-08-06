@@ -169,9 +169,14 @@ export function Sidebar({
 
   const recents = useMemo(() => {
     // Sort blindado: summaries estrangeiros podem ter date vazia/ausente.
-    const arr = [...safeChats].sort((a, b) =>
-      String(b.date ?? "").localeCompare(String(a.date ?? ""))
-    );
+    // Favoritas (Star do menu ⋮) sobem pro topo; dentro de cada bloco, a data
+    // manda como sempre.
+    const arr = [...safeChats].sort((a, b) => {
+      const sa = a.starred ? 1 : 0;
+      const sb = b.starred ? 1 : 0;
+      if (sa !== sb) return sb - sa;
+      return String(b.date ?? "").localeCompare(String(a.date ?? ""));
+    });
     // Chats de OUTRO provedor (modo desconhecido) só aparecem em "Todos" — os
     // filtros específicos só batem com os modos nativos (chat/vault-qa/agent).
     // Como o mode deles não casa com nenhum filtro, ficam naturalmente fora.
@@ -416,6 +421,13 @@ export function Sidebar({
                       <span className="axxa-sidebar-item-title">
                         {c.title?.trim() || t.conversations.untitled}
                       </span>
+                      {c.starred && (
+                        <Icon
+                          name="star"
+                          className="axxa-sidebar-item-star"
+                          aria-label={t.chat.starred}
+                        />
+                      )}
                       <span className="axxa-sidebar-item-date">
                         {relDate(c.date, t)}
                       </span>

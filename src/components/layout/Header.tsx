@@ -9,9 +9,9 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Notice } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { useT } from "../../i18n";
+import { isEnabled } from "../../features";
 
 /**
  * (P1-29) Teclado nos popovers portalados (WAI-ARIA menu button): ao abrir,
@@ -102,6 +102,10 @@ interface HeaderProps {
   onRename: () => void;
   /** Deleta o chat atual (item "Delete" do menu ⋮, vermelho). */
   onDeleteChat: () => void;
+  /** Chat atual favoritado — o item "Star" vira "Unstar" e a estrela preenche. */
+  starred: boolean;
+  /** Favorita/desfavorita o chat atual (item "Star" do menu ⋮). */
+  onToggleStar: () => void;
 }
 
 export function Header({
@@ -127,6 +131,8 @@ export function Header({
   showFullscreen,
   onRename,
   onDeleteChat,
+  starred,
+  onToggleStar,
 }: HeaderProps) {
   const t = useT();
   const [draft, setDraft] = useState(chatTitle);
@@ -287,38 +293,66 @@ export function Header({
                     <button
                       type="button"
                       role="menuitem"
-                      className="axxa-popover-item axxa-chat-menu-item"
+                      className={
+                        "axxa-popover-item axxa-chat-menu-item" +
+                        (starred ? " axxa-chat-menu-item-on" : "")
+                      }
                       onClick={() => {
-                        new Notice("Coming soon");
+                        onToggleStar();
                         setMenuOpen(false);
                       }}
                     >
-                      <span className="axxa-popover-label">Star</span>
+                      <span className="axxa-popover-label">
+                        {starred ? "Unstar" : "Star"}
+                      </span>
                       <Icon name="star" className="axxa-chat-menu-icon" />
                     </button>
+                    {/* Projetos está DORMENTE (features.ts) — item travado com
+                        cadeado, mesma linguagem da nav e das abas do settings.
+                        Reativar `projects` destrava sozinho. */}
                     <button
                       type="button"
                       role="menuitem"
-                      className="axxa-popover-item axxa-chat-menu-item"
+                      disabled={!isEnabled("projects")}
+                      aria-disabled={!isEnabled("projects")}
+                      title={isEnabled("projects") ? undefined : "Coming soon"}
+                      className={
+                        "axxa-popover-item axxa-chat-menu-item" +
+                        (isEnabled("projects") ? "" : " is-locked")
+                      }
                       onClick={() => {
-                        new Notice("Coming soon");
+                        if (!isEnabled("projects")) return;
                         setMenuOpen(false);
                       }}
                     >
                       <span className="axxa-popover-label">Add to project</span>
-                      <Icon name="layers" className="axxa-chat-menu-icon" />
+                      <Icon
+                        name={isEnabled("projects") ? "layers" : "lock"}
+                        className="axxa-chat-menu-icon"
+                      />
                     </button>
                     <button
                       type="button"
                       role="menuitem"
-                      className="axxa-popover-item axxa-chat-menu-item"
+                      disabled={!isEnabled("homeShortcut")}
+                      aria-disabled={!isEnabled("homeShortcut")}
+                      title={
+                        isEnabled("homeShortcut") ? undefined : "Coming soon"
+                      }
+                      className={
+                        "axxa-popover-item axxa-chat-menu-item" +
+                        (isEnabled("homeShortcut") ? "" : " is-locked")
+                      }
                       onClick={() => {
-                        new Notice("Coming soon");
+                        if (!isEnabled("homeShortcut")) return;
                         setMenuOpen(false);
                       }}
                     >
                       <span className="axxa-popover-label">Add to home</span>
-                      <Icon name="home" className="axxa-chat-menu-icon" />
+                      <Icon
+                        name={isEnabled("homeShortcut") ? "home" : "lock"}
+                        className="axxa-chat-menu-icon"
+                      />
                     </button>
                     <button
                       type="button"
