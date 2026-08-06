@@ -6725,13 +6725,33 @@ body.axxa-reduce-motion .axxa-popover-menu {
   width: 22px;
   height: 22px;
 }
-/* "+" em SQUIRCLE preenchido (claro, ícone escuro) — ref Claude. */
+/* "+" em SQUIRCLE iOS REAL: `border-radius` faz cantos CIRCULARES, não squircle.
+   A máscara SVG (superellipse, 2 béziers por canto) dá a curvatura contínua do
+   iOS. A máscara molda o fundo (--text-normal), que adapta ao tema. */
 .axxa-root .axxa-header-gear-primary {
   background: var(--text-normal);
   color: var(--background-primary);
-  border-radius: 10px;
-  width: 32px;
-  height: 32px;
+  border-radius: 0;
+  width: 34px;
+  height: 34px;
+  -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23fff' d='M50 0 C79.5 0 88.8 3.5 94 13.2 C99.2 22.9 100 32.4 100 50 C100 67.6 99.2 77.1 94 86.8 C88.8 96.5 79.5 100 50 100 C20.5 100 11.2 96.5 6 86.8 C0.8 77.1 0 67.6 0 50 C0 32.4 0.8 22.9 6 13.2 C11.2 3.5 20.5 0 50 0 Z'/></svg>") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23fff' d='M50 0 C79.5 0 88.8 3.5 94 13.2 C99.2 22.9 100 32.4 100 50 C100 67.6 99.2 77.1 94 86.8 C88.8 96.5 79.5 100 50 100 C20.5 100 11.2 96.5 6 86.8 C0.8 77.1 0 67.6 0 50 C0 32.4 0.8 22.9 6 13.2 C11.2 3.5 20.5 0 50 0 Z'/></svg>") center / 100% 100% no-repeat;
+}
+/* Nome da conversa centralizado no header (chat iniciado), truncado com "…". */
+.axxa-header-title-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: calc(100% - 170px);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+  pointer-events: none;
 }
 .axxa-root .axxa-header-gear-primary:hover {
   background: var(--text-muted);
