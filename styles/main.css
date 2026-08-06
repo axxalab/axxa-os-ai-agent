@@ -442,12 +442,14 @@ body.is-mobile
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 10px; /* fallback; a máscara abaixo dá o squircle real (igual ao +) */
   cursor: pointer;
   transition: color 0.15s;
+  -webkit-mask: var(--axxa-squircle) center / 100% 100% no-repeat;
+  mask: var(--axxa-squircle) center / 100% 100% no-repeat;
 }
 .axxa-chat-area-wrapper {
   flex: 1 1 0;
@@ -6729,17 +6731,21 @@ body.axxa-reduce-motion .axxa-popover-menu {
   width: 22px;
   height: 22px;
 }
-/* "+" em SQUIRCLE iOS REAL: `border-radius` faz cantos CIRCULARES, não squircle.
-   A máscara SVG (superellipse, 2 béziers por canto) dá a curvatura contínua do
-   iOS. A máscara molda o fundo (--text-normal), que adapta ao tema. */
+/* Squircle iOS REAL, REUSÁVEL (superellipse via máscara SVG, 2 béziers por
+   canto). `border-radius` faz canto CIRCULAR; a máscara dá a curvatura contínua.
+   Usado nos DOIS botões do header (+ e ⋮) pra ficarem idênticos. */
+.axxa-root {
+  --axxa-squircle: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23fff' d='M50 0 C79.5 0 88.8 3.5 94 13.2 C99.2 22.9 100 32.4 100 50 C100 67.6 99.2 77.1 94 86.8 C88.8 96.5 79.5 100 50 100 C20.5 100 11.2 96.5 6 86.8 C0.8 77.1 0 67.6 0 50 C0 32.4 0.8 22.9 6 13.2 C11.2 3.5 20.5 0 50 0 Z'/></svg>");
+}
+/* "+" (new chat): balão preenchido, moldado no squircle. */
 .axxa-root .axxa-header-gear-primary {
   background: var(--text-normal);
   color: var(--background-primary);
   border-radius: 0;
   width: 34px;
   height: 34px;
-  -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23fff' d='M50 0 C79.5 0 88.8 3.5 94 13.2 C99.2 22.9 100 32.4 100 50 C100 67.6 99.2 77.1 94 86.8 C88.8 96.5 79.5 100 50 100 C20.5 100 11.2 96.5 6 86.8 C0.8 77.1 0 67.6 0 50 C0 32.4 0.8 22.9 6 13.2 C11.2 3.5 20.5 0 50 0 Z'/></svg>") center / 100% 100% no-repeat;
-  mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23fff' d='M50 0 C79.5 0 88.8 3.5 94 13.2 C99.2 22.9 100 32.4 100 50 C100 67.6 99.2 77.1 94 86.8 C88.8 96.5 79.5 100 50 100 C20.5 100 11.2 96.5 6 86.8 C0.8 77.1 0 67.6 0 50 C0 32.4 0.8 22.9 6 13.2 C11.2 3.5 20.5 0 50 0 Z'/></svg>") center / 100% 100% no-repeat;
+  -webkit-mask: var(--axxa-squircle) center / 100% 100% no-repeat;
+  mask: var(--axxa-squircle) center / 100% 100% no-repeat;
 }
 /* Nome da conversa no header (chat iniciado): ocupa o espaço ENTRE hambúrguer e
    ações (flex:1) e centraliza; trunca com "…". `min-width: 0` é o que permite o
