@@ -84,6 +84,7 @@ export function Markdown({ content }: MarkdownProps) {
       MarkdownRenderer.render(app, shown, el, "", component)
     ).then(() => {
       if (cancelled) return;
+      enhanceArtifacts(el);
       enhanceCodeBlocks(el, t.chat.copyCode);
       enhanceInternalLinks(el, app, t.plus.pickNoteNotFound);
       disposeLinks = wireExternalLinkSafety(el, app, {
@@ -249,5 +250,66 @@ function enhanceCodeBlocks(root: HTMLElement, copyLabel: string) {
     header.append(langEl, actions);
 
     wrap.append(header, pre); // move o <pre> pra dentro do wrapper
+  });
+}
+
+// ── MOCK de ARTEFATOS (ref Claude): um fence ```artifacts com um array JSON de
+// {name, type} vira cards (ícone do tipo + título + subtítulo). Placeholder até
+// a feature real (que vem junto com Projetos). v0.2.11
+function artifactIcon(type: string): string {
+  const t = type.toLowerCase();
+  if (t === "zip" || t.includes("archive")) return "file-archive";
+  if (["md", "markdown", "doc", "document"].includes(t)) return "file-text";
+  if (["sh", "bash", "code", "js", "ts", "py", "json"].includes(t)) return "file-code";
+  if (["png", "jpg", "img", "image"].includes(t)) return "image";
+  return "file";
+}
+function artifactSubtitle(type: string): string {
+  const t = type.toLowerCase();
+  if (["md", "markdown"].includes(t)) return "Document · MD";
+  if (["sh", "bash"].includes(t)) return "Code · SH";
+  if (["js", "ts", "py", "code", "json"].includes(t)) return "Code · " + type.toUpperCase();
+  if (!type) return "File";
+  return type.toUpperCase();
+}
+function enhanceArtifacts(root: HTMLElement) {
+  root.querySelectorAll<HTMLPreElement>("pre").forEach((pre) => {
+    const code = pre.querySelector("code");
+    if (!code || !code.classList.contains("language-artifacts")) return;
+    let items: Array<{ name?: string; type?: string }>;
+    try {
+      items = JSON.parse(code.textContent || "[]");
+    } catch {
+      return; // JSON inválido → deixa o bloco como code normal
+    }
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "axxa-artifacts";
+    const head = document.createElement("div");
+    head.className = "axxa-artifacts-head";
+    head.textContent = `${items.length} Artifact${items.length === 1 ? "" : "s"}`;
+    wrap.appendChild(head);
+
+    items.forEach((it) => {
+      const card = document.createElement("div");
+      card.className = "axxa-artifact-card";
+      const ico = document.createElement("span");
+      ico.className = "axxa-artifact-ico";
+      setIcon(ico, artifactIcon(it.type ?? ""));
+      const main = document.createElement("div");
+      main.className = "axxa-artifact-main";
+      const title = document.createElement("div");
+      title.className = "axxa-artifact-title";
+      title.textContent = it.name ?? "Untitled";
+      const sub = document.createElement("div");
+      sub.className = "axxa-artifact-sub";
+      sub.textContent = artifactSubtitle(it.type ?? "");
+      main.append(title, sub);
+      card.append(ico, main);
+      wrap.appendChild(card);
+    });
+
+    pre.replaceWith(wrap);
   });
 }

@@ -4771,6 +4771,61 @@ body.theme-dark .axxa-root .axxa-composer-pill {
   overflow: auto;
   flex: 1 1 auto;
 }
+
+/* ═══ MOCK de artefatos (ref Claude): cards com ícone do tipo + título + tipo ═══ */
+.axxa-artifacts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+.axxa-artifacts-head {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  padding: 2px 2px 4px;
+}
+.axxa-artifact-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+.axxa-artifact-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 54px;
+  border-radius: 10px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+.axxa-artifact-ico .svg-icon {
+  width: 22px;
+  height: 22px;
+}
+.axxa-artifact-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.axxa-artifact-title {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.axxa-artifact-sub {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
 .axxa-code-copy,
 .axxa-code-copy:hover,
 .axxa-code-copy:focus,
