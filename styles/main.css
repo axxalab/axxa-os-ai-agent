@@ -919,10 +919,11 @@ layout no
   background: var(--background-primary);
   color: var(--text-normal);
 }
-/* canvas do chat: PRIMARY no light, SECONDARY no dark (regra do user). O composer
-   (sempre secondary) se separa por borda/sombra nos dois temas. v0.1.236 */
+/* Canvas herda o fundo NATIVO do Obsidian (--background-primary) nos dois temas.
+   O dark deixou de forçar secondary — que virava preto em temas AMOLED e não
+   parecia nativo. O composer se separa por borda/sombra. (branch `final`) */
 body.theme-dark .axxa-root {
-  background: var(--background-secondary);
+  background: var(--background-primary);
 }
 /* tipografia semântica: apoio = muted, carimbos/versão = faint */
 .axxa-root :is([class*="-sub"], [class*="-desc"], [class*="-meta"], [class*="-hint"]) {
@@ -6518,6 +6519,16 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   position: relative;
   display: inline-flex;
 }
+@keyframes axxa-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .axxa-popover-menu {
   position: fixed;
   z-index: 2000;
@@ -6528,6 +6539,12 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Abre com a MESMA curva/duração do slide da gaveta (hambúrguer). */
+  animation: axxa-menu-in 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transform-origin: top right;
+}
+body.axxa-reduce-motion .axxa-popover-menu {
+  animation: none;
 }
 .axxa-popover-label {
   flex: 1 1 auto;
@@ -6549,6 +6566,14 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   line-height: 1.2;
   text-align: left;
   cursor: pointer;
+  /* Repouso SEM fundo (antes herdava o fundo do button nativo, "redesenhando"
+     um bloco por item). O fundo só aparece no hover/pressed. */
+  background: transparent;
+}
+.axxa-popover-item:hover,
+.axxa-popover-item:focus-visible,
+.axxa-popover-item:active {
+  background: var(--background-modifier-hover);
 }
 .axxa-popover-item .axxa-icon svg {
   width: 16px;
@@ -6695,11 +6720,11 @@ body.is-mobile.axxa-keyboard-open .axxa-plus-sheet {
   width: 22px;
   height: 22px;
 }
-/* "+" em balão PREENCHIDO (claro, ícone escuro) — ref Claude. */
+/* "+" em SQUIRCLE preenchido (claro, ícone escuro) — ref Claude. */
 .axxa-root .axxa-header-gear-primary {
   background: var(--text-normal);
   color: var(--background-primary);
-  border-radius: 999px;
+  border-radius: 10px;
   width: 32px;
   height: 32px;
 }
