@@ -1048,7 +1048,6 @@ body.theme-dark .axxa-root {
 .axxa-popover-menu,
 .axxa-model-menu,
 .axxa-model-dropdown,
-.axxa-model-modal,
 .axxa-mc-modal {
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
@@ -4349,22 +4348,51 @@ body.theme-dark .axxa-root .axxa-composer-pill {
   margin-bottom: 10px;
 }
 /* ============================================================
- * Seletor de modelo = MODAL NATIVO do Obsidian (ModelSheetModal.ts). Casca
- * nativa (backdrop/foco/animação), CONTEÚDO React portalado pro contentEl. No
- * mobile forçamos o formato BOTTOM SHEET (colado embaixo, largura total, cantos
- * só no topo) — sem isso o Obsidian abria um card flutuante no meio. Escondemos
- * o X nativo (o ModelSheet tem o próprio header); o `.modal` no seletor é o que
- * dá specificity pra vencer o CSS do Obsidian (mesmo padrão do code modal).
+ * BOTTOM SHEET GLOBAL sobre o Modal NATIVO do Obsidian (BottomSheetModal.ts).
+ * Casca reutilizável por QUALQUER sheet — conteúdo React portalado pro contentEl.
+ * Classes: .axxa-sheet-modal (modalEl) · .axxa-sheet-modal-container (containerEl,
+ * scrim/blur) · .axxa-sheet-modal-content (contentEl). O modal vive FORA do
+ * .axxa-root (document.body), então tudo aqui é auto-suficiente (não usa
+ * `.axxa-root ...` nem depende de vars --axxa-* herdadas). Ver memória
+ * obsidian-native-modals. Animação/estilo na CLASSE GLOBAL → atinge TODOS os sheets.
  * ============================================================ */
-.modal.axxa-model-modal .modal-close-button {
-  display: none;
+/* Superfície = cor do tema (regra do owner): LIGHT=primary, DARK=secondary.
+   `.modal.` no seletor vence o `.modal { background: primary }` do Obsidian. */
+.modal.axxa-sheet-modal {
+  background: var(--background-primary);
 }
-.axxa-model-modal .modal-content.axxa-model-modal-content {
-  padding: 4px 14px 16px;
+body.theme-dark .modal.axxa-sheet-modal {
+  background: var(--background-secondary);
+}
+/* X nativo: removido no JS (onOpen); este é backup (o Obsidian mobile força
+   display com !important, por isso o !important aqui também). */
+.modal.axxa-sheet-modal .modal-close-button {
+  display: none !important;
+}
+.axxa-sheet-modal .modal-content.axxa-sheet-modal-content {
+  padding: 14px 14px 16px;
+}
+/* Scrim + blur no fundo (o .modal-bg do container). Blur do que está atrás. */
+.axxa-sheet-modal-container .modal-bg {
+  background-color: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+/* Animação de SUBIDA — na classe global, então vale pra todos os sheets. */
+@keyframes axxa-sheet-rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+body.is-mobile .modal.axxa-sheet-modal {
+  animation: axxa-sheet-rise 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* Bottom sheet de verdade no mobile: encosta na base, largura total, altura pelo
-   conteúdo (teto 85vh), cantos arredondados só no topo. */
-body.is-mobile .modal.axxa-model-modal {
+   conteúdo (min-height:0 vence o min nativo; teto 85vh), cantos só no topo. */
+body.is-mobile .modal.axxa-sheet-modal {
   position: fixed;
   left: 0;
   right: 0;
@@ -4374,16 +4402,14 @@ body.is-mobile .modal.axxa-model-modal {
   width: 100%;
   max-width: 100%;
   height: auto;
-  min-height: 0; /* vence min-height do modal nativo → dimensiona pelo conteúdo */
+  min-height: 0;
   max-height: 85vh;
   border: none;
   border-radius: 20px 20px 0 0;
 }
-/* Handle do bottom sheet — a barrinha no topo (o modal nativo não traz uma). */
-body.is-mobile .modal.axxa-model-modal .modal-content.axxa-model-modal-content {
-  padding-top: 14px;
-}
-body.is-mobile .axxa-model-sheet::before {
+/* Handle do bottom sheet — barrinha no topo do conteúdo (o modal nativo não traz).
+   No contentEl → qualquer sheet ganha o handle de graça. */
+body.is-mobile .axxa-sheet-modal-content::before {
   content: "";
   display: block;
   width: 40px;
@@ -4392,33 +4418,31 @@ body.is-mobile .axxa-model-sheet::before {
   margin: 0 auto 12px;
   background: var(--background-modifier-border);
 }
-.axxa-model-sheet .axxa-sheet-top {
-  /* a casca nativa dá o drag/handle; aqui o topo é só header (sem grab). */
+.axxa-sheet-modal-content .axxa-sheet-top {
+  /* a casca nativa dá o handle; aqui o topo é só header (sem grab). */
   cursor: default;
   touch-action: auto;
   padding: 0 0 4px;
 }
-.axxa-model-sheet .axxa-sheet-seg {
+.axxa-sheet-modal-content .axxa-sheet-seg {
   padding: 0 0 6px;
 }
-.axxa-model-sheet .axxa-sheet-body {
-  /* o contentEl do modal nativo é quem rola; o body só flui (o overflow/flex
-     do base dependia da casca custom de altura fixa). */
+.axxa-sheet-modal-content .axxa-sheet-body {
+  /* o contentEl do modal nativo é quem rola; o body só flui. */
   overflow: visible;
   padding: 0;
 }
-/* CRÍTICO: o modal nativo vive em document.body, FORA do .axxa-root — então as
-   regras `.axxa-root .axxa-sheet-*` (o display:flex da linha, a estrela, o nav,
-   o addfav) e as vars --axxa-* NÃO alcançam o conteúdo portalado, e as linhas
-   quebravam (estrela caía embaixo). Replicamos aqui escopadas no .axxa-model-modal
-   (ancestral do conteúdo). Só as regras que tinham prefixo .axxa-root; o resto
+/* CRÍTICO: fora do .axxa-root, as regras `.axxa-root .axxa-sheet-*` (o display:flex
+   da linha, a estrela, o nav, o addfav) e as vars --axxa-* NÃO alcançam o conteúdo
+   portalado, e as linhas quebravam (estrela caía embaixo). Replicamos aqui
+   escopadas no .axxa-sheet-modal. Só as que tinham prefixo .axxa-root; o resto
    (row-text/name/desc/title/list/badge/check) é global e já aplica. */
-.axxa-model-modal {
+.axxa-sheet-modal {
   --axxa-row-py: 6px;
   --axxa-list-row-py: 6px;
   --axxa-stack-gap: 1px;
 }
-.axxa-model-modal .axxa-sheet-row {
+.axxa-sheet-modal .axxa-sheet-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -4431,15 +4455,15 @@ body.is-mobile .axxa-model-sheet::before {
   cursor: pointer;
   color: var(--text-normal);
 }
-.axxa-model-modal .axxa-sheet-row:hover {
+.axxa-sheet-modal .axxa-sheet-row:hover {
   background: var(--background-modifier-hover);
   border-radius: 12px;
 }
-.axxa-model-modal .axxa-sheet-row:active {
+.axxa-sheet-modal .axxa-sheet-row:active {
   background: var(--background-modifier-border);
   border-radius: 12px;
 }
-.axxa-model-modal .axxa-sheet-nav {
+.axxa-sheet-modal .axxa-sheet-nav {
   flex: 0 0 auto;
   width: 36px;
   height: 36px;
@@ -4453,10 +4477,10 @@ body.is-mobile .axxa-model-sheet::before {
   color: var(--text-normal);
   cursor: pointer;
 }
-.axxa-model-modal .axxa-sheet-nav:hover {
+.axxa-sheet-modal .axxa-sheet-nav:hover {
   background: var(--background-modifier-hover);
 }
-.axxa-model-modal .axxa-sheet-star {
+.axxa-sheet-modal .axxa-sheet-star {
   flex: 0 0 auto;
   width: 36px;
   height: 36px;
@@ -4470,14 +4494,14 @@ body.is-mobile .axxa-model-sheet::before {
   color: var(--text-muted);
   cursor: pointer;
 }
-.axxa-model-modal .axxa-sheet-star:hover:not(:disabled) {
+.axxa-sheet-modal .axxa-sheet-star:hover:not(:disabled) {
   background: var(--background-modifier-hover);
 }
-.axxa-model-modal .axxa-sheet-star:disabled {
+.axxa-sheet-modal .axxa-sheet-star:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
-.axxa-model-modal .axxa-sheet-addfav {
+.axxa-sheet-modal .axxa-sheet-addfav {
   display: block;
   width: 100%;
   padding: 14px 8px;
@@ -4489,10 +4513,10 @@ body.is-mobile .axxa-model-sheet::before {
   font-size: var(--font-ui-small);
   cursor: pointer;
 }
-.axxa-model-modal .axxa-sheet-addfav:hover:not(:disabled) {
+.axxa-sheet-modal .axxa-sheet-addfav:hover:not(:disabled) {
   color: var(--text-normal);
 }
-.axxa-model-modal .axxa-sheet-addfav:disabled {
+.axxa-sheet-modal .axxa-sheet-addfav:disabled {
   cursor: default;
   opacity: 0.7;
 }

@@ -24,7 +24,7 @@ import { Composer } from "../components/composer/Composer";
 import { SuggestionsSheet } from "../components/composer/SuggestionsSheet";
 import { PlusModal } from "../components/composer/PlusModal";
 import { ModelSheet } from "../components/composer/ModelSheet";
-import { ModelSheetModal } from "../components/composer/ModelSheetModal";
+import { BottomSheetModal } from "../components/_shared/BottomSheetModal";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
 import { ConversationsList } from "../components/chat/ConversationsList";
 import {
@@ -362,7 +362,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [modelModalEl, setModelModalEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (!modelSheetOpen) return;
-    const modal = new ModelSheetModal(plugin.app, () => setModelSheetOpen(false));
+    const modal = new BottomSheetModal(plugin.app, () =>
+      setModelSheetOpen(false)
+    );
     modal.open();
     setModelModalEl(modal.contentEl);
     return () => {
