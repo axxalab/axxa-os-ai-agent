@@ -4368,6 +4368,20 @@ body.theme-dark .modal.axxa-sheet-modal {
 .axxa-sheet-modal .modal-content.axxa-sheet-modal-content {
   padding: 14px 14px 16px;
 }
+/* X nativo na MESMA LINHA do título (não flutuando sozinho lá no topo). Desce
+   pra linha do header (abaixo do handle) e diminui pra caber. Vale pra todos os
+   sheets. O `.modal.` dá specificity pra vencer o CSS do Obsidian. */
+.modal.axxa-sheet-modal .modal-close-button {
+  top: 26px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+}
+.modal.axxa-sheet-modal .modal-close-button svg,
+.modal.axxa-sheet-modal .modal-close-button .svg-icon {
+  width: 18px;
+  height: 18px;
+}
 /* Scrim + blur no fundo (o .modal-bg do container). Blur mais forte do que está
    atrás pra destacar bem o sheet. */
 .axxa-sheet-modal-container .modal-bg {
