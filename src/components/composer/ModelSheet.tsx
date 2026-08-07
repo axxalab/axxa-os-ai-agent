@@ -135,6 +135,13 @@ export function ModelSheet({
 
   const effortLabel =
     EFFORT_LABELS[currentEffort as EffortLevel] ?? currentEffort;
+  // Slider de effort (estilo Claude Code desktop): índice do nível atual + % do
+  // preenchimento do trilho. Clamp em 0 pra effort desconhecido não sumir o thumb.
+  const effortIdx = Math.max(0, EFFORT_LEVELS.indexOf(currentEffort as EffortLevel));
+  const effortPct =
+    EFFORT_LEVELS.length > 1
+      ? (effortIdx / (EFFORT_LEVELS.length - 1)) * 100
+      : 0;
 
   // ── More: UMA lista contínua com todos os modelos, agrupada por categoria.
   // A categoria é HOOK (cabeçalho de seção), não uma aba-filtro (era "uma lista
@@ -343,37 +350,50 @@ export function ModelSheet({
 
           {view === "effort" && (
             <>
-              <div className="axxa-sheet-list">
-                {EFFORT_LEVELS.map((lvl) => {
-                  const selected = lvl === currentEffort;
-                  return (
+              {/* Slider de effort (ref Claude Code desktop): trilho accent até o
+                  thumb, 5 níveis como marcações tocáveis, nome+descrição do nível
+                  atual em destaque. Arrasta o thumb OU toca no label. */}
+              <div className="axxa-effort-slider">
+                <div className="axxa-effort-slider-head">
+                  <span className="axxa-effort-slider-name">
+                    {effortLabel}
+                    {currentEffort === DEFAULT_EFFORT && (
+                      <span className="axxa-sheet-badge">Default</span>
+                    )}
+                  </span>
+                  <span className="axxa-effort-slider-desc">
+                    {EFFORT_TAGLINES[currentEffort as EffortLevel] ?? ""}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  className="axxa-effort-range"
+                  min={0}
+                  max={EFFORT_LEVELS.length - 1}
+                  step={1}
+                  value={effortIdx}
+                  style={{ ["--axxa-effort-pct" as string]: `${effortPct}%` }}
+                  onChange={(e) =>
+                    onSelectEffort(EFFORT_LEVELS[Number(e.currentTarget.value)])
+                  }
+                  aria-label="Effort"
+                  aria-valuetext={effortLabel}
+                />
+                <div className="axxa-effort-ticks">
+                  {EFFORT_LEVELS.map((lvl) => (
                     <button
                       key={lvl}
                       type="button"
                       className={
-                        "axxa-sheet-row" + (selected ? " axxa-sheet-row-on" : "")
+                        "axxa-effort-tick" +
+                        (lvl === currentEffort ? " is-active" : "")
                       }
                       onClick={() => onSelectEffort(lvl)}
                     >
-                      <span className="axxa-sheet-row-text">
-                        <span className="axxa-sheet-row-name">
-                          {EFFORT_LABELS[lvl]}
-                          {lvl === DEFAULT_EFFORT && (
-                            <span className="axxa-sheet-badge">Default</span>
-                          )}
-                        </span>
-                        <span className="axxa-sheet-row-desc">
-                          {EFFORT_TAGLINES[lvl]}
-                        </span>
-                      </span>
-                      {selected && (
-                        <span className="axxa-sheet-row-check">
-                          <Icon name="check" />
-                        </span>
-                      )}
+                      {EFFORT_LABELS[lvl]}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
 
               {thinkingCapable && (
