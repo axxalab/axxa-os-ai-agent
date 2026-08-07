@@ -25,7 +25,6 @@ import { SuggestionsSheet } from "../components/composer/SuggestionsSheet";
 import { PlusModal } from "../components/composer/PlusModal";
 import { ModelSheet } from "../components/composer/ModelSheet";
 import { BottomSheetModal } from "../components/_shared/BottomSheetModal";
-import { MenuSheet } from "../components/_shared/MenuSheet";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
 import { ConversationsList } from "../components/chat/ConversationsList";
 import {
@@ -376,10 +375,12 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [modelModalEl, setModelModalEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (!modelSheetOpen) return;
-    // SPIKE v0.2.33: casca via MenuSheet (Menu nativo = bottom sheet no mobile,
-    // sem a briga do Modal). Se validar, replico nos outros; se não, volta pro
-    // BottomSheetModal.
-    const modal = new MenuSheet(plugin.app, () => setModelSheetOpen(false));
+    // v0.2.34: revertido pro BottomSheetModal — o spike do MenuSheet (0.2.33) não
+    // abria (Menu nativo no-op'a sem addItem, e MenuItem fecha no toque → inviável
+    // pra conteúdo rico/reativo).
+    const modal = new BottomSheetModal(plugin.app, () =>
+      setModelSheetOpen(false)
+    );
     modal.open();
     setModelModalEl(modal.contentEl);
     return () => {

@@ -4407,19 +4407,6 @@ body.theme-dark .modal.axxa-sheet-modal {
   width: 24px;
   height: 24px;
 }
-/* SPIKE v0.2.33: sheet via MENU nativo (MenuSheet). A casca (bottom sheet) é do
-   próprio Menu do Obsidian; aqui só damos altura/scroll e padding ao conteúdo
-   portalado. O `.dom` do menu também tem `.axxa-sheet-modal` → as regras de
-   conteúdo (rows/star/nav/vars) já aplicam. */
-.menu.axxa-sheet-menu {
-  padding: 0;
-  min-width: 0;
-}
-.axxa-sheet-menu-content {
-  max-height: 72vh;
-  overflow-y: auto;
-  padding: 6px 12px 14px;
-}
 /* Scrim + blur no fundo (o .modal-bg do container). Blur mais forte do que está
    atrás pra destacar bem o sheet. */
 .axxa-sheet-modal-container .modal-bg {
