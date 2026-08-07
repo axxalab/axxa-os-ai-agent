@@ -372,6 +372,18 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       modal.close();
     };
   }, [modelSheetOpen, plugin.app]);
+  // Mesma casca nativa pro sheet do "+" do composer (PlusModal). v0.2.26
+  const [plusModalEl, setPlusModalEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!plusOpen) return;
+    const modal = new BottomSheetModal(plugin.app, () => setPlusOpen(false));
+    modal.open();
+    setPlusModalEl(modal.contentEl);
+    return () => {
+      setPlusModalEl(null);
+      modal.close();
+    };
+  }, [plusOpen, plugin.app]);
   // Favoritos do seletor de modelo — chaves "provider::model" (≤5 por provider).
   // Só esses aparecem no bottom sheet; o resto vive no "More models". v0.1.236
   const [favoriteModels, setFavoriteModels] = useState<string[]>(
@@ -2177,7 +2189,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             }}
           />
         )}
-          {plusOpen && (
+          {plusOpen &&
+            plusModalEl &&
+            createPortal(
             <PlusModal
               currentEffort={effort}
               onSelectEffort={handleSelectEffort}
@@ -2261,7 +2275,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                   );
                 }
               }}
-            />
+            />,
+            plusModalEl
           )}
           {/* ModelSheet portalado pro contentEl do modal NATIVO (bottom sheet do
               Obsidian). O conteúdo é React vivo (favoritos/effort reagem na hora);

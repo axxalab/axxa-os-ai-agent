@@ -6,10 +6,8 @@
 //   3. Effort selector (5 níveis pill)
 //   4. Future: settings (max_tokens, system prompt override, etc)
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { FuzzySuggestModal, Menu, Notice, Platform, TFile } from "obsidian";
-import { useFocusTrap } from "../_shared/useFocusTrap";
-import { useBottomSheet } from "../_shared/useBottomSheet";
 import type { App } from "obsidian";
 import { Icon } from "../_shared/Icon";
 import { CameraModal } from "./CameraModal";
@@ -116,13 +114,6 @@ export function PlusModal({
   const [cameraInput, setCameraInput] = useState<HTMLInputElement | null>(null);
   // Câmera in-app (getUserMedia) — overlay full-screen sobre o sheet (desktop).
   const [cameraOpen, setCameraOpen] = useState(false);
-
-  // Focus-trap + Escape + devolve foco ao fechar (a11y, padrão WAI-ARIA dialog).
-  const sheetRef = useRef<HTMLDivElement>(null);
-  // autoFocus:false → não rouba o foco do editor ao abrir; teclado segue aberto
-  // (sheet por cima) e ao fechar o foco volta pro editor.
-  useFocusTrap(sheetRef, { onEscape: onClose, autoFocus: false });
-  const sheet = useBottomSheet(onClose);
 
   // Helper: blob → dataUrl via FileReader
   const blobToDataUrl = (blob: Blob): Promise<string> =>
@@ -274,22 +265,12 @@ export function PlusModal({
   };
 
   return (
-    <div className="axxa-plus-overlay" onClick={onClose}>
-      <div
-        ref={sheetRef}
-        className={"axxa-plus-sheet" + sheet.sheetClass}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        tabIndex={-1}
-        aria-label={t.plus.dialogLabel}
-      >
-        {/* TOPO FIXO (handle + título) — toggle: tap/drag alterna opened↔full. */}
-        <div className="axxa-sheet-top" {...sheet.topProps}>
-          <div className="axxa-plus-handle" />
+    <div className="axxa-plus-sheet-content">
+        {/* TOPO — a casca nativa (BottomSheetModal) dá o handle; aqui só o título. */}
+        <div className="axxa-sheet-top">
           <div className="axxa-plus-title">{t.plus.addToChat}</div>
         </div>
-        <div className="axxa-sheet-body" ref={sheet.bodyRef}>
+        <div className="axxa-sheet-body">
         {/* Tiles grandes monocromáticos — estrutura "Add to Chat" (Claude iOS 23) */}
         <div className="axxa-plus-tiles">
           <PlusTile
@@ -456,7 +437,6 @@ export function PlusModal({
           </div>
         </div>
         </div>
-      </div>
 
       {cameraOpen && (
         <CameraModal
