@@ -4367,20 +4367,37 @@ body.theme-dark .modal.axxa-sheet-modal {
 /* X nativo do Obsidian: MANTIDO (é quem fecha o sheet — os sheets não têm X próprio). */
 .axxa-sheet-modal .modal-content.axxa-sheet-modal-content {
   padding: 14px 14px 16px;
+  /* âncora pro nosso X absoluto (na linha do título). */
+  position: relative;
 }
-/* X nativo na MESMA LINHA do título (não flutuando sozinho lá no topo). Desce
-   pra linha do header (abaixo do handle) e diminui pra caber. Vale pra todos os
-   sheets. O `.modal.` dá specificity pra vencer o CSS do Obsidian. */
-.modal.axxa-sheet-modal .modal-close-button {
-  top: 26px;
-  right: 14px;
+/* NOSSO X do sheet, na LINHA DO TÍTULO (o nativo é removido no JS). Absoluto
+   relativo ao contentEl → alinhamento determinístico. .axxa-sheet-modal na
+   frente pra vencer o styling de button do Obsidian mobile. */
+.axxa-sheet-modal .axxa-sheet-x {
+  position: absolute;
+  top: 22px;
+  right: 12px;
+  z-index: 2;
   width: 34px;
   height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
 }
-.modal.axxa-sheet-modal .modal-close-button svg,
-.modal.axxa-sheet-modal .modal-close-button .svg-icon {
-  width: 18px;
-  height: 18px;
+.axxa-sheet-modal .axxa-sheet-x:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.axxa-sheet-modal .axxa-sheet-x svg,
+.axxa-sheet-modal .axxa-sheet-x .svg-icon {
+  width: 20px;
+  height: 20px;
 }
 /* Scrim + blur no fundo (o .modal-bg do container). Blur mais forte do que está
    atrás pra destacar bem o sheet. */

@@ -7,13 +7,15 @@
 //   - scrim + blur no fundo
 //   - animação de subida (CSS na classe global .axxa-sheet-modal → atinge TODOS
 //     os sheets de uma vez)
-// O X nativo do Obsidian (top-right) é MANTIDO — é ele quem fecha (os sheets não
-// trazem X próprio). Classes: .axxa-sheet-modal (modalEl) ·
-// .axxa-sheet-modal-container (containerEl, pro scrim/blur) ·
-// .axxa-sheet-modal-content (contentEl). Ver memória obsidian-native-modals (o
-// modal vive fora do .axxa-root).
+//   - X próprio na LINHA DO TÍTULO: removemos o X nativo do Obsidian (que, no
+//     mobile, é um button.mod-raised.clickable-icon numa área de header ACIMA do
+//     conteúdo — impossível alinhar só com CSS) e montamos o nosso X posicionado
+//     relativo ao contentEl, na linha do título. Determinístico.
+// Classes: .axxa-sheet-modal (modalEl) · .axxa-sheet-modal-container (containerEl,
+// pro scrim/blur) · .axxa-sheet-modal-content (contentEl) · .axxa-sheet-x (X).
+// Ver memória obsidian-native-modals (o modal vive fora do .axxa-root).
 
-import { App, Modal } from "obsidian";
+import { App, Modal, setIcon } from "obsidian";
 
 export class BottomSheetModal extends Modal {
   private onDismiss: () => void;
@@ -33,7 +35,21 @@ export class BottomSheetModal extends Modal {
     this.containerEl.addClass("axxa-sheet-modal-container");
     this.contentEl.addClass("axxa-sheet-modal-content");
     if (this.extraContentClass) this.contentEl.addClass(this.extraContentClass);
-    // X nativo do Obsidian é mantido (fecha o sheet) — não removemos nem escondemos.
+    // Remove o X nativo (classe varia por versão: .modal-close-button OU
+    // button.mod-raised.clickable-icon) — pega QUALQUER botão do modalEl que NÃO
+    // esteja no conteúdo portalado. Robusto a versão/estrutura.
+    Array.from(this.modalEl.querySelectorAll("button"))
+      .filter((b) => !this.contentEl.contains(b))
+      .forEach((b) => b.remove());
+    // Nosso X, na LINHA DO TÍTULO (position relativa ao contentEl no CSS). Como
+    // o portal do React não remove filhos pré-existentes do container, este botão
+    // sobrevive ao mount do conteúdo.
+    const x = this.contentEl.createEl("button", {
+      cls: "axxa-sheet-x",
+      attr: { type: "button", "aria-label": "Close" },
+    });
+    setIcon(x, "x");
+    x.addEventListener("click", () => this.close());
   }
 
   onClose() {
