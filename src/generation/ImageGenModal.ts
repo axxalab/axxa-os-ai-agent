@@ -99,10 +99,15 @@ export class ImageGenModal extends Modal {
     // (P1-74) Sobe o modal acima do teclado virtual no mobile (mesma
     // classe keyboard-aware do ConfirmationModal — era o único que tinha).
     this.modalEl.addClass("axxa-modal-keyboard-aware");
+    // Casca de BOTTOM SHEET (mesma do ModelSheet/PlusModal): sobe de baixo,
+    // scrim+blur, animação, fundo do tema. v0.2.28
+    this.modalEl.addClass("axxa-sheet-modal");
+    this.containerEl.addClass("axxa-sheet-modal-container");
     const { contentEl } = this;
     const s = this.opts.strings;
     contentEl.empty();
     contentEl.addClass("axxa-imggen-modal");
+    contentEl.addClass("axxa-sheet-modal-content");
 
     const editing = this.opts.hasInputImage && this.useInputImage;
     // v0.1.228: guarda ref do título p/ atualizar ao alternar IMG2IMG.
