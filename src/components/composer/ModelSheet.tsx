@@ -18,7 +18,6 @@
 
 import { useState } from "react";
 import { Icon } from "../_shared/Icon";
-import { SegmentedRow, type SegmentedItem } from "../_shared/SegmentedRow";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
@@ -31,9 +30,7 @@ import {
   prettyModelName,
   CATEGORY_ORDER,
   CATEGORY_LABELS,
-  type ModelCategory,
 } from "../../providers/modelDescriptions";
-import { getModelCapabilities } from "../../providers/modelCapabilities";
 import { modelVendorLogoId, PROVIDER_LOGO } from "../_shared/modelLogo";
 
 /** Máximo de favoritos por provider. */
@@ -51,21 +48,6 @@ const EFFORT_TAGLINES: Record<EffortLevel, string> = {
 // Nível "Default" — baseline fixo (fallback do resolveEffortConfig), separado do
 // check da seleção atual pra os dois não colidirem.
 const DEFAULT_EFFORT: EffortLevel = "med";
-
-// Ícone por chip (o seletor segmentado é icon-céntrico, mostra o label só no ativo).
-const CHIP_ICON: Record<string, string> = {
-  all: "layers",
-  free: "gift",
-  "chat-vision": "image",
-  "chat-text": "message-square",
-  reasoning: "brain",
-  agent: "bot",
-  "image-gen": "image",
-  "audio-gen": "audio-lines",
-  "video-gen": "clapperboard",
-  embedding: "boxes",
-  other: "sparkles",
-};
 
 /** Encurta pra uma frase breve: corta na 1ª frase; se ainda longa, na 1ª vírgula.
  *  O texto secundário é sempre uma linha (nowrap+ellipsis no CSS). */
@@ -140,7 +122,6 @@ export function ModelSheet({
   locked = false,
 }: ModelSheetProps) {
   const [view, setView] = useState<"model" | "effort" | "more">("model");
-  const [chip, setChip] = useState<string>("all");
 
   const prefix = provider + "::";
   const isFav = (m: string) => favorites.includes(prefix + m);
@@ -155,30 +136,13 @@ export function ModelSheet({
   const effortLabel =
     EFFORT_LABELS[currentEffort as EffortLevel] ?? currentEffort;
 
-  // ── More: chips por categoria presente + Free, e lista filtrada. ──
+  // ── More: UMA lista contínua com todos os modelos, agrupada por categoria.
+  // A categoria é HOOK (cabeçalho de seção), não uma aba-filtro (era "uma lista
+  // por tabela"). presentCats = categorias com pelo menos 1 modelo, na ordem. ──
   const grouped = groupModelsByCategory(provider, models);
   const presentCats = CATEGORY_ORDER.filter(
     (c) => (grouped.get(c)?.length ?? 0) > 0
   );
-  const freeModels = models.filter(
-    (m) => getModelCapabilities(provider, m).free
-  );
-  const chipItems: SegmentedItem[] = [
-    { id: "all", icon: CHIP_ICON.all, label: "All", iconOnly: true },
-    ...presentCats.map((c) => ({ id: c, icon: CHIP_ICON[c], label: CATEGORY_LABELS[c] })),
-    ...(freeModels.length
-      ? [{ id: "free", icon: CHIP_ICON.free, label: "Free" }]
-      : []),
-  ];
-  const visibleModels =
-    chip === "all"
-      ? models
-      : chip === "free"
-        ? freeModels
-        : grouped.get(chip as ModelCategory) ?? [];
-  // Seletor só faz sentido com 2+ "classes" pra filtrar: várias categorias, ou
-  // 1 categoria + Free. Uma só (só "all" + ela) é redundante → some.
-  const showCategorySeg = presentCats.length > 1 || freeModels.length > 0;
 
   // Logo do VENDOR do modelo (claude/gpt/gemini/...) à esquerda da linha. Sem SVG
   // do vendor → cai no logo do provider; sem esse → ícone genérico.
@@ -316,19 +280,6 @@ export function ModelSheet({
             </div>
           )}
         </div>
-
-        {/* Seletor de categoria FIXO (fora do corpo rolável) — só no More. Fica
-            entre o topo e o corpo, sem os handlers de drag pra não conflitar. */}
-        {view === "more" && models.length > 0 && showCategorySeg && (
-          <div className="axxa-sheet-seg">
-            <SegmentedRow
-              items={chipItems}
-              activeId={chip}
-              onSelect={setChip}
-              showActiveLabel
-            />
-          </div>
-        )}
 
         {/* CORPO ROLÁVEL — rola dentro do modal nativo. */}
         <div className="axxa-sheet-body">
@@ -480,8 +431,20 @@ export function ModelSheet({
                   Add models in Settings
                 </button>
               ) : (
-                <div className="axxa-sheet-list axxa-sheet-list-compact">
-                  {visibleModels.map((m) => selectRow(m))}
+                <div className="axxa-sheet-list axxa-sheet-list-more">
+                  {presentCats.map((cat) => {
+                    const catModels = grouped.get(cat) ?? [];
+                    if (!catModels.length) return null;
+                    return (
+                      <div key={cat} className="axxa-sheet-group">
+                        {/* Categoria = HOOK (cabeçalho da seção), não aba. */}
+                        <div className="axxa-sheet-group-label">
+                          {CATEGORY_LABELS[cat]}
+                        </div>
+                        {catModels.map((m) => selectRow(m))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </>

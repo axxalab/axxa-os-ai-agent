@@ -4533,6 +4533,34 @@ body.is-mobile .axxa-sheet-modal-content::before {
   width: 22px;
   height: 22px;
 }
+/* "More models" = UMA lista contínua, categorias como HOOK (cabeçalho de seção).
+   Cabeçalho da categoria. */
+.axxa-sheet-group-label {
+  padding: 14px 8px 4px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.axxa-sheet-group:first-child .axxa-sheet-group-label {
+  padding-top: 2px;
+}
+/* No More models as linhas respiram mais e o logo do vendor é maior/mais alto. */
+.axxa-sheet-list-more .axxa-sheet-row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.axxa-sheet-list-more .axxa-sheet-row-logo {
+  width: 34px;
+  height: 34px;
+}
+.axxa-sheet-list-more .axxa-sheet-row-logo .svg-icon,
+.axxa-sheet-list-more .axxa-sheet-row-logo svg,
+.axxa-sheet-list-more .axxa-sheet-row-logo img {
+  width: 30px;
+  height: 30px;
+}
 .axxa-plus-title {
   margin: 0 0 16px 0;
   font-size: var(--font-ui-medium);
