@@ -4517,6 +4517,31 @@ body.is-mobile .axxa-sheet-modal-content::before {
   cursor: default;
   opacity: 0.7;
 }
+/* SuggestionsSheet no modal nativo: replica o .axxa-root .axxa-suggest-grid-card
+   (o resto das .axxa-suggest-grid-* já é global) — sem isto o card perde o
+   layout/fundo fora do .axxa-root. */
+.axxa-sheet-modal .axxa-suggest-grid-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  min-height: 118px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  text-align: left;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.axxa-sheet-modal .axxa-suggest-grid-card:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-sheet-modal .axxa-suggest-grid-card:active {
+  transform: scale(0.98);
+}
 /* Logo do vendor à esquerda de cada linha de modelo (global — vale dentro e fora
    do modal). O flex da row já dá o gap; aqui só fixa o tamanho. */
 .axxa-sheet-row-logo {

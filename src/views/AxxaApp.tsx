@@ -498,6 +498,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   const [composerEmpty, setComposerEmpty] = useState(true);
   // "See more" dos balões → bottom sheet com a lista completa do modo (ou null).
   const [suggestSheetOpen, setSuggestSheetOpen] = useState(false);
+  // Casca nativa (BottomSheetModal) pro sheet "See more" — portalado. v0.2.27
+  const [suggestModalEl, setSuggestModalEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!suggestSheetOpen) return;
+    const modal = new BottomSheetModal(plugin.app, () =>
+      setSuggestSheetOpen(false)
+    );
+    modal.open();
+    setSuggestModalEl(modal.contentEl);
+    return () => {
+      setSuggestModalEl(null);
+      modal.close();
+    };
+  }, [suggestSheetOpen, plugin.app]);
 
   // Gaveta lateral (avatar do header) com as conversas. v0.1.145
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2304,13 +2318,16 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               />,
               modelModalEl
             )}
-          {suggestSheetOpen && (
-            <SuggestionsSheet
-              mode={activeMode}
-              onPick={handlePromptStarter}
-              onClose={() => setSuggestSheetOpen(false)}
-            />
-          )}
+          {suggestSheetOpen &&
+            suggestModalEl &&
+            createPortal(
+              <SuggestionsSheet
+                mode={activeMode}
+                onPick={handlePromptStarter}
+                onClose={() => setSuggestSheetOpen(false)}
+              />,
+              suggestModalEl
+            )}
           {projectEditor && (
             <ProjectEditor
               initial={projectEditor.project}
