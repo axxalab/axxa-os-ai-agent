@@ -35,12 +35,18 @@ export class BottomSheetModal extends Modal {
     this.containerEl.addClass("axxa-sheet-modal-container");
     this.contentEl.addClass("axxa-sheet-modal-content");
     if (this.extraContentClass) this.contentEl.addClass(this.extraContentClass);
-    // Remove o X nativo (classe varia por versão: .modal-close-button OU
-    // button.mod-raised.clickable-icon) — pega QUALQUER botão do modalEl que NÃO
-    // esteja no conteúdo portalado. Robusto a versão/estrutura.
-    Array.from(this.modalEl.querySelectorAll("button"))
-      .filter((b) => !this.contentEl.contains(b))
-      .forEach((b) => b.remove());
+    // Remove o CHROME nativo do topo (header + botão de fechar). No mobile desta
+    // versão do Obsidian o "botão" é um DIV.modal-header-button dentro de um
+    // .modal-header (não um <button>), por isso só querySelector("button") não
+    // pegava (inspector do owner). Removemos header/close-button/qualquer botão
+    // que NÃO esteja no conteúdo portalado. Robusto a versão/estrutura.
+    Array.from(
+      this.modalEl.querySelectorAll(
+        ".modal-header, .modal-close-button, .modal-header-button, button"
+      )
+    )
+      .filter((el) => !this.contentEl.contains(el))
+      .forEach((el) => el.remove());
     // Nosso X, na LINHA DO TÍTULO (position relativa ao contentEl no CSS). Como
     // o portal do React não remove filhos pré-existentes do container, este botão
     // sobrevive ao mount do conteúdo.

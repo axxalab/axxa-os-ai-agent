@@ -4370,16 +4370,24 @@ body.theme-dark .modal.axxa-sheet-modal {
   /* âncora pro nosso X absoluto (na linha do título). */
   position: relative;
 }
+/* Backup do JS: esconde o chrome nativo do topo (header + botão de fechar div)
+   caso o remove() não pegue (ex.: ImageGenModal, que tem a classe mas não passa
+   pelo onOpen do BottomSheetModal). Ref: inspector do owner. */
+.axxa-sheet-modal .modal-header,
+.axxa-sheet-modal .modal-close-button,
+.axxa-sheet-modal .modal-header-button {
+  display: none;
+}
 /* NOSSO X do sheet, na LINHA DO TÍTULO (o nativo é removido no JS). Absoluto
    relativo ao contentEl → alinhamento determinístico. .axxa-sheet-modal na
    frente pra vencer o styling de button do Obsidian mobile. */
 .axxa-sheet-modal .axxa-sheet-x {
   position: absolute;
-  top: 22px;
+  top: 20px;
   right: 12px;
   z-index: 2;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4396,8 +4404,8 @@ body.theme-dark .modal.axxa-sheet-modal {
 }
 .axxa-sheet-modal .axxa-sheet-x svg,
 .axxa-sheet-modal .axxa-sheet-x .svg-icon {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 /* Scrim + blur no fundo (o .modal-bg do container). Blur mais forte do que está
    atrás pra destacar bem o sheet. */
