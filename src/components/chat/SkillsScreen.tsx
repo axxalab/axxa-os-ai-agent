@@ -27,23 +27,20 @@ export function SkillsScreen({
 }: SkillsScreenProps) {
   const t = useT();
   return (
-    <div className="axxa-skills" role="dialog" aria-label={t.skills.title}>
-      <div className="axxa-screen-head">
-        <button
-          type="button"
-          className="axxa-screen-back"
-          onClick={onClose}
-          aria-label={t.skills.close}
-        >
-          <Icon name="arrow-left" />
-        </button>
-        <span className="axxa-screen-title">
-          <Icon name="layout-grid" />
-          {t.skills.title}
-        </span>
+    <div className="axxa-skills-sheet-content">
+      {/* TOPO — a casca nativa (BottomSheetModal) dá handle/X; aqui só o título. */}
+      <div className="axxa-sheet-top">
+        <div className="axxa-sheet-header">
+          <span className="axxa-sheet-nav" aria-hidden="true" />
+          <span className="axxa-sheet-title">
+            <Icon name="layout-grid" />
+            {t.skills.title}
+          </span>
+          <span className="axxa-sheet-nav" aria-hidden="true" />
+        </div>
       </div>
 
-      <div className="axxa-screen-body">
+      <div className="axxa-sheet-body">
         <p className="axxa-skills-sub">{t.skills.subtitle}</p>
 
         {skills.length === 0 ? (

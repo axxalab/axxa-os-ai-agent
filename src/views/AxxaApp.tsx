@@ -208,6 +208,19 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
     ].some((k) => (k ?? "").trim().length > 0);
   // Modo Voz / Skills / "tudo certo" overlays. v0.1.194
   const [skillsOpen, setSkillsOpen] = useState(false);
+  // Skills (Apps & Skills do + sheet) agora abre como BOTTOM SHEET nativo,
+  // portalado pro contentEl — mesma casca do modelo/+/sugestões. v0.2.29
+  const [skillsModalEl, setSkillsModalEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!skillsOpen) return;
+    const modal = new BottomSheetModal(plugin.app, () => setSkillsOpen(false));
+    modal.open();
+    setSkillsModalEl(modal.contentEl);
+    return () => {
+      setSkillsModalEl(null);
+      modal.close();
+    };
+  }, [skillsOpen, plugin.app]);
   const [showAllSet, setShowAllSet] = useState(false);
   // (P1-13, a11y) Live region: anuncia início/fim da resposta pra leitores de
   // tela — sem isto o usuário envia e fica no silêncio absoluto.
@@ -2367,7 +2380,9 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               />
             );
           })()}
-          {skillsOpen && (
+          {skillsOpen &&
+            skillsModalEl &&
+            createPortal(
             <SkillsScreen
               skills={plugin.skills}
               onClose={() => setSkillsOpen(false)}
@@ -2389,7 +2404,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
                   void plugin.app.workspace.getLeaf(true).openFile(file);
                 }
               }}
-            />
+            />,
+            skillsModalEl
           )}
           <span className="axxa-sr-only" role="status" aria-live="polite">
             {srAnnouncement}
