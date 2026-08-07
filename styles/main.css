@@ -4349,17 +4349,48 @@ body.theme-dark .axxa-root .axxa-composer-pill {
   margin-bottom: 10px;
 }
 /* ============================================================
- * Seletor de modelo = MODAL NATIVO do Obsidian (ModelSheetModal.ts). No mobile o
- * Obsidian renderiza como bottom sheet (sobe de baixo, backdrop/foco/animação de
- * fábrica). O CONTEÚDO (React ModelSheet) é portalado pro contentEl. Aqui só
- * ajustamos o padding do contentEl, escondemos o X default (o ModelSheet tem o
- * próprio header) e deixamos o corpo rolar dentro do modal nativo.
+ * Seletor de modelo = MODAL NATIVO do Obsidian (ModelSheetModal.ts). Casca
+ * nativa (backdrop/foco/animação), CONTEÚDO React portalado pro contentEl. No
+ * mobile forçamos o formato BOTTOM SHEET (colado embaixo, largura total, cantos
+ * só no topo) — sem isso o Obsidian abria um card flutuante no meio. Escondemos
+ * o X nativo (o ModelSheet tem o próprio header); o `.modal` no seletor é o que
+ * dá specificity pra vencer o CSS do Obsidian (mesmo padrão do code modal).
  * ============================================================ */
-.axxa-model-modal .modal-close-button {
+.modal.axxa-model-modal .modal-close-button {
   display: none;
 }
 .axxa-model-modal .modal-content.axxa-model-modal-content {
-  padding: 6px 14px 14px;
+  padding: 4px 14px 16px;
+}
+/* Bottom sheet de verdade no mobile: encosta na base, largura total, altura pelo
+   conteúdo (teto 85vh), cantos arredondados só no topo. */
+body.is-mobile .modal.axxa-model-modal {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 0; /* vence min-height do modal nativo → dimensiona pelo conteúdo */
+  max-height: 85vh;
+  border: none;
+  border-radius: 20px 20px 0 0;
+}
+/* Handle do bottom sheet — a barrinha no topo (o modal nativo não traz uma). */
+body.is-mobile .modal.axxa-model-modal .modal-content.axxa-model-modal-content {
+  padding-top: 14px;
+}
+body.is-mobile .axxa-model-sheet::before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  margin: 0 auto 12px;
+  background: var(--background-modifier-border);
 }
 .axxa-model-sheet .axxa-sheet-top {
   /* a casca nativa dá o drag/handle; aqui o topo é só header (sem grab). */
