@@ -7,7 +7,14 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useChatStore } from "../../store/chat";
-import { UserBubble, AIResponse, AIComment, AIOptions, ErrorMessage } from "./Messages";
+import {
+  UserBubble,
+  AIResponse,
+  AIComment,
+  AIOptions,
+  ErrorMessage,
+  ResponseSkeleton,
+} from "./Messages";
 import { dayKey, formatDayLabel } from "../_shared/timestamps";
 import { Icon } from "../_shared/Icon";
 import { useT } from "../../i18n";
@@ -30,6 +37,12 @@ export function ChatArea({
 }) {
   const t = useT();
   const messages = useChatStore((s) => s.messages);
+  // Janela "pending": mandou a mensagem, o modelo ainda NÃO emitiu o 1º token de
+  // conteúdo (streamingMessageId só é setado no 1º token). Aí mostramos o
+  // skeleton da resposta — some quando o markdown começa a renderizar.
+  const isLoading = useChatStore((s) => s.isLoading);
+  const streamingId = useChatStore((s) => s.streamingMessageId);
+  const showSkeleton = isLoading && !streamingId;
   const scrollRef = useRef<HTMLDivElement>(null);
   const shouldStickRef = useRef(true);
   const [showBackToBottom, setShowBackToBottom] = useState(false);
@@ -66,7 +79,9 @@ export function ChatArea({
       if (el) el.scrollTop = el.scrollHeight;
     });
     return () => window.cancelAnimationFrame(raf);
-  }, [messages]);
+    // showSkeleton na dep: quando o skeleton aparece/some a altura muda → mantém
+    // a visão colada no fim (se já estava no fim).
+  }, [messages, showSkeleton]);
 
   // Pula + destaca a mensagem escolhida na busca
   useEffect(() => {
@@ -128,6 +143,11 @@ export function ChatArea({
         items.push(<AIOptions key={m.id} msg={m} />);
         break;
     }
+  }
+  // Skeleton da resposta que está por vir (só na janela pending, antes do 1º
+  // token de conteúdo). Fica após o "Pensando..." e some quando o markdown chega.
+  if (showSkeleton) {
+    items.push(<ResponseSkeleton key="response-skeleton" />);
   }
 
   return (

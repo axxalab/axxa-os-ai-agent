@@ -124,6 +124,27 @@ function Timestamp({ ts }: { ts: number }) {
   return <div className="axxa-msg-timestamp">{formatTime(ts)}</div>;
 }
 
+/**
+ * Skeleton de texto da resposta (ref Claude mobile): barras shimmer no lugar da
+ * resposta enquanto o modelo ainda não emitiu o 1º token de conteúdo — some
+ * assim que a nossa formatação (markdown) começa a renderizar. Alinhado como
+ * uma ai-response pra ocupar exatamente o espaço da resposta que vem. Reusa o
+ * .axxa-skeleton/.axxa-skeleton-bar já existentes. Puramente decorativo →
+ * aria-hidden (o "Pensando..." já anuncia o estado ao leitor de tela).
+ */
+export function ResponseSkeleton() {
+  return (
+    <div
+      className="axxa-msg axxa-msg-ai-response axxa-response-skeleton"
+      aria-hidden="true"
+    >
+      <div className="axxa-skeleton axxa-skeleton-bar" />
+      <div className="axxa-skeleton axxa-skeleton-bar" />
+      <div className="axxa-skeleton axxa-skeleton-bar" />
+    </div>
+  );
+}
+
 export function UserBubble({ msg }: { msg: UserMessage }) {
   const actions = useChatActions();
   const t = useT();

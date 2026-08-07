@@ -1,8 +1,9 @@
 // src/components/composer/Composer.tsx
 // Composer:
-//   - Pill simples: [+] [editor]
+//   - Chat: chip de modelo ACIMA + pill [+] [editor] [send/mic] [voz]
 //   - Send/mic/stop externo à direita
-//   - Background transparente
+//   - Fundo sólido (backdrop --background-primary full-bleed no CSS) — o
+//     conteúdo do chat não vaza mais atrás do pill flutuante
 //
 // "+" button abre o PlusModal (ChatGPT-style bottom sheet com Effort selector)
 
@@ -1030,6 +1031,26 @@ export function Composer({
       <span className="axxa-composer-model-effort">{effort}</span>
     </button>
   );
+  // Chat: o seletor de modelo é um CHIP acima do composer (ref Claude), não mais
+  // inline no pill. Mesma ação (abre o ModelSheet), com caret pra sinalizar que
+  // é um seletor. Os modos card (agent/vault) seguem com o modelEl inline na bar.
+  const modelChipEl = (
+    <button
+      type="button"
+      className="axxa-composer-model axxa-composer-model-chip"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onOpenModel}
+      aria-label="Select model"
+      aria-haspopup="dialog"
+      title={modelName}
+    >
+      <span className="axxa-composer-model-name">
+        {prettyModelName(modelName)}
+      </span>
+      <span className="axxa-composer-model-effort">{effort}</span>
+      <Icon name="chevron-down" className="axxa-composer-model-caret" />
+    </button>
+  );
   const sendEl = (
     <button
       type="button"
@@ -1143,6 +1164,11 @@ export function Composer({
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
+      {/* Chat: chip de modelo no TOPO do stack (acima de anexos e pill), ref
+          Claude. Nos modos card (agent/vault) o modelo segue inline na bar. */}
+      {mode === "chat" && (
+        <div className="axxa-composer-modelbar">{modelChipEl}</div>
+      )}
       {/* Anexos pendentes (preview chips antes do envio).
           Multi-tipo: image (thumbnail+shimmer), note (ícone file-text),
           pdf (ícone file), audio (ícone mic). No Vault Q/A NÃO ficam aqui —
@@ -1188,12 +1214,10 @@ export function Composer({
         </div>
       )}
       {mode === "chat" ? (
-        /* Chat: pill ÚNICO numa linha (ref print ChatGPT) — + · modelo · editor
-           · mic · voz. O chip de modelo (abre o ModelSheet) existe nos TRÊS
-           modos — mesma feature, layouts diferentes. */
+        /* Chat (ref Claude): pill numa linha (+ · editor · mic · voz). O chip de
+           modelo fica ACIMA (renderizado no topo do stack). */
         <div className="axxa-composer-pill" data-mode="chat">
           {plusEl}
-          {modelEl}
           {editorEl}
           {sendEl}
           {voiceEl}

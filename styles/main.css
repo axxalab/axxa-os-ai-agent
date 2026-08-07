@@ -820,6 +820,27 @@ body.is-mobile
   height: 14px;
   margin: 9px 0;
 }
+/* Skeleton da resposta (chat) — barras shimmer no lugar da resposta enquanto o
+   1º token de conteúdo não chega. Larguras variadas pra parecer texto real. */
+.axxa-response-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 0;
+}
+.axxa-response-skeleton .axxa-skeleton-bar {
+  height: 13px;
+  margin: 0;
+}
+.axxa-response-skeleton .axxa-skeleton-bar:nth-child(1) {
+  width: 92%;
+}
+.axxa-response-skeleton .axxa-skeleton-bar:nth-child(2) {
+  width: 98%;
+}
+.axxa-response-skeleton .axxa-skeleton-bar:nth-child(3) {
+  width: 72%;
+}
 .axxa-img-placeholder {
   margin: 8px 0 2px;
   width: min(260px, 72%);
@@ -1054,6 +1075,40 @@ body.theme-dark .axxa-header {
    temporária: muda quando realocarmos o "modo style". */
 .axxa-root {
   --axxa-composer-bg: var(--background-secondary);
+  /* Cor do CANVAS do app — espelha o mapeamento nativo do .axxa-root
+     (LIGHT=primary, DARK=secondary). Usada pelo backdrop sólido do composer
+     pra ficar contínua com o fundo do chat nos dois temas. */
+  --axxa-canvas-bg: var(--background-primary);
+}
+body.theme-dark .axxa-root {
+  --axxa-canvas-bg: var(--background-secondary);
+}
+/* Fundo SÓLIDO do composer (chat): backdrop full-bleed com a cor do canvas do
+   tema — o conteúdo do chat não vaza mais atrás do pill/chip flutuante ao rolar.
+   Um fade curto acima dissolve as mensagens antes da faixa sólida (ref Claude).
+   Ambos os pseudo ficam ATRÁS do conteúdo do composer (z-index:-1) mas acima da
+   área de chat (o .axxa-composer tem stacking próprio: absolute + z-index:900). */
+.axxa-root .axxa-composer[data-mode="chat"]::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  top: 0;
+  bottom: -18px;
+  background: var(--axxa-canvas-bg);
+  z-index: -1;
+  pointer-events: none;
+}
+.axxa-root .axxa-composer[data-mode="chat"]::after {
+  content: "";
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  top: -22px;
+  height: 22px;
+  background: linear-gradient(to top, var(--axxa-canvas-bg), transparent);
+  z-index: -1;
+  pointer-events: none;
 }
 .axxa-composer-card {
   display: flex;
@@ -1233,6 +1288,26 @@ body.theme-dark .axxa-header {
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
   flex: 0 0 auto;
+}
+/* Chat: chip de modelo ACIMA do pill — linha própria, alinhado à esquerda, sobre
+   o backdrop sólido. Reusa o visual do .axxa-composer-model; só ganha o caret. */
+.axxa-composer-modelbar {
+  display: flex;
+  align-items: center;
+  padding: 0 2px 6px;
+}
+/* Chip hugga o conteúdo à esquerda; nome longo trunca com ellipsis (min-width:0
+   já vem do base) em vez de esticar a barra inteira. */
+.axxa-root .axxa-composer-model-chip {
+  flex: 0 1 auto;
+  max-width: min(280px, 82%);
+}
+.axxa-composer-model-caret {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+  margin-left: 1px;
 }
 /* Chip de modelo DENTRO do pill do chat — largura natural (não encolhe com o
    editor), mas com teto + ellipsis pra nomes longos não engolirem o campo. */
