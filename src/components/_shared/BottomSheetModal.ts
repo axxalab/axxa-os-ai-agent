@@ -7,11 +7,11 @@
 //   - scrim + blur no fundo
 //   - animação de subida (CSS na classe global .axxa-sheet-modal → atinge TODOS
 //     os sheets de uma vez)
-//   - remove o X nativo redundante (o Obsidian mobile força display via !important,
-//     então REMOVEMOS o nó, não display:none)
-// Classes: .axxa-sheet-modal (modalEl) · .axxa-sheet-modal-container (containerEl,
-// pro scrim/blur) · .axxa-sheet-modal-content (contentEl). Ver memória
-// obsidian-native-modals (o modal vive fora do .axxa-root).
+// O X nativo do Obsidian (top-right) é MANTIDO — é ele quem fecha (os sheets não
+// trazem X próprio). Classes: .axxa-sheet-modal (modalEl) ·
+// .axxa-sheet-modal-container (containerEl, pro scrim/blur) ·
+// .axxa-sheet-modal-content (contentEl). Ver memória obsidian-native-modals (o
+// modal vive fora do .axxa-root).
 
 import { App, Modal } from "obsidian";
 
@@ -33,11 +33,7 @@ export class BottomSheetModal extends Modal {
     this.containerEl.addClass("axxa-sheet-modal-container");
     this.contentEl.addClass("axxa-sheet-modal-content");
     if (this.extraContentClass) this.contentEl.addClass(this.extraContentClass);
-    // Remove o X nativo (pode estar no .modal ou no .modal-container; o Obsidian
-    // mobile força o display com !important, então REMOVE em vez de esconder).
-    this.containerEl
-      .querySelectorAll(".modal-close-button")
-      .forEach((el) => el.remove());
+    // X nativo do Obsidian é mantido (fecha o sheet) — não removemos nem escondemos.
   }
 
   onClose() {

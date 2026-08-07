@@ -34,6 +34,7 @@ import {
   type ModelCategory,
 } from "../../providers/modelDescriptions";
 import { getModelCapabilities } from "../../providers/modelCapabilities";
+import { modelVendorLogoId, PROVIDER_LOGO } from "../_shared/modelLogo";
 
 /** Máximo de favoritos por provider. */
 const MAX_FAVORITES = 5;
@@ -179,6 +180,16 @@ export function ModelSheet({
   // 1 categoria + Free. Uma só (só "all" + ela) é redundante → some.
   const showCategorySeg = presentCats.length > 1 || freeModels.length > 0;
 
+  // Logo do VENDOR do modelo (claude/gpt/gemini/...) à esquerda da linha. Sem SVG
+  // do vendor → cai no logo do provider; sem esse → ícone genérico.
+  const rowLogo = (m: string) => (
+    <span className="axxa-sheet-row-logo">
+      <Icon
+        name={modelVendorLogoId(provider, m) ?? PROVIDER_LOGO[provider] ?? "sparkles"}
+      />
+    </span>
+  );
+
   // Row com estrela (ecrã de favoritos): tap = seleciona, estrela = (de)favorita.
   function favRow(m: string) {
     const { name, tagline } = modelBits(provider, m, lang);
@@ -201,6 +212,7 @@ export function ModelSheet({
           }
         }}
       >
+        {rowLogo(m)}
         <span className="axxa-sheet-row-text">
           <span className="axxa-sheet-row-name">{name}</span>
           {tagline && <span className="axxa-sheet-row-desc">{tagline}</span>}
@@ -240,6 +252,7 @@ export function ModelSheet({
           onClose();
         }}
       >
+        {rowLogo(m)}
         <span className="axxa-sheet-row-text">
           <span className="axxa-sheet-row-name">{name}</span>
           {tagline && <span className="axxa-sheet-row-desc">{tagline}</span>}
@@ -259,14 +272,9 @@ export function ModelSheet({
         <div className="axxa-sheet-top">
           {view === "model" && (
             <div className="axxa-sheet-header">
-              <button
-                type="button"
-                className="axxa-sheet-nav"
-                onClick={onClose}
-                aria-label="Close"
-              >
-                <Icon name="x" />
-              </button>
+              {/* Sem X próprio — quem fecha é o X NATIVO do Obsidian (top-right).
+                  Espaçadores mantêm o título centralizado. */}
+              <span className="axxa-sheet-nav" aria-hidden="true" />
               <span className="axxa-sheet-title">Select model</span>
               <span className="axxa-sheet-nav" aria-hidden="true" />
             </div>

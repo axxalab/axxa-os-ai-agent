@@ -4364,19 +4364,16 @@ body.theme-dark .axxa-root .axxa-composer-pill {
 body.theme-dark .modal.axxa-sheet-modal {
   background: var(--background-secondary);
 }
-/* X nativo: removido no JS (onOpen); este é backup (o Obsidian mobile força
-   display com !important, por isso o !important aqui também). */
-.modal.axxa-sheet-modal .modal-close-button {
-  display: none !important;
-}
+/* X nativo do Obsidian: MANTIDO (é quem fecha o sheet — os sheets não têm X próprio). */
 .axxa-sheet-modal .modal-content.axxa-sheet-modal-content {
   padding: 14px 14px 16px;
 }
-/* Scrim + blur no fundo (o .modal-bg do container). Blur do que está atrás. */
+/* Scrim + blur no fundo (o .modal-bg do container). Blur mais forte do que está
+   atrás pra destacar bem o sheet. */
 .axxa-sheet-modal-container .modal-bg {
-  background-color: rgba(0, 0, 0, 0.55);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background-color: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
 }
 /* Animação de SUBIDA — na classe global, então vale pra todos os sheets. */
 @keyframes axxa-sheet-rise {
@@ -4519,6 +4516,22 @@ body.is-mobile .axxa-sheet-modal-content::before {
 .axxa-sheet-modal .axxa-sheet-addfav:disabled {
   cursor: default;
   opacity: 0.7;
+}
+/* Logo do vendor à esquerda de cada linha de modelo (global — vale dentro e fora
+   do modal). O flex da row já dá o gap; aqui só fixa o tamanho. */
+.axxa-sheet-row-logo {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+}
+.axxa-sheet-row-logo .svg-icon,
+.axxa-sheet-row-logo svg,
+.axxa-sheet-row-logo img {
+  width: 22px;
+  height: 22px;
 }
 .axxa-plus-title {
   margin: 0 0 16px 0;
