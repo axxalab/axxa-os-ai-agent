@@ -23,6 +23,13 @@ export class ModelSheetModal extends Modal {
   onOpen() {
     this.modalEl.addClass("axxa-model-modal");
     this.contentEl.addClass("axxa-model-modal-content");
+    // O X nativo do Obsidian pode ficar no .modal OU no .modal-container (varia
+    // no mobile) — some via JS pra não depender de specificity/estrutura do CSS.
+    // O ModelSheet tem o próprio header (X / voltar), então o nativo é redundante.
+    const scope = this.modalEl.closest(".modal-container") ?? this.modalEl;
+    scope.querySelectorAll(".modal-close-button").forEach((el) => {
+      (el as HTMLElement).style.display = "none";
+    });
   }
 
   onClose() {

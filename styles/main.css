@@ -4407,6 +4407,95 @@ body.is-mobile .axxa-model-sheet::before {
   overflow: visible;
   padding: 0;
 }
+/* CRÍTICO: o modal nativo vive em document.body, FORA do .axxa-root — então as
+   regras `.axxa-root .axxa-sheet-*` (o display:flex da linha, a estrela, o nav,
+   o addfav) e as vars --axxa-* NÃO alcançam o conteúdo portalado, e as linhas
+   quebravam (estrela caía embaixo). Replicamos aqui escopadas no .axxa-model-modal
+   (ancestral do conteúdo). Só as regras que tinham prefixo .axxa-root; o resto
+   (row-text/name/desc/title/list/badge/check) é global e já aplica. */
+.axxa-model-modal {
+  --axxa-row-py: 6px;
+  --axxa-list-row-py: 6px;
+  --axxa-stack-gap: 1px;
+}
+.axxa-model-modal .axxa-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: var(--axxa-row-py) 8px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-normal);
+}
+.axxa-model-modal .axxa-sheet-row:hover {
+  background: var(--background-modifier-hover);
+  border-radius: 12px;
+}
+.axxa-model-modal .axxa-sheet-row:active {
+  background: var(--background-modifier-border);
+  border-radius: 12px;
+}
+.axxa-model-modal .axxa-sheet-nav {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text-normal);
+  cursor: pointer;
+}
+.axxa-model-modal .axxa-sheet-nav:hover {
+  background: var(--background-modifier-hover);
+}
+.axxa-model-modal .axxa-sheet-star {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.axxa-model-modal .axxa-sheet-star:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+}
+.axxa-model-modal .axxa-sheet-star:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.axxa-model-modal .axxa-sheet-addfav {
+  display: block;
+  width: 100%;
+  padding: 14px 8px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+.axxa-model-modal .axxa-sheet-addfav:hover:not(:disabled) {
+  color: var(--text-normal);
+}
+.axxa-model-modal .axxa-sheet-addfav:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
 .axxa-plus-title {
   margin: 0 0 16px 0;
   font-size: var(--font-ui-medium);
