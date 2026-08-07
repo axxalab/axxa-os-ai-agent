@@ -135,13 +135,6 @@ export function ModelSheet({
 
   const effortLabel =
     EFFORT_LABELS[currentEffort as EffortLevel] ?? currentEffort;
-  // Slider de effort (estilo Claude Code desktop): índice do nível atual + % do
-  // preenchimento do trilho. Clamp em 0 pra effort desconhecido não sumir o thumb.
-  const effortIdx = Math.max(0, EFFORT_LEVELS.indexOf(currentEffort as EffortLevel));
-  const effortPct =
-    EFFORT_LEVELS.length > 1
-      ? (effortIdx / (EFFORT_LEVELS.length - 1)) * 100
-      : 0;
 
   // ── More: UMA lista contínua com todos os modelos, agrupada por categoria.
   // A categoria é HOOK (cabeçalho de seção), não uma aba-filtro (era "uma lista
@@ -161,14 +154,18 @@ export function ModelSheet({
     </span>
   );
 
-  // Row com estrela (ecrã de favoritos): tap = seleciona, estrela = (de)favorita.
+  // Row de modelo (favoritos E More models): tap = seleciona (check no ativo);
+  // bookmark = (de)favorita. Bookmark desabilita no teto de 5 quando o modelo
+  // ainda não é favorito (o toggle do pai ignora silenciosamente além de 5).
   function favRow(m: string) {
     const { name, tagline } = modelBits(provider, m, lang);
     const fav = isFav(m);
+    const selected = m === currentModel;
+    const capReached = !fav && favCount >= MAX_FAVORITES;
     return (
       <div
         key={m}
-        className="axxa-sheet-row"
+        className={"axxa-sheet-row" + (selected ? " axxa-sheet-row-on" : "")}
         role="button"
         tabIndex={0}
         onClick={() => {
@@ -188,12 +185,24 @@ export function ModelSheet({
           <span className="axxa-sheet-row-name">{name}</span>
           {tagline && <span className="axxa-sheet-row-desc">{tagline}</span>}
         </span>
+        {selected && (
+          <span className="axxa-sheet-row-check">
+            <Icon name="check" />
+          </span>
+        )}
         <button
           type="button"
           className={"axxa-sheet-star" + (fav ? " axxa-sheet-star-on" : "")}
+          disabled={capReached}
           aria-pressed={fav}
           aria-label={fav ? "Unfavorite" : "Favorite"}
-          title={fav ? "Unfavorite" : "Favorite"}
+          title={
+            capReached
+              ? "Max 5 favorites"
+              : fav
+                ? "Unfavorite"
+                : "Favorite"
+          }
           onClick={(e) => {
             e.stopPropagation();
             onToggleFavorite(m);
@@ -206,34 +215,6 @@ export function ModelSheet({
           <Icon name="bookmark" />
         </button>
       </div>
-    );
-  }
-
-  // Row de seleção pura (More / Effort): tap = seleciona, check no ativo.
-  function selectRow(m: string) {
-    const { name, tagline } = modelBits(provider, m, lang);
-    const selected = m === currentModel;
-    return (
-      <button
-        key={m}
-        type="button"
-        className={"axxa-sheet-row" + (selected ? " axxa-sheet-row-on" : "")}
-        onClick={() => {
-          onSelectModel(m);
-          onClose();
-        }}
-      >
-        {rowLogo(m)}
-        <span className="axxa-sheet-row-text">
-          <span className="axxa-sheet-row-name">{name}</span>
-          {tagline && <span className="axxa-sheet-row-desc">{tagline}</span>}
-        </span>
-        {selected && (
-          <span className="axxa-sheet-row-check">
-            <Icon name="check" />
-          </span>
-        )}
-      </button>
     );
   }
 
@@ -350,50 +331,39 @@ export function ModelSheet({
 
           {view === "effort" && (
             <>
-              {/* Slider de effort (ref Claude Code desktop): trilho accent até o
-                  thumb, 5 níveis como marcações tocáveis, nome+descrição do nível
-                  atual em destaque. Arrasta o thumb OU toca no label. */}
-              <div className="axxa-effort-slider">
-                <div className="axxa-effort-slider-head">
-                  <span className="axxa-effort-slider-name">
-                    {effortLabel}
-                    {currentEffort === DEFAULT_EFFORT && (
-                      <span className="axxa-sheet-badge">Default</span>
-                    )}
-                  </span>
-                  <span className="axxa-effort-slider-desc">
-                    {EFFORT_TAGLINES[currentEffort as EffortLevel] ?? ""}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  className="axxa-effort-range"
-                  min={0}
-                  max={EFFORT_LEVELS.length - 1}
-                  step={1}
-                  value={effortIdx}
-                  style={{ ["--axxa-effort-pct" as string]: `${effortPct}%` }}
-                  onChange={(e) =>
-                    onSelectEffort(EFFORT_LEVELS[Number(e.currentTarget.value)])
-                  }
-                  aria-label="Effort"
-                  aria-valuetext={effortLabel}
-                />
-                <div className="axxa-effort-ticks">
-                  {EFFORT_LEVELS.map((lvl) => (
+              {/* Lista de níveis (ref Claude Code desktop): nome + descrição,
+                  badge Default no baseline, check + accent no ativo. */}
+              <div className="axxa-sheet-list">
+                {EFFORT_LEVELS.map((lvl) => {
+                  const selected = lvl === currentEffort;
+                  return (
                     <button
                       key={lvl}
                       type="button"
                       className={
-                        "axxa-effort-tick" +
-                        (lvl === currentEffort ? " is-active" : "")
+                        "axxa-sheet-row" + (selected ? " axxa-sheet-row-on" : "")
                       }
                       onClick={() => onSelectEffort(lvl)}
                     >
-                      {EFFORT_LABELS[lvl]}
+                      <span className="axxa-sheet-row-text">
+                        <span className="axxa-sheet-row-name">
+                          {EFFORT_LABELS[lvl]}
+                          {lvl === DEFAULT_EFFORT && (
+                            <span className="axxa-sheet-badge">Default</span>
+                          )}
+                        </span>
+                        <span className="axxa-sheet-row-desc">
+                          {EFFORT_TAGLINES[lvl]}
+                        </span>
+                      </span>
+                      {selected && (
+                        <span className="axxa-sheet-row-check">
+                          <Icon name="check" />
+                        </span>
+                      )}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
 
               {thinkingCapable && (
@@ -461,7 +431,7 @@ export function ModelSheet({
                         <div className="axxa-sheet-group-label">
                           {CATEGORY_LABELS[cat]}
                         </div>
-                        {catModels.map((m) => selectRow(m))}
+                        {catModels.map((m) => favRow(m))}
                       </div>
                     );
                   })}
