@@ -121,6 +121,9 @@ export type NewMessageInput = DistributiveOmit<ChatMessage, "id" | "timestamp">;
 interface ChatState {
   messages: ChatMessage[];
   isLoading: boolean;
+  /** Carregando uma conversa antiga do disco (read + parse + render). Enquanto
+   *  true, o ChatArea mostra um skeleton no lugar das mensagens. */
+  loadingChat: boolean;
   /** Tokens acumulados da sessão atual (in = prompt, out = completion). */
   tokensIn: number;
   tokensOut: number;
@@ -178,6 +181,7 @@ interface ChatState {
   selectOption: (messageId: string, optionIndex: number) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
+  setLoadingChat: (loading: boolean) => void;
   addUsage: (input: number, output: number) => void;
   resetUsage: () => void;
   setStreamingMessageId: (id: string | null) => void;
@@ -229,6 +233,7 @@ const BASE_RESET = {
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   isLoading: false,
+  loadingChat: false,
   tokensIn: 0,
   tokensOut: 0,
   lastPromptTokens: 0,
@@ -390,6 +395,7 @@ export const useChatStore = create<ChatState>((set) => ({
     // Preserva currentChatId/currentChatTitle (limpa só o conteúdo). v0.1.228
     set({ ...BASE_RESET }),
   setLoading: (loading) => set({ isLoading: loading }),
+  setLoadingChat: (loading) => set({ loadingChat: loading }),
   addUsage: (input, output) =>
     set((state) => ({
       tokensIn: state.tokensIn + input,

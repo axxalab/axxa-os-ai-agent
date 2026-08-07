@@ -841,6 +841,45 @@ body.is-mobile
 .axxa-response-skeleton .axxa-skeleton-bar:nth-child(3) {
   width: 72%;
 }
+/* Skeleton de CONVERSA — enquanto uma conversa antiga carrega do disco. Blocos
+   alternados user (direita, curto) e ai (esquerda, várias linhas). */
+.axxa-conversation-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 6px 0;
+}
+.axxa-skel-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.axxa-skel-msg .axxa-skeleton-bar {
+  height: 13px;
+  margin: 0;
+}
+/* user: bolha curta encostada à direita. */
+.axxa-skel-msg-user {
+  align-items: flex-end;
+}
+.axxa-skel-msg-user .axxa-skeleton-bar {
+  width: 46%;
+  height: 34px;
+  border-radius: 16px;
+}
+/* ai: linhas de resposta à esquerda, larguras variadas. */
+.axxa-skel-msg-ai {
+  align-items: stretch;
+}
+.axxa-skel-msg-ai .axxa-skeleton-bar:nth-child(1) {
+  width: 88%;
+}
+.axxa-skel-msg-ai .axxa-skeleton-bar:nth-child(2) {
+  width: 96%;
+}
+.axxa-skel-msg-ai .axxa-skeleton-bar:nth-child(3) {
+  width: 64%;
+}
 .axxa-img-placeholder {
   margin: 8px 0 2px;
   width: min(260px, 72%);
@@ -1070,15 +1109,14 @@ body.theme-dark .axxa-header {
   display: block;
   padding: 0;
 }
-/* superfície dos 3 composers (e campos de texto): bloco ÚNICO, SEMPRE secondary
-   (light e dark) — destaca o composer do fundo primary nos dois temas. Decisão
-   temporária: muda quando realocarmos o "modo style". */
+/* Cor do CANVAS do app — espelha o mapeamento nativo do .axxa-root
+   (LIGHT=primary, DARK=secondary). É a cor de fundo do tema. */
 .axxa-root {
-  --axxa-composer-bg: var(--background-secondary);
-  /* Cor do CANVAS do app — espelha o mapeamento nativo do .axxa-root
-     (LIGHT=primary, DARK=secondary). Usada pelo backdrop sólido do composer
-     pra ficar contínua com o fundo do chat nos dois temas. */
   --axxa-canvas-bg: var(--background-primary);
+  /* Superfície do composer (pill + chip de modelo) = a MESMA cor do canvas,
+     primary no light e secondary no dark, SEMPRE. Assim o composer é sólido e
+     contínuo com o fundo do chat; o pill/chip se separam pela borda + sombra. */
+  --axxa-composer-bg: var(--axxa-canvas-bg);
 }
 body.theme-dark .axxa-root {
   --axxa-canvas-bg: var(--background-secondary);
@@ -1297,10 +1335,17 @@ body.theme-dark .axxa-root {
   padding: 0 2px 6px;
 }
 /* Chip hugga o conteúdo à esquerda; nome longo trunca com ellipsis (min-width:0
-   já vem do base) em vez de esticar a barra inteira. */
+   já vem do base) em vez de esticar a barra inteira. Fundo = cor do composer
+   (primary light / secondary dark, SEMPRE) — a borda o separa do backdrop, que
+   é da mesma cor. */
 .axxa-root .axxa-composer-model-chip {
   flex: 0 1 auto;
   max-width: min(280px, 82%);
+  background: var(--axxa-composer-bg);
+  border: 1px solid var(--background-modifier-border);
+}
+.axxa-root .axxa-composer-model-chip:hover {
+  background: var(--background-modifier-hover);
 }
 .axxa-composer-model-caret {
   width: 15px;
@@ -4302,6 +4347,34 @@ body.theme-dark .axxa-root .axxa-composer-pill {
 }
 .axxa-sheet .axxa-plus-handle {
   margin-bottom: 10px;
+}
+/* ============================================================
+ * Seletor de modelo = MODAL NATIVO do Obsidian (ModelSheetModal.ts). No mobile o
+ * Obsidian renderiza como bottom sheet (sobe de baixo, backdrop/foco/animação de
+ * fábrica). O CONTEÚDO (React ModelSheet) é portalado pro contentEl. Aqui só
+ * ajustamos o padding do contentEl, escondemos o X default (o ModelSheet tem o
+ * próprio header) e deixamos o corpo rolar dentro do modal nativo.
+ * ============================================================ */
+.axxa-model-modal .modal-close-button {
+  display: none;
+}
+.axxa-model-modal .modal-content.axxa-model-modal-content {
+  padding: 6px 14px 14px;
+}
+.axxa-model-sheet .axxa-sheet-top {
+  /* a casca nativa dá o drag/handle; aqui o topo é só header (sem grab). */
+  cursor: default;
+  touch-action: auto;
+  padding: 0 0 4px;
+}
+.axxa-model-sheet .axxa-sheet-seg {
+  padding: 0 0 6px;
+}
+.axxa-model-sheet .axxa-sheet-body {
+  /* o contentEl do modal nativo é quem rola; o body só flui (o overflow/flex
+     do base dependia da casca custom de altura fixa). */
+  overflow: visible;
+  padding: 0;
 }
 .axxa-plus-title {
   margin: 0 0 16px 0;

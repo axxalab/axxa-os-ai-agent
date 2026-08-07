@@ -11,13 +11,14 @@
 //   3. "More models" — TODOS os modelos adicionados, SEM estrela, COM o seletor
 //      segmentado (mesmo da sidebar) por categoria (+ Free quando houver). Tap
 //      seleciona.
-// Reaproveita o shell .axxa-plus-overlay/-sheet/-handle/-divider + o focus-trap.
+// A CASCA é o Modal NATIVO do Obsidian (ModelSheetModal.ts) — sobe de baixo como
+// bottom sheet, com backdrop/animação/foco de fábrica. Aqui renderizamos só o
+// CONTEÚDO interno (header + corpo rolável); o AxxaApp portala isto pro contentEl
+// do modal. Reaproveita as classes .axxa-sheet-* / .axxa-plus-divider.
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Icon } from "../_shared/Icon";
 import { SegmentedRow, type SegmentedItem } from "../_shared/SegmentedRow";
-import { useFocusTrap } from "../_shared/useFocusTrap";
-import { useBottomSheet } from "../_shared/useBottomSheet";
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
@@ -139,11 +140,6 @@ export function ModelSheet({
 }: ModelSheetProps) {
   const [view, setView] = useState<"model" | "effort" | "more">("model");
   const [chip, setChip] = useState<string>("all");
-  const sheetRef = useRef<HTMLDivElement>(null);
-  // autoFocus:false → não rouba o foco do editor ao abrir; com o teclado aberto ele
-  // continua aberto (sheet por cima) e ao fechar o foco volta pro editor.
-  useFocusTrap(sheetRef, { onEscape: onClose, autoFocus: false });
-  const sheet = useBottomSheet(onClose);
 
   const prefix = provider + "::";
   const isFav = (m: string) => favorites.includes(prefix + m);
@@ -258,19 +254,9 @@ export function ModelSheet({
   }
 
   return (
-    <div className="axxa-plus-overlay" onClick={onClose}>
-      <div
-        ref={sheetRef}
-        className={"axxa-plus-sheet axxa-sheet" + sheet.sheetClass}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        tabIndex={-1}
-        aria-label="Select model"
-      >
-        {/* TOPO FIXO (handle + header) — é o toggle: tap/drag alterna opened↔full. */}
-        <div className="axxa-sheet-top" {...sheet.topProps}>
-          <div className="axxa-plus-handle" />
+    <div className="axxa-model-sheet">
+        {/* TOPO FIXO (header) — a casca nativa dá o handle/drag; aqui só o header. */}
+        <div className="axxa-sheet-top">
           {view === "model" && (
             <div className="axxa-sheet-header">
               <button
@@ -336,8 +322,8 @@ export function ModelSheet({
           </div>
         )}
 
-        {/* CORPO ROLÁVEL — overscroll nas 2 pontas (touch, via bodyRef) */}
-        <div className="axxa-sheet-body" ref={sheet.bodyRef}>
+        {/* CORPO ROLÁVEL — rola dentro do modal nativo. */}
+        <div className="axxa-sheet-body">
           {view === "model" && (
             <>
               {models.length === 0 && favModels.length === 0 ? (
@@ -493,7 +479,6 @@ export function ModelSheet({
             </>
           )}
         </div>
-      </div>
     </div>
   );
 }

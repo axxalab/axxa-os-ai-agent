@@ -125,6 +125,35 @@ function Timestamp({ ts }: { ts: number }) {
 }
 
 /**
+ * Skeleton de CONVERSA (ref Claude mobile): mostrado enquanto uma conversa antiga
+ * é lida do disco + parseada, no lugar das mensagens, até a nossa formatação
+ * (markdown) renderizar. Alterna blocos "user" (direita, curto) e "ai" (esquerda,
+ * várias linhas) pra lembrar o ritmo de um diálogo carregando. aria-hidden — o
+ * conteúdo real anuncia quando chega.
+ */
+export function ConversationSkeleton() {
+  return (
+    <div className="axxa-conversation-skeleton" aria-hidden="true">
+      <div className="axxa-skel-msg axxa-skel-msg-user">
+        <div className="axxa-skeleton axxa-skeleton-bar" />
+      </div>
+      <div className="axxa-skel-msg axxa-skel-msg-ai">
+        <div className="axxa-skeleton axxa-skeleton-bar" />
+        <div className="axxa-skeleton axxa-skeleton-bar" />
+        <div className="axxa-skeleton axxa-skeleton-bar" />
+      </div>
+      <div className="axxa-skel-msg axxa-skel-msg-user">
+        <div className="axxa-skeleton axxa-skeleton-bar" />
+      </div>
+      <div className="axxa-skel-msg axxa-skel-msg-ai">
+        <div className="axxa-skeleton axxa-skeleton-bar" />
+        <div className="axxa-skeleton axxa-skeleton-bar" />
+      </div>
+    </div>
+  );
+}
+
+/**
  * Skeleton de texto da resposta (ref Claude mobile): barras shimmer no lugar da
  * resposta enquanto o modelo ainda não emitiu o 1º token de conteúdo — some
  * assim que a nossa formatação (markdown) começa a renderizar. Alinhado como

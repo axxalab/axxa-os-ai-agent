@@ -14,6 +14,7 @@ import {
   AIOptions,
   ErrorMessage,
   ResponseSkeleton,
+  ConversationSkeleton,
 } from "./Messages";
 import { dayKey, formatDayLabel } from "../_shared/timestamps";
 import { Icon } from "../_shared/Icon";
@@ -43,6 +44,8 @@ export function ChatArea({
   const isLoading = useChatStore((s) => s.isLoading);
   const streamingId = useChatStore((s) => s.streamingMessageId);
   const showSkeleton = isLoading && !streamingId;
+  // Carregando conversa antiga do disco → skeleton de conversa no lugar das msgs.
+  const loadingChat = useChatStore((s) => s.loadingChat);
   const scrollRef = useRef<HTMLDivElement>(null);
   const shouldStickRef = useRef(true);
   const [showBackToBottom, setShowBackToBottom] = useState(false);
@@ -112,10 +115,14 @@ export function ChatArea({
     setShowBackToBottom(false);
   };
 
-  // Monta items com day separators
+  // Monta items com day separators. Carregando conversa antiga → só o skeleton
+  // de conversa (esconde as mensagens stale até a nova reidratar/renderizar).
   const items: ReactNode[] = [];
+  if (loadingChat) {
+    items.push(<ConversationSkeleton key="conversation-skeleton" />);
+  }
   let lastDayKey: string | null = null;
-  for (const m of messages) {
+  for (const m of loadingChat ? [] : messages) {
     const key = dayKey(m.timestamp);
     if (key !== lastDayKey) {
       items.push(
@@ -146,7 +153,7 @@ export function ChatArea({
   }
   // Skeleton da resposta que está por vir (só na janela pending, antes do 1º
   // token de conteúdo). Fica após o "Pensando..." e some quando o markdown chega.
-  if (showSkeleton) {
+  if (showSkeleton && !loadingChat) {
     items.push(<ResponseSkeleton key="response-skeleton" />);
   }
 

@@ -9,6 +9,7 @@
 //   - Click em chat recente → loadChat() reidrata mensagens + locked session
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type AxxaPlugin from "../main";
 import { Header } from "../components/layout/Header";
 import { Sidebar } from "../components/layout/Sidebar";
@@ -23,6 +24,7 @@ import { Composer } from "../components/composer/Composer";
 import { SuggestionsSheet } from "../components/composer/SuggestionsSheet";
 import { PlusModal } from "../components/composer/PlusModal";
 import { ModelSheet } from "../components/composer/ModelSheet";
+import { ModelSheetModal } from "../components/composer/ModelSheetModal";
 import { NewChatScreen } from "../components/chat/NewChatScreen";
 import { ConversationsList } from "../components/chat/ConversationsList";
 import {
@@ -354,6 +356,20 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // hands-free a tela apagava entre falas e matava a conversa de voz.
   useWakeLock(isLoading || voiceOpen);
   const [modelSheetOpen, setModelSheetOpen] = useState(false);
+  // contentEl do modal NATIVO onde o ModelSheet é portalado. Abrimos a casca
+  // nativa (bottom sheet do Obsidian) só enquanto modelSheetOpen; o React
+  // portala o conteúdo pra lá — estado do sheet segue vivo/reativo. v0.2.18
+  const [modelModalEl, setModelModalEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!modelSheetOpen) return;
+    const modal = new ModelSheetModal(plugin.app, () => setModelSheetOpen(false));
+    modal.open();
+    setModelModalEl(modal.contentEl);
+    return () => {
+      setModelModalEl(null);
+      modal.close();
+    };
+  }, [modelSheetOpen, plugin.app]);
   // Favoritos do seletor de modelo — chaves "provider::model" (≤5 por provider).
   // Só esses aparecem no bottom sheet; o resto vive no "More models". v0.1.236
   const [favoriteModels, setFavoriteModels] = useState<string[]>(
@@ -1790,6 +1806,10 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
   // chatMode opcional — quando vem da ConversationsList (que conhece o modo
   // do summary). Quando ausente, default "chat" pra compat com fluxo antigo.
   const handleLoadChat = async (chatId: string, chatMode: string = "chat") => {
+    // Skeleton enquanto a conversa antiga é lida do disco + parseada. O `await`
+    // abaixo cede o controle → o React pinta o skeleton antes do read resolver;
+    // em load instantâneo não chega a piscar. Baixa no finally.
+    useChatStore.getState().setLoadingChat(true);
     try {
       const chat = await loadChat(
         plugin.app,
@@ -1849,6 +1869,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
       new Notice(
         `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`
       );
+    } finally {
+      useChatStore.getState().setLoadingChat(false);
     }
   };
 
@@ -2239,26 +2261,32 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
               }}
             />
           )}
-          {modelSheetOpen && (
-            <ModelSheet
-              provider={activeProviderId}
-              models={activeModelsList}
-              favorites={favoriteModels}
-              onToggleFavorite={handleToggleFavorite}
-              currentModel={activeModel}
-              onSelectModel={handleHeaderModelSelect}
-              currentEffort={effort}
-              onSelectEffort={handleSelectEffort}
-              thinkingOn={Boolean(plusToggles.extendedThinking)}
-              onToggleThinking={(v) =>
-                setPlusToggles((prev) => ({ ...prev, extendedThinking: v }))
-              }
-              onOpenSettings={handleOpenSettings}
-              thinkingCapable={supportsThinking(activeModel)}
-              locked={isLocked}
-              onClose={() => setModelSheetOpen(false)}
-            />
-          )}
+          {/* ModelSheet portalado pro contentEl do modal NATIVO (bottom sheet do
+              Obsidian). O conteúdo é React vivo (favoritos/effort reagem na hora);
+              a casca é nativa (sobe de baixo, fecha o teclado). v0.2.18 */}
+          {modelSheetOpen &&
+            modelModalEl &&
+            createPortal(
+              <ModelSheet
+                provider={activeProviderId}
+                models={activeModelsList}
+                favorites={favoriteModels}
+                onToggleFavorite={handleToggleFavorite}
+                currentModel={activeModel}
+                onSelectModel={handleHeaderModelSelect}
+                currentEffort={effort}
+                onSelectEffort={handleSelectEffort}
+                thinkingOn={Boolean(plusToggles.extendedThinking)}
+                onToggleThinking={(v) =>
+                  setPlusToggles((prev) => ({ ...prev, extendedThinking: v }))
+                }
+                onOpenSettings={handleOpenSettings}
+                thinkingCapable={supportsThinking(activeModel)}
+                locked={isLocked}
+                onClose={() => setModelSheetOpen(false)}
+              />,
+              modelModalEl
+            )}
           {suggestSheetOpen && (
             <SuggestionsSheet
               mode={activeMode}
