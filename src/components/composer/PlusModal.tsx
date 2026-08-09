@@ -320,18 +320,10 @@ export function PlusModal({
           onChange={handleCameraInputChange}
         />
 
-        <div className="axxa-plus-divider" />
-
-        {/* Action rows estilo Claude chat — cada feature numa linha
-            com ícone à esquerda, label/desc no meio, toggle/chevron à direita */}
-        <div className="axxa-plus-rows">
-          <PlusActionRow
-            icon="file-text"
-            tone="green"
-            label={t.plus.attachNote}
-            desc={t.plus.attachNoteDesc}
-            onClick={handlePickNote}
-          />
+        {/* Linhas AGRUPADAS em cards arredondados (estilo iOS / ref Claude):
+            toggles · ações · ajuste. Ícone em círculo, divisória entre as linhas
+            do mesmo card. */}
+        <div className="axxa-plus-card">
           <PlusToggleRow
             icon="globe"
             tone="blue"
@@ -339,6 +331,24 @@ export function PlusModal({
             desc={t.plus.webSearchDesc}
             checked={Boolean(toggles.webSearch)}
             onChange={(v) => onToggle?.("webSearch", v)}
+          />
+          <PlusToggleRow
+            icon="brain"
+            tone="orange"
+            label={t.plus.extendedThinkingTitle}
+            desc={t.plus.extendedThinkingDesc}
+            checked={Boolean(toggles.extendedThinking)}
+            onChange={(v) => onToggle?.("extendedThinking", v)}
+          />
+        </div>
+
+        <div className="axxa-plus-card">
+          <PlusActionRow
+            icon="file-text"
+            tone="green"
+            label={t.plus.attachNote}
+            desc={t.plus.attachNoteDesc}
+            onClick={handlePickNote}
           />
           <PlusActionRow
             icon="image-plus"
@@ -363,17 +373,12 @@ export function PlusModal({
               }}
             />
           )}
-          <PlusToggleRow
-            icon="brain"
-            tone="orange"
-            label={t.plus.extendedThinkingTitle}
-            desc={t.plus.extendedThinkingDesc}
-            checked={Boolean(toggles.extendedThinking)}
-            onChange={(v) => onToggle?.("extendedThinking", v)}
-          />
-          {onSelectStyle && (
+        </div>
+
+        {onSelectStyle && (
+          <div className="axxa-plus-card">
             <div
-              className="axxa-plus-row axxa-plus-row-tone-purple"
+              className="axxa-plus-row"
               role="button"
               tabIndex={0}
               onClick={openStyleMenu}
@@ -391,9 +396,7 @@ export function PlusModal({
                 <span className="axxa-plus-row-label">
                   {t.responseStyle.menuLabel}
                 </span>
-                <span className="axxa-plus-row-desc">
-                  {t.plus.styleDesc}
-                </span>
+                <span className="axxa-plus-row-desc">{t.plus.styleDesc}</span>
               </span>
               <span className="axxa-plus-row-value">
                 {styleLabel(responseStyle)}
@@ -402,10 +405,8 @@ export function PlusModal({
                 <Icon name="chevron-right" />
               </span>
             </div>
-          )}
-        </div>
-
-        <div className="axxa-plus-divider" />
+          </div>
+        )}
 
         {/* Effort — single line horizontal (sem grid 2 colunas) */}
         <div className="axxa-plus-effort-section">
