@@ -4668,14 +4668,19 @@ body.is-mobile .axxa-sheet-modal-content::before {
   transform: scale(0.97);
 }
 /* Ícone do tile em SQUIRCLE (máscara superellipse do app — igual aos botões do
-   header). Quadrado fixo pra o squircle não esticar. */
+   header). QUADRADO travado (aspect-ratio + min/max-width) pra o squircle não
+   esticar em retângulo — o align-items:center do tile estava deixando esticar. */
 .axxa-plus-tile-icon {
   flex: 0 0 auto;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 44px;
+  min-width: 44px;
+  max-width: 44px;
   height: 44px;
+  aspect-ratio: 1 / 1;
   border-radius: 0;
   background: color-mix(in srgb, var(--text-normal) 10%, transparent);
   color: var(--text-normal);
@@ -4870,11 +4875,14 @@ body.is-mobile .axxa-sheet-modal-content::before {
   opacity: 0.48;
 }
 /* Ícone da linha em SQUIRCLE neutro (mesma máscara dos tiles — consistente; sem
-   as cores tonais). Quadrado fixo pra o squircle não esticar. */
+   as cores tonais). Quadrado travado pra o squircle não esticar. */
 .axxa-plus-row-icon {
   flex: 0 0 auto;
   width: 40px;
+  min-width: 40px;
+  max-width: 40px;
   height: 40px;
+  aspect-ratio: 1 / 1;
   border-radius: 0;
   background: color-mix(in srgb, var(--text-normal) 10%, transparent);
   color: var(--text-normal);
