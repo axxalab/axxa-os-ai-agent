@@ -4667,16 +4667,20 @@ body.is-mobile .axxa-sheet-modal-content::before {
 .axxa-plus-tile:active:not(.axxa-plus-tile-disabled) {
   transform: scale(0.97);
 }
-/* Ícone do tile em CÍRCULO (ref Claude). */
+/* Ícone do tile em SQUIRCLE (máscara superellipse do app — igual aos botões do
+   header). Quadrado fixo pra o squircle não esticar. */
 .axxa-plus-tile-icon {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--text-normal) 10%, transparent);
   color: var(--text-normal);
+  -webkit-mask: var(--axxa-squircle) center / 100% 100% no-repeat;
+  mask: var(--axxa-squircle) center / 100% 100% no-repeat;
 }
 .axxa-plus-tile-icon .svg-icon {
   width: 24px;
@@ -4865,17 +4869,20 @@ body.is-mobile .axxa-sheet-modal-content::before {
   cursor: not-allowed;
   opacity: 0.48;
 }
-/* Ícone da linha em CÍRCULO neutro (ref Claude — sem as cores tonais). */
+/* Ícone da linha em SQUIRCLE neutro (mesma máscara dos tiles — consistente; sem
+   as cores tonais). Quadrado fixo pra o squircle não esticar. */
 .axxa-plus-row-icon {
   flex: 0 0 auto;
   width: 40px;
   height: 40px;
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--text-normal) 10%, transparent);
   color: var(--text-normal);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  -webkit-mask: var(--axxa-squircle) center / 100% 100% no-repeat;
+  mask: var(--axxa-squircle) center / 100% 100% no-repeat;
 }
 .axxa-plus-row-icon .svg-icon {
   width: 22px;
