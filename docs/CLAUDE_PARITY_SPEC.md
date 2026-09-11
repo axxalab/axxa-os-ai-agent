@@ -1,5 +1,10 @@
 # Claude Parity — Spec de Paridade Visual
 
+> **⚠️ v0.3.0 (`final-v2`) — CSS ZERADO.** Os tokens `[DS:claude]` e todos os
+> componentes calibrados saíram de `styles/main.css` (referência em
+> `git show 0.2.37:styles/main.css`). Este spec segue valendo como alvo
+> visual, a reconstruir componente a componente. Ver [FINAL_V2.md](FINAL_V2.md).
+
 > **Objetivo:** cada modo do AXXA fica visualmente indistinguível da superfície
 > equivalente da Anthropic — elementos, subelementos e **estados**.
 > **Status:** Fase 0 (fundação de tokens) implementada · Documento-contrato vivo.

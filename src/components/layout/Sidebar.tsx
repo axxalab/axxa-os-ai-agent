@@ -43,7 +43,7 @@ function navFeatureLocked(view: AppView): boolean {
     case "statistics":
       return !isEnabled("statistics");
     default:
-      return true; // profile etc. — sem feature própria ainda
+      return false; // profile etc. — telas sem flag própria ficam livres
   }
 }
 

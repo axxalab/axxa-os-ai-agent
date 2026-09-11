@@ -1996,9 +1996,8 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
         <ChatActionsContext.Provider value={chatActions}>
         <div
           className={
-            // Backgrounds é feature DORMENTE na branch `final` → força "none"
-            // (só os 2 temas nativos, sem preset/blur verde). Reativar: features.ts.
-            "axxa-root axxa-bg-none" +
+            "axxa-root axxa-bg-" +
+            (plugin.settings.background || "none") +
             (plugin.settings.codeWrap ? " axxa-code-wrap" : "") +
             (isLoading ? " axxa-bg-active" : "") +
             (view === "chat" && isEmpty && cleanChat
@@ -2045,6 +2044,93 @@ export function AxxaApp({ plugin }: AxxaAppProps) {
             onRenameChat={handleRenameChatFromList}
             onDeleteChat={handleDeleteChat}
             onNewChat={handleNewChat}
+          />
+        ) : view === "media" ? (
+          canAccess("media", tier) ? (
+            <MediaScreen
+              app={plugin.app}
+              axxaPaths={[
+                plugin.settings.generationPath,
+                plugin.settings.recordingsPath,
+              ]}
+              onClose={() => setView("chat")}
+            />
+          ) : (
+            <LockedScreen view="media" onClose={() => setView("chat")} onSeePlans={() => setView("plans")} />
+          )
+        ) : view === "statistics" ? (
+          canAccess("statistics", tier) ? (
+            <StatisticsScreen
+              summaries={allChats}
+              onOpenUsage={() => {
+                // (P1-69) Aterrissa na aba Usage — antes largava em Connections.
+                plugin.settingsTab?.presetTab("usage");
+                handleOpenSettings();
+              }}
+              billing={{
+                dataSharing: !!plugin.settings.openaiDataSharing,
+                tier: plugin.settings.openaiUsageTier || 1,
+              }}
+              onClose={() => setView("chat")}
+            />
+          ) : (
+            <LockedScreen view="statistics" onClose={() => setView("chat")} onSeePlans={() => setView("plans")} />
+          )
+        ) : view === "projects" ? (
+          (() => {
+            const selected = projects.find((p) => p.id === selectedProjectId);
+            if (selected) {
+              const projChats = allChats.filter((c) =>
+                selected.chatIds.includes(c.id)
+              );
+              return (
+                <ProjectDetailScreen
+                  project={selected}
+                  chats={projChats}
+                  onBack={() => setSelectedProjectId(null)}
+                  onEdit={() => setProjectEditor({ project: selected })}
+                  onNewChat={() => handleNewChatInProject(selected)}
+                  onOpenChat={(id) => handleLoadChatFromList(id)}
+                  onAddSource={() => handleAddProjectSource(selected.id)}
+                  onRemoveSource={(path) =>
+                    handleRemoveProjectSource(selected.id, path)
+                  }
+                  onOpenSource={(path) => {
+                    const file = plugin.app.vault.getAbstractFileByPath(path);
+                    if (file instanceof TFile) {
+                      void plugin.app.workspace.getLeaf(true).openFile(file);
+                    }
+                  }}
+                />
+              );
+            }
+            return (
+              <ProjectsListScreen
+                projects={projects}
+                onOpen={(id) => setSelectedProjectId(id)}
+                onCreate={() => setProjectEditor({})}
+                onClose={() => setView("chat")}
+              />
+            );
+          })()
+        ) : view === "profile" ? (
+          <ProfileScreen
+            tier={tier}
+            email=""
+            connectedProviders={["openai", "anthropic", "gemini", "openrouter", "nim", "ollama"].filter(
+              (id) => id === "ollama" || apiKeyFor(id).trim().length > 0
+            )}
+            totalChats={allChats.length}
+            onClose={() => setView("chat")}
+            onOpenPlans={() => setView("plans")}
+            onOpenSettings={handleOpenSettings}
+          />
+        ) : view === "plans" ? (
+          <PlansScreen
+            tier={tier}
+            license={plugin.settings.licenseKey}
+            onSetLicense={handleSetLicense}
+            onClose={() => setView("chat")}
           />
         ) : showOnboarding ? (
           <OnboardingScreen

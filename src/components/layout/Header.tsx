@@ -307,27 +307,27 @@ export function Header({
                       </span>
                       <Icon name="star" className="axxa-chat-menu-icon" />
                     </button>
-                    {/* Projetos está DORMENTE (features.ts) — item travado com
-                        cadeado, mesma linguagem da nav e das abas do settings.
-                        Reativar `projects` destrava sozinho. */}
+                    {/* "Add to project" ainda NÃO tem handler (Projetos funcionam
+                        pela tela Projects) — travado com cadeado pela flag própria
+                        `addToProject` em features.ts, pra não expor um no-op. */}
                     <button
                       type="button"
                       role="menuitem"
-                      disabled={!isEnabled("projects")}
-                      aria-disabled={!isEnabled("projects")}
-                      title={isEnabled("projects") ? undefined : "Coming soon"}
+                      disabled={!isEnabled("addToProject")}
+                      aria-disabled={!isEnabled("addToProject")}
+                      title={isEnabled("addToProject") ? undefined : "Coming soon"}
                       className={
                         "axxa-popover-item axxa-chat-menu-item" +
-                        (isEnabled("projects") ? "" : " is-locked")
+                        (isEnabled("addToProject") ? "" : " is-locked")
                       }
                       onClick={() => {
-                        if (!isEnabled("projects")) return;
+                        if (!isEnabled("addToProject")) return;
                         setMenuOpen(false);
                       }}
                     >
                       <span className="axxa-popover-label">Add to project</span>
                       <Icon
-                        name={isEnabled("projects") ? "layers" : "lock"}
+                        name={isEnabled("addToProject") ? "layers" : "lock"}
                         className="axxa-chat-menu-icon"
                       />
                     </button>

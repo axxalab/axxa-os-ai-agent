@@ -1,37 +1,34 @@
 // src/features.ts
-// Fonte ÚNICA da verdade do que está ATIVO no app (branch `final`).
+// Fonte ÚNICA da verdade do que está ATIVO no app.
 //
-// Recomeço: a casca é chat-only. Todo o resto do código continua no repo
-// (dormente, tree-shaken do bundle), e o front mostra as opções inativas
-// TRAVADAS (não-clicáveis, com cadeado). Reativar uma feature =
-//   1. virar a flag aqui pra `true`
-//   2. reconectar o wiring dela (onload + casca)
-//   3. o settings/nav correspondente destrava sozinho (lê estas flags)
-//
-// Compile-time (const) de propósito: simples, previsível, tree-shakeável.
+// v0.3.0 (branch `final-v2`): TUDO liberado. O recomeço agora é VISUAL — o CSS
+// foi zerado (styles/main.css) e a UI roda crua sobre o tema do Obsidian; as
+// features voltam todas de uma vez e o visual evolui componente a componente.
+// As flags continuam existindo (compile-time, tree-shakeáveis) pra poder
+// adormecer algo de novo com um toggle só — o shell, o settings e o onload
+// leem daqui. Ver docs/FINAL_V2.md.
 
 export const FEATURES = {
-  // Ativos no recomeço
   chat: true,
   conversations: true, // histórico de conversas
-
-  // Dormentes — reativar aos poucos
-  vaultQa: false,
-  agent: false,
-  imageGen: false,
-  voice: false,
-  projects: false,
-  skills: false,
-  // Atalho da conversa na "home" (item "Add to home" do menu ⋮). No Claude
-  // mobile isso cria atalho na home do ANDROID — não existe equivalente no
-  // Obsidian, então a semântica aqui ainda está por definir (pin na tela de
-  // nova conversa? bookmark do Obsidian?). Travado até decidir.
+  vaultQa: true,
+  agent: true,
+  imageGen: true,
+  voice: true,
+  projects: true,
+  skills: true,
+  rag: true,
+  media: true,
+  statistics: true,
+  usage: true,
+  plans: true,
+  // Itens do menu ⋮ que ainda NÃO têm handler (clicar não faria nada):
+  // "Add to home" — no Claude mobile cria atalho na home do Android; não há
+  // equivalente no Obsidian, semântica por definir. "Add to project" — os
+  // Projetos funcionam pela tela Projects; o atalho do menu falta ligar.
+  // Ficam travados (cadeado) até existirem de verdade.
   homeShortcut: false,
-  rag: false,
-  media: false,
-  statistics: false,
-  usage: false,
-  plans: false,
+  addToProject: false,
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;

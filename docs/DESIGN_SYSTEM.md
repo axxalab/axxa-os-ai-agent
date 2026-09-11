@@ -1,5 +1,12 @@
 # AXXA — Design System
 
+> **⚠️ v0.3.0 (`final-v2`) — CSS ZERADO.** Tudo que este documento descreve
+> (tokens, densidade, motion, backgrounds, tags `[DS:*]`) foi REMOVIDO de
+> `styles/main.css`; sobrou só o esqueleto funcional. Fica como referência
+> histórica e como catálogo do que reconstruir, aos poucos. Ver
+> [FINAL_V2.md](FINAL_V2.md). O DS completo continua em
+> `git show 0.2.37:styles/main.css`.
+
 Documento vivo. A partir da gaveta lateral (v0.1.201–206) tudo que a gente
 desenha vira regra aqui. **Só o tema (cores/tipografia do Obsidian) é herdado;
 estrutura, espaçamento, interações e componentes são nossos.**
