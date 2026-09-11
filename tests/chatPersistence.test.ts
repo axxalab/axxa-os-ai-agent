@@ -4,7 +4,7 @@ import {
   parseChatMarkdown,
   summaryFromFrontmatter,
   type ChatData,
-} from "../src/components/_shared/chatPersistence";
+} from "../src/core/chatPersistence";
 
 // Round-trip do .md de chat: render → parse tem que devolver o MESMO chat.
 // É o teste de INTEGRIDADE DE DADOS — se quebrar, o user perde conversa.

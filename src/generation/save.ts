@@ -27,7 +27,7 @@
 //   ---
 
 import { TFile, type App } from "obsidian";
-import { ensureFolder } from "../components/_shared/chatPersistence";
+import { ensureFolder } from "../core/chatPersistence";
 
 export type GenerationMediaType = "image" | "audio" | "video";
 

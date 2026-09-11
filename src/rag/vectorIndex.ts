@@ -10,7 +10,7 @@
 // suficiente até dezenas de milhares de chunks com int8 + dim reduzida.
 
 import { Platform, type App, type DataAdapter } from "obsidian";
-import { ensureFolder } from "../components/_shared/chatPersistence";
+import { ensureFolder } from "../core/chatPersistence";
 import type {
   IndexFile,
   SearchResult,

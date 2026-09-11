@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   getContextWindow,
   formatTokens,
-} from "../src/components/_shared/contextWindows";
+} from "../src/core/contextWindows";
 
 describe("getContextWindow", () => {
   it("match exato de modelos conhecidos", () => {

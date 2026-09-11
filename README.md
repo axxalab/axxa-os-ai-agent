@@ -2,10 +2,14 @@
 
 > **Your AI workspace, native to Obsidian.** Chat, ask your vault, and let an agent act on your notes — across 6 LLM providers, with your own API keys. Mobile-first.
 
-[![Version](https://img.shields.io/badge/version-0.3.0-6c5ce7)](manifest.json)
+[![Version](https://img.shields.io/badge/version-0.4.0-6c5ce7)](manifest.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Obsidian](https://img.shields.io/badge/Obsidian-1.11.4%2B-7c3aed)](https://obsidian.md)
 [![Mobile](https://img.shields.io/badge/mobile-supported-success)](#)
+
+> **Status (v0.4.0 · Sep 2026):** the UI has been reset to a bare, unstyled CRUD shell while the app is redesigned from scratch. The engine described below (6 providers, local RAG, agent with diff-approval, Markdown persistence) is intact and drives the new shell — see [docs/CRUD_BASE.md](docs/CRUD_BASE.md). The feature descriptions in this README describe the target product; the current build is deliberately crude.
+>
+> **Status (PT-BR):** a interface foi zerada para uma casca CRUD crua enquanto o app é redesenhado do zero. O motor (6 providers, RAG local, agente com aprovação de diff, persistência em Markdown) está intacto e alimenta a casca nova — ver [docs/CRUD_BASE.md](docs/CRUD_BASE.md).
 
 AXXA OS — AI Agent turns Obsidian into a full AI workspace. It feels like a native feature, not a bolted-on panel: a chat lives in the right sidebar (a drawer on mobile), talks to the model of your choice, and — when you let it — reads, searches, and edits the notes in your vault. Bring your own keys, pick any of six providers, and keep every conversation as plain Markdown inside your vault.
 

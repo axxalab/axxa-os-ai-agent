@@ -6,7 +6,7 @@
 //      cai pra window.print() (com CSS print-only) no resto.
 
 import type { App } from "obsidian";
-import { ensureFolder } from "../components/_shared/chatPersistence";
+import { ensureFolder } from "../core/chatPersistence";
 import { formatUsd } from "./pricing";
 import {
   type UsageAggregate,

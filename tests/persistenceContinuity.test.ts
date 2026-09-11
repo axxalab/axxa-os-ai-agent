@@ -4,7 +4,7 @@ import {
   parseChatMarkdown,
   type ChatData,
   type ChatMessageStored,
-} from "../src/components/_shared/chatPersistence";
+} from "../src/core/chatPersistence";
 import { storeMessagesToProvider } from "../src/agent/conversation";
 import { toOpenAIMessages } from "../src/providers/_shared";
 import { toAnthropicPayload } from "../src/providers/anthropic";

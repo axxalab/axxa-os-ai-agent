@@ -11,7 +11,7 @@
 import type { App, TFile } from "obsidian";
 import type { VectorIndex } from "./vectorIndex";
 import { embedQuery, type EmbedCredentials } from "./embeddings";
-import { searchVault } from "../components/_shared/vaultSearch";
+import { searchVault } from "../core/vaultSearch";
 
 export interface HybridHit {
   path: string;

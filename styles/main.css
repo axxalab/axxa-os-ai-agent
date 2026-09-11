@@ -1,235 +1,72 @@
-/* ============================================================================
-   AXXA OS — AI Agent · styles/main.css · v0.3.0 ("final-v2")
-   ----------------------------------------------------------------------------
-   RECOMEÇO VISUAL. O design system inteiro (~8.4k linhas: tokens, paridade
-   Claude, densidade, motion, backgrounds, sheets, bolhas…) foi REMOVIDO.
-   A UI roda "crua" sobre o tema nativo do Obsidian e vai ser reconstruída
-   componente a componente, aos poucos.
+/* AXXA OS — AI Agent · styles/main.css · v0.4.0 (base CRUD crua)
+   Só o esqueleto de LAYOUT pra casca funcionar: painel em coluna, lista de
+   mensagens com scroll próprio, composer sempre visível. Sem cor, fonte, raio
+   ou animação — o redesign começa do zero em cima disto. */
 
-   O que sobrou aqui é SÓ o esqueleto FUNCIONAL — regras sem as quais uma
-   opção quebra (não fica feia, quebra): layout/scroll do painel, clearance da
-   navbar/status bar, fullscreen mobile, gaveta fechada, menu flutuante,
-   sr-only, code-wrap e marcação de ESTADO (on/off/ativo) nos widgets custom.
-   Nada de cor, fonte, raio, sombra ou animação. Cada bloco diz por que existe;
-   se um dia o componente parar de depender dele, apague o bloco.
-   ============================================================================ */
-
-/* ── 1. Host: a view dentro do Obsidian ──────────────────────────────────────
-   Altura/largura 100% pela cadeia de containers + coluna flex na view-content,
-   pra .axxa-root ter um box definido e o scroll da conversa ficar INTERNO
-   (senão o composer vai parar no fim da página e o auto-scroll do stream
-   não acompanha). z-index 10: no drawer mobile a leaf nativa de baixo ("No
-   file") passava na frente do composer. */
-.workspace-leaf-content[data-type="axxa-os-ai-agent"] {
-  position: relative;
-  isolation: auto;
-  height: 100%;
-  width: 100%;
-}
+/* Host: a view ocupa o painel inteiro e vira coluna. */
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  position: relative;
-  z-index: 10;
-  height: 100%;
-  width: 100%;
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  padding-top: 0 !important;
-  /* Clearance: safe-area + status bar do desktop (--axxa-status-bar-clearance
-     é publicada pelo main.ts) — sem isso o composer fica atrás da status bar. */
-  padding-bottom: calc(
-      var(--safe-area-inset-bottom, 0px) +
-      var(--axxa-status-bar-clearance, 0px) +
-      var(--size-4-1)
-    ) !important;
+  height: 100%;
+  padding: 0 !important;
 }
-body.is-mobile
-  .workspace-tab-container
-  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  .view-content {
-  padding-bottom: var(--size-4-1) !important;
-}
-/* Navbar mobile: reserva o espaço do composer ACIMA da navbar nativa.
-   :not(.axxa-fullscreen) = modo normal; o fullscreen esconde a navbar e sai
-   daqui. NÃO remover como órfã — :not() de classe ausente CASA. */
+/* Mobile: reserva o espaço do composer acima da navbar nativa. */
 @supports selector(body:has(*)) {
-  body.is-mobile:not(.axxa-fullscreen):has(.mobile-navbar):not(.is-hidden-nav)
-    .workspace-tab-container
+  body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
     .workspace-leaf-content[data-type="axxa-os-ai-agent"]
     .view-content {
-    padding-bottom: calc(
-        var(--navbar-height, 50px) +
-        max(var(--safe-area-inset-bottom, 0px), var(--size-4-3)) +
-        var(--size-4-1)
-      ) !important;
-  }
-}
-@supports selector(:has(*)) {
-  .workspace-drawer-active-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"])
-    .workspace-tab-container,
-  .workspace-drawer-active-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"])
-    .workspace-leaf:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
-    height: 100%;
-    width: 100%;
+    padding-bottom: calc(var(--navbar-height, 50px) + var(--size-4-2)) !important;
   }
 }
 
-/* ── 2. Raiz do app + scroll da conversa ─────────────────────────────────────
-   Coluna: header · conteúdo (flex:1, scroll próprio) · composer. Telas que
-   não têm scroll interno (Conversas, Projetos, Mídia…) rolam a própria raiz. */
 .axxa-root {
-  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  height: 100%;
   min-height: 0;
-  min-width: 0;
+  height: 100%;
+  padding: var(--size-4-2);
   box-sizing: border-box;
   overflow-y: auto;
 }
-.axxa-chat-area-wrapper {
+.axxa-nav,
+.axxa-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+.axxa-chat {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
 }
-.axxa-chat-area {
+.axxa-chats {
+  flex: 0 0 auto;
+  max-height: 30%;
+  overflow-y: auto;
+}
+.axxa-messages {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
 }
-
-/* ── 3. Fullscreen mobile (opt-in no menu do header) + teclado ───────────────
-   Classes aplicadas pelo AxxaView (applyFullscreen / keyboard): `axxa-fullscreen`
-   no .workspace-drawer que hospeda a AXXA (sempre o direito) e no body;
-   `axxa-keyboard-open` no drawer quando o teclado abre. É a feature inteira —
-   sem estas regras o toggle vira no-op. Escopo ancorado na classe DO DRAWER
-   pra nunca tocar o drawer esquerdo. */
-body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-header,
-body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-tab-options {
-  display: none !important;
+.axxa-composer {
+  flex: 0 0 auto;
 }
-body.is-mobile
-  .workspace-drawer.axxa-fullscreen
-  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  .view-header {
-  display: none !important;
+.axxa-composer textarea {
+  width: 100%;
+  box-sizing: border-box;
 }
-/* Navbar global é IRMÃ dos drawers → ancora no body; `body.axxa-fullscreen` só
-   existe com a AXXA ativa no drawer direito. */
-body.is-mobile.axxa-fullscreen .mobile-navbar {
-  display: none;
-}
-/* Tela cheia de verdade: o drawer direito é parcial por padrão. Sem
-   position:fixed de propósito (preserva o gesto nativo de swipe-pra-fechar).
-   Desconta a altura do teclado (--keyboard-height é publicada pelo Obsidian
-   mobile no <html>) pra o composer subir junto. */
-body.is-mobile .workspace-drawer.axxa-fullscreen {
-  width: 100vw !important;
-  max-width: 100vw !important;
-  height: calc(100vh - var(--keyboard-height, 0px)) !important;
-  height: calc(100dvh - var(--keyboard-height, 0px)) !important;
-}
-body.is-mobile
-  .workspace-drawer.axxa-fullscreen
-  .workspace-drawer-active-tab-container,
-body.is-mobile
-  .workspace-drawer.axxa-fullscreen
-  .workspace-drawer-active-tab-content {
-  width: 100vw !important;
-  max-width: 100vw !important;
-  height: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-body.is-mobile .workspace-drawer.axxa-keyboard-open .workspace-drawer-header,
-body.is-mobile .workspace-drawer.axxa-keyboard-open .workspace-drawer-tab-options {
-  display: none !important;
-}
-
-/* ── 4. Estados escondidos que o código ESPERA ───────────────────────────────
-   A gaveta (Sidebar) fica sempre montada e abre/fecha por classe; o scrim idem.
-   Sem isto, a lista de conversas apareceria permanentemente no fim do painel. */
-.axxa-sidebar-scrim {
-  display: none;
-}
-.axxa-sidebar:not(.axxa-sidebar-open) {
-  display: none;
-}
-.axxa-sidebar-open {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  overflow-y: auto;
-  background: var(--background-primary);
-}
-/* Live region pra leitores de tela — sem isto o texto do anúncio fica visível. */
-.axxa-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* ── 5. Menu ⋮ do header — portalado pro <body> com top/right inline ─────────
-   Sem position:fixed ele cai no fim do body (overflow hidden) e some da tela;
-   sem fundo fica ilegível por cima do chat. Cores = as do tema nativo. */
-.axxa-popover-menu {
-  position: fixed;
-  z-index: var(--layer-menu, 65);
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-}
-
-/* ── 6. Opções que são puro CSS ──────────────────────────────────────────────
-   Settings → Appearance → "Code wrap" (classe .axxa-code-wrap na raiz). */
-.axxa-code-wrap pre,
-.axxa-code-wrap pre code {
+.axxa-msg-text,
+.axxa-markdown {
   white-space: pre-wrap;
   word-break: break-word;
 }
-
-/* ── 7. ESTADO visível nos widgets custom ────────────────────────────────────
-   Toggle de modelo (Settings), abas/sub-abas, switches do "+" e do sheet de
-   modelo, rádios do gerador de imagem, filtros, nav ativa: o on/off/ativo
-   era desenhado pelo DS. Sem marcação nenhuma o usuário clica e não vê nada
-   mudar (foi P0 na auditoria). Marcação crua: negrito + sublinhado, e texto
-   [on]/[off] · ●/○ nos switch/radio. Some quando cada componente ganhar
-   o visual próprio. */
-[class*="axxa-"][aria-pressed="true"],
-[class*="axxa-"][aria-selected="true"],
-[class*="axxa-"][aria-current]:not([aria-current="false"]),
-.axxa-settings-root .axxa-tab-active,
-.axxa-settings-root .axxa-subtab-active,
-.axxa-settings-root .axxa-model-opt-active,
-.axxa-root .is-active,
-.axxa-root .is-on,
-.axxa-root .is-selected,
-.axxa-sheet-modal .is-on,
-.axxa-sheet-modal .is-selected,
-.modal .axxa-imggen-row.is-selected {
-  font-weight: 700;
-  text-decoration: underline;
+.axxa-markdown {
+  white-space: normal;
 }
-[class*="axxa-"][role="switch"]::after {
-  content: " [off]";
-  opacity: 0.6;
-}
-[class*="axxa-"][role="switch"][aria-checked="true"]::after {
-  content: " [on]";
-  opacity: 1;
-}
-[class*="axxa-"][role="radio"]::before {
-  content: "○ ";
-}
-[class*="axxa-"][role="radio"][aria-checked="true"]::before {
-  content: "● ";
+.axxa-msg-user .axxa-msg-text {
+  white-space: pre-wrap;
 }

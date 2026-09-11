@@ -4,9 +4,8 @@
 
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { getProvider } from "./providers";
-import { isEnabled } from "./features";
-import { AxxaView, VIEW_TYPE_AXXA } from "./views/AxxaView";
-import { AxxaSettingsTab } from "./components/settings/AxxaSettingsTab";
+import { AxxaView, VIEW_TYPE_AXXA } from "./ui/AxxaView";
+import { AxxaSettingsTab } from "./ui/SettingsTab";
 import { VectorIndex, loadIndex, RAG_SHARD_SIZE } from "./rag/vectorIndex";
 import { indexVault } from "./rag/indexer";
 import {
@@ -19,9 +18,7 @@ import { registerLocalUsage } from "./providers/dataCollect";
 import {
   listAllChats,
   type ChatSummary,
-} from "./components/_shared/chatPersistence";
-import { registerBrandIcons } from "./components/_shared/brandIcons";
-import { registerBrandLogos } from "./components/_shared/brandLogos";
+} from "./core/chatPersistence";
 import {
   hydrateModelInfoCache,
   getModelInfoCache,
@@ -38,177 +35,66 @@ import type { Project } from "./projects";
 import type {
   EffortConfig,
   EffortLevel,
-} from "./components/_shared/effort";
+} from "./core/effort";
 import type { RoleId, RoleModelEntry } from "./providers/modelRoles";
 
-interface AxxaSettings {
+export interface AxxaSettings {
+  // ---- Providers (BYOK). As chaves vivem no SecretStorage do SO; aqui só em
+  // memória (persistableSettings() zera antes de gravar o data.json).
   openaiApiKey: string;
   anthropicApiKey: string;
   geminiApiKey: string;
   openrouterApiKey: string;
   nimApiKey: string;
   ollamaEndpoint: string;
+  /** Provider pré-selecionado num chat novo. */
   defaultProvider: string;
-  /** Modelo usado pelo provider OpenAI (ex: gpt-4o, gpt-4o-mini) */
+  /** Modelo por provider (o que a casca usa ao selecionar o provider). */
   defaultModel: string;
-  /** Modelo usado pelo provider Anthropic (ex: claude-sonnet-4-6, claude-opus-4-8) */
   anthropicModel: string;
-  /** Modelo usado pelo Gemini (ex: gemini-2.5-flash, gemini-2.5-pro) */
   geminiModel: string;
-  /** Modelo usado pelo OpenRouter (ex: anthropic/claude-3.5-sonnet) */
   openrouterModel: string;
-  /** Modelo usado pelo Nvidia NIM (ex: nvidia/llama-3.3-nemotron-super-49b-v1.5) */
   nimModel: string;
-  /** Modelo usado pelo Ollama (instalado localmente, ex: llama3.2, qwen2.5) */
   ollamaModel: string;
-  /** Modelos ativos por provider — só esses aparecem no seletor da StarterScreen.
-   *  Curado pelo user nas Settings (manual + fetch da API). Permite incluir
-   *  modelos legacy que não aparecem no /v1/models moderno. */
+  /** Modelos conhecidos por provider — opções do seletor de modelo. */
   activeModels: Record<string, string[]>;
-  /** Modelos favoritados pelo user (ícone de salvar) — chaves "provider::model".
-   *  Aparecem numa aba "favoritos" do seletor de modelo. v0.1.222 */
-  favoriteModels: string[];
-  /** Modelo-padrão por PAPEL (★ de cada seção em Connections → Models). Unifica
-   *  os defaults espalhados (defaultModel/anthropicModel/…/ragEmbeddingModel).
-   *  Papéis: chat/reasoning/image/video/tts/embedding/other. v0.1.236 */
+  /** Modelo-padrão por PAPEL (chat/reasoning/image/video/tts/embedding/other). */
   roleModels: Partial<Record<RoleId, RoleModelEntry>>;
-  /** Provider preferido quando o MESMO modelo existe em 2+ providers ativos
-   *  (dedup da lista de Models). modelID → providerId. v0.1.236 */
+  /** Provider preferido quando o MESMO modelo existe em 2+ providers. */
   modelProvider: Record<string, string>;
-  /** Modelos de embedding descobertos via fetch da API, por provider. Alimentam
-   *  o seletor de embedding do RAG com info inferida. v0.1.151 */
+  /** Modelos de embedding descobertos via API, por provider (RAG). */
   discoveredEmbeddings: Record<string, string[]>;
+  // ---- Sessão
+  /** chat | vault-qa | agent */
   defaultMode: string;
+  /** low | med | high | xhigh | max */
   defaultEffort: string;
+  /** Overrides do usuário por nível de effort (ausente = DEFAULT_EFFORT_CONFIGS). */
+  effortConfigs: Partial<Record<EffortLevel, Partial<EffortConfig>>>;
+  /** Só "en-us" por enquanto. */
+  language: string;
+  // ---- Vault
   chatsPath: string;
   skillsPath: string;
-  language: string;
-  /** ID do background preset (v0.1.106): none | 8 estáticos (dawn/ocean/forest/
-   *  violet/rose/amber/slate/mono) | 8 live (aurora/nebula/pulse/flow/tide/
-   *  ember/spectrum/lagoon). Aplicado como classe `axxa-bg-<id>` na .axxa-root.
-   *  Presets antigos salvos caem graciosamente em "sem fundo". */
-  background: string;
-  /** Densidade global da UI (large/normal/compact) — dirige os tokens do DS
-   *  (--axxa-density-*). Aplicada como data-axxa-density na .axxa-root. v0.1.209 */
-  density: string;
-  /** Nível de motion global (soft/wave/intense/chaotic) — dirige os tokens de
-   *  animação do DS (--axxa-motion-*). Aplicado como data-axxa-motion na
-   *  .axxa-root; governa toda animação nova daqui pra frente. v0.1.211 */
-  motion: string;
-  /** Toggle GLOBAL "reduzir movimento" — quando ligado, mata toda animação do
-   *  app (classe `axxa-reduce-motion` no <body>). O user decide animado ou não;
-   *  não depende mais do prefers-reduced-motion do SO. v0.1.218 */
-  reduceMotion: boolean;
-  /** Toggle de "reduzir movimento" só no MOBILE — mesma classe, gateada por
-   *  Platform.isMobile (conveniência pra bateria/enjoo em telas touch). */
-  reducedMotionMobile: boolean;
-  /** Pasta no Vault onde gravações de áudio (hold-mic) são salvas. */
-  recordingsPath: string;
-  /** Transcreve o áudio anexado (OpenAI /v1/audio/transcriptions) antes de
-   *  enviar, pra o modelo receber o CONTEÚDO da gravação e não só um link.
-   *  Precisa da key OpenAI (a mesma do cloud TTS). v0.1.249 */
-  transcribeAudio: boolean;
-  /** Modelo de transcrição usado quando transcribeAudio está ligado. */
-  transcribeModel: string;
-  /** Pasta no Vault onde respostas da IA salvas como nota (footer) vão. */
-  notesPath: string;
-  /** Estilo de resposta global (normal/concise/explanatory/formal/friendly).
-   *  Vira uma instrução anexada ao system prompt. Ref: Claude "Choose style". */
-  responseStyle: string;
-  /** Projetos (agrupam conversas + fontes). Ref: ChatGPT iOS 182/187/189. */
+  /** Projetos (agrupam chats + notas-fonte). */
   projects: Project[];
-  /** Modo Voz: voiceURI do TTS ("" = padrão), velocidade, intro vista. */
-  voiceURI: string;
-  voiceRate: number;
-  voiceIntroDone: boolean;
-  /** Pasta no Vault onde mídias geradas por modelos (imagem/áudio/vídeo)
-   *  são salvas. Cada saída gera 2 arquivos: mídia + sidecar .md com
-   *  frontmatter (prompt, model, provider, timestamp, etc). */
-  generationPath: string;
-  // ============ RAG (Sprint F — v0.1.25) ============
-  /** Pasta no Vault onde o índice vetorial é persistido. */
+  // ---- RAG (Vault Q&A)
   ragIndexPath: string;
-  /** Provider de embeddings (apenas "openai" no MVP). */
   ragEmbeddingProvider: string;
-  /** Modelo de embedding (ex: text-embedding-3-small). */
   ragEmbeddingModel: string;
-  /** Perfil de quantização do índice RAG (precision/balanced/light/minimal) —
-   *  precisão (float32/int8) + dim alvo. Estilo Effort. v0.1.80. */
+  /** precision | balanced | light | minimal */
   ragQuantProfile: string;
-  /** Índice em pedaços (stream): salva em shards e lê um por vez na busca, em
-   *  vez de tudo na RAM. Memória limitada (bom pra vaults grandes / mobile),
-   *  cada busca lê do disco. Requer reindexar pra aplicar. v0.1.200 */
+  /** Índice em shards (memória limitada; busca lê do disco). */
   ragStreamShards: boolean;
-  /** Reindexa o RAG automaticamente quando notas mudam (debounced). Opt-in
-   *  porque cada re-embed custa tokens/$. Só roda se já houver índice. v0.1.82. */
+  /** Reindexa sozinho quando notas mudam (opt-in — custa tokens). */
   ragAutoReindex: boolean;
-  /** No mobile, marca que já avisamos uma vez que o índice RAG é grande demais
-   *  (busca semântica desligada). Evita repetir o Notice a cada onload. v0.1.228 */
+  /** Já avisamos uma vez que o índice é grande demais pro mobile. */
   ragMobileSkipNoticeShown?: boolean;
-  /** Code wrap em blocos de código markdown. Default false (scroll horizontal).
-   *  Quando true, aplica `.axxa-code-wrap` na .axxa-root → pre quebra linha. */
-  codeWrap: boolean;
-  // ============ Agent Mode (Sprint G — v0.1.28) ============
-  /** Nível de permissão do Agent Mode: "ask" | "vault" | "yolo".
-   *  Ask = confirma cada destrutiva. Vault = só delete pergunta. Yolo = só
-   *  irreversível pergunta. Default "ask" (mais conservador). */
+  // ---- Agent
+  /** ask | vault | yolo */
   agentPermissionLevel: string;
-  /** Diff-approval (v0.1.140): toda ação que ESCREVE no vault (editar/criar/
-   *  mover/deletar) mostra um preview/diff pra aprovar antes de gravar.
-   *  Default true. */
+  /** Preview/diff antes de gravar qualquer escrita do agente. */
   agentDiffApproval: boolean;
-  // ============ Chip visibility (v0.1.38) ============
-  /** Quais chips aparecem nos cards da lista de chats (recent + conversations).
-   *  IDs válidos: mode, model, date, messages, tokens */
-  listChips: string[];
-  // ============ Effort overrides (v0.1.73) ============
-  /** Overrides do usuário pra cada nível de Effort. Campos ausentes caem nos
-   *  DEFAULT_EFFORT_CONFIGS built-in (src/components/_shared/effort.ts).
-   *  Configurado via Settings → Effort → sub-tab por nível. */
-  effortConfigs: Partial<Record<EffortLevel, Partial<EffortConfig>>>;
-  // ============ Fullscreen mobile (v0.1.74 — volta no futuro) ============
-  /** Modo fullscreen mobile: drawer direito ocupa 100vw + esconde chrome
-   *  nativo do Obsidian. A UI de toggle está desativada, mas o setting fica
-   *  reservado — o fullscreen v3 volta (decisão de produto, jul/2026). */
-  mobileFullscreen: boolean;
-  // ============ OpenAI specifics (v0.1.165) ============
-  /** Inscrito no programa de data-sharing da OpenAI — dá tokens grátis diários
-   *  em modelos de TEXTO (NÃO cobre geração de imagem). Informa os hints de
-   *  custo no seletor de geração. */
-  openaiDataSharing: boolean;
-  /** Usage tier da conta OpenAI (1–5) — define o volume de tokens grátis do
-   *  data-sharing. Default 1. */
-  openaiUsageTier: number;
-  /** Admin key OPCIONAL da OpenAI (sk-admin-…) — só pra custos/saldo reais
-   *  (Admin API). NÃO faz chat; a chave de projeto continua no campo principal. */
-  openaiAdminKey: string;
-  /** Admin key OPCIONAL da Anthropic (sk-ant-admin…) — custos reais. */
-  anthropicAdminKey: string;
-  /** Project ID OPCIONAL da OpenAI (proj_…) — filtra o custo real só desse
-   *  projeto (atribuição). Use um projeto dedicado pro plugin pra ver só o gasto
-   *  dele em vez da org inteira. v0.1.172 */
-  openaiProjectId: string;
-  /** Workspace ID OPCIONAL da Anthropic — filtra o custo real só desse
-   *  workspace (atribuição), análogo ao project da OpenAI. v0.1.173 */
-  anthropicWorkspaceId: string;
-  /** Âncora de saldo por provider (v0.1.171): { amount, date(ISO) }. LEGADO —
-   *  migrado pra balanceCredits na v0.1.230. Mantido só pra migração. */
-  balanceAnchors: Record<string, { amount: number; date: string }>;
-  /** Histórico de recargas por provider (v0.1.230): lista de { amount, date(ISO) }.
-   *  O user vai lançando cada crédito que carrega; saldo = Σ recargas − gasto
-   *  desde a recarga mais antiga. Substitui a âncora única. */
-  balanceCredits: Record<string, Array<{ amount: number; date: string }>>;
-  // ============ Plano / entitlements (v0.1.174) ============
-  /** Entitlement REAL da conta: "free" | "pro" (futuro: billing). Default pro. */
-  accountTier: string;
-  /** Override de ADMIN pra testar planos: "auto" | "free" | "pro". */
-  devTierOverride: string;
-  /** Onboarding de 1º uso já foi visto/dispensado? (não mostra de novo). #4 */
-  onboardingDone: boolean;
-  /** License key (scaffold #15) — válida → desbloqueia o Pro. */
-  licenseKey: string;
-  /** Emblema "Founder" no rodapé da gaveta (acima de Premium/Free). v0.1.206 */
-  founder: boolean;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -233,15 +119,11 @@ const DEFAULT_SETTINGS: AxxaSettings = {
       "claude-haiku-4-5-20251001",
     ],
     gemini: [
-      // Chat / multimodal
       "gemini-2.5-pro",
       "gemini-2.5-flash",
       "gemini-2.5-flash-lite",
       "gemini-3.5-flash",
       "gemini-3.1-flash-lite",
-      // Image generation (Nano Banana + Imagen)
-      "gemini-2.5-flash-image",
-      "imagen-3.0-generate-002",
     ],
     openrouter: [
       "anthropic/claude-3.5-sonnet",
@@ -250,8 +132,6 @@ const DEFAULT_SETTINGS: AxxaSettings = {
       "google/gemini-2.0-flash-001",
     ],
     nim: [
-      // Modelos confirmados como ativos no catálogo hosted (jun/2026).
-      // Atualizar via webfetch periodicamente — catálogo muda com frequência.
       "meta/llama-3.3-70b-instruct",
       "meta/llama-3.1-70b-instruct",
       "meta/llama-3.1-8b-instruct",
@@ -260,36 +140,19 @@ const DEFAULT_SETTINGS: AxxaSettings = {
       "deepseek-ai/deepseek-r1",
       "qwen/qwen2.5-72b-instruct",
       "microsoft/phi-4",
-      // Image generation (NIM Visual GenAI)
-      "stabilityai/stable-diffusion-3-medium",
-      "black-forest-labs/flux.1-schnell",
     ],
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },
-  favoriteModels: [],
   roleModels: {},
   modelProvider: {},
   discoveredEmbeddings: {},
   defaultMode: "chat",
   defaultEffort: "med",
+  effortConfigs: {},
+  language: "en-us",
   chatsPath: "axxa-ai/chats",
   skillsPath: "axxa-ai/skills",
-  language: "en-us",
-  background: "none",
-  density: "normal",
-  motion: "wave",
-  reduceMotion: false,
-  reducedMotionMobile: false,
-  recordingsPath: "axxa-ai/recordings",
-  transcribeAudio: true,
-  transcribeModel: "gpt-4o-mini-transcribe",
-  notesPath: "axxa-ai/notes",
-  responseStyle: "normal",
   projects: [],
-  voiceURI: "",
-  voiceRate: 1,
-  voiceIntroDone: false,
-  generationPath: "axxa-ai/generation",
   ragIndexPath: "axxa-ai/index",
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",
@@ -297,27 +160,8 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragStreamShards: false,
   ragAutoReindex: false,
   ragMobileSkipNoticeShown: false,
-  codeWrap: false,
   agentPermissionLevel: "ask",
   agentDiffApproval: true,
-  // Defaults slim — user pode adicionar mais via Settings → Outros → Chips
-  listChips: ["mode", "model", "date"],
-  // Vazio = usa DEFAULT_EFFORT_CONFIGS sem overrides. User edita via Settings.
-  effortConfigs: {},
-  mobileFullscreen: false,
-  openaiDataSharing: false,
-  openaiUsageTier: 1,
-  openaiAdminKey: "",
-  anthropicAdminKey: "",
-  openaiProjectId: "",
-  anthropicWorkspaceId: "",
-  balanceAnchors: {},
-  balanceCredits: {},
-  accountTier: "pro",
-  devTierOverride: "auto",
-  founder: false,
-  onboardingDone: false,
-  licenseKey: "",
 };
 
 export default class AxxaPlugin extends Plugin {
@@ -546,24 +390,6 @@ export default class AxxaPlugin extends Plugin {
     this.scheduleChatIndexWrite();
   }
 
-  // ---- Favoritos de modelo (ícone de salvar) — chave "provider::model". v0.1.222
-  favoriteModelKey(provider: string, model: string): string {
-    return provider + "::" + model;
-  }
-  isFavoriteModel(provider: string, model: string): boolean {
-    return (this.settings.favoriteModels ?? []).includes(
-      this.favoriteModelKey(provider, model)
-    );
-  }
-  async toggleFavoriteModel(provider: string, model: string): Promise<void> {
-    const key = this.favoriteModelKey(provider, model);
-    const arr = this.settings.favoriteModels ?? [];
-    this.settings.favoriteModels = arr.includes(key)
-      ? arr.filter((k) => k !== key)
-      : [...arr, key];
-    await this.saveSettings();
-  }
-
   /** Credencial (key/endpoint) do provider — pro SCAN do seletor de modelo. */
   providerCredential(id: string): string {
     const s = this.settings;
@@ -706,31 +532,24 @@ export default class AxxaPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
-    this.applyMotionPreference();
-
-    // Registra os SVG marks dos providers (brand-openai/anthropic/etc).
-    // Depois disso, setIcon(el, "brand-openai") funciona em qualquer lugar.
-    registerBrandIcons();
-    // Logos de marca coloridos (providers + modelos) — <Icon name="logo-openai" />
-    registerBrandLogos();
 
     // Cache de specs dos modelos (Fetch info / OpenRouter) — hidrata o store.
     await this.loadModelInfoCache();
 
     // Embeddings descobertos (fetch anterior) → registro global do RAG.
-    if (isEnabled("rag")) this.refreshDiscoveredEmbeddings();
+    this.refreshDiscoveredEmbeddings();
 
     // "Hot" dos modelos a partir do uso local — fire-and-forget (não bloqueia).
     void this.refreshLocalUsageHot();
 
     // Skills (.md na pasta de skills) → slash-commands no composer.
-    if (isEnabled("skills")) await this.reloadSkills();
+    await this.reloadSkills();
 
     // Carrega índice RAG do disco se já existe. Falhas são silenciosas —
     // só significa que o user ainda não rodou "Indexar vault".
     // No MOBILE, gateia por tamanho: um índice grande estoura o heap do WebView
     // e derruba o Obsidian no parse (OOM). Acima do teto, pula → keyword. v0.1.198
-    if (isEnabled("rag")) try {
+    try {
       const mobileGuard = Platform.isMobile
         ? {
             maxBytes: 16 * 1024 * 1024,
@@ -775,7 +594,7 @@ export default class AxxaPlugin extends Plugin {
     // Comando para abrir via Command Palette (Ctrl/Cmd + P).
     this.addCommand({
       id: "open-axxa-agent",
-      name: "Abrir AI Agent",
+      name: "Open AI Agent",
       callback: () => this.activateView(),
     });
 
@@ -787,10 +606,10 @@ export default class AxxaPlugin extends Plugin {
     this.setupStatusBarClearance();
 
     // Auto-reindex do RAG (opt-in) — re-embeda notas modificadas em background
-    if (isEnabled("rag")) this.setupAutoReindex();
+    this.setupAutoReindex();
 
     // Skills editadas no vault recarregam sozinhas (SKL-03)
-    if (isEnabled("skills")) this.setupSkillsWatcher();
+    this.setupSkillsWatcher();
 
     // NÃO auto-abrimos o painel no startup — o Obsidian abre "normal". O AI
     // Agent abre sob demanda pela ribbon (ícone do robô) ou pelo comando
@@ -801,7 +620,6 @@ export default class AxxaPlugin extends Plugin {
   onunload() {
     // Limpa a variável CSS pra não vazar entre reloads
     document.documentElement.style.removeProperty("--axxa-status-bar-clearance");
-    document.body.classList.remove("axxa-reduce-motion");
     // Cancela timers/abort pendentes pra não vazar entre reloads (v0.1.228)
     if (this.autoReindexTimer !== null) {
       window.clearTimeout(this.autoReindexTimer);
@@ -817,17 +635,6 @@ export default class AxxaPlugin extends Plugin {
     }
     this.autoReindexController?.abort();
     this.autoReindexController = null;
-  }
-
-  /** Liga/desliga a classe `axxa-reduce-motion` no <body> conforme o TOGGLE do
-   *  user — global (settings.reduceMotion) OU só no mobile
-   *  (settings.reducedMotionMobile + Platform.isMobile). É a ÚNICA fonte da
-   *  verdade pra reduzir movimento (não usamos mais @media do SO). v0.1.218 */
-  applyMotionPreference() {
-    const reduce =
-      !!this.settings.reduceMotion ||
-      (Platform.isMobile && !!this.settings.reducedMotionMobile);
-    document.body.classList.toggle("axxa-reduce-motion", reduce);
   }
 
   /**
@@ -949,7 +756,6 @@ export default class AxxaPlugin extends Plugin {
         excludePaths: [
           this.settings.ragIndexPath,
           this.settings.chatsPath,
-          this.settings.recordingsPath,
         ],
         shardSize: this.settings.ragStreamShards ? RAG_SHARD_SIZE : 0,
         signal: this.autoReindexController.signal,
@@ -1121,8 +927,6 @@ export default class AxxaPlugin extends Plugin {
       // Fallback (runtime sem SecretStorage): salva tudo no data.json.
       await this.saveData(this.settings);
     }
-    // Reaplica a preferência de movimento (toggle reduce-motion → classe no body)
-    this.applyMotionPreference();
     // Avisa quem tá escutando (ex.: AxxaApp pra re-renderizar com novo idioma)
     this.settingsListeners.forEach((cb) => {
       try {

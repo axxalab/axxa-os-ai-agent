@@ -8,7 +8,7 @@
 // e bloqueiam paths que tentam sair do vault (anti path-traversal).
 
 import type { App } from "obsidian";
-import { ensureFolder } from "../components/_shared/chatPersistence";
+import { ensureFolder } from "../core/chatPersistence";
 import type { ToolContext } from "./types";
 import { hybridSearch } from "../rag/hybrid";
 

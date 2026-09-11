@@ -4,7 +4,7 @@ import {
   withKeptAttachmentNotes,
   approxBase64Bytes,
   PDF_MAX_BYTES,
-} from "../src/components/_shared/attachmentNotes";
+} from "../src/core/attachmentNotes";
 
 const LABELS = {
   audio: "audio saved in your vault (not sent to the AI yet)",

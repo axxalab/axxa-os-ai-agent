@@ -6,7 +6,7 @@ import {
   effortToVaultLookup,
   isEffortLevel,
   DEFAULT_EFFORT_CONFIGS,
-} from "../src/components/_shared/effort";
+} from "../src/core/effort";
 
 describe("isEffortLevel", () => {
   it("aceita os 5 níveis válidos", () => {

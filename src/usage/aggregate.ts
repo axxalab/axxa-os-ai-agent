@@ -6,7 +6,7 @@
 // por provider / modelo / modo / dia + chats ordenados por custo.
 
 import type { App } from "obsidian";
-import { listAllChats, type ChatSummary } from "../components/_shared/chatPersistence";
+import { listAllChats, type ChatSummary } from "../core/chatPersistence";
 import { calculateCost, getPricing, type ModelPricing } from "./pricing";
 
 /** Bucket de agregação — totais e flag de "algum modelo sem preço". */

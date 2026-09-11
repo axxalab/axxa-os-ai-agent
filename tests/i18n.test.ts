@@ -14,14 +14,14 @@ describe("i18n — EN-US único", () => {
   });
 
   it("o dicionário mantém as seções principais + funções tipadas", () => {
-    expect(typeof EN_US.composer).toBe("object");
-    expect(typeof EN_US.settings).toBe("object");
+    expect(typeof EN_US.agent).toBe("object");
+    expect(typeof EN_US.vault).toBe("object");
     expect(typeof EN_US.ai.err.noKey).toBe("function");
     expect(EN_US.ai.err.noKey("OpenAI")).toContain("OpenAI");
   });
 
   it("textos-chave estão em inglês (sem resíduo PT)", () => {
     expect(EN_US.ai.thinking.toLowerCase()).not.toMatch(/pensando|aguarde/);
-    expect(JSON.stringify(EN_US.settings).toLowerCase()).not.toContain("configurações");
+    expect(JSON.stringify(EN_US.agent).toLowerCase()).not.toContain("configurações");
   });
 });
