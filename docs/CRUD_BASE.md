@@ -62,7 +62,10 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
   inline no `<html>`; um MutationObserver no atributo `style` marca
   `.axxa-keyboard-open` na gaveta e no body) e o **fullscreen mobile**
   (`.axxa-fullscreen`, opt-in em `settings.mobileFullscreen`, toggle no menu
-  lateral). Ambos portados da casca 0.3.0, onde já rodaram no aparelho.
+  lateral). Ambos portados da casca 0.3.0, onde já rodaram no aparelho. A
+  altura da gaveta com o teclado aberto sai de `visualViewport.height`
+  (`--axxa-kb-viewport`), nunca de `100dvh - --keyboard-height`: no Android a
+  WebView já encolhe sozinha e a subtração cortaria duas vezes.
 - `fullscreenScope.ts` — regras PURAS de escopo do fullscreen (`isRightDrawer`,
   `isDrawerOnScreen`), testadas em `tests/fullscreenScope.test.ts`. Ficam fora
   da view de propósito: erradas, deixam o Obsidian sem chrome.

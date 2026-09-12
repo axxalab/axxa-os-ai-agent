@@ -80,14 +80,13 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
   display: none;
 }
 
-/* Tela cheia de verdade: a gaveta direita é parcial por padrão. Sem
-   `position: fixed` de propósito — preserva o gesto nativo de swipe pra
-   fechar. Desconta a altura do teclado pro composer subir junto. */
+/* Tela cheia de verdade: a gaveta direita é parcial por padrão. Só largura —
+   a altura já vem do `top: 0; bottom: 0` do próprio Obsidian, e o teclado é
+   tratado numa regra só (abaixo). Sem `position: fixed` nosso, de propósito:
+   preserva o gesto nativo de swipe pra fechar. */
 body.is-mobile .workspace-drawer.axxa-fullscreen {
   width: 100vw !important;
   max-width: 100vw !important;
-  height: calc(100vh - var(--keyboard-height, 0px)) !important;
-  height: calc(100dvh - var(--keyboard-height, 0px)) !important;
 }
 
 body.is-mobile
@@ -111,14 +110,15 @@ body.is-mobile
   display: none !important;
 }
 
-/* …e a gaveta termina no topo do teclado. Isto é o que faz o composer subir
-   no modo NORMAL: a gaveta é `position: fixed; top: 0; bottom: 0`, então o
+/* …e a gaveta termina no topo do teclado — é isto que faz o composer subir,
+   nos dois modos. A gaveta é `position: fixed; top: 0; bottom: 0`, então o
    `.app-container` encolher (o que o Obsidian faz com --keyboard-height) não
-   a alcança. Com `height` definida, o `bottom: 0` é ignorado — é a mesma
-   técnica que o modo fullscreen já usava. */
+   a alcança; com `height` definida, o `bottom: 0` é ignorado.
+   A altura é MEDIDA (`--axxa-kb-viewport` = visualViewport.height, posta pela
+   AxxaView), nunca `100dvh - --keyboard-height`: no Android a WebView já
+   encolhe com o teclado, e a subtração cortava uma segunda vez. */
 body.is-mobile .workspace-drawer.axxa-keyboard-open {
-  height: calc(100vh - var(--keyboard-height, 0px)) !important;
-  height: calc(100dvh - var(--keyboard-height, 0px)) !important;
+  height: var(--axxa-kb-viewport, 100dvh) !important;
 }
 
 /* ── tokens ────────────────────────────────────────────────────────────── */

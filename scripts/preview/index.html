@@ -158,6 +158,22 @@
       const drawer = document.getElementById("drawer");
       drawer.classList.toggle("axxa-keyboard-open", kb > 0);
       document.body.classList.toggle("axxa-keyboard-open", kb > 0);
+      // Altura útil MEDIDA, como a AxxaView faz com visualViewport.height —
+      // e recalculada no resize, também como ela. (No aparelho o valor vem do
+      // viewport; aqui é derivado do ?kb=.)
+      const syncKb = () => {
+        if (kb > 0) {
+          drawer.style.setProperty(
+            "--axxa-kb-viewport",
+            window.innerHeight - kb + "px"
+          );
+        } else {
+          drawer.style.removeProperty("--axxa-kb-viewport");
+        }
+      };
+      syncKb();
+      window.addEventListener("resize", syncKb);
+      window.visualViewport?.addEventListener("resize", syncKb);
       const fs = q.get("fs") === "1";
       drawer.classList.toggle("axxa-fullscreen", fs);
       document.body.classList.toggle("axxa-fullscreen", fs);
