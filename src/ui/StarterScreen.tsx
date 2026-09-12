@@ -4,6 +4,7 @@
 // os atalhos que preenchem o composer. Provider / modelo / effort ficam na
 // barra do composer, logo abaixo — esta tela cuida do "o quê", não do "com quê".
 
+import type { CSSProperties } from "react";
 import type AxxaPlugin from "../main";
 import type { ChatMode, ChatSession } from "../core/session";
 import { CHAT_MODES } from "../core/session";
@@ -93,15 +94,17 @@ export function StarterScreen({
     PROVIDERS.find((p) => p.id === cfg.provider)?.name ?? cfg.provider;
   const skills = plugin.skills.slice(0, 4);
 
+  // Índice do modo ativo — move o thumb do segmented control via CSS.
+  const activeIndex = Math.max(CHAT_MODES.indexOf(cfg.mode), 0);
+
   return (
     <div className="axxa-starter">
-      <div className="axxa-starter-hero">
-        <Icon name="sparkles" size={28} className="axxa-starter-mark" />
-        <h2 className="axxa-starter-title">{greeting()}.</h2>
-        <p className="axxa-starter-sub">{mode.tagline}</p>
-      </div>
-
-      <div className="axxa-modes" role="group" aria-label="Chat mode">
+      <div
+        className="axxa-modes"
+        role="group"
+        aria-label="Chat mode"
+        style={{ "--axxa-seg": activeIndex } as CSSProperties}
+      >
         {CHAT_MODES.map((m) => (
           <button
             key={m}
@@ -110,10 +113,15 @@ export function StarterScreen({
             aria-pressed={m === cfg.mode}
             onClick={() => session.setMode(m)}
           >
-            <Icon name={MODES[m].icon} size={18} />
-            <span>{MODES[m].label}</span>
+            {MODES[m].label}
           </button>
         ))}
+      </div>
+
+      <div className="axxa-starter-hero">
+        <Icon name={mode.icon} size={26} className="axxa-starter-mark" />
+        <h2 className="axxa-starter-title">{greeting()}.</h2>
+        <p className="axxa-starter-sub">{mode.tagline}</p>
       </div>
 
       {!hasKey && (

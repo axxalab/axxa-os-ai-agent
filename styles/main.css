@@ -185,42 +185,65 @@
   line-height: 1.45;
 }
 
-/* Seletor de modo — a decisão que trava no 1º envio. */
+/* Seletor de modo — segmented control. Trilho com thumb deslizante: o thumb
+   é um ::before posicionado por --axxa-seg (0/1/2), setado pela StarterScreen.
+   A decisão trava no 1º envio, então ele só existe na tela inicial. */
 .axxa-modes {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--axxa-2);
+  padding: var(--axxa-1);
+  border-radius: var(--axxa-r-pill);
+  background: var(--axxa-raised);
+}
+
+.axxa-modes::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: var(--axxa-1);
+  bottom: var(--axxa-1);
+  left: var(--axxa-1);
+  width: calc((100% - var(--axxa-1) * 2) / 3);
+  border-radius: var(--axxa-r-pill);
+  background: var(--background-primary);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.18),
+    0 0 0 1px var(--axxa-line);
+  transform: translateX(calc(var(--axxa-seg, 0) * 100%));
+  transition: transform 220ms cubic-bezier(0.4, 0.2, 0.2, 1);
 }
 
 .axxa-mode {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--axxa-1);
-  padding: var(--axxa-3) var(--axxa-2);
-  border: 1px solid var(--axxa-line);
-  border-radius: var(--axxa-r);
+  position: relative;
+  z-index: 1;
+  min-height: 32px;
+  padding: var(--axxa-2) var(--axxa-1);
+  border: none;
+  border-radius: var(--axxa-r-pill);
   background: transparent;
   color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
   box-shadow: none;
   cursor: pointer;
+  transition: color 160ms ease;
 }
 
-.axxa-mode:hover {
-  background: var(--axxa-hover);
+.axxa-mode:hover:not(.is-active) {
   color: var(--text-normal);
 }
 
 .axxa-mode.is-active {
-  border-color: var(--interactive-accent);
-  background: var(--axxa-raised);
   color: var(--text-normal);
   font-weight: var(--font-semibold);
 }
 
-.axxa-mode.is-active .axxa-icon {
-  color: var(--interactive-accent);
+@media (prefers-reduced-motion: reduce) {
+  .axxa-modes::before,
+  .axxa-mode {
+    transition: none;
+  }
 }
 
 /* Aviso de key faltando. */
