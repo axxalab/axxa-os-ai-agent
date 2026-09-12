@@ -293,6 +293,20 @@ body.is-mobile
   bottom: auto;
 }
 
+/* Teclado no modo NORMAL. O modelo da 0.2.37 conta com o Obsidian encolhendo a
+   gaveta sozinho quando o teclado abre — é o que mantinha o composer subindo
+   sem fullscreen. Na versão atual isso não acontece mais aqui, e o composer
+   fica atrás do teclado.
+   A correção é dar à gaveta o MESMO tratamento que o fullscreen já tem e que
+   comprovadamente funciona neste aparelho: descontar `--keyboard-height` da
+   altura. Escopado em `.axxa-keyboard-open`, que só existe quando a var é > 0 e
+   a AXXA é a aba ativa — então fora do teclado nada muda, e com fullscreen as
+   duas regras dão o mesmo valor. */
+body.is-mobile .workspace-drawer.axxa-keyboard-open {
+  height: calc(100vh - var(--keyboard-height, 0px)) !important;
+  height: calc(100dvh - var(--keyboard-height, 0px)) !important;
+}
+
 /* ── tokens ────────────────────────────────────────────────────────────── */
 
 /* CANVAS — a superfície do app. Mapeamento da casca 0.2.37: primary no claro,

@@ -86,6 +86,15 @@ item ativo, sheets.
   visível vira `--axxa-kb-inset`, o padding-bottom da `.axxa-root`. Se a gaveta
   já encolheu, dá 0 — não tem como contar o teclado duas vezes.
 
+  O bloco de host + fullscreen + teclado do `styles/main.css` é **cópia
+  verbatim** das linhas 5–242 da `0.2.37` (só o nome da nossa topbar mudou).
+  O que esta casca precisa diferente vive numa seção de **adaptação logo
+  depois** — nunca dentro do bloco. Hoje são três: zerar os 4px de respiro da
+  base (lá o composer era `absolute` e flutuava acima deles), neutralizar o
+  `bottom: 18px` do composer no fullscreen (pelo mesmo motivo) e descontar
+  `--keyboard-height` da gaveta no modo NORMAL — o modelo antigo contava com o
+  Obsidian encolher a gaveta sozinho, o que a versão atual não faz mais.
+
   **Regra da altura da gaveta** (0.1.254 e 0.1.255, em
   `docs/archive/MOBILE-FULLSCREEN.md`): quando o teclado abre, o **próprio
   Obsidian** encolhe a gaveta até o topo do teclado. Então o plugin **não
