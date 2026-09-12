@@ -87,14 +87,17 @@ export function SheetRow({
   title,
   note,
   badge,
+  icon,
   selected,
   onClick,
 }: {
   title: string;
   /** Legenda em uma linha, abaixo do título. */
   note?: string;
-  /** Emoji/ícone no círculo à esquerda (opcional). */
+  /** Emoji no círculo à esquerda (opcional). */
   badge?: string;
+  /** Ícone no círculo à esquerda — inclui os logos dos providers. */
+  icon?: string;
   selected?: boolean;
   onClick: () => void;
 }) {
@@ -106,6 +109,11 @@ export function SheetRow({
       onClick={onClick}
     >
       {badge && <span className="axxa-sheet-badge">{badge}</span>}
+      {!badge && icon && (
+        <span className="axxa-sheet-badge">
+          <Icon name={icon} size={18} />
+        </span>
+      )}
       <span className="axxa-sheet-row-main">
         <span className="axxa-sheet-row-title">{title}</span>
         {note && <span className="axxa-sheet-row-note">{note}</span>}

@@ -261,6 +261,7 @@ export function ChatView({
           {PROVIDERS.map((p) => (
             <SheetRow
               key={p.id}
+              icon={p.icon}
               title={p.name}
               note={
                 providerConfigured(plugin, p.id)

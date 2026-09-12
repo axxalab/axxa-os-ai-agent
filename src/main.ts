@@ -5,6 +5,7 @@
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { getProvider } from "./providers";
 import { AxxaView, VIEW_TYPE_AXXA } from "./ui/AxxaView";
+import { registerBrandLogos } from "./ui/brandLogos";
 import { AxxaSettingsTab } from "./ui/SettingsTab";
 import { VectorIndex, loadIndex, RAG_SHARD_SIZE } from "./rag/vectorIndex";
 import { indexVault } from "./rag/indexer";
@@ -596,6 +597,9 @@ export default class AxxaPlugin extends Plugin {
     });
 
     // Comando para abrir via Command Palette (Ctrl/Cmd + P).
+    // Logos dos providers como ícones do Obsidian (setIcon("logo-openai")…).
+    registerBrandLogos();
+
     this.addCommand({
       id: "open-axxa-agent",
       name: "Open AI Agent",

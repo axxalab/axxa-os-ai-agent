@@ -1332,13 +1332,16 @@ body.is-mobile .axxa-root .axxa-history-more {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  flex: 0 1 auto;
+  /* Espalhados pela largura: cada item parte do tamanho do CONTEÚDO e divide
+     a sobra igualmente (`flex-basis: auto`, não 0 — com base 0 as colunas
+     ficam iguais e o rótulo mais longo trunca). `min-width: 0` garante que,
+     num painel estreito demais, o rótulo encolha com ellipsis em vez de
+     empurrar alguém pra uma segunda linha. */
+  flex: 1 1 auto;
   min-width: 0;
   height: auto;
-  min-height: 30px;
+  min-height: 38px;
   margin: 0;
-  /* 6px e não mais: com seis providers, cada 1px de padding custa 12px na
-     linha inteira — é o que separa "OpenRouter" inteiro de "OpenRou…". */
   padding: 0 6px;
   border: 0;
   border-radius: 999px;
@@ -1396,13 +1399,33 @@ body.is-mobile .axxa-root .axxa-history-more {
   margin-bottom: var(--size-4-4);
 }
 
-/* A linha dos providers é a mais apertada (seis nomes, um deles
-   "OpenRouter"): 4px de padding é o que faz ela caber inteira num painel de
-   375px sem cortar nenhum nome. */
+/* Providers: o LOGO no lugar do nome (seis nomes não cabem em uma linha, e o
+   logo identifica na hora). Linha mais alta, porque agora é um alvo de toque
+   com ícone. */
 .axxa-settings-root .axxa-settings-subnav button.axxa-seg-item {
-  padding: 0 4px;
-  /* …e um ponto de fonte a menos, que é o que sobrava pra caber inteiro. */
-  font-size: calc(var(--font-ui-smaller) - 1px);
+  min-height: 42px;
+}
+
+.axxa-settings-root .axxa-seg-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+}
+
+.axxa-settings-root .axxa-seg-logo svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Configurado = logo em contraste normal; sem credencial = apagado. Mesma
+   informação que o ponto dava, sem custar largura. */
+.axxa-settings-root button.axxa-seg-item.is-ready .axxa-seg-logo {
+  color: var(--text-normal);
+}
+
+.axxa-settings-root button.axxa-seg-item.is-active .axxa-seg-logo {
+  color: var(--text-accent);
 }
 
 .axxa-settings-root .axxa-settings-blurb {

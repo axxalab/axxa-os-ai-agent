@@ -132,6 +132,9 @@ item ativo, sheets.
   pinta cada superfície). Teclado e tela cheia dependem de coisas que só o
   aparelho sabe — sem o relatório, cada ajuste vira uma release de palpite.
 - `Icon.tsx` — ícone Lucide via `setIcon` nativo.
+- `brandLogos.ts` — logos dos seis providers como ícones do Obsidian
+  (`addIcon` no onload → `setIcon("logo-openai")`). AUTO-GERADO de
+  `assets/svg/` por `npm run gen:logos`; só os seis, porque o bundle tem teto.
 - `Sheet.tsx` — **bottom sheet** do composer (provider · modelo · effort):
   puxador, X à esquerda com título centralizado, cartões agrupados com linhas
   título + legenda, a ativa em accent com check. `SheetGroup` / `SheetRow` /

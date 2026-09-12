@@ -133,7 +133,24 @@ export const MarkdownRenderer = {
     el.textContent = text;
   },
 };
+/** Registro do addIcon — o mesmo que o Obsidian mantém pros ícones custom. */
+const CUSTOM_ICONS = new Map<string, string>();
+
+export function addIcon(id: string, svgContent: string): void {
+  CUSTOM_ICONS.set(id, svgContent);
+}
+
 export function setIcon(el: HTMLElement, name: string): void {
+  const custom = CUSTOM_ICONS.get(name);
+  if (custom) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("width", "20");
+    svg.setAttribute("height", "20");
+    svg.innerHTML = custom;
+    el.appendChild(svg);
+    return;
+  }
   const i = document.createElement("i");
   i.setAttribute("data-lucide", name);
   el.appendChild(i);

@@ -13,7 +13,7 @@
 //
 // A aba escolhida sobrevive ao re-render (indexar chama display() de novo).
 
-import { App, Notice, Platform, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, Platform, PluginSettingTab, Setting, setIcon } from "obsidian";
 import type AxxaPlugin from "../main";
 import { PROVIDERS, providerConfigured } from "../core/providersMeta";
 import { EFFORT_LEVELS, EFFORT_LABELS } from "../core/effort";
@@ -45,11 +45,6 @@ const PROVIDER_FIELDS: Record<string, { key?: KeyField; model: ModelField }> = {
   openrouter: { key: "openrouterApiKey", model: "openrouterModel" },
   nim: { key: "nimApiKey", model: "nimModel" },
   ollama: { model: "ollamaModel" },
-};
-
-/** Nomes curtos pras colunas do segmented (o nome cheio fica no conteúdo). */
-const SHORT_PROVIDER: Record<string, string> = {
-  nim: "NIM",
 };
 
 type TabId = "providers" | "chat" | "vault" | "rag" | "agent" | "mobile";
@@ -202,10 +197,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
       });
       btn.setAttribute("type", "button");
       btn.setAttribute("aria-pressed", String(p.id === this.provider));
-      // Sem ponto: ele custava 11px por coluna, e com seis providers é a
-      // diferença entre caber e cortar o nome. Quem está configurado aparece
-      // em texto normal; quem não está, apagado.
-      btn.setText(SHORT_PROVIDER[p.id] ?? p.name);
+      // O LOGO no lugar do nome: com seis providers, nome + logo não cabem em
+      // uma linha, e o logo identifica mais rápido. O nome fica no aria-label,
+      // no tooltip e no conteúdo logo abaixo ("OpenAI API key").
+      const mark = btn.createSpan({ cls: "axxa-seg-logo" });
+      setIcon(mark, p.icon);
+      btn.setAttribute("aria-label", p.name);
+      btn.setAttribute("title", p.name);
       btn.onclick = () => {
         this.provider = p.id;
         this.display();

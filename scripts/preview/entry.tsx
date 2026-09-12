@@ -6,10 +6,13 @@
 import { createRoot } from "react-dom/client";
 import { App as AxxaApp } from "./src/ui/App";
 import { useChatStore } from "./src/store/chat";
+import { registerBrandLogos } from "./src/ui/brandLogos";
 import type { ChatSession } from "./src/core/session";
 import type AxxaPlugin from "./src/main";
 
 declare const PREVIEW_VERSION: string;
+
+registerBrandLogos(); // igual ao onload do plugin
 
 const params = new URLSearchParams(location.search);
 const scenario = params.get("s") ?? "empty";
