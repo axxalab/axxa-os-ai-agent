@@ -226,6 +226,9 @@
       HTMLElement.prototype.createDiv = function (o) {
         return this.createEl("div", typeof o === "string" ? { cls: o } : o);
       };
+      HTMLElement.prototype.createSpan = function (o) {
+        return this.createEl("span", typeof o === "string" ? { cls: o } : o);
+      };
       HTMLElement.prototype.addClass = function (...c) {
         this.classList.add(...c);
       };

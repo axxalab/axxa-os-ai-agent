@@ -103,4 +103,20 @@ if (scenario === "thread") {
 }
 
 const host = document.getElementById("app");
-if (host) createRoot(host).render(<AxxaApp plugin={plugin} session={session} />);
+if (scenario === "settings") {
+  // Renderiza a ABA DE SETTINGS (que é Setting API nativa, não React) dentro
+  // do mesmo painel, pra dar pra olhar o desenho das abas.
+  void (async () => {
+    const { AxxaSettingsTab } = await import("./src/ui/SettingsTab");
+    const tab = new AxxaSettingsTab(
+      {} as never,
+      plugin as never
+    ) as unknown as { containerEl: HTMLElement; display: () => void };
+    tab.containerEl = document.createElement("div");
+    tab.containerEl.className = "axxa-settings-preview";
+    host?.appendChild(tab.containerEl);
+    tab.display();
+  })();
+} else if (host) {
+  createRoot(host).render(<AxxaApp plugin={plugin} session={session} />);
+}

@@ -1,11 +1,21 @@
 // src/ui/SettingsTab.ts
-// Settings mínimas (Setting API nativa): chave + modelo dos 6 providers,
-// defaults de sessão, pastas do vault, RAG (modelo de embedding + indexar) e
-// permissões do agente. Nada além do que os modos precisam pra funcionar.
+// Settings em ABAS, por classe de configuração — a lista corrida ficava longa
+// demais no mobile e misturava coisas de natureza diferente (credencial,
+// default de sessão, pasta do vault, índice, permissão).
+//
+//   Providers  → uma SUB-ABA por provider (chave/endpoint + modelo). São seis;
+//                é o único lugar onde a segunda camada se paga.
+//   Chat       → o que vale pra toda conversa nova.
+//   Vault      → onde as coisas são gravadas.
+//   Vault Q&A  → o índice e o que o alimenta.
+//   Agent      → o que o agente pode fazer sem perguntar.
+//   Mobile     → só aparece no celular.
+//
+// A aba escolhida sobrevive ao re-render (indexar chama display() de novo).
 
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, Platform, PluginSettingTab, Setting } from "obsidian";
 import type AxxaPlugin from "../main";
-import { PROVIDERS } from "../core/providersMeta";
+import { PROVIDERS, providerConfigured } from "../core/providersMeta";
 import { EFFORT_LEVELS, EFFORT_LABELS } from "../core/effort";
 import { CHAT_MODES } from "../core/session";
 import { getAllEmbeddingModels } from "../rag/types";
@@ -37,8 +47,51 @@ const PROVIDER_FIELDS: Record<string, { key?: KeyField; model: ModelField }> = {
   ollama: { model: "ollamaModel" },
 };
 
+type TabId = "providers" | "chat" | "vault" | "rag" | "agent" | "mobile";
+
+interface TabDef {
+  id: TabId;
+  label: string;
+  /** Uma linha explicando o que mora aqui. */
+  blurb: string;
+  mobileOnly?: boolean;
+}
+
+const TABS: TabDef[] = [
+  {
+    id: "providers",
+    label: "Providers",
+    blurb: "Your keys and the model each provider uses. Keys stay on this device.",
+  },
+  {
+    id: "chat",
+    label: "Chat",
+    blurb: "What every new conversation starts with.",
+  },
+  { id: "vault", label: "Vault", blurb: "Where the plugin writes in your vault." },
+  {
+    id: "rag",
+    label: "Vault Q&A",
+    blurb: "The local index that grounds answers in your notes.",
+  },
+  {
+    id: "agent",
+    label: "Agent",
+    blurb: "What the agent may do to your notes without asking.",
+  },
+  {
+    id: "mobile",
+    label: "Mobile",
+    blurb: "Options that only exist on the phone.",
+    mobileOnly: true,
+  },
+];
+
 export class AxxaSettingsTab extends PluginSettingTab {
   private indexing: AbortController | null = null;
+  /** Sobrevivem ao display(): re-render não joga o usuário pra primeira aba. */
+  private tab: TabId = "providers";
+  private provider = "openai";
 
   constructor(
     app: App,
@@ -51,111 +104,211 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("axxa-settings-root");
-    const s = this.plugin.settings;
-    const save = () => this.plugin.saveSettings();
 
-    // ── Providers ─────────────────────────────────────────────────────────
-    new Setting(containerEl).setName("Providers").setHeading();
+    const tabs = TABS.filter((t) => !t.mobileOnly || Platform.isMobile);
+    if (!tabs.some((t) => t.id === this.tab)) this.tab = tabs[0].id;
+
+    const nav = containerEl.createDiv({ cls: "axxa-settings-nav" });
+    for (const t of tabs) {
+      const btn = nav.createEl("button", {
+        text: t.label,
+        cls: t.id === this.tab ? "axxa-stab is-active" : "axxa-stab",
+      });
+      btn.setAttribute("type", "button");
+      btn.setAttribute("aria-pressed", String(t.id === this.tab));
+      btn.onclick = () => {
+        this.tab = t.id;
+        this.display();
+      };
+    }
+
+    const current = tabs.find((t) => t.id === this.tab);
+    if (current) {
+      containerEl.createEl("p", {
+        text: current.blurb,
+        cls: "axxa-settings-blurb",
+      });
+    }
+
+    const body = containerEl.createDiv({ cls: "axxa-settings-body" });
+    switch (this.tab) {
+      case "providers":
+        this.renderProviders(body);
+        break;
+      case "chat":
+        this.renderChat(body);
+        break;
+      case "vault":
+        this.renderVault(body);
+        break;
+      case "rag":
+        this.renderRag(body);
+        break;
+      case "agent":
+        this.renderAgent(body);
+        break;
+      case "mobile":
+        this.renderMobile(body);
+        break;
+    }
+  }
+
+  private get s() {
+    return this.plugin.settings;
+  }
+  private save = () => this.plugin.saveSettings();
+
+  // ── Providers (com sub-abas) ──────────────────────────────────────────────
+
+  private renderProviders(el: HTMLElement): void {
+    if (!PROVIDER_FIELDS[this.provider]) this.provider = PROVIDERS[0].id;
+
+    // Sub-abas: o ponto ao lado do nome diz se aquele provider já está pronto,
+    // então dá pra ver o estado dos seis sem abrir um por um.
+    const sub = el.createDiv({ cls: "axxa-settings-subnav" });
     for (const p of PROVIDERS) {
-      const f = PROVIDER_FIELDS[p.id];
-      if (!f) continue;
-      if (f.key) {
-        const key = f.key;
-        new Setting(containerEl)
-          .setName(`${p.name} API key`)
-          .setDesc("Stored in the OS keychain (not in data.json).")
-          .addText((t) => {
-            t.inputEl.type = "password";
-            t.setPlaceholder("key…")
-              .setValue(s[key])
-              .onChange(async (v) => {
-                s[key] = v.trim();
-                await save();
-              });
-          });
-      } else {
-        new Setting(containerEl)
-          .setName("Ollama endpoint")
-          .addText((t) =>
-            t
-              .setPlaceholder("http://localhost:11434")
-              .setValue(s.ollamaEndpoint)
-              .onChange(async (v) => {
-                s.ollamaEndpoint = v.trim();
-                await save();
-              })
-          );
-      }
-      const modelField = f.model;
-      new Setting(containerEl)
-        .setName(`${p.name} model`)
-        .setDesc(
-          `Model id used for new chats. Known: ${(s.activeModels[p.id] ?? []).join(", ") || "—"}`
-        )
+      const ready = providerConfigured(this.plugin, p.id);
+      const btn = sub.createEl("button", {
+        cls:
+          "axxa-ssub" +
+          (p.id === this.provider ? " is-active" : "") +
+          (ready ? " is-ready" : ""),
+      });
+      btn.setAttribute("type", "button");
+      btn.setAttribute("aria-pressed", String(p.id === this.provider));
+      btn.createSpan({ cls: "axxa-ssub-dot" });
+      btn.createSpan({ text: p.name });
+      btn.onclick = () => {
+        this.provider = p.id;
+        this.display();
+      };
+    }
+
+    const p = PROVIDERS.find((x) => x.id === this.provider);
+    const f = PROVIDER_FIELDS[this.provider];
+    if (!p || !f) return;
+    const s = this.s;
+
+    if (f.key) {
+      const key = f.key;
+      new Setting(el)
+        .setName(`${p.name} API key`)
+        .setDesc("Stored in the OS keychain (not in data.json).")
+        .addText((t) => {
+          t.inputEl.type = "password";
+          t.setPlaceholder("key…")
+            .setValue(s[key])
+            .onChange(async (v) => {
+              s[key] = v.trim();
+              await this.save();
+            });
+        });
+    } else {
+      new Setting(el)
+        .setName("Ollama endpoint")
+        .setDesc("Local server address. Ollama needs no key.")
         .addText((t) =>
-          t.setValue(s[modelField]).onChange(async (v) => {
-            const m = v.trim();
-            if (!m) return;
-            s[modelField] = m;
-            const list = s.activeModels[p.id] ?? [];
-            if (!list.includes(m)) s.activeModels[p.id] = [m, ...list];
-            await save();
-          })
+          t
+            .setPlaceholder("http://localhost:11434")
+            .setValue(s.ollamaEndpoint)
+            .onChange(async (v) => {
+              s.ollamaEndpoint = v.trim();
+              await this.save();
+            })
         );
     }
 
-    // ── Defaults ──────────────────────────────────────────────────────────
-    new Setting(containerEl).setName("Defaults for new chats").setHeading();
-    new Setting(containerEl).setName("Provider").addDropdown((d) => {
-      for (const p of PROVIDERS) d.addOption(p.id, p.name);
-      d.setValue(s.defaultProvider).onChange(async (v) => {
-        s.defaultProvider = v;
-        await save();
-      });
-    });
-    new Setting(containerEl).setName("Mode").addDropdown((d) => {
-      for (const m of CHAT_MODES) d.addOption(m, m);
-      d.setValue(s.defaultMode).onChange(async (v) => {
-        s.defaultMode = v;
-        await save();
-      });
-    });
-    new Setting(containerEl).setName("Effort").addDropdown((d) => {
-      for (const l of EFFORT_LEVELS) d.addOption(l, EFFORT_LABELS[l]);
-      d.setValue(s.defaultEffort).onChange(async (v) => {
-        s.defaultEffort = v;
-        await save();
-      });
-    });
+    const modelField = f.model;
+    new Setting(el)
+      .setName("Model for new chats")
+      .setDesc(
+        `Model id used when this provider is selected. Known: ${
+          (s.activeModels[p.id] ?? []).join(", ") || "—"
+        }`
+      )
+      .addText((t) =>
+        t.setValue(s[modelField]).onChange(async (v) => {
+          const m = v.trim();
+          if (!m) return;
+          s[modelField] = m;
+          const list = s.activeModels[p.id] ?? [];
+          if (!list.includes(m)) s.activeModels[p.id] = [m, ...list];
+          await this.save();
+        })
+      );
+  }
 
-    // ── Vault ─────────────────────────────────────────────────────────────
-    new Setting(containerEl).setName("Vault folders").setHeading();
-    new Setting(containerEl)
+  // ── Chat ──────────────────────────────────────────────────────────────────
+
+  private renderChat(el: HTMLElement): void {
+    const s = this.s;
+    new Setting(el)
+      .setName("Provider")
+      .setDesc("Which provider a new chat opens with.")
+      .addDropdown((d) => {
+        for (const p of PROVIDERS) d.addOption(p.id, p.name);
+        d.setValue(s.defaultProvider).onChange(async (v) => {
+          s.defaultProvider = v;
+          await this.save();
+        });
+      });
+    new Setting(el)
+      .setName("Mode")
+      .setDesc("Chat, Vault Q&A or Agent. Locks on the first message.")
+      .addDropdown((d) => {
+        for (const m of CHAT_MODES) d.addOption(m, m);
+        d.setValue(s.defaultMode).onChange(async (v) => {
+          s.defaultMode = v;
+          await this.save();
+        });
+      });
+    new Setting(el)
+      .setName("Effort")
+      .setDesc("How hard the model works: length, agent turns, temperature.")
+      .addDropdown((d) => {
+        for (const l of EFFORT_LEVELS) d.addOption(l, EFFORT_LABELS[l]);
+        d.setValue(s.defaultEffort).onChange(async (v) => {
+          s.defaultEffort = v;
+          await this.save();
+        });
+      });
+  }
+
+  // ── Vault ─────────────────────────────────────────────────────────────────
+
+  private renderVault(el: HTMLElement): void {
+    const s = this.s;
+    new Setting(el)
       .setName("Chats folder")
       .setDesc("Each chat is a .md file under <folder>/<mode>/.")
       .addText((t) =>
         t.setValue(s.chatsPath).onChange(async (v) => {
           s.chatsPath = v.trim() || "axxa-ai/chats";
-          await save();
+          await this.save();
           void this.plugin.loadChatSummaries(true);
         })
       );
-    new Setting(containerEl)
+    new Setting(el)
       .setName("Skills folder")
       .setDesc("Each skill is a .md note (frontmatter + prompt body).")
       .addText((t) =>
         t.setValue(s.skillsPath).onChange(async (v) => {
           s.skillsPath = v.trim() || "axxa-ai/skills";
-          await save();
+          await this.save();
           await this.plugin.reloadSkills();
         })
       );
+  }
 
-    // ── Vault Q&A (RAG) ───────────────────────────────────────────────────
-    new Setting(containerEl).setName("Vault Q&A (RAG)").setHeading();
-    new Setting(containerEl)
+  // ── Vault Q&A ─────────────────────────────────────────────────────────────
+
+  private renderRag(el: HTMLElement): void {
+    const s = this.s;
+    new Setting(el)
       .setName("Embedding model")
-      .setDesc("Needs the key of the model's provider. Without an index, Vault Q&A falls back to keyword search.")
+      .setDesc(
+        "Needs the key of that model's provider. Without an index, Vault Q&A falls back to keyword search."
+      )
       .addDropdown((d) => {
         for (const spec of getAllEmbeddingModels()) {
           d.addOption(spec.model, `${spec.provider} · ${spec.model}`);
@@ -164,20 +317,23 @@ export class AxxaSettingsTab extends PluginSettingTab {
           const spec = getAllEmbeddingModels().find((m) => m.model === v);
           s.ragEmbeddingModel = v;
           if (spec) s.ragEmbeddingProvider = spec.provider;
-          await save();
+          await this.save();
         });
       });
-    new Setting(containerEl)
+    new Setting(el)
       .setName("Auto re-index on note changes")
-      .setDesc("Re-embeds only changed notes (costs tokens). Only runs once an index exists.")
+      .setDesc(
+        "Re-embeds only changed notes (costs tokens). Only runs once an index exists."
+      )
       .addToggle((t) =>
         t.setValue(s.ragAutoReindex).onChange(async (v) => {
           s.ragAutoReindex = v;
-          await save();
+          await this.save();
         })
       );
+
     const size = this.plugin.vectorIndex?.size ?? 0;
-    new Setting(containerEl)
+    new Setting(el)
       .setName("Index")
       .setDesc(
         size > 0
@@ -202,37 +358,62 @@ export class AxxaSettingsTab extends PluginSettingTab {
             this.display();
           })
       );
+  }
 
-    // ── Agent ─────────────────────────────────────────────────────────────
-    new Setting(containerEl).setName("Agent").setHeading();
-    new Setting(containerEl)
+  // ── Agent ─────────────────────────────────────────────────────────────────
+
+  private renderAgent(el: HTMLElement): void {
+    const s = this.s;
+    new Setting(el)
       .setName("Permission level")
-      .setDesc("ask = confirm every write · vault = only deletes ask · yolo = only irreversible actions ask.")
+      .setDesc(
+        "ask = confirm every write · vault = only deletes ask · yolo = only irreversible actions ask."
+      )
       .addDropdown((d) => {
         for (const [id, label] of Object.entries(PERMISSION_LABELS)) {
           d.addOption(id, label);
         }
         d.setValue(s.agentPermissionLevel).onChange(async (v) => {
           s.agentPermissionLevel = v as PermissionLevel;
-          await save();
+          await this.save();
         });
       });
-    new Setting(containerEl)
+    new Setting(el)
       .setName("Show diff before applying edits")
+      .setDesc("Preview every change the agent wants to write.")
       .addToggle((t) =>
         t.setValue(s.agentDiffApproval).onChange(async (v) => {
           s.agentDiffApproval = v;
-          await save();
+          await this.save();
         })
       );
   }
+
+  // ── Mobile ────────────────────────────────────────────────────────────────
+
+  private renderMobile(el: HTMLElement): void {
+    const s = this.s;
+    new Setting(el)
+      .setName("Fullscreen")
+      .setDesc(
+        "Hides the drawer chrome and the global navbar while AXXA is the active tab. The menu button stays, so you are never stuck."
+      )
+      .addToggle((t) =>
+        t.setValue(s.mobileFullscreen === true).onChange(async (v) => {
+          s.mobileFullscreen = v;
+          await this.save();
+        })
+      );
+  }
+
+  // ── ações ─────────────────────────────────────────────────────────────────
 
   private async runIndex(): Promise<void> {
     if (this.indexing) {
       this.indexing.abort();
       return;
     }
-    const s = this.plugin.settings;
+    const s = this.s;
     this.indexing = new AbortController();
     const notice = new Notice("Indexing vault…", 0);
     this.display();

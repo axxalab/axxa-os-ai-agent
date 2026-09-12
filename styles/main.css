@@ -1279,3 +1279,98 @@ body.is-mobile .axxa-root .axxa-history-more {
     transition: none;
   }
 }
+
+/* ── Settings em abas ──────────────────────────────────────────────────────
+   Vive FORA da `.axxa-root` (o Obsidian monta a aba de settings em outra
+   árvore), então o escopo aqui é `.axxa-settings-root` — a classe que o
+   SettingsTab põe no container. Mesma regra de especificidade do resto: o
+   app.css estiliza `button` com 0,1,1, então os seletores daqui prefixam a
+   raiz pra passar na frente. */
+
+.axxa-settings-root .axxa-settings-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  margin-bottom: var(--size-4-2);
+  padding-bottom: var(--size-4-2);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.axxa-settings-root button.axxa-stab {
+  appearance: none;
+  -webkit-appearance: none;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: var(--size-4-2) var(--size-4-3);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+
+.axxa-settings-root button.axxa-stab:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.axxa-settings-root button.axxa-stab.is-active {
+  border-color: var(--interactive-accent);
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+  font-weight: var(--font-semibold);
+}
+
+.axxa-settings-root .axxa-settings-blurb {
+  margin: 0 0 var(--size-4-4);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+/* Sub-abas dos providers: o ponto mostra quem já está configurado, então dá
+   pra ver o estado dos seis sem abrir um por um. */
+.axxa-settings-root .axxa-settings-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  margin-bottom: var(--size-4-3);
+}
+
+.axxa-settings-root button.axxa-ssub {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: var(--size-4-1) var(--size-4-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m, 8px);
+  background-color: var(--background-modifier-hover);
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+
+.axxa-settings-root button.axxa-ssub.is-active {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+  font-weight: var(--font-semibold);
+}
+
+.axxa-settings-root .axxa-ssub-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background-color: var(--text-faint);
+}
+
+.axxa-settings-root button.axxa-ssub.is-ready .axxa-ssub-dot {
+  background-color: var(--interactive-accent);
+}

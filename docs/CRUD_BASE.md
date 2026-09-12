@@ -140,8 +140,12 @@ item ativo, sheets.
   histórico (o ⋯ de um chat).
 - `ProjectsView.tsx` — CRUD de projetos, fontes, chats do projeto.
 - `SkillsView.tsx` — CRUD de skills; "Use" injeta o corpo no composer.
-- `SettingsTab.ts` — chave + modelo por provider, defaults, pastas, RAG
-  (modelo de embedding + **Index vault**), permissões do agente.
+- `SettingsTab.ts` — Settings em ABAS por classe de configuração: Providers
+  (com uma **sub-aba por provider**, ponto indicando quem já está configurado),
+  Chat (defaults da conversa nova), Vault (pastas), Vault Q&A (embedding +
+  índice), Agent (permissões) e Mobile (fullscreen, só no celular). A aba
+  escolhida sobrevive ao re-render. Preview: `npm run preview` com `?s=settings`
+  (o stub do Obsidian implementa a `Setting` API o bastante pra renderizar).
 - `modals.ts` — `PromptModal`, `ConfirmModal`, `NotePickerModal`,
   `openPluginSettings`.
 - `Markdown.tsx` — `MarkdownRenderer` nativo (texto puro enquanto streama).
