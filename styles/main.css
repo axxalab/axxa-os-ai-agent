@@ -108,10 +108,40 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
   display: none;
 }
 
-/* Nada de pintar body / .app-container / .mobile-navbar: são superfícies do
-   APP, e pintá-las com a nossa cor é o mesmo erro de deixar preto onde o
-   chrome nativo devia aparecer. No fullscreen quem pinta é a CADEIA DA GAVETA
-   (regra mais abaixo), que é o que a casca 0.2.37 faz. */
+/* Fora do fullscreen NÃO se pinta nada do app: a faixa entre o nosso painel e o
+   chrome nativo da gaveta é área nativa e tem que ficar com a cor dele (foi o
+   erro que deixou preto onde devia ser cinza).
+   DENTRO do fullscreen é o oposto: o chrome nativo não está mais em cena e a
+   tela inteira é nossa. Na 0.2.37 isso bastava porque o canvas do app naquela
+   casca era `--background-secondary` — a MESMA cor que o Obsidian pinta atrás,
+   então o que sobrava embaixo da gaveta não destoava. Aqui o canvas virou
+   `--background-primary` (pedido: corpo na cor do composer), então o que fica
+   atrás precisa acompanhar. Só pintura, nenhum efeito de layout. */
+body.is-mobile.axxa-fullscreen,
+body.is-mobile.axxa-fullscreen .app-container,
+body.is-mobile.axxa-fullscreen .horizontal-main-container,
+body.is-mobile.axxa-fullscreen .workspace,
+body.is-mobile.axxa-fullscreen .workspace > .mod-root {
+  background-color: var(--background-primary) !important;
+}
+
+/* E a faixa do safe-area de baixo: se `100dvh` não inclui a área da barra de
+   gestos, a gaveta termina acima dela. Este preenchimento cobre exatamente
+   essa altura com o nosso canvas, sem mexer em altura nenhuma (é `fixed`, fora
+   do fluxo, e não recebe toque). */
+body.is-mobile.axxa-fullscreen .workspace-drawer.axxa-fullscreen::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: max(
+    env(safe-area-inset-bottom, 0px),
+    var(--safe-area-inset-bottom, 0px)
+  );
+  background-color: var(--background-primary);
+  pointer-events: none;
+}
 
 /* Tela cheia de verdade. A gaveta direita do mobile é de largura PARCIAL
    (deixa uma faixa do editor atrás), então esconder o chrome não basta: ela
