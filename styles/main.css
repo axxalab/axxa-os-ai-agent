@@ -23,23 +23,102 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 0 !important;
   overflow: hidden;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 0 !important;
+  /* Clearance de baixo: safe-area + status bar do desktop
+     (--axxa-status-bar-clearance é publicada pelo main.ts). */
+  padding-bottom: calc(
+    var(--safe-area-inset-bottom, 0px) + var(--axxa-status-bar-clearance, 0px)
+  ) !important;
 }
 
-/* Mobile: reserva o espaço da navbar nativa abaixo do composer — mas só
-   enquanto ela está visível. Com o teclado aberto o Obsidian empurra a navbar
-   pra fora (`margin-bottom: … - var(--keyboard-height)`), então a reserva
-   encolhe na mesma medida e o composer desce até o teclado. */
+/* Mobile: reserva o espaço da navbar nativa abaixo do composer.
+   `:not(.axxa-fullscreen)` = modo normal; no fullscreen a navbar some e a
+   reserva sai junto. NÃO remover como órfã — `:not()` de classe ausente CASA.
+   Com o teclado aberto o Obsidian empurra a navbar pra fora
+   (`margin-bottom: … - var(--keyboard-height)`), então a reserva encolhe na
+   mesma medida e o composer desce até o teclado. */
 @supports selector(body:has(*)) {
-  body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
+  body.is-mobile:not(.axxa-fullscreen):has(.mobile-navbar):not(.is-hidden-nav)
     .workspace-leaf-content[data-type="axxa-os-ai-agent"]
     .view-content {
     padding-bottom: max(
       0px,
-      calc(var(--navbar-height, 50px) - var(--keyboard-height, 0px))
+      calc(
+        var(--navbar-height, 50px) +
+          max(var(--safe-area-inset-bottom, 0px), var(--size-4-3)) -
+          var(--keyboard-height, 0px)
+      )
     ) !important;
   }
+}
+
+/* ── fullscreen mobile + teclado ───────────────────────────────────────────
+   Classes postas pela AxxaView (applyFullscreen / observer do teclado):
+   `axxa-fullscreen` na .workspace-drawer que hospeda a AXXA (sempre a direita)
+   e no body; `axxa-keyboard-open` na gaveta quando o teclado abre. É a feature
+   inteira — sem estas regras o toggle vira no-op. O escopo ancora na classe DA
+   GAVETA pra nunca tocar a esquerda. */
+
+body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-header,
+body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-tab-options {
+  display: none !important;
+}
+
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-header {
+  display: none !important;
+}
+
+/* A navbar global é IRMÃ das gavetas → ancora no body; `body.axxa-fullscreen`
+   só existe com a AXXA ativa e visível na gaveta direita. */
+body.is-mobile.axxa-fullscreen .mobile-navbar {
+  display: none;
+}
+
+/* Tela cheia de verdade: a gaveta direita é parcial por padrão. Sem
+   `position: fixed` de propósito — preserva o gesto nativo de swipe pra
+   fechar. Desconta a altura do teclado pro composer subir junto. */
+body.is-mobile .workspace-drawer.axxa-fullscreen {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: calc(100vh - var(--keyboard-height, 0px)) !important;
+  height: calc(100dvh - var(--keyboard-height, 0px)) !important;
+}
+
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-container,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-content {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Teclado aberto: o chrome da gaveta sai pra devolver altura à conversa. */
+body.is-mobile .workspace-drawer.axxa-keyboard-open .workspace-drawer-header,
+body.is-mobile
+  .workspace-drawer.axxa-keyboard-open
+  .workspace-drawer-tab-options {
+  display: none !important;
+}
+
+/* …e a gaveta termina no topo do teclado. Isto é o que faz o composer subir
+   no modo NORMAL: a gaveta é `position: fixed; top: 0; bottom: 0`, então o
+   `.app-container` encolher (o que o Obsidian faz com --keyboard-height) não
+   a alcança. Com `height` definida, o `bottom: 0` é ignorado — é a mesma
+   técnica que o modo fullscreen já usava. */
+body.is-mobile .workspace-drawer.axxa-keyboard-open {
+  height: calc(100vh - var(--keyboard-height, 0px)) !important;
+  height: calc(100dvh - var(--keyboard-height, 0px)) !important;
 }
 
 /* ── tokens ────────────────────────────────────────────────────────────── */
@@ -75,9 +154,6 @@
   /* Em painel lateral o app pinta a view com --background-secondary; fixa a
      mesma superfície do composer pra não haver duas cores no mesmo painel. */
   background-color: var(--background-primary);
-  /* Teclado: sobra que o app não compensou sozinho (ver useKeyboardInset.ts).
-     Fica 0px no desktop e sempre que o Obsidian já encolheu a view. */
-  padding-bottom: var(--axxa-kb, 0px);
   font-size: var(--font-ui-small);
   color: var(--text-normal);
 }

@@ -95,6 +95,9 @@ export interface AxxaSettings {
   agentPermissionLevel: string;
   /** Preview/diff antes de gravar qualquer escrita do agente. */
   agentDiffApproval: boolean;
+  // ---- Mobile
+  /** Tela cheia no mobile: esconde o chrome da gaveta e a navbar global. */
+  mobileFullscreen: boolean;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -162,6 +165,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   ragMobileSkipNoticeShown: false,
   agentPermissionLevel: "ask",
   agentDiffApproval: true,
+  mobileFullscreen: false,
 };
 
 export default class AxxaPlugin extends Plugin {

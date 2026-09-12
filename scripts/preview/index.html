@@ -18,12 +18,37 @@
       }
       /* Estrutura mínima do workspace pra .view-content receber o mesmo
          tratamento que recebe dentro do app. */
+      .workspace-drawer,
+      .workspace-drawer-active-tab-container,
+      .workspace-drawer-active-tab-content,
       .workspace-leaf,
       .workspace-leaf-content {
         display: flex;
         flex-direction: column;
         height: 100%;
         min-height: 0;
+      }
+      /* Como no app: gaveta fixa na viewport (top/bottom), parcial por
+         padrão — o fullscreen a leva a 100vw. É justamente por ser `fixed`
+         que ela NÃO encolhe junto com o .app-container. */
+      .workspace-drawer.mod-right {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: 92vw;
+        background: var(--background-primary);
+      }
+      .workspace-drawer-header,
+      .view-header {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        background: var(--background-secondary);
+        border-bottom: 1px solid var(--background-modifier-border);
+        color: var(--text-muted);
+        font-size: 13px;
       }
       i[data-lucide] {
         display: inline-flex;
@@ -88,22 +113,30 @@
     </style>
   </head>
   <body class="theme-dark is-mobile">
+    <!-- Mesma árvore do mobile: a AXXA mora na gaveta DIREITA, dentro da aba
+         ativa. É o que o CSS de fullscreen/teclado ancora. -->
     <div class="app-container">
-      <div class="horizontal-main-container">
-        <div class="workspace">
-          <div class="workspace-leaf">
-            <div
-              class="workspace-leaf-content"
-              data-type="axxa-os-ai-agent"
-              data-mode="preview"
-            >
-              <div class="view-content" id="app"></div>
+      <div class="workspace-drawer mod-right" id="drawer">
+        <div class="workspace-drawer-header">
+          <div class="workspace-drawer-header-name">AXXA OS</div>
+        </div>
+        <div class="workspace-drawer-active-tab-container">
+          <div class="workspace-drawer-active-tab-content">
+            <div class="workspace-leaf">
+              <div
+                class="workspace-leaf-content"
+                data-type="axxa-os-ai-agent"
+                data-mode="preview"
+              >
+                <div class="view-header"><span>AXXA OS</span></div>
+                <div class="view-content" id="app"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <!-- navbar nativa do mobile: existe pra exercitar a reserva de espaço
-           do composer (`:has(.mobile-navbar)`) e o recuo com o teclado. -->
+      <!-- navbar nativa: exercita a reserva de espaço do composer
+           (`:has(.mobile-navbar)`), o recuo com o teclado e o fullscreen. -->
       <div class="mobile-navbar"></div>
     </div>
     <script>
@@ -119,6 +152,15 @@
       const kb = Number(q.get("kb") ?? 0);
       document.documentElement.style.setProperty("--keyboard-height", kb + "px");
       document.body.classList.toggle("preview-kb", kb > 0);
+      // As classes abaixo são as MESMAS que a AxxaView põe nos ancestrais
+      // (applyFullscreen / observer do teclado). Aqui elas entram na mão
+      // porque o preview renderiza <App> direto, sem a ItemView.
+      const drawer = document.getElementById("drawer");
+      drawer.classList.toggle("axxa-keyboard-open", kb > 0);
+      document.body.classList.toggle("axxa-keyboard-open", kb > 0);
+      const fs = q.get("fs") === "1";
+      drawer.classList.toggle("axxa-fullscreen", fs);
+      document.body.classList.toggle("axxa-fullscreen", fs);
       // Extensões de HTMLElement que o Obsidian injeta e o browser não tem.
       HTMLElement.prototype.empty = function () {
         while (this.firstChild) this.removeChild(this.firstChild);

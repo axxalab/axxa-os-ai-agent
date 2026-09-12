@@ -4,6 +4,7 @@
 // Abre por cima do painel (scrim + slide), fecha no scrim, no Esc e sempre que
 // leva o usuário pra algum lugar.
 
+import { Platform } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type AxxaPlugin from "../main";
 import type { ChatSession } from "../core/session";
@@ -80,6 +81,15 @@ export function Drawer({
     if (!q) return chats;
     return chats.filter((c) => (c.title || "Untitled").toLowerCase().includes(q));
   }, [chats, query]);
+
+  // Fullscreen mobile: a AxxaView reage ao saveSettings e alterna as classes
+  // nos ancestrais (ver AxxaView.applyFullscreen). A saída fica sempre aqui,
+  // a um toque do hambúrguer — a nossa topbar não some no modo cheio.
+  const toggleFullscreen = async () => {
+    plugin.settings.mobileFullscreen = !plugin.settings.mobileFullscreen;
+    await plugin.saveSettings();
+    onClose();
+  };
 
   const go = (id: ViewId) => {
     onNavigate(id);
@@ -160,6 +170,25 @@ export function Drawer({
               <span>{n.label}</span>
             </button>
           ))}
+          {Platform.isMobile && (
+            <button
+              type="button"
+              className="axxa-nav-item"
+              aria-pressed={plugin.settings.mobileFullscreen === true}
+              onClick={() => void toggleFullscreen()}
+            >
+              <Icon
+                name={
+                  plugin.settings.mobileFullscreen ? "minimize-2" : "maximize-2"
+                }
+              />
+              <span>
+                {plugin.settings.mobileFullscreen
+                  ? "Exit fullscreen"
+                  : "Fullscreen"}
+              </span>
+            </button>
+          )}
           <button
             type="button"
             className="axxa-nav-item"

@@ -57,9 +57,15 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
   e modelo ficam nos pills e **somem quando a sessão trava** (aparecem na
   topbar); o effort continua livre. O modo se escolhe na StarterScreen —
   depois do 1º envio ele não muda mais.
-- `useKeyboardInset.ts` — mobile: o composer acompanha o teclado. Usa a
-  reserva da navbar encolhendo com `--keyboard-height` (variável do próprio
-  Obsidian) e, como rede, mede a sobra do viewport visível em `--axxa-kb`.
+- `AxxaView.tsx` também hospeda o que mexe em ancestrais (só classes, nunca
+  API interna): **observer do teclado** (o Obsidian publica `--keyboard-height`
+  inline no `<html>`; um MutationObserver no atributo `style` marca
+  `.axxa-keyboard-open` na gaveta e no body) e o **fullscreen mobile**
+  (`.axxa-fullscreen`, opt-in em `settings.mobileFullscreen`, toggle no menu
+  lateral). Ambos portados da casca 0.3.0, onde já rodaram no aparelho.
+- `fullscreenScope.ts` — regras PURAS de escopo do fullscreen (`isRightDrawer`,
+  `isDrawerOnScreen`), testadas em `tests/fullscreenScope.test.ts`. Ficam fora
+  da view de propósito: erradas, deixam o Obsidian sem chrome.
 - `Icon.tsx` — ícone Lucide via `setIcon` nativo.
 - `menu.ts` — `openPicker` / `openActions` sobre o `Menu` do Obsidian (sheet
   no mobile, popup no desktop).
@@ -118,8 +124,10 @@ coisa. Por isso todo seletor de `styles/main.css` vem prefixado com
 `.axxa-root` e existe um bloco de reset no topo do arquivo.
 
 Cenários: `?s=empty|thread`, `&theme=light|dark`, `&device=mobile|desktop`,
-`&kb=300` (simula o teclado com a mesma `--keyboard-height` do app, e desenha
-a navbar nativa pra exercitar a reserva de espaço do composer).
+`&kb=300` (simula o teclado com a mesma `--keyboard-height` do app) e `&fs=1`
+(fullscreen). O harness monta a mesma árvore do mobile — gaveta direita
+`position: fixed`, header da gaveta, view-header e navbar — e aplica as mesmas
+classes que a `AxxaView` põe nos ancestrais.
 
 ## Build / testes / release
 
