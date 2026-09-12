@@ -84,6 +84,11 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
 
   E fora do fullscreen: `.view-content` leva `z-index: 10` pra ficar na
   frente da leaf nativa de baixo — senão o composer aparece atrás do editor.
+- `layoutReport.ts` — **Inspector**: o comando "Copy mobile layout report"
+  copia os números do layout NO APARELHO (viewport, visualViewport,
+  `--keyboard-height`, `env(safe-area-*)`, classes e geometria da gaveta, quem
+  pinta cada superfície). Teclado e tela cheia dependem de coisas que só o
+  aparelho sabe — sem o relatório, cada ajuste vira uma release de palpite.
 - `Icon.tsx` — ícone Lucide via `setIcon` nativo.
 - `Sheet.tsx` — **bottom sheet** do composer (provider · modelo · effort):
   puxador, X à esquerda com título centralizado, cartões agrupados com linhas

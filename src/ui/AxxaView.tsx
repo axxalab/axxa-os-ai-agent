@@ -16,6 +16,7 @@ import type AxxaPlugin from "../main";
 import { ChatSession } from "../core/session";
 import { App } from "./App";
 import { isDrawerOnScreen, isRightDrawer } from "./fullscreenScope";
+import { buildLayoutReport } from "./layoutReport";
 
 export const VIEW_TYPE_AXXA = "axxa-os-ai-agent";
 
@@ -139,11 +140,19 @@ export class AxxaView extends ItemView {
 
     const el = drawer as HTMLElement;
     if (open && vv) {
-      el.style.setProperty("--axxa-kb-viewport", `${Math.round(vv.height)}px`);
+      // offsetTop entra porque a gaveta é ancorada no TOPO do layout viewport:
+      // a altura útil vai do topo até o fim da parte visível.
+      const usable = Math.round(vv.height + vv.offsetTop);
+      el.style.setProperty("--axxa-kb-viewport", `${usable}px`);
     } else {
       el.style.removeProperty("--axxa-kb-viewport");
     }
   };
+
+  /** Relatório do layout no aparelho (comando "Copy mobile layout report"). */
+  layoutReport(): string {
+    return buildLayoutReport(this.containerEl);
+  }
 
   private setupKeyboardObserver(): void {
     if (!Platform.isMobile) return;

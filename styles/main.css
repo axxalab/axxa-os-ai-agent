@@ -89,6 +89,19 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
   display: none;
 }
 
+/* A faixa embaixo da gaveta (área da barra de gestos do Android). Se ela está
+   DENTRO da WebView, quem pinta é o body/.app-container — e aparecia cinza
+   porque o tema pinta essas superfícies com outra cor que a nossa. Pintando
+   as duas com o canvas do app, a faixa some no preto do painel. (Se a barra
+   for desenhada pelo SO fora da WebView, nenhum CSS a alcança — o relatório
+   do comando "Copy mobile layout report" diz qual dos dois casos é.) */
+body.is-mobile.axxa-fullscreen,
+body.is-mobile.axxa-fullscreen .app-container,
+body.is-mobile.axxa-fullscreen .horizontal-main-container,
+body.is-mobile.axxa-fullscreen .workspace {
+  background-color: var(--background-primary) !important;
+}
+
 /* Tela cheia de verdade — 100vw × 100dvh. A gaveta direita do mobile é de
    largura PARCIAL (deixa uma faixa do editor atrás) e o `top/bottom: 0` dela
    não basta: sem altura NOSSA, a cadeia de containers não propaga a viewport
@@ -168,6 +181,10 @@ body.is-mobile
    A altura é MEDIDA (`--axxa-kb-viewport` = visualViewport.height, posta pela
    AxxaView), nunca `100dvh - --keyboard-height`: no Android a WebView já
    encolhe com o teclado, e a subtração cortava uma segunda vez. */
+/* O primeiro seletor cobre o caso fullscreen com especificidade MAIOR que a
+   regra de tela cheia (que também define height): assim o teclado ganha por
+   especificidade, não por ordem no arquivo — que é frágil e já mordeu antes. */
+body.is-mobile .workspace-drawer.axxa-fullscreen.axxa-keyboard-open,
 body.is-mobile .workspace-drawer.axxa-keyboard-open {
   height: var(--axxa-kb-viewport, 100dvh) !important;
 }

@@ -602,6 +602,31 @@ export default class AxxaPlugin extends Plugin {
       callback: () => this.activateView(),
     });
 
+    // Inspector: copia os números do layout no APARELHO (viewport, teclado,
+    // safe-area, geometria da gaveta). Sem isso, ajustar mobile vira palpite.
+    this.addCommand({
+      id: "copy-layout-report",
+      name: "Copy mobile layout report",
+      callback: async () => {
+        const view = this.app.workspace
+          .getLeavesOfType(VIEW_TYPE_AXXA)
+          .map((leaf) => leaf.view)
+          .find((v): v is AxxaView => v instanceof AxxaView);
+        if (!view) {
+          new Notice("Open the AXXA panel first.");
+          return;
+        }
+        const report = view.layoutReport();
+        console.log(report);
+        try {
+          await navigator.clipboard.writeText(report);
+          new Notice("Layout report copied.");
+        } catch {
+          new Notice("Report in the console (clipboard blocked).");
+        }
+      },
+    });
+
     // Settings tab — aparece em Settings -> Community Plugins -> AXXA OS.
     this.settingsTab = new AxxaSettingsTab(this.app, this);
     this.addSettingTab(this.settingsTab);
