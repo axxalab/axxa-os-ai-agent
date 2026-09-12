@@ -41,6 +41,16 @@ React/Preact mínimo sobre componentes nativos do Obsidian. O CSS em
 `styles/main.css` tira **todas** as cores das variáveis do tema do usuário —
 só os tokens de forma (espaço, raio, alvo de toque) são nossos.
 
+**Canvas** (`--axxa-canvas`, no `body`): primary no claro, **secondary no
+escuro** — mapeamento da casca 0.2.37. Não é estética: `--background-secondary`
+é a mesma cor que o Obsidian usa na gaveta do mobile
+(`--mobile-sidebar-background`), então painel e gaveta ficam idênticos e
+nenhuma sobra aparece (a reserva da navbar, os cantos arredondados da gaveta, a
+área do safe-area). Com o canvas em primary, cada fresta dessas virava uma
+emenda visível e uma release de remendo. `--axxa-raised` é a outra das duas
+superfícies (o passo de contraste): balão do usuário, trilho do segmented,
+item ativo, sheets.
+
 **Redesign, camada 1 (tela inicial do chat + menu lateral):**
 
 - `AxxaView.tsx` — a ItemView; cria uma `ChatSession` por view.

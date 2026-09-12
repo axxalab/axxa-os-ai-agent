@@ -130,7 +130,7 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
     .horizontal-main-container,
   body.is-mobile:has(.workspace-drawer.axxa-fullscreen) .workspace,
   body.is-mobile:has(.workspace-drawer.axxa-fullscreen) .workspace > .mod-root {
-    background-color: var(--background-primary) !important;
+    background-color: var(--axxa-canvas) !important;
   }
 }
 
@@ -139,7 +139,7 @@ body.is-mobile.axxa-fullscreen .app-container,
 body.is-mobile.axxa-fullscreen .horizontal-main-container,
 body.is-mobile.axxa-fullscreen .workspace,
 body.is-mobile.axxa-fullscreen .workspace > .mod-root {
-  background-color: var(--background-primary) !important;
+  background-color: var(--axxa-canvas) !important;
 }
 
 /* A MESMA faixa, no modo NORMAL com o teclado aberto: o Obsidian levanta a
@@ -155,7 +155,7 @@ body.is-mobile.axxa-keyboard-open .horizontal-main-container,
 body.is-mobile.axxa-keyboard-open .workspace,
 body.is-mobile.axxa-keyboard-open .workspace > .mod-root,
 body.is-mobile.axxa-keyboard-open .mobile-navbar {
-  background-color: var(--background-primary) !important;
+  background-color: var(--axxa-canvas) !important;
 }
 
 /* E a faixa do safe-area de baixo: se `100dvh` não inclui a área da barra de
@@ -172,7 +172,7 @@ body.is-mobile .workspace-drawer.axxa-fullscreen::after {
     env(safe-area-inset-bottom, 0px),
     var(--safe-area-inset-bottom, 0px)
   );
-  background-color: var(--background-primary);
+  background-color: var(--axxa-canvas);
   pointer-events: none;
 }
 
@@ -252,7 +252,7 @@ body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-leaf-content[data-type="axxa-os-ai-agent"]
   .view-content {
-  background-color: var(--background-primary);
+  background-color: var(--axxa-canvas);
 }
 
 /* Teclado aberto: o chrome da gaveta sai pra devolver altura à conversa. */
@@ -268,6 +268,26 @@ body.is-mobile
 
 /* ── tokens ────────────────────────────────────────────────────────────── */
 
+/* CANVAS — a superfície do app. Mapeamento da casca 0.2.37: primary no claro,
+   secondary no ESCURO. Não é capricho: `--background-secondary` é a mesma cor
+   que o Obsidian usa na gaveta do mobile (`--mobile-sidebar-background`), então
+   painel e gaveta ficam da MESMA cor e nenhuma sobra aparece — os 4px de
+   reserva, os cantos arredondados da gaveta, a área do safe-area. Com o canvas
+   em primary, cada uma dessas frestas virava uma emenda visível.
+   `--axxa-raised` é a superfície um passo acima do canvas (a outra das duas),
+   usada em balão do usuário, trilho do segmented, item ativo e sheets.
+   Ficam no BODY porque regras fora da .axxa-root (a cadeia da gaveta no
+   fullscreen) também precisam delas. */
+body {
+  --axxa-canvas: var(--background-primary);
+  --axxa-raised: var(--background-secondary);
+}
+
+body.theme-dark {
+  --axxa-canvas: var(--background-secondary);
+  --axxa-raised: var(--background-primary);
+}
+
 .axxa-root {
   --axxa-1: 4px;
   --axxa-2: 8px;
@@ -282,7 +302,6 @@ body.is-mobile
 
   --axxa-line: var(--background-modifier-border);
   --axxa-hover: var(--background-modifier-hover);
-  --axxa-raised: var(--background-secondary);
   --axxa-tap: 34px;
   --axxa-drawer-w: min(300px, 84%);
   /* Medida de leitura: em painel largo a conversa centraliza em vez de
@@ -298,7 +317,7 @@ body.is-mobile
   overflow: hidden;
   /* Em painel lateral o app pinta a view com --background-secondary; fixa a
      mesma superfície do composer pra não haver duas cores no mesmo painel. */
-  background-color: var(--background-primary);
+  background-color: var(--axxa-canvas);
   font-size: var(--font-ui-small);
   color: var(--text-normal);
 }
@@ -490,7 +509,7 @@ body.is-mobile
   left: var(--axxa-1);
   width: calc((100% - var(--axxa-1) * 2) / 3);
   border-radius: var(--axxa-r-pill);
-  background-color: var(--background-primary);
+  background-color: var(--axxa-canvas);
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.18),
     0 0 0 1px var(--axxa-line);
@@ -667,12 +686,13 @@ body.is-mobile
 /* Um bloco só: campo em cima, barra de controles embaixo, sem borda de topo
    cortando o painel — o contorno é o próprio .axxa-input. */
 .axxa-root .axxa-composer {
+  position: relative;
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   padding: var(--axxa-2) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2)
     var(--axxa-3);
-  background-color: var(--background-primary);
+  background-color: var(--axxa-canvas);
 }
 
 .axxa-root .axxa-input {
@@ -682,7 +702,7 @@ body.is-mobile
   padding: var(--axxa-3);
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-lg);
-  background-color: var(--background-primary);
+  background-color: var(--axxa-canvas);
 }
 
 .axxa-root .axxa-input:focus-within {
@@ -693,6 +713,19 @@ body.is-mobile
   display: flex;
   align-items: center;
   gap: var(--axxa-2);
+}
+
+/* Fade curto acima do composer: as mensagens dissolvem no canvas antes da
+   faixa sólida, em vez de cortarem secas na borda (0.2.37). */
+.axxa-root .axxa-composer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -22px;
+  height: 22px;
+  background: linear-gradient(to top, var(--axxa-canvas), transparent);
+  pointer-events: none;
 }
 
 .axxa-root .axxa-pills {
@@ -955,7 +988,7 @@ body.is-mobile
   width: 34px;
   height: 34px;
   border-radius: var(--axxa-r-pill);
-  background-color: var(--background-primary);
+  background-color: var(--axxa-canvas);
   font-size: 15px;
 }
 
@@ -996,7 +1029,7 @@ body.is-mobile
   flex-direction: column;
   gap: var(--axxa-3);
   padding: var(--axxa-3);
-  background-color: var(--background-primary);
+  background-color: var(--axxa-canvas);
   border-right: 1px solid var(--axxa-line);
   box-shadow: 0 0 24px rgba(0, 0, 0, 0.18);
   transform: translateX(-100%);
