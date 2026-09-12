@@ -74,6 +74,11 @@ item ativo, sheets.
   (`.axxa-fullscreen`, opt-in em `settings.mobileFullscreen`, toggle no menu
   lateral). Ambos portados da casca 0.2.x, onde já rodaram no aparelho.
 
+  O desconto do teclado no fullscreen sai de `--axxa-kb`, MEDIDO pela AxxaView
+  (quanto de `100dvh` está fora da área visível), com `--keyboard-height` só de
+  fallback: onde a var do app não é publicada o desconto virava zero, e onde a
+  WebView encolhe sozinha ela faria descontar duas vezes.
+
   **Regra da altura da gaveta** (0.1.254 e 0.1.255, em
   `docs/archive/MOBILE-FULLSCREEN.md`): quando o teclado abre, o **próprio
   Obsidian** encolhe a gaveta até o topo do teclado. Então o plugin **não

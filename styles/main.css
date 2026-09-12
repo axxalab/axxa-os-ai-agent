@@ -194,8 +194,13 @@ body.is-mobile .workspace-drawer.axxa-fullscreen {
      composer certo no modo normal (0.1.255). Ao fixar a altura aqui a caixa
      deixa de encolher sozinha, então o desconto devolve o comportamento.
      dvh acompanha a barra dinâmica do WebView; cai pra vh onde não existe. */
-  height: calc(100vh - var(--keyboard-height, 0px)) !important;
-  height: calc(100dvh - var(--keyboard-height, 0px)) !important;
+  /* O desconto é `--axxa-kb`: a AxxaView MEDE quanto de `100dvh` está fora da
+     área visível. Ela tem precedência sobre `--keyboard-height` de propósito —
+     onde a WebView encolhe sozinha, `100dvh` já vem menor e a var do Obsidian
+     faria descontar o teclado duas vezes (a medida dá 0 nesse caso, certo).
+     A var do app fica só de fallback, pra quando não houver visualViewport. */
+  height: calc(100vh - var(--axxa-kb, var(--keyboard-height, 0px))) !important;
+  height: calc(100dvh - var(--axxa-kb, var(--keyboard-height, 0px))) !important;
 }
 
 /* Propaga a viewport pela cadeia de containers até a view da AXXA. */

@@ -145,7 +145,38 @@ export class AxxaView extends ItemView {
     const open = active && signal >= KEYBOARD_MIN_PX;
     drawer.classList.toggle("axxa-keyboard-open", open);
     this.containerEl.doc.body.classList.toggle("axxa-keyboard-open", open);
+
+    // Quanto descontar de `100dvh` no FULLSCREEN (a única altura nossa). A
+    // regra da 0.2.37 desconta `--keyboard-height`, mas essa var pode não vir —
+    // é o mesmo motivo pelo qual a classe acima precisou do visualViewport.
+    // Aqui medimos o valor exato: quanto de `100dvh` está fora da área visível.
+    // Serve nos dois mundos: se a WebView já encolheu, `100dvh` também encolheu
+    // e a diferença é zero (nada a descontar, sem contar o teclado duas vezes);
+    // se o teclado só cobre, a diferença é exatamente a parte coberta.
+    const el = drawer as HTMLElement;
+    if (open && vv) {
+      const dvh = this.measureDvh();
+      const visibleBottom = vv.height + vv.offsetTop;
+      el.style.setProperty(
+        "--axxa-kb",
+        `${Math.max(0, Math.round(dvh - visibleBottom))}px`
+      );
+    } else {
+      el.style.removeProperty("--axxa-kb");
+    }
   };
+
+  /** Mede quanto vale `100dvh` agora (nenhuma API JS expõe isso direto). */
+  private measureDvh(): number {
+    const doc = this.containerEl.doc;
+    const probe = doc.createElement("div");
+    probe.style.cssText =
+      "position:fixed;top:0;left:0;width:0;height:100dvh;visibility:hidden;pointer-events:none";
+    doc.body.appendChild(probe);
+    const h = probe.getBoundingClientRect().height;
+    probe.remove();
+    return h;
+  }
 
   /** Relatório do layout no aparelho (comando "Copy mobile layout report"). */
   layoutReport(): string {

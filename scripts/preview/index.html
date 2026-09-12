@@ -182,8 +182,18 @@
       // MOBILE-FULLSCREEN.md, 0.1.255): quando o teclado abre, o PRÓPRIO app
       // encolhe a gaveta até o topo do teclado. O plugin não mexe nisso — só
       // o fullscreen, que impõe altura própria, desconta a var.
+      // Dois mundos, escolhidos por &webview=resize :
+      //  - padrão: o teclado só COBRE. O Obsidian encolhe a gaveta (é o que
+      //    mantém o modo normal certo) e, no fullscreen, a altura é nossa —
+      //    então a AxxaView publica --axxa-kb com a parte coberta.
+      //  - resize: a WebView encolheu sozinha; não há nada a descontar.
+      const resizeMode = q.get("webview") === "resize";
       const syncKb = () => {
-        drawer.style.height = kb > 0 ? window.innerHeight - kb + "px" : "";
+        drawer.style.height = kb > 0 && !resizeMode
+          ? window.innerHeight - kb + "px"
+          : "";
+        if (kb > 0) drawer.style.setProperty("--axxa-kb", (resizeMode ? 0 : kb) + "px");
+        else drawer.style.removeProperty("--axxa-kb");
       };
       syncKb();
       window.addEventListener("resize", syncKb);
