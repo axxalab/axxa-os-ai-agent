@@ -262,6 +262,37 @@ body.is-mobile
   display: none !important;
 }
 
+/* ── adaptação desta casca (fora do bloco verbatim) ────────────────────────
+   Na 0.2.37 o composer era `position: absolute; bottom: 18px`, então os 4px de
+   `--size-4-1` que a regra acima deixa na base da view ficavam invisíveis —
+   o composer já flutuava acima deles. Nesta casca ele é o último item em FLUXO
+   e encosta na base do painel, então esses 4px aparecem como uma faixa abaixo
+   dele. Zeramos só esse respiro: o primeiro seletor repete o da regra
+   transplantada (mesma especificidade, vence por vir depois) e o segundo cobre
+   a árvore sem `.workspace-tab-container`. A reserva da navbar continua
+   intocada — tem especificidade maior e ali o respiro é desejado. */
+body.is-mobile
+  .workspace-tab-container
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content,
+body.is-mobile
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+  padding-bottom: 0 !important;
+}
+
+/* Mesma raiz: o bloco acima traz `bottom: 18px` pro composer no fullscreen,
+   porque lá ele era `position: absolute`. Aqui ele é item em FLUXO (só
+   `position: relative`, pra ancorar o fade), e `bottom` num elemento relativo
+   DESLOCA — era um vão de 18px embaixo dele no modo cheio. O seletor repete o
+   de lá pra ter a mesma especificidade e vencer por ordem. */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .axxa-root
+  .axxa-composer:not([data-mode="vault-qa"]) {
+  bottom: auto;
+}
+
 /* ── tokens ────────────────────────────────────────────────────────────── */
 
 /* CANVAS — a superfície do app. Mapeamento da casca 0.2.37: primary no claro,
