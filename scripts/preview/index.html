@@ -196,12 +196,30 @@
       //    então a AxxaView publica --axxa-kb com a parte coberta.
       //  - resize: a WebView encolheu sozinha; não há nada a descontar.
       const resizeMode = q.get("webview") === "resize";
+      // &drawer=fixed: o Obsidian NÃO encolhe a gaveta (o caso em que o
+      // composer sumia). O painel se vira sozinho com o inset medido.
+      const drawerFixed = q.get("drawer") === "fixed";
       const syncKb = () => {
-        drawer.style.height = kb > 0 && !resizeMode
-          ? window.innerHeight - kb + "px"
-          : "";
-        if (kb > 0) drawer.style.setProperty("--axxa-kb", (resizeMode ? 0 : kb) + "px");
+        drawer.style.height =
+          kb > 0 && !resizeMode && !drawerFixed
+            ? window.innerHeight - kb + "px"
+            : "";
+        if (kb > 0)
+          drawer.style.setProperty("--axxa-kb", (resizeMode ? 0 : kb) + "px");
         else drawer.style.removeProperty("--axxa-kb");
+        // Espelha AxxaView.syncRootInset: mede quanto do painel ficou embaixo
+        // da área visível e devolve como padding.
+        const root = document.querySelector(".axxa-root");
+        if (root) {
+          root.style.setProperty("--axxa-kb-inset", "0px");
+          const rect = root.getBoundingClientRect();
+          const visibleBottom = window.innerHeight - kb;
+          const hidden = Math.min(
+            Math.max(0, Math.round(rect.bottom - visibleBottom)),
+            Math.round(rect.height * 0.9)
+          );
+          if (hidden > 0) root.style.setProperty("--axxa-kb-inset", hidden + "px");
+        }
       };
       syncKb();
       window.addEventListener("resize", syncKb);

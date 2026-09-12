@@ -79,6 +79,13 @@ item ativo, sheets.
   fallback: onde a var do app não é publicada o desconto virava zero, e onde a
   WebView encolhe sozinha ela faria descontar duas vezes.
 
+  **Garantia do composer** (`AxxaView.syncRootInset`): tudo que depende de
+  entender o que o Obsidian faz com a gaveta já errou de todo jeito — se
+  encolhe, se publica a var, se o `dvh` acompanha. Então existe uma medida que
+  não depende de nada disso: quanto do NOSSO painel ficou abaixo da área
+  visível vira `--axxa-kb-inset`, o padding-bottom da `.axxa-root`. Se a gaveta
+  já encolheu, dá 0 — não tem como contar o teclado duas vezes.
+
   **Regra da altura da gaveta** (0.1.254 e 0.1.255, em
   `docs/archive/MOBILE-FULLSCREEN.md`): quando o teclado abre, o **próprio
   Obsidian** encolhe a gaveta até o topo do teclado. Então o plugin **não

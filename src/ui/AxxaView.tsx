@@ -175,7 +175,39 @@ export class AxxaView extends ItemView {
     const el = drawer as HTMLElement;
     if (open) el.style.setProperty("--axxa-kb", `${shortfall}px`);
     else el.style.removeProperty("--axxa-kb");
+
+    this.syncRootInset(vvBottom);
   };
+
+  /**
+   * GARANTIA FINAL: o composer tem que estar visível, aconteça o que acontecer
+   * com a gaveta.
+   *
+   * Tudo acima depende de entender o que o Obsidian faz — se encolhe a gaveta,
+   * se publica a var, se o dvh acompanha. Isso muda entre versões e plataformas
+   * e já errou de todo jeito possível. Esta medida não depende de nada disso:
+   * pergunta quanto do NOSSO painel ficou abaixo da área visível e devolve
+   * exatamente isso como padding. Se a gaveta já encolheu, a resposta é 0 e
+   * nada acontece — não tem como contar o teclado duas vezes.
+   *
+   * Mede com o padding zerado, senão a conta se realimenta.
+   */
+  private syncRootInset(visibleBottom: number): void {
+    const root = this.containerEl.querySelector<HTMLElement>(".axxa-root");
+    if (!root) return;
+    const win = this.containerEl.doc.defaultView;
+    if (!win?.visualViewport) return;
+    root.style.setProperty("--axxa-kb-inset", "0px");
+    const rect = root.getBoundingClientRect();
+    if (rect.height <= 0) return;
+    // Cap: durante a animação de abrir/fechar a gaveta o retângulo pode estar
+    // fora da tela; sem o teto isso viraria um padding absurdo por um frame.
+    const hidden = Math.min(
+      Math.max(0, Math.round(rect.bottom - visibleBottom)),
+      Math.round(rect.height * 0.9)
+    );
+    if (hidden > 0) root.style.setProperty("--axxa-kb-inset", `${hidden}px`);
+  }
 
   /** Mede quanto vale `100dvh` agora (nenhuma API JS expõe isso direto). */
   private measureDvh(): number {
@@ -235,6 +267,10 @@ export class AxxaView extends ItemView {
     this.lastKeyboardHeight = -1;
     const drawer = this.containerEl.closest(".workspace-drawer");
     drawer?.classList.remove("axxa-keyboard-open");
+    (drawer as HTMLElement | null)?.style.removeProperty("--axxa-kb");
+    this.containerEl
+      .querySelector<HTMLElement>(".axxa-root")
+      ?.style.removeProperty("--axxa-kb-inset");
     this.containerEl.doc.body.classList.remove("axxa-keyboard-open");
   }
 

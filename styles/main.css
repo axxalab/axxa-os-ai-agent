@@ -318,6 +318,11 @@ body.theme-dark {
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  box-sizing: border-box;
+  /* Quanto do painel ficou embaixo da área visível (medido pela AxxaView).
+     É a garantia de que o composer aparece mesmo quando a gaveta não encolhe:
+     zero quando ela encolhe, exato quando não. */
+  padding-bottom: var(--axxa-kb-inset, 0px);
   overflow: hidden;
   /* Em painel lateral o app pinta a view com --background-secondary; fixa a
      mesma superfície do composer pra não haver duas cores no mesmo painel. */
