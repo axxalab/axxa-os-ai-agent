@@ -24,6 +24,7 @@
       .workspace-drawer,
       .workspace-drawer-active-tab-container,
       .workspace-drawer-active-tab-content,
+      .workspace-tab-container,
       .workspace-leaf,
       .workspace-leaf-content {
         display: flex;
@@ -32,6 +33,7 @@
       }
       .workspace-drawer-active-tab-container,
       .workspace-drawer-active-tab-content,
+      .workspace-tab-container,
       .workspace-leaf,
       .workspace-leaf-content {
         flex: 1 1 auto;
@@ -132,6 +134,10 @@
         </div>
         <div class="workspace-drawer-active-tab-container">
           <div class="workspace-drawer-active-tab-content">
+            <!-- `.workspace-tab-container` FAZ PARTE da cadeia real do mobile
+                 (ver docs/archive/MOBILE-FULLSCREEN.md) e regras nossas
+                 dependem dele. Sem este elo o harness não testa o que existe. -->
+            <div class="workspace-tab-container">
             <div class="workspace-leaf">
               <div
                 class="workspace-leaf-content"
@@ -141,6 +147,7 @@
                 <div class="view-header"><span>AXXA OS</span></div>
                 <div class="view-content" id="app"></div>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -181,6 +188,9 @@
       syncKb();
       window.addEventListener("resize", syncKb);
       window.visualViewport?.addEventListener("resize", syncKb);
+      // `is-hidden-nav` é o que o Obsidian marca quando esconde a navbar —
+      // acontece com o teclado aberto. É o gatilho que tira a nossa reserva.
+      document.body.classList.toggle("is-hidden-nav", q.get("nav") === "hidden");
       const fs = q.get("fs") === "1";
       drawer.classList.toggle("axxa-fullscreen", fs);
       document.body.classList.toggle("axxa-fullscreen", fs);

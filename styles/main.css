@@ -43,65 +43,47 @@
   ) !important;
 }
 
-/* Mobile: reserva o espaço da navbar nativa abaixo do composer.
-   `:not(.axxa-fullscreen)` = modo normal; no fullscreen a navbar some e a
-   reserva sai junto. NÃO remover como órfã — `:not()` de classe ausente CASA.
-   Com o teclado aberto o Obsidian empurra a navbar pra fora
-   (`margin-bottom: … - var(--keyboard-height)`), então a reserva encolhe na
-   mesma medida e o composer desce até o teclado. */
-@supports selector(body:has(*)) {
-  body.is-mobile:not(.axxa-fullscreen):has(.mobile-navbar):not(.is-hidden-nav)
-    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-    .view-content {
-    padding-bottom: max(
-      0px,
-      calc(
-        var(--navbar-height, 50px) +
-          max(var(--safe-area-inset-bottom, 0px), var(--size-4-3)) -
-          var(--keyboard-height, 0px)
-      )
-    ) !important;
-  }
-}
-
-/* A cadeia DENTRO da gaveta precisa preencher a altura, senão a leaf fica do
-   tamanho do conteúdo e o composer não encosta na base. Vale sempre, não só no
-   fullscreen (regra da casca 0.2.x). */
-@supports selector(:has(*)) {
-  .workspace-drawer-active-tab-container:has(
-      .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-    )
-    .workspace-tab-container,
-  .workspace-drawer-active-tab-container:has(
-      .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-    )
-    .workspace-leaf:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
-    height: 100%;
-    width: 100%;
-  }
-}
-
-/* A superfície da view é NOSSA — inclusive a área de padding. Sem isto, a
-   reserva da navbar na base da `.view-content` é pintada com o fundo da GAVETA
-   (`--mobile-sidebar-background`, cinza no dark), e vira uma barra visível
-   embaixo do painel. Padding pinta com o fundo do PRÓPRIO elemento: então o
-   elemento tem que ter o nosso. (Mesma lição do 0.1.250, que fez isso só no
-   fullscreen — vale sempre.) */
+/* A superfície da view é NOSSA, inclusive na área de padding — padding pinta
+   com o fundo do PRÓPRIO elemento, e sem isto qualquer reserva sai com o fundo
+   da GAVETA (cinza no dark). */
 .workspace-leaf-content[data-type="axxa-os-ai-agent"],
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
   background-color: var(--background-primary);
 }
 
-/* E com o teclado ABERTO a reserva some: o Obsidian já levantou a gaveta pro
-   topo do teclado e a navbar ficou atrás dele — reservar o espaço dela de novo
-   é a faixa morta entre o composer e o teclado. É a mesma regra que a casca
-   0.2.x aplicava ao composer (`bottom: 0` em `.axxa-keyboard-open`), aqui no
-   lugar onde a reserva mora neste layout. */
+/* MOBILE — a cadeia passa por `.workspace-tab-container`, e é ela que zera a
+   reserva de baixo: no mobile a base é só um respiro de 4px. Sem esta regra o
+   que vale é a regra genérica acima (safe-area + clearance), e o clearance é a
+   altura MEDIDA da navbar, guardada pelo main.ts — ou seja, uma faixa da
+   altura da navbar sobrando dentro da view. Era a barra cinza. (Regra
+   verbatim da casca 0.2.37, que eu não tinha portado.) */
 body.is-mobile
-  .workspace-drawer.axxa-keyboard-open
+  .workspace-tab-container
   .workspace-leaf-content[data-type="axxa-os-ai-agent"]
   .view-content {
-  padding-bottom: 0 !important;
+  padding-bottom: var(--size-4-1) !important;
+}
+
+/* A reserva da navbar é SOMADA por cima, e só enquanto a navbar existe de
+   fato: `:has(.mobile-navbar)` e `:not(.is-hidden-nav)` — o Obsidian marca
+   `is-hidden-nav` quando esconde a navegação (é o que acontece com o teclado
+   aberto), e aí a reserva simplesmente deixa de casar.
+   `:not(.axxa-keyboard-open)` é o cinto de segurança pro caso de alguma versão
+   não marcar `is-hidden-nav`. `:not(.axxa-fullscreen)` tira a reserva no modo
+   cheio. NÃO remover nenhum como órfão: `:not()` de classe ausente CASA. */
+@supports selector(body:has(*)) {
+  body.is-mobile:not(.axxa-fullscreen):not(.axxa-keyboard-open):has(
+      .mobile-navbar
+    ):not(.is-hidden-nav)
+    .workspace-tab-container
+    .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+    .view-content {
+    padding-bottom: calc(
+      var(--navbar-height, 50px) +
+        max(var(--safe-area-inset-bottom, 0px), var(--size-4-3)) +
+        var(--size-4-1)
+    ) !important;
+  }
 }
 
 /* ── fullscreen mobile + teclado ───────────────────────────────────────────
