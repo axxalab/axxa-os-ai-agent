@@ -23,9 +23,6 @@ export const VIEW_TYPE_AXXA = "axxa-os-ai-agent";
 /** Espera a animação da gaveta terminar antes de reavaliar a geometria. */
 const DRAWER_SETTLE_MS = 260;
 
-/** Abaixo disto é barra do OS / arredondamento, não teclado. */
-const KEYBOARD_MIN_PX = 120;
-
 export class AxxaView extends ItemView {
   private root: Root | null = null;
   private session: ChatSession | null = null;
@@ -34,7 +31,6 @@ export class AxxaView extends ItemView {
   private drawerCheckTimer: number | null = null;
   /** Último valor lido de --keyboard-height (early-return do observer). */
   private lastKeyboardHeight = -1;
-  private viewportCleanup: (() => void) | null = null;
   private settingsUnsub: (() => void) | null = null;
 
   constructor(
@@ -118,108 +114,29 @@ export class AxxaView extends ItemView {
    * no CSS, que o teclado é descontado.
    */
   private syncKeyboard = (): void => {
+    // Verbatim da casca 0.2.37: o Obsidian mobile expõe `--keyboard-height` no
+    // <html> quando o teclado abre/fecha; observamos o atributo `style` e
+    // reagimos. Cacheia o último valor pra dar early-return nas mudanças de
+    // style que não mexem no teclado.
+    const docEl = this.containerEl.doc.documentElement;
+    const keyboardHeight = parseFloat(
+      docEl.style.getPropertyValue("--keyboard-height") || "0"
+    );
+    if (keyboardHeight === this.lastKeyboardHeight) return;
+    this.lastKeyboardHeight = keyboardHeight;
+
+    // Re-busca a gaveta a cada update — sobrevive a migração entre janelas.
     const drawer = this.containerEl.closest(".workspace-drawer");
     if (!drawer) return;
-    const win = this.containerEl.doc.defaultView;
-    const vv = win?.visualViewport ?? null;
-
-    // Sinal 1: a var do Obsidian. A casca antiga lia só o style INLINE do
-    // <html> — era onde a versão daquela época escrevia. Se a versão atual
-    // escrever de outro jeito (numa folha de estilo, ou no body), a leitura
-    // inline devolve vazio e a gente acha que não há teclado. Então lemos o
-    // valor COMPUTADO do <html> e do body também, e ficamos com o maior.
-    const docEl = this.containerEl.doc.documentElement;
-    const body = this.containerEl.doc.body;
-    const readVar = (el: HTMLElement, computed: boolean): number => {
-      const raw = computed
-        ? win?.getComputedStyle(el).getPropertyValue("--keyboard-height")
-        : el.style.getPropertyValue("--keyboard-height");
-      const n = parseFloat(raw || "0");
-      return Number.isFinite(n) ? n : 0;
-    };
-    const published = Math.max(
-      readVar(docEl, false),
-      readVar(docEl, true),
-      readVar(body, true)
-    );
-    // Sinal 2: quanto da janela o teclado cobre, pelo visualViewport.
-    const vvBottom = vv
-      ? vv.height + vv.offsetTop
-      : (win?.innerHeight ?? 0);
-    const covered =
-      vv && win ? Math.max(0, win.innerHeight - vvBottom) : 0;
-
-    // Sinal 3, e o mais importante: quanto de `100dvh` ficou FORA da área
-    // visível. É o único que enxerga o caso em que a janela encolhe mas o
-    // `dvh` não acompanha — e é exatamente o valor que a altura do fullscreen
-    // precisa descontar. Quando o dvh já encolheu sozinho, dá 0 (nada a
-    // descontar, sem contar o teclado duas vezes).
-    const shortfall = vv
-      ? Math.max(0, Math.round(this.measureDvh() - vvBottom))
-      : 0;
-
-    const signal = Math.max(published, covered, shortfall);
-    if (signal === this.lastKeyboardHeight) return;
-    this.lastKeyboardHeight = signal;
-
-    // Multi-tab: só vale com a AXXA na aba ativa da gaveta.
+    // Multi-tab: a view precisa ser a aba ativa da gaveta.
     const active = !!this.containerEl.closest(
       ".workspace-drawer-active-tab-content"
     );
-    const open = active && signal >= KEYBOARD_MIN_PX;
-
-    drawer.classList.toggle("axxa-keyboard-open", open);
-    this.containerEl.doc.body.classList.toggle("axxa-keyboard-open", open);
-
-    // O desconto do fullscreen é o shortfall medido acima.
-    const el = drawer as HTMLElement;
-    if (open) el.style.setProperty("--axxa-kb", `${shortfall}px`);
-    else el.style.removeProperty("--axxa-kb");
-
-    this.syncRootInset(vvBottom);
+    const isOpen = active && keyboardHeight > 0;
+    drawer.classList.toggle("axxa-keyboard-open", isOpen);
+    // No body também, pros modais (que ficam FORA da gaveta) se reposicionarem.
+    this.containerEl.doc.body.classList.toggle("axxa-keyboard-open", isOpen);
   };
-
-  /**
-   * GARANTIA FINAL: o composer tem que estar visível, aconteça o que acontecer
-   * com a gaveta.
-   *
-   * Tudo acima depende de entender o que o Obsidian faz — se encolhe a gaveta,
-   * se publica a var, se o dvh acompanha. Isso muda entre versões e plataformas
-   * e já errou de todo jeito possível. Esta medida não depende de nada disso:
-   * pergunta quanto do NOSSO painel ficou abaixo da área visível e devolve
-   * exatamente isso como padding. Se a gaveta já encolheu, a resposta é 0 e
-   * nada acontece — não tem como contar o teclado duas vezes.
-   *
-   * Mede com o padding zerado, senão a conta se realimenta.
-   */
-  private syncRootInset(visibleBottom: number): void {
-    const root = this.containerEl.querySelector<HTMLElement>(".axxa-root");
-    if (!root) return;
-    const win = this.containerEl.doc.defaultView;
-    if (!win?.visualViewport) return;
-    root.style.setProperty("--axxa-kb-inset", "0px");
-    const rect = root.getBoundingClientRect();
-    if (rect.height <= 0) return;
-    // Cap: durante a animação de abrir/fechar a gaveta o retângulo pode estar
-    // fora da tela; sem o teto isso viraria um padding absurdo por um frame.
-    const hidden = Math.min(
-      Math.max(0, Math.round(rect.bottom - visibleBottom)),
-      Math.round(rect.height * 0.9)
-    );
-    if (hidden > 0) root.style.setProperty("--axxa-kb-inset", `${hidden}px`);
-  }
-
-  /** Mede quanto vale `100dvh` agora (nenhuma API JS expõe isso direto). */
-  private measureDvh(): number {
-    const doc = this.containerEl.doc;
-    const probe = doc.createElement("div");
-    probe.style.cssText =
-      "position:fixed;top:0;left:0;width:0;height:100dvh;visibility:hidden;pointer-events:none";
-    doc.body.appendChild(probe);
-    const h = probe.getBoundingClientRect().height;
-    probe.remove();
-    return h;
-  }
 
   /** Relatório do layout no aparelho (comando "Copy mobile layout report"). */
   layoutReport(): string {
@@ -238,39 +155,16 @@ export class AxxaView extends ItemView {
     this.keyboardObserver = new MutationObserver(this.syncKeyboard);
     this.keyboardObserver.observe(docEl, {
       attributes: true,
-      attributeFilter: ["style", "class"],
+      attributeFilter: ["style"],
     });
-    this.keyboardObserver.observe(this.containerEl.doc.body, {
-      attributes: true,
-      attributeFilter: ["style", "class"],
-    });
-
-    // ...e o viewport visível, que é o sinal 2. A GEOMETRIA não sai daqui:
-    // quem encolhe a gaveta é o Obsidian (e, no fullscreen, a nossa altura).
-    const win = this.containerEl.doc.defaultView;
-    const vv = win?.visualViewport;
-    vv?.addEventListener("resize", this.syncKeyboard);
-    vv?.addEventListener("scroll", this.syncKeyboard);
-    win?.addEventListener("resize", this.syncKeyboard);
-    this.viewportCleanup = () => {
-      vv?.removeEventListener("resize", this.syncKeyboard);
-      vv?.removeEventListener("scroll", this.syncKeyboard);
-      win?.removeEventListener("resize", this.syncKeyboard);
-    };
   }
 
   private teardownKeyboardObserver(): void {
     this.keyboardObserver?.disconnect();
     this.keyboardObserver = null;
-    this.viewportCleanup?.();
-    this.viewportCleanup = null;
     this.lastKeyboardHeight = -1;
     const drawer = this.containerEl.closest(".workspace-drawer");
     drawer?.classList.remove("axxa-keyboard-open");
-    (drawer as HTMLElement | null)?.style.removeProperty("--axxa-kb");
-    this.containerEl
-      .querySelector<HTMLElement>(".axxa-root")
-      ?.style.removeProperty("--axxa-kb-inset");
     this.containerEl.doc.body.classList.remove("axxa-keyboard-open");
   }
 

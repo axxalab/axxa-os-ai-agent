@@ -17,230 +17,124 @@
    aqui vem prefixado com `.axxa-root` (0,2,x) e existe o bloco de reset
    abaixo. Regra: nada de seletor sem o prefixo, nada de !important. */
 
-/* ── host ──────────────────────────────────────────────────────────────── */
+/* ── host + fullscreen + teclado ───────────────────────────────────────────
+   BLOCO VERBATIM da casca 0.2.37 (`git show 0.2.37:styles/main.css`, linhas
+   5–242), que é a versão que roda certa no aparelho. Única adaptação: o nome
+   da nossa barra de topo (`.axxa-header` → `.axxa-topbar`). Não reescrever: se
+   algo aqui parecer errado, conferir antes contra aquela versão. */
 
-.workspace-leaf-content[data-type="axxa-os-ai-agent"] {
-  position: relative;
-  isolation: auto;
-}
 
-/* z-index 10 (achado do Inspector, 0.2.x): põe a view da AXXA na FRENTE da
-   leaf nativa de baixo — sem isto o composer aparece atrás do editor. */
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
   padding-left: 0 !important;
   padding-right: 0 !important;
   padding-top: 0 !important;
-  /* Clearance de baixo: safe-area + status bar do desktop
-     (--axxa-status-bar-clearance é publicada pelo main.ts). */
   padding-bottom: calc(
-    var(--safe-area-inset-bottom, 0px) + var(--axxa-status-bar-clearance, 0px)
-  ) !important;
+        var(--safe-area-inset-bottom, 0px) +
+        /* (P1-37) era --copilot-status-bar-clearance — var de OUTRO plugin;
+           o main.ts publica --axxa-status-bar-clearance e ninguém consumia. */
+        var(--axxa-status-bar-clearance, 0px) +
+        var(--size-4-1)
+    ) !important;
 }
-
-/* NÃO pintar a leaf/.view-content fora do fullscreen: a faixa entre o nosso
-   painel e o chrome nativo da gaveta (o seletor "AXXA OS" da base) é ÁREA
-   NATIVA e tem que ficar com a cor do app. A pintura da cadeia existe só no
-   modo cheio, onde o chrome nativo não está mais lá — é como a 0.2.37 faz. */
-
-/* MOBILE — a base da reserva é só um respiro de 4px; a da navbar é somada
-   por cima (regra abaixo). A 0.2.37 escrevia isto com `.workspace-tab-container`
-   na cadeia, mas esse elo pode não existir na versão atual do Obsidian — e sem
-   casar, o que valia era a regra genérica (safe-area + clearance da navbar
-   MEDIDA e guardada pelo main.ts), ou seja um vão da altura da navbar embaixo
-   do composer. Aqui a regra ancora só no que é garantido: body.is-mobile + a
-   nossa leaf. */
 body.is-mobile
-  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
-  .view-content {
+.workspace-tab-container
+.workspace-leaf-content[data-type="axxa-os-ai-agent"]
+.view-content {
   padding-bottom: var(--size-4-1) !important;
 }
-
-/* A reserva da navbar é SOMADA por cima, e só enquanto a navbar existe de
-   fato: `:has(.mobile-navbar)` e `:not(.is-hidden-nav)` — o Obsidian marca
-   `is-hidden-nav` quando esconde a navegação (é o que acontece com o teclado
-   aberto), e aí a reserva simplesmente deixa de casar.
-   `:not(.axxa-keyboard-open)` é o cinto de segurança pro caso de alguma versão
-   não marcar `is-hidden-nav`. `:not(.axxa-fullscreen)` tira a reserva no modo
-   cheio. NÃO remover nenhum como órfão: `:not()` de classe ausente CASA. */
+/* Navbar mobile: reserva o padding do composer ACIMA da navbar nativa.
+   :not(.axxa-fullscreen) = regra do modo normal; fullscreen (futuro) opta
+   por sair dela. NÃO remover como órfã — :not() de classe ausente CASA. */
 @supports selector(body:has(*)) {
-  body.is-mobile:not(.axxa-fullscreen):not(.axxa-keyboard-open):has(
-      .mobile-navbar
-    ):not(.is-hidden-nav)
+  body.is-mobile:not(.axxa-fullscreen):has(.mobile-navbar):not(.is-hidden-nav)
+    .workspace-tab-container
     .workspace-leaf-content[data-type="axxa-os-ai-agent"]
     .view-content {
     padding-bottom: calc(
-      var(--navbar-height, 50px) +
-        max(var(--safe-area-inset-bottom, 0px), var(--size-4-3)) +
-        var(--size-4-1)
-    ) !important;
+            var(--navbar-height, 50px) +
+            max(
+                var(--safe-area-inset-bottom, 0px),
+                var(--size-4-3)
+            ) +
+            var(--size-4-1)
+        ) !important;
   }
 }
-
-/* ── fullscreen mobile + teclado ───────────────────────────────────────────
-   Classes postas pela AxxaView (applyFullscreen / observer do teclado):
-   `axxa-fullscreen` na .workspace-drawer que hospeda a AXXA (sempre a direita)
-   e no body; `axxa-keyboard-open` na gaveta quando o teclado abre. É a feature
-   inteira — sem estas regras o toggle vira no-op. O escopo ancora na classe DA
-   GAVETA pra nunca tocar a esquerda. */
-
+/* ============================================================
+   [DS:fullscreen] Fullscreen mobile — opt-in pelo menu do header.
+   Classes aplicadas pelo AxxaView (applyFullscreen): `axxa-fullscreen` no
+   .workspace-drawer (o que hospeda a AXXA — sempre o DIREITO) e no body.
+   ESCOPO: o chrome e o dimensionamento do drawer ancoram na classe DO DRAWER,
+   então só o drawer direito é afetado (nunca o esquerdo). Só a navbar global
+   ancora no body (é irmã dos drawers). Dimensionamos a gaveta pra viewport
+   inteira e escondemos chrome REDUNDANTE quando a AXXA está ativa. !important
+   vence layout nativo/inline do Obsidian. Reversível: o AxxaView remove as
+   classes no onClose.
+   ============================================================ */
+/* Chrome do drawer: no mobile o Obsidian mostra DOIS pedaços redundantes — o
+   header do drawer (topo) e a barra de opções de tab na BASE (ícone da view +
+   "AXXA OS" + seletor de abas ⇕). Essa dupla `.workspace-drawer-header` +
+   `.workspace-drawer-tab-options` é EXATAMENTE a que a regra axxa-keyboard-open
+   já esconde em produção quando o teclado abre — aqui espelhamos a mesma dupla
+   comprovada (a v0.1.244 chutou `-active-tab-header` e errou o nome da barra da
+   base). Ambos somem no fullscreen: temos header e navegação próprios. Escondê-
+   los cola a top bar abaixo da status bar do SO e limpa a base. Só display:none
+   — o layer de gesto (swipe pra fechar) fica intacto.
+   ESCOPO: ancorado SÓ na classe `.axxa-fullscreen` DO DRAWER (o AxxaView a põe
+   no drawer que hospeda a AXXA, sempre o DIREITO). Nada de âncora no body aqui —
+   `body.axxa-fullscreen .workspace-drawer-header` esconderia também o chrome do
+   drawer ESQUERDO (arquivos/busca) se aberto com a AXXA ativa. A classe no
+   drawer é auto-escopante, igual ao axxa-keyboard-open. */
 body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-header,
 body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-tab-options {
   display: none !important;
 }
-
+/* Header NATIVO da ItemView (.view-header) — separado do chrome do drawer. No
+   mobile ele pode renderizar acima do nosso conteúdo e empurrar a top bar pra
+   baixo (era o gap que sobrava depois de limpar drawer-header + tab-options).
+   Escondido no fullscreen: temos header próprio. Escopado ao data-type da AXXA
+   pra nunca tocar outra view. */
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-leaf-content[data-type="axxa-os-ai-agent"]
   .view-header {
   display: none !important;
 }
-
-/* A navbar global é IRMÃ das gavetas → ancora no body; `body.axxa-fullscreen`
-   só existe com a AXXA ativa e visível na gaveta direita. */
-body.is-mobile.axxa-fullscreen .mobile-navbar {
-  display: none;
-}
-
-/* Fora do fullscreen NÃO se pinta nada do app: a faixa entre o nosso painel e o
-   chrome nativo da gaveta é área nativa e tem que ficar com a cor dele (foi o
-   erro que deixou preto onde devia ser cinza).
-   DENTRO do fullscreen é o oposto: o chrome nativo não está mais em cena e a
-   tela inteira é nossa. Na 0.2.37 isso bastava porque o canvas do app naquela
-   casca era `--background-secondary` — a MESMA cor que o Obsidian pinta atrás,
-   então o que sobrava embaixo da gaveta não destoava. Aqui o canvas virou
-   `--background-primary` (pedido: corpo na cor do composer), então o que fica
-   atrás precisa acompanhar. Só pintura, nenhum efeito de layout. */
-/* Escopo pela classe da GAVETA (via :has), não pela do body: a do body exige a
-   checagem geométrica de visibilidade — ela existe pra não sumir com a navbar
-   quando a gaveta sai da tela, e é essencial pro `display: none` da navbar.
-   Mas pintura não tem esse risco, e se aquela checagem falhar num aparelho a
-   pintura some junto sem motivo. Aqui a pintura passa a depender só de a
-   gaveta estar em modo cheio. */
-@supports selector(:has(*)) {
-  body.is-mobile:has(.workspace-drawer.axxa-fullscreen),
-  body.is-mobile:has(.workspace-drawer.axxa-fullscreen) .app-container,
-  body.is-mobile:has(.workspace-drawer.axxa-fullscreen)
-    .horizontal-main-container,
-  body.is-mobile:has(.workspace-drawer.axxa-fullscreen) .workspace,
-  body.is-mobile:has(.workspace-drawer.axxa-fullscreen) .workspace > .mod-root {
-    background-color: var(--axxa-canvas) !important;
-  }
-}
-
-body.is-mobile.axxa-fullscreen,
-body.is-mobile.axxa-fullscreen .app-container,
-body.is-mobile.axxa-fullscreen .horizontal-main-container,
-body.is-mobile.axxa-fullscreen .workspace,
-body.is-mobile.axxa-fullscreen .workspace > .mod-root {
-  background-color: var(--axxa-canvas) !important;
-}
-
-/* A MESMA faixa, no modo NORMAL com o teclado aberto: o Obsidian levanta a
-   gaveta e a navbar flutuante pra cima do teclado, e o que fica entre o fim do
-   nosso painel e o teclado é superfície do APP — largura inteira, inclusive
-   fora da gaveta. Aqui pintamos só essas superfícies de fora; a leaf e a
-   `.view-content` ficam de FORA da regra de propósito: pintá-las é o que
-   deixou preta a faixa do chrome nativo (0.5.15/0.5.16). Sai quando o teclado
-   fecha. */
-body.is-mobile.axxa-keyboard-open,
-body.is-mobile.axxa-keyboard-open .app-container,
-body.is-mobile.axxa-keyboard-open .horizontal-main-container,
-body.is-mobile.axxa-keyboard-open .workspace,
-body.is-mobile.axxa-keyboard-open .workspace > .mod-root,
-body.is-mobile.axxa-keyboard-open .mobile-navbar {
-  background-color: var(--axxa-canvas) !important;
-}
-
-/* E a faixa do safe-area de baixo: se `100dvh` não inclui a área da barra de
-   gestos, a gaveta termina acima dela. Este preenchimento cobre exatamente
-   essa altura com o nosso canvas, sem mexer em altura nenhuma (é `fixed`, fora
-   do fluxo, e não recebe toque). */
-body.is-mobile .workspace-drawer.axxa-fullscreen::after {
-  content: "";
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: max(
-    env(safe-area-inset-bottom, 0px),
-    var(--safe-area-inset-bottom, 0px)
-  );
-  background-color: var(--axxa-canvas);
-  pointer-events: none;
-}
-
-/* Tela cheia de verdade. A gaveta direita do mobile é de largura PARCIAL
-   (deixa uma faixa do editor atrás), então esconder o chrome não basta: ela
-   passa a ocupar a largura inteira. Sem `position: fixed` de propósito —
-   preserva o transform nativo, então o swipe pra fechar continua.
-   `!important` vence largura inline que o Obsidian tenha setado. */
-body.is-mobile .workspace-drawer.axxa-fullscreen {
-  width: 100vw !important;
-  max-width: 100vw !important;
-  /* A gaveta tem `border-radius: var(--mobile-sidebar-radius)` — em tela cheia
-     os cantos arredondados deixam o fundo de trás aparecer. */
-  border-radius: 0 !important;
-  /* E menos a altura do teclado (0.1.254). Esta é a ÚNICA altura nossa na
-     gaveta, e ela existe só porque o fullscreen também impõe a largura. Fora
-     daqui NÃO definimos altura nenhuma: quando o teclado abre, o próprio
-     Obsidian encolhe a gaveta até o topo do teclado — é isso que mantém o
-     composer certo no modo normal (0.1.255). Ao fixar a altura aqui a caixa
-     deixa de encolher sozinha, então o desconto devolve o comportamento.
-     dvh acompanha a barra dinâmica do WebView; cai pra vh onde não existe. */
-  /* O desconto é `--axxa-kb`: a AxxaView MEDE quanto de `100dvh` está fora da
-     área visível. Ela tem precedência sobre `--keyboard-height` de propósito —
-     onde a WebView encolhe sozinha, `100dvh` já vem menor e a var do Obsidian
-     faria descontar o teclado duas vezes (a medida dá 0 nesse caso, certo).
-     A var do app fica só de fallback, pra quando não houver visualViewport. */
-  height: calc(100vh - var(--axxa-kb, var(--keyboard-height, 0px))) !important;
-  height: calc(100dvh - var(--axxa-kb, var(--keyboard-height, 0px))) !important;
-}
-
-/* Propaga a viewport pela cadeia de containers até a view da AXXA. */
-body.is-mobile
-  .workspace-drawer.axxa-fullscreen
-  .workspace-drawer-active-tab-container,
-body.is-mobile
-  .workspace-drawer.axxa-fullscreen
-  .workspace-drawer-active-tab-content,
-body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-tab-container,
-body.is-mobile
-  .workspace-drawer.axxa-fullscreen
-  .workspace-leaf-content[data-type="axxa-os-ai-agent"] {
-  width: 100vw !important;
-  max-width: 100vw !important;
-  height: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-/* A reserva da base sai: no fullscreen não há navbar, e o container do drawer
-   JÁ começa abaixo da status bar e termina acima da barra de gestos — o
-   Obsidian aplica o safe-area na própria árvore. Somar o inset de novo aqui
-   (ou por dentro da topbar / do composer) contaria o mesmo espaço DUAS vezes:
-   foi o bug do 0.1.252. Topbar e composer mantêm o padding normal. */
+/* ── EDGE-TO-EDGE (v0.1.250) ──────────────────────────────────────────────
+   A superfície do app vai de BORDA A BORDA; quem respeita o safe-area é o
+   CONTEÚDO (padding dentro do header e do composer), nunca um espaçamento
+   externo. Antes o `padding-top` morava no .axxa-root: a faixa da status bar
+   era pintada com o CANVAS (secondary no dark) enquanto a header é primary —
+   e a base ganhava outra faixa vinda do padding-bottom da view-content. Eram
+   exatamente as duas barras que sobravam na tela cheia. */
 body.is-mobile .workspace-drawer.axxa-fullscreen .axxa-root {
   padding-top: 0 !important;
 }
-
+/* A header ocupa o topo do container e mantém o padding NORMAL.
+   v0.1.252 — corrigido com print do device: o container do drawer JÁ começa
+   abaixo da status bar do SO (o Obsidian aplica o inset na própria árvore), e
+   somar `safe-area-inset-top` aqui contava o mesmo espaço duas vezes: a
+   superfície preta subia certo, mas empurrava avatar/título/botões pra baixo,
+   deixando ~40px mortos acima do conteúdo. O inset por dentro da header só
+   faria sentido se o container desenhasse SOB o relógio — não é o caso. */
+body.is-mobile .workspace-drawer.axxa-fullscreen .axxa-topbar {
+  padding-top: 12px !important;
+}
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-leaf-content[data-type="axxa-os-ai-agent"]
   .view-content {
-  padding: 0 !important;
-  margin: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+  /* A reserva da navbar/safe-area some: no fullscreen não há navbar, e o
+     inset de baixo é responsabilidade do composer (regra mais abaixo). Sem
+     isto sobra a faixa preta na base, acima da barra de gestos. */
+  padding-bottom: 0 !important;
 }
-
-/* Continuidade de superfície: toda a cadeia pinta o MESMO canvas do app. Sem
-   isto, qualquer píxel não coberto pela .axxa-root (cantos, área da barra de
-   gestos, o instante do transform de abrir) aparece como faixa preta da leaf
-   nativa. */
+/* Continuidade de superfície: toda a cadeia do drawer passa a pintar o MESMO
+   canvas do app. Sem isto, qualquer píxel não coberto pelo .axxa-root (cantos,
+   área da barra de gestos, o instante do transform de abrir) aparece como
+   faixa preta da leaf nativa. */
 body.is-mobile .workspace-drawer.axxa-fullscreen,
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
@@ -248,7 +142,6 @@ body.is-mobile
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-drawer-active-tab-content,
-body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-tab-container,
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-leaf-content[data-type="axxa-os-ai-agent"],
@@ -256,19 +149,118 @@ body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-leaf-content[data-type="axxa-os-ai-agent"]
   .view-content {
-  background-color: var(--axxa-canvas);
+  background: var(--background-primary);
+}
+/* mesma regra do canvas do chat: primary no light, secondary no dark */
+body.is-mobile.theme-dark .workspace-drawer.axxa-fullscreen,
+body.is-mobile.theme-dark
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-container,
+body.is-mobile.theme-dark
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-content,
+body.is-mobile.theme-dark
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+body.is-mobile.theme-dark
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+  background: var(--background-secondary);
+}
+/* Composer: mantém o respiro NORMAL da base (18px), sem somar safe-area.
+   v0.1.252 — mesma lição do topo: o container do drawer já termina acima da
+   barra de gestos, então somar o inset aqui reabria a faixa morta que este
+   modo veio justamente eliminar. Quem garante que nada fica embaixo dos
+   gestos é o container do Obsidian; a nós cabe não reservar o espaço duas
+   vezes. (O Vault Q&A é um sheet colado na base e resolve o próprio respiro
+   no padding do card.) */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .axxa-root
+  .axxa-composer:not([data-mode="vault-qa"]) {
+  bottom: 18px;
+}
+/* Navbar global do Obsidian — é IRMÃ dos drawers (não descendente), então não
+   dá pra escopar via `.workspace-drawer`. Fica no body de propósito: a classe
+   `body.axxa-fullscreen` só existe quando a AXXA é a aba ATIVA do drawer
+   direito (applyFullscreen), então esconder a navbar aqui já é "só no contexto
+   do drawer direito". Ao sair da AXXA a classe cai e a navbar volta. A saída do
+   modo vive no menu do header da AXXA — o usuário nunca fica preso. */
+body.is-mobile.axxa-fullscreen .mobile-navbar {
+  display: none;
+}
+/* Tela cheia de verdade — 100vw × 100vh. O drawer direito no mobile é uma
+   gaveta de largura PARCIAL (deixa uma faixa do editor atrás); esconder o
+   chrome não bastava. Aqui o drawer passa a ocupar a viewport inteira.
+   - dvh acompanha a barra dinâmica do WebView; cai pra vh onde dvh não existe.
+   - Sem position:fixed de propósito: preservamos o transform nativo de
+     abrir/fechar, então o gesto de swipe-pra-fechar continua (o drawer fechado
+     sai 100% pra fora). !important vence uma largura inline que o Obsidian
+     possa ter setado no drawer. */
+body.is-mobile .workspace-drawer.axxa-fullscreen {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  /* Menos a altura do teclado (v0.1.254): o composer de chat/agent é `absolute`
+     dentro da .axxa-root, então só sobe se a CAIXA encolher — e o Obsidian
+     mobile não encolhe a viewport, ele publica `--keyboard-height` no <html> e
+     deixa o teclado por cima. Como aqui a altura passou a ser NOSSA (100dvh),
+     era ela que segurava o composer atrás do teclado. Descontando, canvas e
+     composer sobem juntos e as últimas mensagens não ficam escondidas. O Vault
+     Q&A escapava do bug por ser `fixed` e já consumir a var. */
+  height: calc(100vh - var(--keyboard-height, 0px)) !important;
+  height: calc(100dvh - var(--keyboard-height, 0px)) !important;
+}
+/* Propaga a viewport pela cadeia de containers até a view da AXXA. */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-container,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-content {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
-/* Teclado aberto: o chrome da gaveta sai pra devolver altura à conversa. */
-body.is-mobile .workspace-drawer.axxa-keyboard-open .workspace-drawer-header,
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] {
+  position: relative;
+  isolation: auto;
+}
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+  position: relative;
+  /* z-index 10 (snippet do Inspector): põe a view da AXXA na frente da leaf
+     nativa de baixo (o "No file") pra o composer não ficar atrás dela. */
+  z-index: 10;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] {
+  height: 100%;
+  width: 100%;
+}
+@supports selector(:has(*)) {
+  .workspace-drawer-active-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"])
+    .workspace-tab-container,
+  .workspace-drawer-active-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"])
+    .workspace-leaf:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"]) {
+    height: 100%;
+    width: 100%;
+  }
+}
 body.is-mobile
-  .workspace-drawer.axxa-keyboard-open
-  .workspace-drawer-tab-options {
+.workspace-drawer.axxa-keyboard-open
+.workspace-drawer-header,
+body.is-mobile
+.workspace-drawer.axxa-keyboard-open
+.workspace-drawer-tab-options {
   display: none !important;
 }
-
-/* NENHUMA altura da gaveta fora do fullscreen — de propósito. Ver o bloco de
-   tela cheia acima e docs/archive/MOBILE-FULLSCREEN.md (0.1.254 / 0.1.255). */
 
 /* ── tokens ────────────────────────────────────────────────────────────── */
 
@@ -312,18 +304,18 @@ body.theme-dark {
      esticar linha inteira de borda a borda. */
   --axxa-measure: 46rem;
 
+  /* Caixa igual à da 0.2.37: sem overflow próprio (quem rola é a timeline) e
+     com z-index alto, que é o que põe o painel na frente da leaf nativa. */
   position: relative;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  min-height: 0;
+  width: 100%;
   height: 100%;
+  min-height: 0;
+  min-width: 0;
   box-sizing: border-box;
-  /* Quanto do painel ficou embaixo da área visível (medido pela AxxaView).
-     É a garantia de que o composer aparece mesmo quando a gaveta não encolhe:
-     zero quando ela encolhe, exato quando não. */
-  padding-bottom: var(--axxa-kb-inset, 0px);
-  overflow: hidden;
+  z-index: 9999;
   /* Em painel lateral o app pinta a view com --background-secondary; fixa a
      mesma superfície do composer pra não haver duas cores no mesmo painel. */
   background-color: var(--axxa-canvas);
