@@ -201,8 +201,10 @@
 .axxa-root .axxa-starter {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   gap: var(--axxa-5);
-  /* Alinhado ao topo: o segmented control é a primeira coisa da tela. */
+  /* O segmented control fica no topo; o hero ganha margem automática e
+     centraliza no espaço que sobra (ver .axxa-starter-hero). */
   margin: 0;
   padding-bottom: var(--axxa-4);
 }
@@ -211,6 +213,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* Centraliza a saudação na altura livre entre o segmented e as skills. */
+  margin: auto 0;
   gap: var(--axxa-2);
   text-align: center;
 }
@@ -430,19 +434,41 @@
 
 /* ── composer ──────────────────────────────────────────────────────────── */
 
+/* Um bloco só: campo em cima, barra de controles embaixo, sem borda de topo
+   cortando o painel — o contorno é o próprio .axxa-input. */
 .axxa-root .axxa-composer {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--axxa-2);
   padding: var(--axxa-2) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2)
     var(--axxa-3);
-  border-top: 1px solid var(--axxa-line);
   background-color: var(--background-primary);
+}
+
+.axxa-root .axxa-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-2);
+  padding: var(--axxa-3);
+  border: 1px solid var(--axxa-line);
+  border-radius: var(--axxa-r-lg);
+  background-color: var(--background-primary);
+}
+
+.axxa-root .axxa-input:focus-within {
+  border-color: var(--background-modifier-border-hover, var(--axxa-line));
+}
+
+.axxa-root .axxa-input-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
 }
 
 .axxa-root .axxa-pills {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: var(--axxa-2);
   overflow-x: auto;
   scrollbar-width: none;
@@ -459,17 +485,17 @@
   align-items: center;
   gap: var(--axxa-1);
   flex: 0 0 auto;
-  max-width: 48%;
-  height: 28px;
+  max-width: 46%;
+  height: 30px;
   padding: 0 var(--axxa-2);
-  border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-hover);
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
 }
 
 .axxa-root .axxa-pill:hover:not(:disabled) {
-  background-color: var(--axxa-hover);
+  background-color: var(--axxa-raised);
   color: var(--text-normal);
 }
 
@@ -477,20 +503,6 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-
-.axxa-root .axxa-input {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--axxa-2);
-  padding: var(--axxa-1) var(--axxa-1) var(--axxa-1) var(--axxa-3);
-  border: 1px solid var(--axxa-line);
-  border-radius: var(--axxa-r-lg);
-  background-color: var(--background-primary);
-}
-
-.axxa-root .axxa-input:focus-within {
-  border-color: var(--interactive-accent);
 }
 
 /* O app estiliza `textarea` (fundo de form field, borda, raio) — aqui o
@@ -502,9 +514,9 @@
   flex: 1 1 auto;
   min-width: 0;
   box-sizing: border-box;
-  min-height: 36px;
+  min-height: 24px;
   max-height: 40vh;
-  padding: var(--axxa-2) 0;
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;

@@ -158,68 +158,9 @@ export function ChatView({
         )}
       </div>
 
+      {/* Composer: UM bloco só — campo em cima, barra de controles embaixo,
+          sem régua horizontal separando nada. */}
       <section className="axxa-composer">
-        {/* Travada a sessão, provider/modelo/modo já aparecem no topo — aqui
-            fica só o effort, que continua livre no meio da conversa. */}
-        <div className="axxa-pills">
-          {!locked && (
-            <>
-              <Pill
-                icon="plug"
-                label={
-                  PROVIDERS.find((p) => p.id === cfg.provider)?.name ??
-                  cfg.provider
-                }
-                onClick={(e) =>
-                  openPicker(
-                    e,
-                    PROVIDERS.map((p) => ({
-                      value: p.id,
-                      label: p.name,
-                      note: providerConfigured(plugin, p.id)
-                        ? undefined
-                        : "no key",
-                    })),
-                    cfg.provider,
-                    (v) => session.setProvider(v)
-                  )
-                }
-              />
-              <Pill
-                icon="cpu"
-                label={cfg.model || "no model"}
-                onClick={(e) =>
-                  openPicker(
-                    e,
-                    session
-                      .modelOptions(cfg.provider)
-                      .map((m) => ({ value: m, label: m })),
-                    cfg.model,
-                    (v) => session.setModel(v)
-                  )
-                }
-              />
-            </>
-          )}
-          <Pill
-            label={`${EFFORT_EMOJIS[effort] ?? ""} ${
-              EFFORT_LABELS[effort] ?? cfg.effort
-            }`}
-            onClick={(e) =>
-              openPicker(
-                e,
-                EFFORT_LEVELS.map((l) => ({
-                  value: l,
-                  label: EFFORT_LABELS[l],
-                  note: EFFORT_DESCRIPTIONS[l],
-                })),
-                cfg.effort,
-                (v) => session.setEffort(v)
-              )
-            }
-          />
-        </div>
-
         <div className="axxa-input">
           <textarea
             ref={textareaRef}
@@ -234,26 +175,88 @@ export function ChatView({
               }
             }}
           />
-          {isLoading ? (
-            <button
-              type="button"
-              className="axxa-send is-stop"
-              aria-label="Stop"
-              onClick={() => session.stop()}
-            >
-              <Icon name="square" size={16} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="axxa-send"
-              aria-label="Send"
-              disabled={!draft.trim()}
-              onClick={() => void submit()}
-            >
-              <Icon name="arrow-up" size={18} />
-            </button>
-          )}
+
+          <div className="axxa-input-bar">
+            {/* Travada a sessão, provider/modelo já aparecem na topbar — aqui
+                fica só o effort, que continua livre no meio da conversa. */}
+            <div className="axxa-pills">
+              {!locked && (
+                <>
+                  <Pill
+                    label={
+                      PROVIDERS.find((p) => p.id === cfg.provider)?.name ??
+                      cfg.provider
+                    }
+                    onClick={(e) =>
+                      openPicker(
+                        e,
+                        PROVIDERS.map((p) => ({
+                          value: p.id,
+                          label: p.name,
+                          note: providerConfigured(plugin, p.id)
+                            ? undefined
+                            : "no key",
+                        })),
+                        cfg.provider,
+                        (v) => session.setProvider(v),
+                      )
+                    }
+                  />
+                  <Pill
+                    label={cfg.model || "no model"}
+                    onClick={(e) =>
+                      openPicker(
+                        e,
+                        session
+                          .modelOptions(cfg.provider)
+                          .map((m) => ({ value: m, label: m })),
+                        cfg.model,
+                        (v) => session.setModel(v),
+                      )
+                    }
+                  />
+                </>
+              )}
+              <Pill
+                label={`${EFFORT_EMOJIS[effort] ?? ""} ${
+                  EFFORT_LABELS[effort] ?? cfg.effort
+                }`}
+                onClick={(e) =>
+                  openPicker(
+                    e,
+                    EFFORT_LEVELS.map((l) => ({
+                      value: l,
+                      label: EFFORT_LABELS[l],
+                      note: EFFORT_DESCRIPTIONS[l],
+                    })),
+                    cfg.effort,
+                    (v) => session.setEffort(v),
+                  )
+                }
+              />
+            </div>
+
+            {isLoading ? (
+              <button
+                type="button"
+                className="axxa-send is-stop"
+                aria-label="Stop"
+                onClick={() => session.stop()}
+              >
+                <Icon name="square" size={16} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="axxa-send"
+                aria-label="Send"
+                disabled={!draft.trim()}
+                onClick={() => void submit()}
+              >
+                <Icon name="arrow-up" size={18} />
+              </button>
+            )}
+          </div>
         </div>
       </section>
     </div>
@@ -336,7 +339,9 @@ function MessageRow({
                     <code>
                       {s.ok ? "✓" : "✗"} {s.name} {JSON.stringify(s.arguments)}
                     </code>
-                    {s.result && <pre className="axxa-msg-text">{s.result}</pre>}
+                    {s.result && (
+                      <pre className="axxa-msg-text">{s.result}</pre>
+                    )}
                   </li>
                 ))}
               </ul>

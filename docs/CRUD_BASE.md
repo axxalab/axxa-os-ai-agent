@@ -52,9 +52,11 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
   modo (Chat / Vault Q&A / Agent) no topo, saudação, aviso de key faltando e
   as skills do usuário.
 - `ChatView.tsx` — topbar (menu · título · nova conversa), timeline e
-  composer. Provider/modelo ficam em pills e **somem quando a sessão trava**
-  (aparecem na topbar); o effort continua livre. O modo se escolhe na
-  StarterScreen — depois do 1º envio ele não muda mais.
+  composer. O composer é **um bloco só**: campo em cima, barra de controles
+  embaixo (pills à esquerda, enviar à direita), sem régua separando. Provider
+  e modelo ficam nos pills e **somem quando a sessão trava** (aparecem na
+  topbar); o effort continua livre. O modo se escolhe na StarterScreen —
+  depois do 1º envio ele não muda mais.
 - `Icon.tsx` — ícone Lucide via `setIcon` nativo.
 - `menu.ts` — `openPicker` / `openActions` sobre o `Menu` do Obsidian (sheet
   no mobile, popup no desktop).
