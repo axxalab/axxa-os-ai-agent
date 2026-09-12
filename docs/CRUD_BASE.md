@@ -70,8 +70,12 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
   `isDrawerOnScreen`), testadas em `tests/fullscreenScope.test.ts`. Ficam fora
   da view de propósito: erradas, deixam o Obsidian sem chrome.
 - `Icon.tsx` — ícone Lucide via `setIcon` nativo.
-- `menu.ts` — `openPicker` / `openActions` sobre o `Menu` do Obsidian (sheet
-  no mobile, popup no desktop).
+- `Sheet.tsx` — **bottom sheet** do composer (provider · modelo · effort):
+  puxador, X à esquerda com título centralizado, cartões agrupados com linhas
+  título + legenda, a ativa em accent com check. `SheetGroup` / `SheetRow` /
+  `SheetLabel` são as peças.
+- `menu.ts` — `openActions` sobre o `Menu` do Obsidian, só pras AÇÕES do
+  histórico (o ⋯ de um chat).
 - `ProjectsView.tsx` — CRUD de projetos, fontes, chats do projeto.
 - `SkillsView.tsx` — CRUD de skills; "Use" injeta o corpo no composer.
 - `SettingsTab.ts` — chave + modelo por provider, defaults, pastas, RAG

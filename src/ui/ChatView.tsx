@@ -16,6 +16,10 @@ import {
 import type { ChatSession } from "../core/session";
 import { PROVIDERS, providerConfigured } from "../core/providersMeta";
 import {
+  getModelCard,
+  prettyModelName,
+} from "../providers/modelDescriptions";
+import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
   EFFORT_EMOJIS,
@@ -25,7 +29,7 @@ import {
 import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
-import { openPicker } from "./menu";
+import { Sheet, SheetGroup, SheetLabel, SheetRow } from "./Sheet";
 import { StarterScreen } from "./StarterScreen";
 import type { ComposerInject } from "./App";
 
@@ -65,6 +69,10 @@ export function ChatView({
   const cfg = session.config;
 
   const [draft, setDraft] = useState("");
+  /** Qual bottom sheet do composer está aberta. */
+  const [sheet, setSheet] = useState<"provider" | "model" | "effort" | null>(
+    null
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -110,6 +118,13 @@ export function ChatView({
     setDraft("");
     await session.send(text);
   };
+
+  // Abrir uma sheet tira o foco do campo — senão o teclado sobe por cima dela.
+  const openSheet = (which: "provider" | "model" | "effort") => {
+    textareaRef.current?.blur();
+    setSheet(which);
+  };
+  const closeSheet = () => setSheet(null);
 
   const empty = messages.length === 0 && !loadingChat;
   const effort = cfg.effort as EffortLevel;
@@ -196,33 +211,11 @@ export function ChatView({
                       PROVIDERS.find((p) => p.id === cfg.provider)?.name ??
                       cfg.provider
                     }
-                    onClick={(e) =>
-                      openPicker(
-                        e,
-                        PROVIDERS.map((p) => ({
-                          value: p.id,
-                          label: p.name,
-                          note: providerConfigured(plugin, p.id)
-                            ? undefined
-                            : "no key",
-                        })),
-                        cfg.provider,
-                        (v) => session.setProvider(v),
-                      )
-                    }
+                    onClick={() => openSheet("provider")}
                   />
                   <Pill
                     label={cfg.model || "no model"}
-                    onClick={(e) =>
-                      openPicker(
-                        e,
-                        session
-                          .modelOptions(cfg.provider)
-                          .map((m) => ({ value: m, label: m })),
-                        cfg.model,
-                        (v) => session.setModel(v),
-                      )
-                    }
+                    onClick={() => openSheet("model")}
                   />
                 </>
               )}
@@ -230,18 +223,7 @@ export function ChatView({
                 label={`${EFFORT_EMOJIS[effort] ?? ""} ${
                   EFFORT_LABELS[effort] ?? cfg.effort
                 }`}
-                onClick={(e) =>
-                  openPicker(
-                    e,
-                    EFFORT_LEVELS.map((l) => ({
-                      value: l,
-                      label: EFFORT_LABELS[l],
-                      note: EFFORT_DESCRIPTIONS[l],
-                    })),
-                    cfg.effort,
-                    (v) => session.setEffort(v),
-                  )
-                }
+                onClick={() => openSheet("effort")}
               />
             </div>
 
@@ -268,26 +250,80 @@ export function ChatView({
           </div>
         </div>
       </section>
+
+      {/* Bottom sheets do composer — provider · modelo · effort. */}
+      <Sheet
+        title="Select provider"
+        open={sheet === "provider"}
+        onClose={closeSheet}
+      >
+        <SheetGroup>
+          {PROVIDERS.map((p) => (
+            <SheetRow
+              key={p.id}
+              title={p.name}
+              note={
+                providerConfigured(plugin, p.id)
+                  ? "Key configured"
+                  : "No API key yet"
+              }
+              selected={p.id === cfg.provider}
+              onClick={() => {
+                session.setProvider(p.id);
+                closeSheet();
+              }}
+            />
+          ))}
+        </SheetGroup>
+      </Sheet>
+
+      <Sheet title="Select model" open={sheet === "model"} onClose={closeSheet}>
+        <SheetLabel>
+          {PROVIDERS.find((p) => p.id === cfg.provider)?.name ?? cfg.provider}
+        </SheetLabel>
+        <SheetGroup>
+          {session.modelOptions(cfg.provider).map((m) => {
+            const card = getModelCard(cfg.provider, m);
+            return (
+              <SheetRow
+                key={m}
+                title={prettyModelName(m)}
+                note={card.goodFor ?? card.description}
+                selected={m === cfg.model}
+                onClick={() => {
+                  session.setModel(m);
+                  closeSheet();
+                }}
+              />
+            );
+          })}
+        </SheetGroup>
+      </Sheet>
+
+      <Sheet title="Effort" open={sheet === "effort"} onClose={closeSheet}>
+        <SheetGroup>
+          {EFFORT_LEVELS.map((l) => (
+            <SheetRow
+              key={l}
+              badge={EFFORT_EMOJIS[l]}
+              title={EFFORT_LABELS[l]}
+              note={EFFORT_DESCRIPTIONS[l]}
+              selected={l === cfg.effort}
+              onClick={() => {
+                session.setEffort(l);
+                closeSheet();
+              }}
+            />
+          ))}
+        </SheetGroup>
+      </Sheet>
     </div>
   );
 }
 
-function Pill({
-  icon,
-  label,
-  onClick,
-}: {
-  icon?: string;
-  label: string;
-  onClick: (e: MouseEvent) => void;
-}) {
+function Pill({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      className="axxa-pill"
-      onClick={(e) => onClick(e as unknown as MouseEvent)}
-    >
-      {icon && <Icon name={icon} size={14} />}
+    <button type="button" className="axxa-pill" onClick={onClick}>
       <span className="axxa-pill-label">{label}</span>
       <Icon name="chevron-down" size={14} />
     </button>
