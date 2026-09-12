@@ -123,18 +123,42 @@ export class AxxaView extends ItemView {
     const win = this.containerEl.doc.defaultView;
     const vv = win?.visualViewport ?? null;
 
-    // Sinal 1: a var que o Obsidian publica inline no <html>.
-    const published = parseFloat(
-      this.containerEl.doc.documentElement.style.getPropertyValue(
-        "--keyboard-height"
-      ) || "0"
+    // Sinal 1: a var do Obsidian. A casca antiga lia só o style INLINE do
+    // <html> — era onde a versão daquela época escrevia. Se a versão atual
+    // escrever de outro jeito (numa folha de estilo, ou no body), a leitura
+    // inline devolve vazio e a gente acha que não há teclado. Então lemos o
+    // valor COMPUTADO do <html> e do body também, e ficamos com o maior.
+    const docEl = this.containerEl.doc.documentElement;
+    const body = this.containerEl.doc.body;
+    const readVar = (el: HTMLElement, computed: boolean): number => {
+      const raw = computed
+        ? win?.getComputedStyle(el).getPropertyValue("--keyboard-height")
+        : el.style.getPropertyValue("--keyboard-height");
+      const n = parseFloat(raw || "0");
+      return Number.isFinite(n) ? n : 0;
+    };
+    const published = Math.max(
+      readVar(docEl, false),
+      readVar(docEl, true),
+      readVar(body, true)
     );
-    // Sinal 2: quanto da janela o teclado está cobrindo, medido. Existe porque
-    // o sinal 1 sozinho não acendeu a classe no aparelho do Rafael (a pintura
-    // escopada nela nunca valeu) — e a classe é o que liga o cosmético.
+    // Sinal 2: quanto da janela o teclado cobre, pelo visualViewport.
+    const vvBottom = vv
+      ? vv.height + vv.offsetTop
+      : (win?.innerHeight ?? 0);
     const covered =
-      vv && win ? Math.max(0, win.innerHeight - (vv.height + vv.offsetTop)) : 0;
-    const signal = published > 0 ? published : covered;
+      vv && win ? Math.max(0, win.innerHeight - vvBottom) : 0;
+
+    // Sinal 3, e o mais importante: quanto de `100dvh` ficou FORA da área
+    // visível. É o único que enxerga o caso em que a janela encolhe mas o
+    // `dvh` não acompanha — e é exatamente o valor que a altura do fullscreen
+    // precisa descontar. Quando o dvh já encolheu sozinho, dá 0 (nada a
+    // descontar, sem contar o teclado duas vezes).
+    const shortfall = vv
+      ? Math.max(0, Math.round(this.measureDvh() - vvBottom))
+      : 0;
+
+    const signal = Math.max(published, covered, shortfall);
     if (signal === this.lastKeyboardHeight) return;
     this.lastKeyboardHeight = signal;
 
@@ -143,27 +167,14 @@ export class AxxaView extends ItemView {
       ".workspace-drawer-active-tab-content"
     );
     const open = active && signal >= KEYBOARD_MIN_PX;
+
     drawer.classList.toggle("axxa-keyboard-open", open);
     this.containerEl.doc.body.classList.toggle("axxa-keyboard-open", open);
 
-    // Quanto descontar de `100dvh` no FULLSCREEN (a única altura nossa). A
-    // regra da 0.2.37 desconta `--keyboard-height`, mas essa var pode não vir —
-    // é o mesmo motivo pelo qual a classe acima precisou do visualViewport.
-    // Aqui medimos o valor exato: quanto de `100dvh` está fora da área visível.
-    // Serve nos dois mundos: se a WebView já encolheu, `100dvh` também encolheu
-    // e a diferença é zero (nada a descontar, sem contar o teclado duas vezes);
-    // se o teclado só cobre, a diferença é exatamente a parte coberta.
+    // O desconto do fullscreen é o shortfall medido acima.
     const el = drawer as HTMLElement;
-    if (open && vv) {
-      const dvh = this.measureDvh();
-      const visibleBottom = vv.height + vv.offsetTop;
-      el.style.setProperty(
-        "--axxa-kb",
-        `${Math.max(0, Math.round(dvh - visibleBottom))}px`
-      );
-    } else {
-      el.style.removeProperty("--axxa-kb");
-    }
+    if (open) el.style.setProperty("--axxa-kb", `${shortfall}px`);
+    else el.style.removeProperty("--axxa-kb");
   };
 
   /** Mede quanto vale `100dvh` agora (nenhuma API JS expõe isso direto). */
@@ -195,7 +206,11 @@ export class AxxaView extends ItemView {
     this.keyboardObserver = new MutationObserver(this.syncKeyboard);
     this.keyboardObserver.observe(docEl, {
       attributes: true,
-      attributeFilter: ["style"],
+      attributeFilter: ["style", "class"],
+    });
+    this.keyboardObserver.observe(this.containerEl.doc.body, {
+      attributes: true,
+      attributeFilter: ["style", "class"],
     });
 
     // ...e o viewport visível, que é o sinal 2. A GEOMETRIA não sai daqui:

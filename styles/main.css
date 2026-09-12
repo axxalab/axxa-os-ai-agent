@@ -48,14 +48,14 @@
    NATIVA e tem que ficar com a cor do app. A pintura da cadeia existe só no
    modo cheio, onde o chrome nativo não está mais lá — é como a 0.2.37 faz. */
 
-/* MOBILE — a cadeia passa por `.workspace-tab-container`, e é ela que zera a
-   reserva de baixo: no mobile a base é só um respiro de 4px. Sem esta regra o
-   que vale é a regra genérica acima (safe-area + clearance), e o clearance é a
-   altura MEDIDA da navbar, guardada pelo main.ts — ou seja, uma faixa da
-   altura da navbar sobrando dentro da view. Era a barra cinza. (Regra
-   verbatim da casca 0.2.37, que eu não tinha portado.) */
+/* MOBILE — a base da reserva é só um respiro de 4px; a da navbar é somada
+   por cima (regra abaixo). A 0.2.37 escrevia isto com `.workspace-tab-container`
+   na cadeia, mas esse elo pode não existir na versão atual do Obsidian — e sem
+   casar, o que valia era a regra genérica (safe-area + clearance da navbar
+   MEDIDA e guardada pelo main.ts), ou seja um vão da altura da navbar embaixo
+   do composer. Aqui a regra ancora só no que é garantido: body.is-mobile + a
+   nossa leaf. */
 body.is-mobile
-  .workspace-tab-container
   .workspace-leaf-content[data-type="axxa-os-ai-agent"]
   .view-content {
   padding-bottom: var(--size-4-1) !important;
@@ -72,7 +72,6 @@ body.is-mobile
   body.is-mobile:not(.axxa-fullscreen):not(.axxa-keyboard-open):has(
       .mobile-navbar
     ):not(.is-hidden-nav)
-    .workspace-tab-container
     .workspace-leaf-content[data-type="axxa-os-ai-agent"]
     .view-content {
     padding-bottom: calc(

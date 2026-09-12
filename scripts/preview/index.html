@@ -25,6 +25,7 @@
       .workspace-drawer-active-tab-container,
       .workspace-drawer-active-tab-content,
       .workspace-tab-container,
+      .preview-plain-chain,
       .workspace-leaf,
       .workspace-leaf-content {
         display: flex;
@@ -34,6 +35,7 @@
       .workspace-drawer-active-tab-container,
       .workspace-drawer-active-tab-content,
       .workspace-tab-container,
+      .preview-plain-chain,
       .workspace-leaf,
       .workspace-leaf-content {
         flex: 1 1 auto;
@@ -134,10 +136,10 @@
         </div>
         <div class="workspace-drawer-active-tab-container">
           <div class="workspace-drawer-active-tab-content">
-            <!-- `.workspace-tab-container` FAZ PARTE da cadeia real do mobile
-                 (ver docs/archive/MOBILE-FULLSCREEN.md) e regras nossas
-                 dependem dele. Sem este elo o harness não testa o que existe. -->
-            <div class="workspace-tab-container">
+            <!-- `.workspace-tab-container` existia na cadeia da casca antiga,
+                 mas pode não existir na versão atual do Obsidian: o parâmetro
+                 &chain=short tira o elo pra provar que nada depende dele. -->
+            <div class="__TAB_CONTAINER__">
             <div class="workspace-leaf">
               <div
                 class="workspace-leaf-content"
@@ -157,6 +159,12 @@
       <div class="mobile-navbar"></div>
     </div>
     <script>
+      // ?chain=short remove o elo .workspace-tab-container da árvore.
+      (function () {
+        const short = new URLSearchParams(location.search).get("chain") === "short";
+        const el = document.querySelector(".__TAB_CONTAINER__");
+        if (el) el.className = short ? "preview-plain-chain" : "workspace-tab-container";
+      })();
       // Tema e modo pela query: ?theme=light&device=desktop
       const q = new URLSearchParams(location.search);
       if (q.get("theme") === "light") {
