@@ -69,6 +69,21 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
 - `fullscreenScope.ts` — regras PURAS de escopo do fullscreen (`isRightDrawer`,
   `isDrawerOnScreen`), testadas em `tests/fullscreenScope.test.ts`. Ficam fora
   da view de propósito: erradas, deixam o Obsidian sem chrome.
+
+  O CSS do fullscreen tem quatro peças que só juntas funcionam (aprendidas no
+  aparelho, 0.1.243→0.1.252 — a fonte é `git show 0.2.37:styles/main.css`, NÃO
+  a 0.3.0, que zerou o CSS):
+  1. a gaveta e toda a cadeia de containers vão a **100vw × 100dvh** — a
+     gaveta direita é parcial, esconder o chrome não basta;
+  2. a cadeia inteira pinta o **mesmo canvas**, senão sobra faixa preta da
+     leaf nativa nos cantos e durante o transform;
+  3. `.view-content` zera padding/margin — sem navbar não há o que reservar;
+  4. **não somar safe-area** por dentro da topbar nem do composer: o
+     container do drawer já começa abaixo da status bar e termina acima da
+     barra de gestos (era o bug 0.1.252).
+
+  E fora do fullscreen: `.view-content` leva `z-index: 10` pra ficar na
+  frente da leaf nativa de baixo — senão o composer aparece atrás do editor.
 - `Icon.tsx` — ícone Lucide via `setIcon` nativo.
 - `Sheet.tsx` — **bottom sheet** do composer (provider · modelo · effort):
   puxador, X à esquerda com título centralizado, cartões agrupados com linhas

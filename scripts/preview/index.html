@@ -18,6 +18,9 @@
       }
       /* Estrutura mínima do workspace pra .view-content receber o mesmo
          tratamento que recebe dentro do app. */
+      /* A gaveta, os containers e a leaf são estilizados pelo app.css REAL
+         (position: fixed, top/bottom 0, largura parcial). Aqui só o mínimo
+         que o app monta via JS: as caixas em coluna. */
       .workspace-drawer,
       .workspace-drawer-active-tab-container,
       .workspace-drawer-active-tab-content,
@@ -25,19 +28,13 @@
       .workspace-leaf-content {
         display: flex;
         flex-direction: column;
-        height: 100%;
         min-height: 0;
       }
-      /* Como no app: gaveta fixa na viewport (top/bottom), parcial por
-         padrão — o fullscreen a leva a 100vw. É justamente por ser `fixed`
-         que ela NÃO encolhe junto com o .app-container. */
-      .workspace-drawer.mod-right {
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        right: 0;
-        width: 92vw;
-        background: var(--background-primary);
+      .workspace-drawer-active-tab-container,
+      .workspace-drawer-active-tab-content,
+      .workspace-leaf,
+      .workspace-leaf-content {
+        flex: 1 1 auto;
       }
       .workspace-drawer-header,
       .view-header {
@@ -48,6 +45,18 @@
         background: var(--background-secondary);
         border-bottom: 1px solid var(--background-modifier-border);
         color: var(--text-muted);
+        font-size: 13px;
+      }
+      /* O "editor atrás": é ele que aparece quando a gaveta não cobre a tela. */
+      #behind {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--background-primary-alt, #111);
+        color: var(--text-faint);
         font-size: 13px;
       }
       i[data-lucide] {
@@ -115,6 +124,7 @@
   <body class="theme-dark is-mobile">
     <!-- Mesma árvore do mobile: a AXXA mora na gaveta DIREITA, dentro da aba
          ativa. É o que o CSS de fullscreen/teclado ancora. -->
+    <div id="behind">editor por tras (workspace)</div>
     <div class="app-container">
       <div class="workspace-drawer mod-right" id="drawer">
         <div class="workspace-drawer-header">

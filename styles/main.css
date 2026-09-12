@@ -19,7 +19,16 @@
 
 /* ── host ──────────────────────────────────────────────────────────────── */
 
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] {
+  position: relative;
+  isolation: auto;
+}
+
+/* z-index 10 (achado do Inspector, 0.2.x): põe a view da AXXA na FRENTE da
+   leaf nativa de baixo — sem isto o composer aparece atrás do editor. */
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+  position: relative;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -80,26 +89,68 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
   display: none;
 }
 
-/* Tela cheia de verdade: a gaveta direita é parcial por padrão. Só largura —
-   a altura já vem do `top: 0; bottom: 0` do próprio Obsidian, e o teclado é
-   tratado numa regra só (abaixo). Sem `position: fixed` nosso, de propósito:
-   preserva o gesto nativo de swipe pra fechar. */
+/* Tela cheia de verdade — 100vw × 100dvh. A gaveta direita do mobile é de
+   largura PARCIAL (deixa uma faixa do editor atrás) e o `top/bottom: 0` dela
+   não basta: sem altura NOSSA, a cadeia de containers não propaga a viewport
+   e sobra o editor na base. Sem `position: fixed` de propósito — preserva o
+   transform nativo, então o swipe pra fechar continua. `!important` vence
+   largura inline que o Obsidian tenha setado. */
 body.is-mobile .workspace-drawer.axxa-fullscreen {
   width: 100vw !important;
   max-width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
 }
 
+/* Propaga a viewport pela cadeia de containers até a view da AXXA. */
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-drawer-active-tab-container,
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
-  .workspace-drawer-active-tab-content {
+  .workspace-drawer-active-tab-content,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"] {
   width: 100vw !important;
   max-width: 100vw !important;
   height: 100% !important;
   padding: 0 !important;
   margin: 0 !important;
+}
+
+/* A reserva da base sai: no fullscreen não há navbar, e o container do drawer
+   JÁ começa abaixo da status bar e termina acima da barra de gestos — o
+   Obsidian aplica o safe-area na própria árvore. Somar o inset de novo aqui
+   (ou por dentro da topbar / do composer) contaria o mesmo espaço DUAS vezes:
+   foi o bug do 0.1.252. Topbar e composer mantêm o padding normal. */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Continuidade de superfície: toda a cadeia pinta o MESMO canvas do app. Sem
+   isto, qualquer píxel não coberto pela .axxa-root (cantos, área da barra de
+   gestos, o instante do transform de abrir) aparece como faixa preta da leaf
+   nativa. */
+body.is-mobile .workspace-drawer.axxa-fullscreen,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-container,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-drawer-active-tab-content,
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"],
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+  background-color: var(--background-primary);
 }
 
 /* Teclado aberto: o chrome da gaveta sai pra devolver altura à conversa. */
