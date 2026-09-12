@@ -138,8 +138,13 @@ function serve() {
   http
     .createServer((req, res) => {
       const rel = (req.url ?? "/").split("?")[0];
-      const file = path.join(OUT, rel === "/" ? "index.html" : rel);
-      if (!file.startsWith(OUT) || !fs.existsSync(file)) {
+      // O CSS sai do DISCO, não da cópia: mexer em styles/main.css passa a
+      // valer com um reload, sem reiniciar o preview (o bundle .js continua
+      // exigindo restart — aquele precisa de build). Só ESTE caminho escapa
+      // do OUT; o resto continua preso lá dentro.
+      const live = rel === "/main.css" ? path.join(ROOT, "styles/main.css") : null;
+      const file = live ?? path.join(OUT, rel === "/" ? "index.html" : rel);
+      if ((!live && !file.startsWith(OUT)) || !fs.existsSync(file)) {
         res.writeHead(404).end("not found");
         return;
       }

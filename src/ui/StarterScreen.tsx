@@ -10,6 +10,7 @@ import type { ChatMode, ChatSession } from "../core/session";
 import { CHAT_MODES } from "../core/session";
 import type { Skill } from "../skills/skills";
 import { providerConfigured, PROVIDERS } from "../core/providersMeta";
+import { prettyModelName } from "../providers/modelDescriptions";
 import { Icon } from "./Icon";
 import { openPluginSettings } from "./modals";
 
@@ -61,6 +62,11 @@ export function StarterScreen({
   const providerName =
     PROVIDERS.find((p) => p.id === cfg.provider)?.name ?? cfg.provider;
   const skills = plugin.skills.slice(0, 4);
+  // Favoritos do provider ativo (marcados nas Settings, no máximo 5). Só antes
+  // do 1º envio: depois disso o modelo está travado na sessão.
+  const favorites = cfg.locked
+    ? []
+    : (plugin.settings.favoriteModels?.[cfg.provider] ?? []).slice(0, 5);
 
   // Índice do modo ativo — move o thumb do segmented control via CSS.
   const activeIndex = Math.max(CHAT_MODES.indexOf(cfg.mode), 0);
@@ -101,6 +107,27 @@ export function StarterScreen({
           <button type="button" onClick={() => openPluginSettings(plugin)}>
             Open settings
           </button>
+        </div>
+      )}
+
+      {favorites.length > 0 && (
+        <div className="axxa-starter-favs">
+          <span className="axxa-section-label">Favorites</span>
+          <div className="axxa-suggestions">
+            {favorites.map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={
+                  m === cfg.model ? "axxa-chip is-active" : "axxa-chip"
+                }
+                title={m}
+                onClick={() => session.setModel(m)}
+              >
+                {prettyModelName(m)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

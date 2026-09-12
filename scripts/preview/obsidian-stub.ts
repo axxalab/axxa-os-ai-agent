@@ -37,7 +37,11 @@ export class FuzzySuggestModal extends Modal {
 /** Setting API o bastante pra renderizar a aba de settings no preview. */
 export class Setting {
   settingEl: HTMLElement;
-  private infoEl: HTMLElement;
+  infoEl: HTMLElement;
+  // Publicos como no Obsidian de verdade: a casca decora o nameEl (logo do
+  // provider). Criados no construtor, iguais aos de la.
+  nameEl: HTMLElement;
+  descEl: HTMLElement;
   private controlEl: HTMLElement;
 
   constructor(el?: HTMLElement) {
@@ -45,23 +49,22 @@ export class Setting {
     this.settingEl.className = "setting-item";
     this.infoEl = document.createElement("div");
     this.infoEl.className = "setting-item-info";
+    this.nameEl = document.createElement("div");
+    this.nameEl.className = "setting-item-name";
+    this.descEl = document.createElement("div");
+    this.descEl.className = "setting-item-description";
+    this.infoEl.append(this.nameEl, this.descEl);
     this.controlEl = document.createElement("div");
     this.controlEl.className = "setting-item-control";
     this.settingEl.append(this.infoEl, this.controlEl);
     el?.appendChild(this.settingEl);
   }
   setName(v: string) {
-    const n = document.createElement("div");
-    n.className = "setting-item-name";
-    n.textContent = v;
-    this.infoEl.appendChild(n);
+    this.nameEl.textContent = v;
     return this;
   }
   setDesc(v: string) {
-    const d = document.createElement("div");
-    d.className = "setting-item-description";
-    d.textContent = v;
-    this.infoEl.appendChild(d);
+    this.descEl.textContent = v;
     return this;
   }
   setHeading() {
@@ -76,7 +79,10 @@ export class Setting {
       inputEl: input,
       setPlaceholder(v: string) { input.placeholder = v; return api; },
       setValue(v: string) { input.value = v ?? ""; return api; },
-      onChange() { return api; },
+      onChange(cb: (v: string) => void) {
+        input.addEventListener("input", () => cb(input.value));
+        return api;
+      },
     };
     cb(api);
     return this;
@@ -87,7 +93,13 @@ export class Setting {
     this.controlEl.appendChild(wrap);
     const api = {
       setValue(v: boolean) { wrap.classList.toggle("is-enabled", !!v); return api; },
-      onChange() { return api; },
+      onChange(cb: (v: boolean) => void) {
+        wrap.addEventListener("click", () => {
+          wrap.classList.toggle("is-enabled");
+          cb(wrap.classList.contains("is-enabled"));
+        });
+        return api;
+      },
     };
     cb(api);
     return this;
@@ -102,7 +114,10 @@ export class Setting {
         o.value = value; o.textContent = label; sel.appendChild(o); return api;
       },
       setValue(v: string) { sel.value = v; return api; },
-      onChange() { return api; },
+      onChange(cb: (v: string) => void) {
+        sel.addEventListener("change", () => cb(sel.value));
+        return api;
+      },
     };
     cb(api);
     return this;
@@ -116,7 +131,10 @@ export class Setting {
       setCta() { btn.classList.add("mod-cta"); return api; },
       setWarning() { btn.classList.add("mod-warning"); return api; },
       setDisabled(v: boolean) { btn.disabled = !!v; return api; },
-      onClick() { return api; },
+      onClick(cb: () => void) {
+        btn.addEventListener("click", cb);
+        return api;
+      },
     };
     cb(api);
     return this;

@@ -36,12 +36,21 @@ const plugin = {
     openaiApiKey: "sk-test",
     anthropicApiKey: "",
     activeModels: { openai: ["gpt-5", "gpt-4o", "gpt-4o-mini"] },
+    favoriteModels: { openai: ["gpt-5", "gpt-4o"] },
     projects: [],
   },
+  // A casca grava em quase toda interação; sem isto o clique morre num
+  // TypeError e o preview mente dizendo que o botão não faz nada.
+  saveSettings: async () => {},
   loadChatSummaries: async () => chats,
   onChatsChange: () => () => {},
   onSettingsChange: () => () => {},
   providerCredential: (id: string) => (id === "openai" ? "sk-test" : ""),
+  // Catálogo falso: o preview não fala com a rede.
+  scanModels: async (id: string) =>
+    id === "openai"
+      ? ["gpt-5", "gpt-4o", "gpt-4o-mini", "o3", "dall-e-3", "tts-1"]
+      : ["meta/llama-3.3-70b-instruct:free", "qwen/qwen-2.5-7b:free"],
   reloadSkills: async () => {},
   seedExampleSkills: async () => {},
 } as unknown as AxxaPlugin;

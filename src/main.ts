@@ -59,6 +59,8 @@ export interface AxxaSettings {
   ollamaModel: string;
   /** Modelos conhecidos por provider — opções do seletor de modelo. */
   activeModels: Record<string, string[]>;
+  /** Modelos FAVORITOS por provider — aparecem na tela inicial. Máx. 5. */
+  favoriteModels: Record<string, string[]>;
   /** Modelo-padrão por PAPEL (chat/reasoning/image/video/tts/embedding/other). */
   roleModels: Partial<Record<RoleId, RoleModelEntry>>;
   /** Provider preferido quando o MESMO modelo existe em 2+ providers. */
@@ -147,6 +149,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
     ],
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },
+  favoriteModels: {},
   roleModels: {},
   modelProvider: {},
   discoveredEmbeddings: {},

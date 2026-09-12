@@ -21,6 +21,8 @@ import { CHAT_MODES } from "../core/session";
 import { getAllEmbeddingModels } from "../rag/types";
 import { indexVault } from "../rag/indexer";
 import { deleteIndex, RAG_SHARD_SIZE } from "../rag/vectorIndex";
+import { getModelCapabilities } from "../providers/modelCapabilities";
+import { prettyModelName } from "../providers/modelDescriptions";
 import { PERMISSION_LABELS } from "../agent/permissions";
 import type { PermissionLevel } from "../agent/types";
 
@@ -46,6 +48,9 @@ const PROVIDER_FIELDS: Record<string, { key?: KeyField; model: ModelField }> = {
   nim: { key: "nimApiKey", model: "nimModel" },
   ollama: { model: "ollamaModel" },
 };
+
+/** Favoritos aparecem na tela inicial; mais que isso vira lista, não atalho. */
+const FAVORITE_LIMIT = 5;
 
 type TabId = "providers" | "chat" | "vault" | "rag" | "agent" | "mobile";
 
@@ -92,6 +97,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
   /** Sobrevivem ao display(): re-render não joga o usuário pra primeira aba. */
   private tab: TabId = "providers";
   private provider = "openai";
+  /** Catálogo buscado no provider (não persiste — é sempre "o que há hoje"). */
+  private catalog: Record<string, string[]> = {};
+  private fetching = false;
 
   constructor(
     app: App,
@@ -216,10 +224,18 @@ export class AxxaSettingsTab extends PluginSettingTab {
     if (!p || !f) return;
     const s = this.s;
 
+    // O nome do provider vira CABEÇALHO (com o logo), não rótulo de linha:
+    // "OpenRouter API key" na coluna estreita do setting-item trunca no
+    // celular ("OpenR… API key"). Cabeçalho ocupa a largura toda.
+    const brand = new Setting(el).setName(p.name).setHeading();
+    const mark = brand.nameEl.createSpan({ cls: "axxa-settings-brand" });
+    setIcon(mark, p.icon);
+    brand.nameEl.prepend(mark);
+
     if (f.key) {
       const key = f.key;
       new Setting(el)
-        .setName(`${p.name} API key`)
+        .setName("API key")
         .setDesc("Stored in the OS keychain (not in data.json).")
         .addText((t) => {
           t.inputEl.type = "password";
@@ -232,7 +248,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
         });
     } else {
       new Setting(el)
-        .setName("Ollama endpoint")
+        .setName("Endpoint")
         .setDesc("Local server address. Ollama needs no key.")
         .addText((t) =>
           t
@@ -248,21 +264,160 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const modelField = f.model;
     new Setting(el)
       .setName("Model for new chats")
-      .setDesc(
-        `Model id used when this provider is selected. Known: ${
-          (s.activeModels[p.id] ?? []).join(", ") || "—"
-        }`
-      )
+      .setDesc("Used when this provider is selected and nothing else was picked.")
       .addText((t) =>
         t.setValue(s[modelField]).onChange(async (v) => {
           const m = v.trim();
           if (!m) return;
           s[modelField] = m;
-          const list = s.activeModels[p.id] ?? [];
-          if (!list.includes(m)) s.activeModels[p.id] = [m, ...list];
+          this.addToList("activeModels", p.id, m);
           await this.save();
         })
       );
+
+    // ── catálogo ──────────────────────────────────────────────────────────
+    new Setting(el)
+      .setName("Models")
+      .setDesc(
+        "Fetch what this provider offers today, then choose what shows up where."
+      )
+      .addButton((b) =>
+        b
+          .setButtonText(this.fetching ? "Fetching…" : "Fetch models")
+          .setCta()
+          .setDisabled(this.fetching)
+          .onClick(() => void this.fetchModels(p.id))
+      );
+
+    // A lista é o catálogo buscado UNIDO ao que já está marcado — sem fetch,
+    // o usuário ainda vê e desmarca o que configurou antes.
+    const shown = s.activeModels[p.id] ?? [];
+    const favs = s.favoriteModels?.[p.id] ?? [];
+    const models = Array.from(
+      new Set([...(this.catalog[p.id] ?? []), ...shown, ...favs])
+    ).sort();
+
+    const list = el.createDiv({ cls: "axxa-models" });
+    if (models.length === 0) {
+      list.createEl("p", {
+        cls: "axxa-models-empty",
+        text: this.fetching
+          ? "Fetching…"
+          : "No models yet — fetch the catalog, or type one in the field above.",
+      });
+      return;
+    }
+
+    const head = list.createDiv({ cls: "axxa-models-head" });
+    head.createSpan({ text: `${models.length} models` });
+    head.createSpan({
+      cls: "axxa-models-legend",
+      text: `Show · Favorite (${favs.length}/${FAVORITE_LIMIT})`,
+    });
+
+    for (const m of models) {
+      const row = list.createDiv({ cls: "axxa-model-row" });
+      const info = row.createDiv({ cls: "axxa-model-info" });
+      const title = info.createDiv({ cls: "axxa-model-name" });
+      title.createSpan({ text: prettyModelName(m) });
+      // Tag FREE: vem das capabilities do motor (inclui o overlay do sufixo
+      // `:free` do OpenRouter), não de uma lista escrita à mão aqui.
+      if (getModelCapabilities(p.id, m).free) {
+        title.createSpan({ cls: "axxa-tag is-free", text: "free" });
+      }
+      info.createDiv({ cls: "axxa-model-id", text: m });
+
+      const actions = row.createDiv({ cls: "axxa-model-actions" });
+
+      const isShown = shown.includes(m);
+      const showBtn = actions.createEl("button", {
+        cls: isShown ? "axxa-model-toggle is-on" : "axxa-model-toggle",
+        text: "Show",
+      });
+      showBtn.setAttribute("type", "button");
+      showBtn.setAttribute("aria-pressed", String(isShown));
+      showBtn.setAttribute("title", "Appears in this provider's model list");
+      showBtn.onclick = async () => {
+        this.toggleInList("activeModels", p.id, m);
+        await this.save();
+        this.display();
+      };
+
+      const isFav = favs.includes(m);
+      const favBtn = actions.createEl("button", {
+        cls: isFav ? "axxa-model-toggle is-fav" : "axxa-model-toggle",
+      });
+      favBtn.setAttribute("type", "button");
+      favBtn.setAttribute("aria-pressed", String(isFav));
+      favBtn.setAttribute(
+        "title",
+        `Appears on the new-chat screen (max ${FAVORITE_LIMIT})`
+      );
+      setIcon(favBtn, isFav ? "star" : "star-off");
+      favBtn.onclick = async () => {
+        const list = this.s.favoriteModels?.[p.id] ?? [];
+        if (!list.includes(m) && list.length >= FAVORITE_LIMIT) {
+          new Notice(
+            `${FAVORITE_LIMIT} favorites per provider is the limit — unstar one first.`
+          );
+          return;
+        }
+        this.toggleInList("favoriteModels", p.id, m);
+        // Favoritar implica aparecer na lista: senão o atalho existiria sem o
+        // modelo estar disponível pra escolher.
+        if (this.s.favoriteModels[p.id]?.includes(m)) {
+          this.addToList("activeModels", p.id, m);
+        }
+        await this.save();
+        this.display();
+      };
+    }
+  }
+
+  /** Busca o catálogo do provider (o motor já tem: plugin.scanModels). */
+  private async fetchModels(providerId: string): Promise<void> {
+    if (this.fetching) return;
+    this.fetching = true;
+    this.display();
+    try {
+      const models = await this.plugin.scanModels(providerId);
+      this.catalog[providerId] = models;
+      new Notice(
+        models.length > 0
+          ? `${models.length} models found.`
+          : "No models returned — check the key or the endpoint."
+      );
+    } catch (err) {
+      console.error("[axxa] scanModels falhou:", err);
+      new Notice(
+        `Fetch failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    } finally {
+      this.fetching = false;
+      this.display();
+    }
+  }
+
+  private addToList(
+    field: "activeModels" | "favoriteModels",
+    providerId: string,
+    model: string
+  ): void {
+    const map = (this.s[field] ??= {});
+    const list = map[providerId] ?? [];
+    if (!list.includes(model)) map[providerId] = [model, ...list];
+  }
+
+  private toggleInList(
+    field: "activeModels" | "favoriteModels",
+    providerId: string,
+    model: string
+  ): void {
+    const map = (this.s[field] ??= {});
+    const list = map[providerId] ?? [];
+    map[providerId] = list.includes(model)
+      ? list.filter((x) => x !== model)
+      : [model, ...list];
   }
 
   // ── Chat ──────────────────────────────────────────────────────────────────

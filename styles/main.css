@@ -1428,8 +1428,151 @@ body.is-mobile .axxa-root .axxa-history-more {
   color: var(--text-accent);
 }
 
+/* Cabeçalho da sub-aba: logo + nome do provider na largura toda. O nome
+   saiu do rótulo da linha porque na coluna do setting-item ele truncava
+   ("OpenR… API key"). */
+.axxa-settings-root .setting-item-heading .setting-item-name {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.axxa-settings-root .axxa-settings-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-accent);
+}
+
+.axxa-settings-root .axxa-settings-brand svg {
+  width: 18px;
+  height: 18px;
+}
+
 .axxa-settings-root .axxa-settings-blurb {
   margin: 0 0 var(--size-4-4);
   color: var(--text-muted);
   font-size: var(--font-ui-small);
+}
+
+/* ── lista de modelos (Settings → Providers) ───────────────────────────── */
+
+.axxa-settings-root .axxa-models {
+  margin-top: var(--size-4-2);
+}
+
+.axxa-settings-root .axxa-models-empty {
+  /* Alinhado com o texto dos setting-item (que o Obsidian indenta em
+     --size-4-4); sem isto a lista fica 16px à esquerda de tudo. */
+  margin: 0;
+  padding: 0 var(--size-4-4);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.axxa-settings-root .axxa-models-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+  padding: 0 var(--size-4-4) var(--size-4-1);
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-settings-root .axxa-model-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  /* Como o .setting-item do Obsidian: conteúdo indentado, divisória
+     atravessando a largura toda. */
+  padding: var(--size-4-2) var(--size-4-4);
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.axxa-settings-root .axxa-model-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.axxa-settings-root .axxa-model-name {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+
+.axxa-settings-root .axxa-model-id {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Tag FREE — vem da capability `free` do motor (inclui o overlay do sufixo
+   `:free` do OpenRouter), não de lista escrita à mão. */
+.axxa-settings-root .axxa-tag {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.axxa-settings-root .axxa-tag.is-free {
+  background-color: var(--background-modifier-success, var(--interactive-accent));
+  color: var(--text-on-accent);
+}
+
+.axxa-settings-root .axxa-model-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+}
+
+.axxa-settings-root button.axxa-model-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  min-height: 30px;
+  min-width: 34px;
+  margin: 0;
+  padding: 0 var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+
+.axxa-settings-root button.axxa-model-toggle.is-on {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+}
+
+.axxa-settings-root button.axxa-model-toggle.is-fav {
+  border-color: var(--interactive-accent);
+  color: var(--text-accent);
+}
+
+.axxa-settings-root button.axxa-model-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Favoritos na tela inicial. */
+.axxa-root .axxa-starter-favs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-2);
 }
