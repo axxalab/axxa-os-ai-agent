@@ -21,7 +21,11 @@ import { CHAT_MODES } from "../core/session";
 import { getAllEmbeddingModels } from "../rag/types";
 import { indexVault } from "../rag/indexer";
 import { deleteIndex, RAG_SHARD_SIZE } from "../rag/vectorIndex";
-import { getModelCapabilities } from "../providers/modelCapabilities";
+import {
+  getFreeDailyTokens,
+  getModelCapabilities,
+} from "../providers/modelCapabilities";
+import { buildModelCatalog } from "./modelCatalog";
 import { prettyModelName } from "../providers/modelDescriptions";
 import { PERMISSION_LABELS } from "../agent/permissions";
 import type { PermissionLevel } from "../agent/types";
@@ -99,6 +103,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private provider = "openai";
   /** Catálogo buscado no provider (não persiste — é sempre "o que há hoje"). */
   private catalog: Record<string, string[]> = {};
+  /** Papel selecionado no filtro da lista de modelos ("all" = sem filtro). */
+  private kind = "all";
   private fetching = false;
 
   constructor(
@@ -214,6 +220,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
       btn.setAttribute("title", p.name);
       btn.onclick = () => {
         this.provider = p.id;
+        // Outro provider, outros papéis: um filtro herdado mostraria uma lista
+        // vazia sem explicar por quê.
+        this.kind = "all";
         this.display();
       };
     }
@@ -315,63 +324,139 @@ export class AxxaSettingsTab extends PluginSettingTab {
       text: `Show · Favorite (${favs.length}/${FAVORITE_LIMIT})`,
     });
 
-    for (const m of models) {
-      const row = list.createDiv({ cls: "axxa-model-row" });
-      const info = row.createDiv({ cls: "axxa-model-info" });
-      const title = info.createDiv({ cls: "axxa-model-name" });
-      title.createSpan({ text: prettyModelName(m) });
-      // Tag FREE: vem das capabilities do motor (inclui o overlay do sufixo
-      // `:free` do OpenRouter), não de uma lista escrita à mão aqui.
-      if (getModelCapabilities(p.id, m).free) {
-        title.createSpan({ cls: "axxa-tag is-free", text: "free" });
-      }
-      info.createDiv({ cls: "axxa-model-id", text: m });
-
-      const actions = row.createDiv({ cls: "axxa-model-actions" });
-
-      const isShown = shown.includes(m);
-      const showBtn = actions.createEl("button", {
-        cls: isShown ? "axxa-model-toggle is-on" : "axxa-model-toggle",
-        text: "Show",
-      });
-      showBtn.setAttribute("type", "button");
-      showBtn.setAttribute("aria-pressed", String(isShown));
-      showBtn.setAttribute("title", "Appears in this provider's model list");
-      showBtn.onclick = async () => {
-        this.toggleInList("activeModels", p.id, m);
-        await this.save();
-        this.display();
-      };
-
-      const isFav = favs.includes(m);
-      const favBtn = actions.createEl("button", {
-        cls: isFav ? "axxa-model-toggle is-fav" : "axxa-model-toggle",
-      });
-      favBtn.setAttribute("type", "button");
-      favBtn.setAttribute("aria-pressed", String(isFav));
-      favBtn.setAttribute(
-        "title",
-        `Appears on the new-chat screen (max ${FAVORITE_LIMIT})`
-      );
-      setIcon(favBtn, isFav ? "star" : "star-off");
-      favBtn.onclick = async () => {
-        const list = this.s.favoriteModels?.[p.id] ?? [];
-        if (!list.includes(m) && list.length >= FAVORITE_LIMIT) {
-          new Notice(
-            `${FAVORITE_LIMIT} favorites per provider is the limit — unstar one first.`
-          );
-          return;
-        }
-        this.toggleInList("favoriteModels", p.id, m);
-        // Favoritar implica aparecer na lista: senão o atalho existiria sem o
-        // modelo estar disponível pra escolher.
-        if (this.s.favoriteModels[p.id]?.includes(m)) {
-          this.addToList("activeModels", p.id, m);
-        }
-        await this.save();
-        this.display();
-      };
+    // PAPEL no filtro, FAMÍLIA nas seções — as duas coisas o motor já sabe
+    // (ver src/ui/modelCatalog.ts). Um catálogo de provider vem com dezenas de
+    // ids embaralhados; sem isso a lista é indigerível.
+    const groups = buildModelCatalog(p.id, models);
+    if (this.kind !== "all" && !groups.some((g) => g.id === this.kind)) {
+      this.kind = "all";
     }
+
+    if (groups.length > 1) {
+      const filter = list.createDiv({ cls: "axxa-seg axxa-models-filter" });
+      const items = [
+        { id: "all", label: "All", icon: "layers" },
+        ...groups.map((g) => ({ id: g.id, label: g.label, icon: g.icon })),
+      ];
+      for (const it of items) {
+        const active = it.id === this.kind;
+        const btn = filter.createEl("button", {
+          cls: "axxa-seg-item" + (active ? " is-active" : ""),
+        });
+        btn.setAttribute("type", "button");
+        btn.setAttribute("aria-pressed", String(active));
+        btn.setAttribute("aria-label", it.label);
+        btn.setAttribute("title", it.label);
+        const mark = btn.createSpan({ cls: "axxa-seg-ico" });
+        setIcon(mark, it.icon);
+        // Só o ATIVO mostra o rótulo: sete papéis com nome não cabem numa
+        // linha, e a regra do segmented aqui é nunca quebrar em duas.
+        if (active) btn.createSpan({ cls: "axxa-seg-label", text: it.label });
+        btn.onclick = () => {
+          this.kind = it.id;
+          this.display();
+        };
+      }
+      this.placeThumb(filter);
+    }
+
+    const visible =
+      this.kind === "all" ? groups : groups.filter((g) => g.id === this.kind);
+    for (const g of visible) {
+      for (const fam of g.families) {
+        // Família sem linhagem conhecida ("Other") vira o próprio papel: uma
+        // seção "OTHER · Text embedding" não informa nada.
+        const orfa = fam.id === "other";
+        const sec = list.createDiv({ cls: "axxa-model-section" });
+        const mark = sec.createSpan({ cls: "axxa-model-section-ico" });
+        setIcon(mark, orfa ? g.icon : fam.icon);
+        sec.createSpan({
+          cls: "axxa-model-section-name",
+          text: orfa ? g.label : fam.label,
+        });
+        // Em "All" a família sozinha é ambígua (GPT-5 em chat e em reasoning),
+        // então o papel vem junto.
+        if (this.kind === "all" && !orfa) {
+          sec.createSpan({ cls: "axxa-model-section-role", text: g.label });
+        }
+        sec.createSpan({
+          cls: "axxa-model-section-count",
+          text: String(fam.models.length),
+        });
+        for (const m of fam.models) this.modelRow(list, p.id, m);
+      }
+    }
+  }
+
+  /** Uma linha da lista de modelos: nome, tag free, id e os dois toggles. */
+  private modelRow(host: HTMLElement, providerId: string, m: string): void {
+    const shown = this.s.activeModels[providerId] ?? [];
+    const favs = this.s.favoriteModels?.[providerId] ?? [];
+
+    const row = host.createDiv({ cls: "axxa-model-row" });
+    const info = row.createDiv({ cls: "axxa-model-info" });
+    const title = info.createDiv({ cls: "axxa-model-name" });
+    title.createSpan({ text: prettyModelName(m) });
+    // Tag FREE: vem das capabilities do motor — tabela curada, overlay do
+    // catálogo, sufixo `:free` do OpenRouter e a cota diária da OpenAI. Nada
+    // de lista escrita à mão aqui.
+    if (getModelCapabilities(providerId, m).free) {
+      const tag = title.createSpan({ cls: "axxa-tag is-free", text: "free" });
+      const daily = getFreeDailyTokens(providerId, m);
+      if (daily) {
+        // A cota da OpenAI tem condição: só vale compartilhando tráfego.
+        tag.setAttribute(
+          "title",
+          `${(daily / 1000).toLocaleString()}k tokens/day free while you share traffic with OpenAI`
+        );
+      }
+    }
+    info.createDiv({ cls: "axxa-model-id", text: m });
+
+    const actions = row.createDiv({ cls: "axxa-model-actions" });
+
+    const isShown = shown.includes(m);
+    const showBtn = actions.createEl("button", {
+      cls: isShown ? "axxa-model-toggle is-on" : "axxa-model-toggle",
+      text: "Show",
+    });
+    showBtn.setAttribute("type", "button");
+    showBtn.setAttribute("aria-pressed", String(isShown));
+    showBtn.setAttribute("title", "Appears in this provider's model list");
+    showBtn.onclick = async () => {
+      this.toggleInList("activeModels", providerId, m);
+      await this.save();
+      this.display();
+    };
+
+    const isFav = favs.includes(m);
+    const favBtn = actions.createEl("button", {
+      cls: isFav ? "axxa-model-toggle is-fav" : "axxa-model-toggle",
+    });
+    favBtn.setAttribute("type", "button");
+    favBtn.setAttribute("aria-pressed", String(isFav));
+    favBtn.setAttribute(
+      "title",
+      `Appears on the new-chat screen (max ${FAVORITE_LIMIT})`
+    );
+    setIcon(favBtn, isFav ? "star" : "star-off");
+    favBtn.onclick = async () => {
+      const list = this.s.favoriteModels?.[providerId] ?? [];
+      if (!list.includes(m) && list.length >= FAVORITE_LIMIT) {
+        new Notice(
+          `${FAVORITE_LIMIT} favorites per provider is the limit — unstar one first.`
+        );
+        return;
+      }
+      this.toggleInList("favoriteModels", providerId, m);
+      // Favoritar implica aparecer na lista: senão o atalho existiria sem o
+      // modelo estar disponível pra escolher.
+      if (this.s.favoriteModels[providerId]?.includes(m)) {
+        this.addToList("activeModels", providerId, m);
+      }
+      await this.save();
+      this.display();
+    };
   }
 
   /** Busca o catálogo do provider (o motor já tem: plugin.scanModels). */

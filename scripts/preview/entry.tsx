@@ -46,11 +46,23 @@ const plugin = {
   onChatsChange: () => () => {},
   onSettingsChange: () => () => {},
   providerCredential: (id: string) => (id === "openai" ? "sk-test" : ""),
-  // Catálogo falso: o preview não fala com a rede.
+  // Catálogo falso: o preview não fala com a rede. Grande e bagunçado DE
+  // PROPÓSITO — é assim que o catálogo real chega, e é o que o agrupamento
+  // por papel/família tem que domar.
   scanModels: async (id: string) =>
     id === "openai"
-      ? ["gpt-5", "gpt-4o", "gpt-4o-mini", "o3", "dall-e-3", "tts-1"]
-      : ["meta/llama-3.3-70b-instruct:free", "qwen/qwen-2.5-7b:free"],
+      ? [
+          "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5", "gpt-5-mini",
+          "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini",
+          "gpt-4o-2024-08-06", "gpt-4-turbo", "o1", "o1-mini", "o3", "o3-mini",
+          "o4-mini", "dall-e-2", "dall-e-3", "gpt-image-1", "tts-1", "tts-1-hd",
+          "text-embedding-3-small", "text-embedding-3-large",
+        ]
+      : [
+          "meta/llama-3.3-70b-instruct:free",
+          "qwen/qwen-2.5-7b:free",
+          "deepseek/deepseek-r1",
+        ],
   reloadSkills: async () => {},
   seedExampleSkills: async () => {},
 } as unknown as AxxaPlugin;

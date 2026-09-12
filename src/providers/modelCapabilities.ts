@@ -237,6 +237,38 @@ const ENTRIES_BY_PROVIDER: Record<string, CapsEntry[]> = {
  *
  * Sufixo `:free` no OpenRouter — overlay no flag free sem mudar outras caps.
  */
+/**
+ * Tokens diários GRÁTIS da OpenAI (programa de compartilhar tráfego).
+ * Quem liga "share traffic with OpenAI" no painel ganha uma cota diária; o que
+ * passar disso, e todo modelo fora destas duas listas, é cobrado normal.
+ *
+ * É uma lista EXATA de propósito: `gpt-5.4` (250k) e `gpt-5.4-mini` (2.5M) são
+ * cotas diferentes, então prefixo daria a resposta errada. Aceita o id puro ou
+ * o id datado que a API devolve (`gpt-4o-2024-08-06`).
+ */
+const FREE_DAILY_OPENAI: Record<string, number> = {};
+for (const m of ["gpt-5.4", "gpt-5.2", "gpt-5.1", "gpt-5", "gpt-4.1", "gpt-4o", "o1", "o3"])
+  FREE_DAILY_OPENAI[m] = 250_000;
+for (const m of [
+  "gpt-5.4-mini",
+  "gpt-5.4-nano",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "gpt-4.1-mini",
+  "gpt-4.1-nano",
+  "gpt-4o-mini",
+  "o3-mini",
+  "o4-mini",
+])
+  FREE_DAILY_OPENAI[m] = 2_500_000;
+
+/** Cota diária grátis do modelo, em tokens/dia — ou null se não tem. */
+export function getFreeDailyTokens(provider: string, model: string): number | null {
+  if (provider !== "openai" || !model) return null;
+  const id = model.toLowerCase().replace(/-\d{4}-\d{2}-\d{2}$/, "");
+  return FREE_DAILY_OPENAI[id] ?? null;
+}
+
 export function getModelCapabilities(
   provider: string,
   model: string
@@ -275,6 +307,10 @@ export function getModelCapabilities(
 
   // Sufixo :free no OpenRouter — marca free sem mudar outras caps.
   if (provider === "openrouter" && lower.endsWith(":free")) caps.free = true;
+
+  // OpenAI: cota diária grátis de quem compartilha tráfego (mesma ideia —
+  // marca free, não mexe no resto).
+  if (getFreeDailyTokens(provider, model) !== null) caps.free = true;
 
   // NIM: streaming REAL no DESKTOP (Node https fura o CORS — v0.1.226); o
   // pseudo-stream agora é só mobile. A tabela estática mantém false (verdade

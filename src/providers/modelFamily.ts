@@ -56,3 +56,12 @@ export function getModelFamily(model: string): ModelFamily {
   for (const [re, fam] of FAMILIES) if (re.test(id)) return fam;
   return FALLBACK;
 }
+
+/** Posição da família na tabela acima — a ordem canônica pra listar seções.
+ *  A tabela vai do mais específico ao mais genérico, o que dentro de um
+ *  provider dá justamente a linhagem mais nova primeiro (GPT-5 antes de
+ *  GPT-4o antes de GPT-4). Desconhecida vai pro fim. */
+export function getFamilyRank(familyId: string): number {
+  const i = FAMILIES.findIndex(([, f]) => f.id === familyId);
+  return i === -1 ? FAMILIES.length : i;
+}

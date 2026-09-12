@@ -1488,6 +1488,80 @@ body.is-mobile .axxa-root .axxa-history-more {
   font-size: var(--font-ui-smaller);
 }
 
+/* Filtro por PAPEL: segmented só de ícones, com o rótulo aparecendo no item
+   ativo. Sete papéis com nome não cabem em 375px — e a régua do segmented
+   aqui é a mesma de sempre: nunca quebrar em duas linhas. */
+.axxa-settings-root .axxa-models-filter {
+  margin: 0 var(--size-4-4) var(--size-4-3);
+}
+
+.axxa-settings-root .axxa-seg-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.axxa-settings-root .axxa-seg-ico svg {
+  width: 17px;
+  height: 17px;
+}
+
+.axxa-settings-root button.axxa-seg-item.is-active .axxa-seg-ico {
+  color: var(--text-accent);
+}
+
+.axxa-settings-root .axxa-seg-label {
+  margin-left: var(--size-4-1);
+}
+
+/* Seção de FAMÍLIA dentro do papel (GPT-5, o-series, Llama…). */
+.axxa-settings-root .axxa-model-section {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3) var(--size-4-4) var(--size-4-1);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.axxa-settings-root .axxa-model-section-ico {
+  display: inline-flex;
+  align-items: center;
+}
+
+.axxa-settings-root .axxa-model-section-ico svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Em "All" a família sozinha é ambígua, então o papel vem junto — mais
+   apagado, porque é contexto e não título. */
+.axxa-settings-root .axxa-model-section-role {
+  color: var(--text-faint);
+  font-weight: var(--font-normal);
+  text-transform: none;
+}
+
+.axxa-settings-root .axxa-model-section-role::before {
+  content: "· ";
+}
+
+.axxa-settings-root .axxa-model-section-count {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-weight: var(--font-normal);
+}
+
+/* A primeira linha depois do título de seção não leva divisória: o próprio
+   título já separa. */
+.axxa-settings-root .axxa-model-section + .axxa-model-row {
+  border-top: none;
+}
+
 .axxa-settings-root .axxa-model-row {
   display: flex;
   align-items: center;

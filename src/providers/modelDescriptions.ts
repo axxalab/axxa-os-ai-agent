@@ -10,6 +10,7 @@
 import type { ModelCapabilities } from "./modelCapabilities";
 import { getModelCapabilities, isGenerationModel } from "./modelCapabilities";
 import { getPricing, type ModelPricing } from "../usage/pricing";
+import { isEmbeddingModelId } from "../rag/types";
 import { getEnrichedInfo, type EnrichedModelInfo } from "./modelInfoStore";
 
 /** Categoria semântica que vira <optgroup> no select. */
@@ -193,6 +194,11 @@ export function getModelCard(
   }
   // Fallback: deduz categoria a partir das caps
   const c = caps ?? getModelCapabilities(provider, model);
+  // Embedding vem ANTES das caps: sem card e sem flag própria, `text-embedding-*`
+  // caía em "chat-text" — e um modelo de embedding não conversa. O teste de id é
+  // o mesmo que o RAG usa pra filtrar o fetch.
+  if (isEmbeddingModelId(model))
+    return { category: "embedding", description: "Text embedding model (Vault Q&A index)." };
   if (c.imageGen) return { category: "image-gen", description: "Image generation model." };
   if (c.audioGen) return { category: "audio-gen", description: "TTS / voice model." };
   if (c.videoGen) return { category: "video-gen", description: "Video generation model." };
