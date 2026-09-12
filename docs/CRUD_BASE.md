@@ -90,7 +90,11 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
      barra de gestos (era o bug 0.1.252).
 
   E fora do fullscreen: `.view-content` leva `z-index: 10` pra ficar na
-  frente da leaf nativa de baixo — senão o composer aparece atrás do editor.
+  frente da leaf nativa de baixo — senão o composer aparece atrás do editor —,
+  **pinta o canvas do app** (padding pinta com o fundo do próprio elemento: sem
+  isso a reserva da navbar sai com o cinza da GAVETA e vira uma barra visível)
+  e **zera essa reserva com o teclado aberto** (a gaveta já subiu, a navbar
+  ficou atrás do teclado — reservar de novo é faixa morta).
 - `layoutReport.ts` — **Inspector**: o comando "Copy mobile layout report"
   copia os números do layout NO APARELHO (viewport, visualViewport,
   `--keyboard-height`, `env(safe-area-*)`, classes e geometria da gaveta, quem

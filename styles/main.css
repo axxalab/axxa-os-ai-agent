@@ -81,6 +81,29 @@
   }
 }
 
+/* A superfície da view é NOSSA — inclusive a área de padding. Sem isto, a
+   reserva da navbar na base da `.view-content` é pintada com o fundo da GAVETA
+   (`--mobile-sidebar-background`, cinza no dark), e vira uma barra visível
+   embaixo do painel. Padding pinta com o fundo do PRÓPRIO elemento: então o
+   elemento tem que ter o nosso. (Mesma lição do 0.1.250, que fez isso só no
+   fullscreen — vale sempre.) */
+.workspace-leaf-content[data-type="axxa-os-ai-agent"],
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+  background-color: var(--background-primary);
+}
+
+/* E com o teclado ABERTO a reserva some: o Obsidian já levantou a gaveta pro
+   topo do teclado e a navbar ficou atrás dele — reservar o espaço dela de novo
+   é a faixa morta entre o composer e o teclado. É a mesma regra que a casca
+   0.2.x aplicava ao composer (`bottom: 0` em `.axxa-keyboard-open`), aqui no
+   lugar onde a reserva mora neste layout. */
+body.is-mobile
+  .workspace-drawer.axxa-keyboard-open
+  .workspace-leaf-content[data-type="axxa-os-ai-agent"]
+  .view-content {
+  padding-bottom: 0 !important;
+}
+
 /* ── fullscreen mobile + teclado ───────────────────────────────────────────
    Classes postas pela AxxaView (applyFullscreen / observer do teclado):
    `axxa-fullscreen` na .workspace-drawer que hospeda a AXXA (sempre a direita)
