@@ -27,12 +27,18 @@
   overflow: hidden;
 }
 
-/* Mobile: reserva o espaço do composer acima da navbar nativa. */
+/* Mobile: reserva o espaço da navbar nativa abaixo do composer — mas só
+   enquanto ela está visível. Com o teclado aberto o Obsidian empurra a navbar
+   pra fora (`margin-bottom: … - var(--keyboard-height)`), então a reserva
+   encolhe na mesma medida e o composer desce até o teclado. */
 @supports selector(body:has(*)) {
   body.is-mobile:has(.mobile-navbar):not(.is-hidden-nav)
     .workspace-leaf-content[data-type="axxa-os-ai-agent"]
     .view-content {
-    padding-bottom: calc(var(--navbar-height, 50px)) !important;
+    padding-bottom: max(
+      0px,
+      calc(var(--navbar-height, 50px) - var(--keyboard-height, 0px))
+    ) !important;
   }
 }
 
@@ -69,6 +75,9 @@
   /* Em painel lateral o app pinta a view com --background-secondary; fixa a
      mesma superfície do composer pra não haver duas cores no mesmo painel. */
   background-color: var(--background-primary);
+  /* Teclado: sobra que o app não compensou sozinho (ver useKeyboardInset.ts).
+     Fica 0px no desktop e sempre que o Obsidian já encolheu a view. */
+  padding-bottom: var(--axxa-kb, 0px);
   font-size: var(--font-ui-small);
   color: var(--text-normal);
 }

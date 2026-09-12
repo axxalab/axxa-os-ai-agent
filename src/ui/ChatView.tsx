@@ -91,10 +91,18 @@ export function ChatView({
   }, [draft]);
 
   // Timeline colada no fim enquanto chega texto novo.
-  useEffect(() => {
+  const stickToBottom = () => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, streamingId]);
+  };
+  useEffect(stickToBottom, [messages, streamingId]);
+
+  // Teclado abrindo: a área da conversa encolhe, então reancora no fim
+  // depois da animação (o inset em si é do useKeyboardInset).
+  const onComposerFocus = () => {
+    stickToBottom();
+    window.setTimeout(stickToBottom, 350);
+  };
 
   const submit = async () => {
     const text = draft.trim();
@@ -167,6 +175,7 @@ export function ChatView({
             rows={1}
             value={draft}
             placeholder={MODE_PLACEHOLDER[cfg.mode] ?? ""}
+            onFocus={onComposerFocus}
             onChange={(e) => setDraft(e.currentTarget.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {

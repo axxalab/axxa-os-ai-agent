@@ -3,7 +3,7 @@
 // é onde vivem as opções: nova conversa, histórico, navegação e Settings.
 // Tudo que a UI faz passa pela ChatSession (src/core/session.ts) ou pelo plugin.
 
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type AxxaPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
 import type { Skill } from "../skills/skills";
@@ -12,6 +12,7 @@ import { ProjectsView } from "./ProjectsView";
 import { SkillsView } from "./SkillsView";
 import { Drawer, type ViewId } from "./Drawer";
 import { Icon } from "./Icon";
+import { useKeyboardInset } from "./useKeyboardInset";
 
 export interface ComposerInject {
   text: string;
@@ -35,6 +36,10 @@ export function App({
   const [menuOpen, setMenuOpen] = useState(false);
   const [inject, setInject] = useState<ComposerInject | null>(null);
   const [, force] = useReducer((n: number) => n + 1, 0);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Mobile: o composer acompanha o teclado (ver useKeyboardInset.ts).
+  useKeyboardInset(rootRef);
 
   // Re-render em mudanças de sessão (seleção/lock) e de settings.
   useEffect(() => {
@@ -56,7 +61,7 @@ export function App({
   };
 
   return (
-    <div className="axxa-root">
+    <div className="axxa-root" ref={rootRef}>
       {view === "chat" ? (
         <ChatView
           plugin={plugin}

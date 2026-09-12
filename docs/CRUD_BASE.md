@@ -57,6 +57,9 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
   e modelo ficam nos pills e **somem quando a sessão trava** (aparecem na
   topbar); o effort continua livre. O modo se escolhe na StarterScreen —
   depois do 1º envio ele não muda mais.
+- `useKeyboardInset.ts` — mobile: o composer acompanha o teclado. Usa a
+  reserva da navbar encolhendo com `--keyboard-height` (variável do próprio
+  Obsidian) e, como rede, mede a sobra do viewport visível em `--axxa-kb`.
 - `Icon.tsx` — ícone Lucide via `setIcon` nativo.
 - `menu.ts` — `openPicker` / `openActions` sobre o `Menu` do Obsidian (sheet
   no mobile, popup no desktop).
@@ -114,7 +117,9 @@ um preview com tema "aproximado" mostra a UI bonita e o app mostra outra
 coisa. Por isso todo seletor de `styles/main.css` vem prefixado com
 `.axxa-root` e existe um bloco de reset no topo do arquivo.
 
-Cenários: `?s=empty|thread`, `&theme=light|dark`, `&device=mobile|desktop`.
+Cenários: `?s=empty|thread`, `&theme=light|dark`, `&device=mobile|desktop`,
+`&kb=300` (simula o teclado com a mesma `--keyboard-height` do app, e desenha
+a navbar nativa pra exercitar a reserva de espaço do composer).
 
 ## Build / testes / release
 

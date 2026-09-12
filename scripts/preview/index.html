@@ -32,6 +32,40 @@
         width: 18px;
         height: 18px;
       }
+      /* Desenho da navbar/teclado só pro preview. */
+      .mobile-navbar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: var(--navbar-height, 48px);
+        background: var(--background-secondary);
+        border-top: 1px solid var(--background-modifier-border);
+        margin-bottom: calc(0px - var(--keyboard-height));
+      }
+      body.preview-kb::after {
+        content: "teclado";
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: var(--keyboard-height);
+        background: repeating-linear-gradient(
+          45deg,
+          #2a2a2a,
+          #2a2a2a 10px,
+          #333 10px,
+          #333 20px
+        );
+        color: #888;
+        font-size: 12px;
+      }
+      body.preview-kb .app-container {
+        max-height: calc(100vh - var(--keyboard-height));
+      }
       .preview-menu {
         position: fixed;
         z-index: 99;
@@ -68,6 +102,9 @@
           </div>
         </div>
       </div>
+      <!-- navbar nativa do mobile: existe pra exercitar a reserva de espaço
+           do composer (`:has(.mobile-navbar)`) e o recuo com o teclado. -->
+      <div class="mobile-navbar"></div>
     </div>
     <script>
       // Tema e modo pela query: ?theme=light&device=desktop
@@ -78,6 +115,10 @@
       if (q.get("device") === "desktop") {
         document.body.classList.remove("is-mobile");
       }
+      // ?kb=300 simula o teclado: é a MESMA variável que o Obsidian mantém.
+      const kb = Number(q.get("kb") ?? 0);
+      document.documentElement.style.setProperty("--keyboard-height", kb + "px");
+      document.body.classList.toggle("preview-kb", kb > 0);
       // Extensões de HTMLElement que o Obsidian injeta e o browser não tem.
       HTMLElement.prototype.empty = function () {
         while (this.firstChild) this.removeChild(this.firstChild);
