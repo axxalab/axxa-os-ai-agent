@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AXXA preview</title>
+    <script src="lucide.js"></script>
+    <!-- CSS REAL do Obsidian (extraído de obsidian.asar). Tem que vir antes do
+         nosso styles.css, como acontece no app: o plugin carrega depois. -->
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="main.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+      /* Estrutura mínima do workspace pra .view-content receber o mesmo
+         tratamento que recebe dentro do app. */
+      .workspace-leaf,
+      .workspace-leaf-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+      }
+      i[data-lucide] {
+        display: inline-flex;
+      }
+      svg.lucide {
+        width: 18px;
+        height: 18px;
+      }
+      .preview-menu {
+        position: fixed;
+        z-index: 99;
+        display: flex;
+        flex-direction: column;
+        min-width: 180px;
+        padding: 4px;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 10px;
+        background: var(--background-secondary);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+      .preview-menu button {
+        padding: 8px 10px;
+        background: transparent;
+        box-shadow: none;
+        text-align: left;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body class="theme-dark is-mobile">
+    <div class="app-container">
+      <div class="horizontal-main-container">
+        <div class="workspace">
+          <div class="workspace-leaf">
+            <div
+              class="workspace-leaf-content"
+              data-type="axxa-os-ai-agent"
+              data-mode="preview"
+            >
+              <div class="view-content" id="app"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Tema e modo pela query: ?theme=light&device=desktop
+      const q = new URLSearchParams(location.search);
+      if (q.get("theme") === "light") {
+        document.body.classList.replace("theme-dark", "theme-light");
+      }
+      if (q.get("device") === "desktop") {
+        document.body.classList.remove("is-mobile");
+      }
+      // Extensões de HTMLElement que o Obsidian injeta e o browser não tem.
+      HTMLElement.prototype.empty = function () {
+        while (this.firstChild) this.removeChild(this.firstChild);
+      };
+      HTMLElement.prototype.createEl = function (tag, o) {
+        const el = document.createElement(tag);
+        if (o && o.text) el.textContent = o.text;
+        if (o && o.cls) el.className = o.cls;
+        this.appendChild(el);
+        return el;
+      };
+      HTMLElement.prototype.createDiv = function (o) {
+        return this.createEl("div", typeof o === "string" ? { cls: o } : o);
+      };
+      HTMLElement.prototype.addClass = function (...c) {
+        this.classList.add(...c);
+      };
+      HTMLElement.prototype.removeClass = function (...c) {
+        this.classList.remove(...c);
+      };
+      HTMLElement.prototype.toggleClass = function (c, v) {
+        this.classList.toggle(c, v);
+      };
+      HTMLElement.prototype.setText = function (t) {
+        this.textContent = t;
+      };
+    </script>
+    <script src="bundle.js"></script>
+    <script>
+      setTimeout(
+        () => window.lucide?.createIcons({ nameAttr: "data-lucide" }),
+        60
+      );
+    </script>
+  </body>
+</html>

@@ -2,7 +2,20 @@
    Redesign, camada 1: a tela inicial do chat e o menu lateral.
    Mobile-first. Todas as cores saem das variáveis do Obsidian — o plugin
    herda o tema do usuário (claro/escuro, qualquer theme) em vez de impor
-   uma paleta. Só os tokens de forma (espaço, raio, alvo de toque) são nossos. */
+   uma paleta. Só os tokens de forma (espaço, raio, alvo de toque) são nossos.
+
+   ESPECIFICIDADE — leia antes de editar:
+   o app.css do Obsidian estiliza os elementos com seletores que já valem
+   0,1,1, por exemplo
+
+     button:not(.clickable-icon) { background-color: var(--interactive-normal);
+                                   box-shadow: var(--input-shadow); }
+     textarea, input[type='search'] { background: …; border: …; }
+
+   Uma classe nossa sozinha (`.axxa-mode`) vale 0,1,0 e PERDE dessas regras —
+   foi o que encheu de fundo cinza todo botão da casca. Por isso TODO seletor
+   aqui vem prefixado com `.axxa-root` (0,2,x) e existe o bloco de reset
+   abaixo. Regra: nada de seletor sem o prefixo, nada de !important. */
 
 /* ── host ──────────────────────────────────────────────────────────────── */
 
@@ -31,7 +44,6 @@
   --axxa-3: 12px;
   --axxa-4: 16px;
   --axxa-5: 24px;
-  --axxa-6: 36px;
 
   --axxa-r-sm: 8px;
   --axxa-r: 14px;
@@ -58,16 +70,55 @@
   color: var(--text-normal);
 }
 
+/* ── reset ─────────────────────────────────────────────────────────────── */
+
+/* Zera o que o app injeta em todo <button> (fundo, sombra, altura fixa,
+   padding, raio) — cada componente daqui pra baixo repinta o que precisa. */
+.axxa-root button {
+  appearance: none;
+  -webkit-appearance: none;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  background-color: transparent;
+  box-shadow: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  white-space: normal;
+  cursor: pointer;
+}
+
+/* O hover/tap do app também é 0,1,1 (`button:hover`, `.mobile-tap`): mata
+   aqui e devolve componente a componente. */
+.axxa-root button:hover,
+.axxa-root button:focus-visible,
+.axxa-root button.mobile-tap {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.axxa-root button:disabled {
+  cursor: default;
+}
+
 /* ── layout do chat ────────────────────────────────────────────────────── */
 
-.axxa-chat {
+.axxa-root .axxa-chat {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.axxa-topbar {
+.axxa-root .axxa-topbar {
   display: flex;
   align-items: center;
   gap: var(--axxa-2);
@@ -76,7 +127,7 @@
   border-bottom: 1px solid var(--axxa-line);
 }
 
-.axxa-topbar-title {
+.axxa-root .axxa-topbar-title {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
@@ -84,14 +135,14 @@
   line-height: 1.25;
 }
 
-.axxa-topbar-name {
+.axxa-root .axxa-topbar-name {
   font-weight: var(--font-semibold);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.axxa-topbar-meta {
+.axxa-root .axxa-topbar-meta {
   font-size: var(--font-ui-smaller);
   color: var(--text-faint);
   white-space: nowrap;
@@ -99,7 +150,7 @@
   text-overflow: ellipsis;
 }
 
-.axxa-messages {
+.axxa-root .axxa-messages {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -110,39 +161,33 @@
   padding: var(--axxa-4) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2);
 }
 
-.axxa-page {
+.axxa-root .axxa-page {
   gap: var(--axxa-3);
 }
 
 /* ── botões base ───────────────────────────────────────────────────────── */
 
-.axxa-icon-btn {
+.axxa-root .axxa-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   width: var(--axxa-tap);
   height: var(--axxa-tap);
-  padding: 0;
-  border: none;
   border-radius: var(--axxa-r-sm);
-  background: transparent;
   color: var(--text-muted);
-  box-shadow: none;
-  cursor: pointer;
 }
 
-.axxa-icon-btn:hover:not(:disabled) {
-  background: var(--axxa-hover);
+.axxa-root .axxa-icon-btn:hover:not(:disabled) {
+  background-color: var(--axxa-hover);
   color: var(--text-normal);
 }
 
-.axxa-icon-btn:disabled {
+.axxa-root .axxa-icon-btn:disabled {
   opacity: 0.35;
-  cursor: default;
 }
 
-.axxa-icon {
+.axxa-root .axxa-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -150,7 +195,7 @@
 
 /* ── tela inicial do chat ──────────────────────────────────────────────── */
 
-.axxa-starter {
+.axxa-root .axxa-starter {
   display: flex;
   flex-direction: column;
   gap: var(--axxa-5);
@@ -158,7 +203,7 @@
   padding: var(--axxa-4) 0;
 }
 
-.axxa-starter-hero {
+.axxa-root .axxa-starter-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -166,19 +211,19 @@
   text-align: center;
 }
 
-.axxa-starter-mark {
+.axxa-root .axxa-starter-mark {
   color: var(--interactive-accent);
   opacity: 0.9;
 }
 
-.axxa-starter-title {
+.axxa-root .axxa-starter-title {
   margin: 0;
   font-size: 1.45em;
   font-weight: var(--font-semibold);
   letter-spacing: -0.01em;
 }
 
-.axxa-starter-sub {
+.axxa-root .axxa-starter-sub {
   margin: 0;
   max-width: 30ch;
   color: var(--text-muted);
@@ -188,16 +233,17 @@
 /* Seletor de modo — segmented control. Trilho com thumb deslizante: o thumb
    é um ::before posicionado por --axxa-seg (0/1/2), setado pela StarterScreen.
    A decisão trava no 1º envio, então ele só existe na tela inicial. */
-.axxa-modes {
+.axxa-root .axxa-modes {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   padding: var(--axxa-1);
   border-radius: var(--axxa-r-pill);
-  background: var(--axxa-raised);
+  background-color: var(--axxa-raised);
+  box-shadow: inset 0 0 0 1px var(--axxa-line);
 }
 
-.axxa-modes::before {
+.axxa-root .axxa-modes::before {
   content: "";
   position: absolute;
   z-index: 0;
@@ -206,7 +252,7 @@
   left: var(--axxa-1);
   width: calc((100% - var(--axxa-1) * 2) / 3);
   border-radius: var(--axxa-r-pill);
-  background: var(--background-primary);
+  background-color: var(--background-primary);
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.18),
     0 0 0 1px var(--axxa-line);
@@ -214,40 +260,29 @@
   transition: transform 220ms cubic-bezier(0.4, 0.2, 0.2, 1);
 }
 
-.axxa-mode {
+.axxa-root .axxa-mode {
   position: relative;
   z-index: 1;
   min-height: 32px;
   padding: var(--axxa-2) var(--axxa-1);
-  border: none;
   border-radius: var(--axxa-r-pill);
-  background: transparent;
   color: var(--text-muted);
   font-size: var(--font-ui-small);
   white-space: nowrap;
-  box-shadow: none;
-  cursor: pointer;
   transition: color 160ms ease;
 }
 
-.axxa-mode:hover:not(.is-active) {
+.axxa-root .axxa-mode:hover:not(.is-active) {
   color: var(--text-normal);
 }
 
-.axxa-mode.is-active {
+.axxa-root .axxa-mode.is-active {
   color: var(--text-normal);
   font-weight: var(--font-semibold);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .axxa-modes::before,
-  .axxa-mode {
-    transition: none;
-  }
-}
-
 /* Aviso de key faltando. */
-.axxa-callout {
+.axxa-root .axxa-callout {
   display: flex;
   align-items: center;
   gap: var(--axxa-2);
@@ -255,31 +290,39 @@
   padding: var(--axxa-3);
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r);
-  background: var(--axxa-raised);
+  background-color: var(--axxa-raised);
   color: var(--text-muted);
 }
 
-.axxa-callout .axxa-icon {
+.axxa-root .axxa-callout .axxa-icon {
   color: var(--text-warning, var(--text-accent));
 }
 
-.axxa-callout span {
+.axxa-root .axxa-callout span {
   flex: 1 1 12ch;
 }
 
-.axxa-callout button {
+.axxa-root .axxa-callout button {
   flex: 0 0 auto;
+  padding: var(--axxa-1) var(--axxa-3);
+  border-radius: var(--axxa-r-sm);
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
   font-size: var(--font-ui-smaller);
 }
 
+.axxa-root .axxa-callout button:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
 /* Atalhos que preenchem o composer. */
-.axxa-suggestions {
+.axxa-root .axxa-suggestions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--axxa-2);
 }
 
-.axxa-chip {
+.axxa-root .axxa-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--axxa-1);
@@ -287,31 +330,28 @@
   padding: var(--axxa-2) var(--axxa-3);
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-pill);
-  background: transparent;
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
   text-align: left;
-  box-shadow: none;
-  cursor: pointer;
 }
 
-.axxa-chip:hover:not(:disabled) {
-  background: var(--axxa-hover);
+.axxa-root .axxa-chip:hover:not(:disabled) {
+  background-color: var(--axxa-hover);
   color: var(--text-normal);
 }
 
-.axxa-chip.is-active {
+.axxa-root .axxa-chip.is-active {
   border-color: var(--interactive-accent);
   color: var(--text-normal);
 }
 
-.axxa-starter-skills {
+.axxa-root .axxa-starter-skills {
   display: flex;
   flex-direction: column;
   gap: var(--axxa-2);
 }
 
-.axxa-section-label {
+.axxa-root .axxa-section-label {
   font-size: var(--font-ui-smaller);
   font-weight: var(--font-semibold);
   text-transform: uppercase;
@@ -321,41 +361,41 @@
 
 /* ── mensagens ─────────────────────────────────────────────────────────── */
 
-.axxa-msg {
+.axxa-root .axxa-msg {
   display: flex;
   flex-direction: column;
   gap: var(--axxa-2);
   max-width: 100%;
 }
 
-.axxa-msg-text,
-.axxa-markdown {
+.axxa-root .axxa-msg-text,
+.axxa-root .axxa-markdown {
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.axxa-markdown {
+.axxa-root .axxa-markdown {
   white-space: normal;
 }
 
-.axxa-msg-user {
+.axxa-root .axxa-msg-user {
   align-self: flex-end;
   max-width: 85%;
   padding: var(--axxa-2) var(--axxa-3);
   border-radius: var(--axxa-r-lg);
   border-bottom-right-radius: var(--axxa-r-sm);
-  background: var(--axxa-raised);
+  background-color: var(--axxa-raised);
 }
 
-.axxa-msg-error .axxa-msg-text {
+.axxa-root .axxa-msg-error .axxa-msg-text {
   color: var(--text-error);
 }
 
-.axxa-msg-note {
+.axxa-root .axxa-msg-note {
   color: var(--text-faint);
 }
 
-.axxa-msg-comment {
+.axxa-root .axxa-msg-comment {
   display: flex;
   /* .axxa-msg é coluna — a linha de atividade precisa voltar pra row, senão
      `align-items: center` centraliza ícone e texto em vez de alinhá-los. */
@@ -367,26 +407,26 @@
   font-size: var(--font-ui-smaller);
 }
 
-.axxa-details summary {
+.axxa-root .axxa-details summary {
   cursor: pointer;
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
 }
 
-.axxa-details pre {
+.axxa-root .axxa-details pre {
   max-height: 40vh;
   overflow: auto;
   font-size: var(--font-ui-smaller);
 }
 
-.axxa-empty-line {
+.axxa-root .axxa-empty-line {
   margin: 0;
   color: var(--text-faint);
 }
 
 /* ── composer ──────────────────────────────────────────────────────────── */
 
-.axxa-composer {
+.axxa-root .axxa-composer {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
@@ -394,10 +434,10 @@
   padding: var(--axxa-2) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2)
     var(--axxa-3);
   border-top: 1px solid var(--axxa-line);
-  background: var(--background-primary);
+  background-color: var(--background-primary);
 }
 
-.axxa-pills {
+.axxa-root .axxa-pills {
   display: flex;
   gap: var(--axxa-2);
   overflow-x: auto;
@@ -406,11 +446,11 @@
   mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 
-.axxa-pills::-webkit-scrollbar {
+.axxa-root .axxa-pills::-webkit-scrollbar {
   display: none;
 }
 
-.axxa-pill {
+.axxa-root .axxa-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--axxa-1);
@@ -420,47 +460,53 @@
   padding: 0 var(--axxa-2);
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-pill);
-  background: transparent;
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
-  box-shadow: none;
-  cursor: pointer;
 }
 
-.axxa-pill:hover:not(:disabled) {
-  background: var(--axxa-hover);
+.axxa-root .axxa-pill:hover:not(:disabled) {
+  background-color: var(--axxa-hover);
   color: var(--text-normal);
 }
 
-.axxa-pill-label {
+.axxa-root .axxa-pill-label {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.axxa-input {
+.axxa-root .axxa-input {
   display: flex;
   align-items: flex-end;
   gap: var(--axxa-2);
   padding: var(--axxa-1) var(--axxa-1) var(--axxa-1) var(--axxa-3);
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-lg);
-  background: var(--background-primary);
+  background-color: var(--background-primary);
 }
 
-.axxa-input:focus-within {
+.axxa-root .axxa-input:focus-within {
   border-color: var(--interactive-accent);
 }
 
-.axxa-input textarea {
+/* O app estiliza `textarea` (fundo de form field, borda, raio) — aqui o
+   campo é o container .axxa-input, então o textarea fica cru. */
+.axxa-root .axxa-input textarea,
+.axxa-root .axxa-input textarea:hover,
+.axxa-root .axxa-input textarea:focus,
+.axxa-root .axxa-input textarea:active {
   flex: 1 1 auto;
   min-width: 0;
   box-sizing: border-box;
   min-height: 36px;
   max-height: 40vh;
   padding: var(--axxa-2) 0;
-  border: none;
+  border: 0;
+  border-radius: 0;
   background: transparent;
+  background-color: transparent;
+  box-shadow: none;
+  outline: none;
   color: var(--text-normal);
   font-family: inherit;
   font-size: var(--font-ui-medium);
@@ -468,42 +514,33 @@
   resize: none;
 }
 
-.axxa-input textarea:focus {
-  outline: none;
-  box-shadow: none;
-}
-
-.axxa-send {
+.axxa-root .axxa-send {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   width: 32px;
   height: 32px;
-  padding: 0;
-  border: none;
   border-radius: var(--axxa-r-pill);
-  background: var(--interactive-accent);
+  background-color: var(--interactive-accent);
   color: var(--text-on-accent);
-  cursor: pointer;
 }
 
-.axxa-send:hover:not(:disabled) {
-  background: var(--interactive-accent-hover);
+.axxa-root .axxa-send:hover:not(:disabled) {
+  background-color: var(--interactive-accent-hover);
 }
 
-.axxa-send:disabled {
+.axxa-root .axxa-send:disabled {
   opacity: 0.35;
-  cursor: default;
 }
 
-.axxa-send.is-stop {
-  background: var(--background-modifier-error, var(--interactive-accent));
+.axxa-root .axxa-send.is-stop {
+  background-color: var(--background-modifier-error, var(--interactive-accent));
 }
 
 /* ── menu lateral ──────────────────────────────────────────────────────── */
 
-.axxa-drawer-layer {
+.axxa-root .axxa-drawer-layer {
   position: absolute;
   inset: 0;
   z-index: 20;
@@ -511,24 +548,24 @@
   pointer-events: none;
 }
 
-.axxa-drawer-layer.is-open {
+.axxa-root .axxa-drawer-layer.is-open {
   visibility: visible;
   pointer-events: auto;
 }
 
-.axxa-scrim {
+.axxa-root .axxa-scrim {
   position: absolute;
   inset: 0;
-  background: var(--background-modifier-cover, rgba(0, 0, 0, 0.45));
+  background-color: var(--background-modifier-cover, rgba(0, 0, 0, 0.45));
   opacity: 0;
   transition: opacity 160ms ease;
 }
 
-.axxa-drawer-layer.is-open .axxa-scrim {
+.axxa-root .axxa-drawer-layer.is-open .axxa-scrim {
   opacity: 1;
 }
 
-.axxa-drawer {
+.axxa-root .axxa-drawer {
   position: absolute;
   inset: 0 auto 0 0;
   width: var(--axxa-drawer-w);
@@ -536,7 +573,7 @@
   flex-direction: column;
   gap: var(--axxa-3);
   padding: var(--axxa-3);
-  background: var(--background-primary);
+  background-color: var(--background-primary);
   border-right: 1px solid var(--axxa-line);
   box-shadow: 0 0 24px rgba(0, 0, 0, 0.18);
   transform: translateX(-100%);
@@ -544,96 +581,86 @@
   overflow: hidden;
 }
 
-.axxa-drawer:focus {
+.axxa-root .axxa-drawer:focus {
   outline: none;
 }
 
-.axxa-drawer-layer.is-open .axxa-drawer {
+.axxa-root .axxa-drawer-layer.is-open .axxa-drawer {
   transform: translateX(0);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .axxa-scrim,
-  .axxa-drawer {
-    transition: none;
-  }
-}
-
-.axxa-drawer-head {
+.axxa-root .axxa-drawer-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--axxa-2);
 }
 
-.axxa-brand {
+.axxa-root .axxa-brand {
   font-weight: var(--font-semibold);
   letter-spacing: 0.04em;
 }
 
-.axxa-new-chat {
+.axxa-root .axxa-new-chat {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--axxa-2);
   padding: var(--axxa-3);
-  border: none;
   border-radius: var(--axxa-r);
-  background: var(--interactive-accent);
+  background-color: var(--interactive-accent);
   color: var(--text-on-accent);
   font-weight: var(--font-semibold);
-  cursor: pointer;
 }
 
-.axxa-new-chat:hover {
-  background: var(--interactive-accent-hover);
+.axxa-root .axxa-new-chat:hover {
+  background-color: var(--interactive-accent-hover);
 }
 
-.axxa-drawer-nav {
+.axxa-root .axxa-drawer-nav {
   display: flex;
   flex-direction: column;
   gap: var(--axxa-1);
 }
 
-.axxa-nav-item {
+.axxa-root .axxa-nav-item {
   display: flex;
   align-items: center;
+  /* o `button` do app vem com justify-content:center (0,0,1) — aqui a linha
+     é ícone + label alinhados à esquerda. */
+  justify-content: flex-start;
   gap: var(--axxa-3);
   width: 100%;
   padding: var(--axxa-2) var(--axxa-3);
-  border: none;
   border-radius: var(--axxa-r-sm);
-  background: transparent;
   color: var(--text-muted);
   text-align: left;
-  box-shadow: none;
-  cursor: pointer;
 }
 
-.axxa-nav-item:hover {
-  background: var(--axxa-hover);
+.axxa-root .axxa-nav-item:hover {
+  background-color: var(--axxa-hover);
   color: var(--text-normal);
 }
 
-.axxa-nav-item.is-active {
-  background: var(--axxa-raised);
+.axxa-root .axxa-nav-item.is-active {
+  background-color: var(--axxa-raised);
   color: var(--text-normal);
   font-weight: var(--font-semibold);
 }
 
-.axxa-drawer-section {
+.axxa-root .axxa-drawer-section {
   display: flex;
   flex-direction: column;
   gap: var(--axxa-2);
   padding: 0 var(--axxa-1);
 }
 
-.axxa-search {
+.axxa-root .axxa-search {
   width: 100%;
   font-size: var(--font-ui-smaller);
 }
 
-.axxa-history {
+.axxa-root .axxa-history {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -643,43 +670,43 @@
   gap: var(--axxa-1);
 }
 
-.axxa-history-row {
+.axxa-root .axxa-history-row {
   display: flex;
   align-items: center;
   gap: var(--axxa-1);
   border-radius: var(--axxa-r-sm);
 }
 
-.axxa-history-row:hover {
-  background: var(--axxa-hover);
+.axxa-root .axxa-history-row:hover {
+  background-color: var(--axxa-hover);
 }
 
-.axxa-history-row.is-current {
-  background: var(--axxa-raised);
+.axxa-root .axxa-history-row.is-current {
+  background-color: var(--axxa-raised);
 }
 
-.axxa-history-open {
+.axxa-root .axxa-history-open {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  /* idem: sem isto o título e a meta ficam centralizados na coluna. */
+  align-items: flex-start;
+  justify-content: center;
   gap: 2px;
   padding: var(--axxa-2) var(--axxa-3);
-  border: none;
-  background: transparent;
-  color: inherit;
   text-align: left;
-  box-shadow: none;
-  cursor: pointer;
 }
 
-.axxa-history-title {
+.axxa-root .axxa-history-title {
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.axxa-history-meta {
+.axxa-root .axxa-history-meta {
+  max-width: 100%;
   font-size: var(--font-ui-smaller);
   color: var(--text-faint);
   overflow: hidden;
@@ -687,22 +714,22 @@
   text-overflow: ellipsis;
 }
 
-.axxa-history-more {
+.axxa-root .axxa-history-more {
   width: 28px;
   height: 28px;
   opacity: 0;
 }
 
-.axxa-history-row:hover .axxa-history-more,
-.axxa-history-row.is-current .axxa-history-more {
+.axxa-root .axxa-history-row:hover .axxa-history-more,
+.axxa-root .axxa-history-row.is-current .axxa-history-more {
   opacity: 1;
 }
 
-body.is-mobile .axxa-history-more {
+body.is-mobile .axxa-root .axxa-history-more {
   opacity: 1;
 }
 
-.axxa-drawer-foot {
+.axxa-root .axxa-drawer-foot {
   flex: 0 0 auto;
   padding-top: var(--axxa-1);
   border-top: 1px solid var(--axxa-line);
@@ -711,11 +738,41 @@ body.is-mobile .axxa-history-more {
   text-align: center;
 }
 
-/* ── linhas de formulário herdadas (Projects / Skills) ─────────────────── */
+/* ── telas ainda cruas (Projects / Skills) ─────────────────────────────── */
 
-.axxa-row {
+.axxa-root .axxa-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--axxa-2);
+}
+
+/* Devolve o visual nativo do app aos botões dessas telas, que o reset tirou.
+   Sai quando Projects/Skills forem redesenhados. */
+.axxa-root .axxa-page button {
+  padding: var(--size-4-1) var(--size-4-3);
+  border-radius: var(--button-radius);
+  background-color: var(--interactive-normal);
+  box-shadow: var(--input-shadow);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+}
+
+.axxa-root .axxa-page button:hover:not(:disabled) {
+  background-color: var(--interactive-hover);
+}
+
+.axxa-root .axxa-page button:disabled {
+  opacity: 0.7;
+}
+
+/* ── motion ────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .axxa-root .axxa-modes::before,
+  .axxa-root .axxa-mode,
+  .axxa-root .axxa-scrim,
+  .axxa-root .axxa-drawer {
+    transition: none;
+  }
 }

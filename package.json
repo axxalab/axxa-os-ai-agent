@@ -1,6 +1,6 @@
 {
 	"name": "axxa-os-ai-agent",
-	"version": "0.5.1",
+	"version": "0.5.2",
 	"description": "AXXA OS — AI Agent (Obsidian plugin).",
 	"private": true,
 	"scripts": {
@@ -10,7 +10,8 @@
 		"test:watch": "vitest",
 		"size": "node scripts/size-report.mjs",
 		"collect:hot": "node scripts/collect-hot.mjs",
-		"deploy:output": "node scripts/deploy.mjs"
+		"deploy:output": "node scripts/deploy.mjs",
+		"preview": "node scripts/preview/preview.mjs"
 	},
 	"dependencies": {
 		"preact": "^10.29.2",

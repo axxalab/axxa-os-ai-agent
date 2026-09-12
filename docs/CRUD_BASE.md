@@ -97,6 +97,23 @@ anexos de imagem/PDF/áudio, voz/TTS, transcrição, dashboard de uso/custo,
 export de relatórios, variantes/regenerar/continuar/editar mensagem, persona
 por chat, favoritos, busca in-chat, planos.
 
+## Ver a casca sem abrir o Obsidian
+
+```
+npm run preview      # http://127.0.0.1:8777/?s=empty
+```
+
+Renderiza os componentes reais de `src/ui` com um stub da API do Obsidian **e
+o `app.css` de verdade**, extraído do `obsidian.asar` instalado na máquina
+(fica em `scripts/preview/.out/`, fora do git). Isso importa: o `app.css`
+estiliza `button`, `textarea` e `input` com seletores de especificidade 0,1,1
+(`button:not(.clickable-icon)`) que **ganham** de uma classe nossa sozinha —
+um preview com tema "aproximado" mostra a UI bonita e o app mostra outra
+coisa. Por isso todo seletor de `styles/main.css` vem prefixado com
+`.axxa-root` e existe um bloco de reset no topo do arquivo.
+
+Cenários: `?s=empty|thread`, `&theme=light|dark`, `&device=mobile|desktop`.
+
 ## Build / testes / release
 
 `npm ci --legacy-peer-deps` · `npm test` · `npm run build` · bump em

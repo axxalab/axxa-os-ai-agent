@@ -42,6 +42,10 @@ PROMPT-MESTRE.md
 VIABILIDADE-FINANCEIRA.md
 
 
+# preview da casca (npm run preview): bundle + o app.css extraido do
+# Obsidian instalado. O app.css e do app, nao pode ser versionado.
+scripts/preview/.out/
+
 # storybook build (gerado por `npm run storybook`)
 storybook/dist/
 storybook-static/
