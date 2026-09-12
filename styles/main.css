@@ -43,13 +43,10 @@
   ) !important;
 }
 
-/* A superfície da view é NOSSA, inclusive na área de padding — padding pinta
-   com o fundo do PRÓPRIO elemento, e sem isto qualquer reserva sai com o fundo
-   da GAVETA (cinza no dark). */
-.workspace-leaf-content[data-type="axxa-os-ai-agent"],
-.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
-  background-color: var(--background-primary);
-}
+/* NÃO pintar a leaf/.view-content fora do fullscreen: a faixa entre o nosso
+   painel e o chrome nativo da gaveta (o seletor "AXXA OS" da base) é ÁREA
+   NATIVA e tem que ficar com a cor do app. A pintura da cadeia existe só no
+   modo cheio, onde o chrome nativo não está mais lá — é como a 0.2.37 faz. */
 
 /* MOBILE — a cadeia passa por `.workspace-tab-container`, e é ela que zera a
    reserva de baixo: no mobile a base é só um respiro de 4px. Sem esta regra o
@@ -111,41 +108,10 @@ body.is-mobile.axxa-fullscreen .mobile-navbar {
   display: none;
 }
 
-/* A faixa embaixo da gaveta (área da barra de gestos do Android). Se ela está
-   DENTRO da WebView, quem pinta é o body/.app-container — e aparecia cinza
-   porque o tema pinta essas superfícies com outra cor que a nossa. Pintando
-   as duas com o canvas do app, a faixa some no preto do painel. (Se a barra
-   for desenhada pelo SO fora da WebView, nenhum CSS a alcança — o relatório
-   do comando "Copy mobile layout report" diz qual dos dois casos é.) */
-body.is-mobile.axxa-fullscreen,
-body.is-mobile.axxa-fullscreen .app-container,
-body.is-mobile.axxa-fullscreen .horizontal-main-container,
-body.is-mobile.axxa-fullscreen .workspace {
-  background-color: var(--background-primary) !important;
-}
-
-/* A MESMA faixa aparece com o teclado aberto FORA do fullscreen, e é a mais
-   visível: o Obsidian encolhe a gaveta pra cima da navbar flutuante, e entre o
-   fim da gaveta e o teclado sobra a superfície do app (body e a cadeia do
-   .app-container), que o tema pinta em outra cor — a barra cinza. Pintar só o
-   body não bastava; a faixa vinha da cadeia. Aqui as quatro superfícies
-   possíveis recebem o canvas do painel, então a faixa deixa de existir
-   visualmente. Tudo escopado na classe do teclado, que sai quando ele fecha. */
-body.is-mobile.axxa-keyboard-open,
-body.is-mobile.axxa-keyboard-open .app-container,
-body.is-mobile.axxa-keyboard-open .horizontal-main-container,
-body.is-mobile.axxa-keyboard-open .workspace {
-  background-color: var(--background-primary) !important;
-}
-
-/* A outra coisa que pode ocupar aquela faixa é a navbar global, que o Obsidian
-   levanta pra cima do teclado (`.is-floating-nav`: margin-bottom negativo pela
-   --keyboard-height). Só o FUNDO dela acompanha o painel — os ícones seguem
-   visíveis e clicáveis, e a regra vale só enquanto o teclado está aberto com a
-   AXXA ativa. */
-body.is-mobile.axxa-keyboard-open .mobile-navbar {
-  background-color: var(--background-primary) !important;
-}
+/* Nada de pintar body / .app-container / .mobile-navbar: são superfícies do
+   APP, e pintá-las com a nossa cor é o mesmo erro de deixar preto onde o
+   chrome nativo devia aparecer. No fullscreen quem pinta é a CADEIA DA GAVETA
+   (regra mais abaixo), que é o que a casca 0.2.37 faz. */
 
 /* Tela cheia de verdade. A gaveta direita do mobile é de largura PARCIAL
    (deixa uma faixa do editor atrás), então esconder o chrome não basta: ela
@@ -173,6 +139,7 @@ body.is-mobile
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-drawer-active-tab-content,
+body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-tab-container,
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-leaf-content[data-type="axxa-os-ai-agent"] {
@@ -211,6 +178,7 @@ body.is-mobile
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-drawer-active-tab-content,
+body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-tab-container,
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .workspace-leaf-content[data-type="axxa-os-ai-agent"],
