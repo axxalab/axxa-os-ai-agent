@@ -103,11 +103,6 @@ export function ChatView({
     await session.send(text);
   };
 
-  const pickText = (text: string) => {
-    setDraft(text);
-    textareaRef.current?.focus();
-  };
-
   const empty = messages.length === 0 && !loadingChat;
   const effort = cfg.effort as EffortLevel;
 
@@ -149,7 +144,6 @@ export function ChatView({
           <StarterScreen
             plugin={plugin}
             session={session}
-            onPick={pickText}
             onUseSkill={onUseSkill}
           />
         ) : (

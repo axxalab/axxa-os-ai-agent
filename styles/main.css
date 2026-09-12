@@ -66,6 +66,9 @@
   min-height: 0;
   height: 100%;
   overflow: hidden;
+  /* Em painel lateral o app pinta a view com --background-secondary; fixa a
+     mesma superfície do composer pra não haver duas cores no mesmo painel. */
+  background-color: var(--background-primary);
   font-size: var(--font-ui-small);
   color: var(--text-normal);
 }
@@ -199,8 +202,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--axxa-5);
-  margin: auto 0;
-  padding: var(--axxa-4) 0;
+  /* Alinhado ao topo: o segmented control é a primeira coisa da tela. */
+  margin: 0;
+  padding-bottom: var(--axxa-4);
 }
 
 .axxa-root .axxa-starter-hero {

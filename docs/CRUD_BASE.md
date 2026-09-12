@@ -48,9 +48,9 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
 - `Drawer.tsx` — **o menu lateral**: nova conversa, navegação, Settings e o
   histórico de chats (abrir · renomear · apagar, busca a partir de 8 chats).
   Scrim + slide, fecha no Esc / no scrim / ao navegar.
-- `StarterScreen.tsx` — **a tela inicial de cada chat**: saudação, seletor de
-  modo (Chat / Vault Q&A / Agent), aviso de key faltando, atalhos que
-  preenchem o composer e as skills do usuário.
+- `StarterScreen.tsx` — **a tela inicial de cada chat**: segmented control de
+  modo (Chat / Vault Q&A / Agent) no topo, saudação, aviso de key faltando e
+  as skills do usuário.
 - `ChatView.tsx` — topbar (menu · título · nova conversa), timeline e
   composer. Provider/modelo ficam em pills e **somem quando a sessão trava**
   (aparecem na topbar); o effort continua livre. O modo se escolhe na

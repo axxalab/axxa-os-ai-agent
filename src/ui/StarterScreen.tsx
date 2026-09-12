@@ -13,18 +13,10 @@ import { providerConfigured, PROVIDERS } from "../core/providersMeta";
 import { Icon } from "./Icon";
 import { openPluginSettings } from "./modals";
 
-interface Suggestion {
-  /** O que o chip mostra. */
-  label: string;
-  /** O que vai pro composer (com o espaço final pra continuar digitando). */
-  text: string;
-}
-
 interface ModeMeta {
   label: string;
   icon: string;
   tagline: string;
-  suggestions: Suggestion[];
 }
 
 const MODES: Record<ChatMode, ModeMeta> = {
@@ -32,37 +24,16 @@ const MODES: Record<ChatMode, ModeMeta> = {
     label: "Chat",
     icon: "message-circle",
     tagline: "Just you and the model. Your notes stay out of it.",
-    suggestions: [
-      { label: "Explain simply", text: "Explain this in simple terms: " },
-      { label: "Draft an outline", text: "Draft an outline for " },
-      { label: "Three angles", text: "Give me three angles on " },
-    ],
   },
   "vault-qa": {
     label: "Vault Q&A",
     icon: "library",
     tagline: "Answers grounded in your notes, found by local search.",
-    suggestions: [
-      { label: "What do my notes say…", text: "What do my notes say about " },
-      { label: "Summarize what I wrote", text: "Summarize what I wrote on " },
-      { label: "Find connections", text: "Which notes connect to " },
-    ],
   },
   agent: {
     label: "Agent",
     icon: "bot",
     tagline: "Reads and edits your vault — every change asks first.",
-    suggestions: [
-      {
-        label: "Plan my day",
-        text: "Create a note with today's plan",
-      },
-      { label: "Fix broken links", text: "Find and fix broken links in " },
-      {
-        label: "Tidy my inbox",
-        text: "Organize my inbox notes into folders",
-      },
-    ],
   },
 };
 
@@ -78,13 +49,10 @@ function greeting(): string {
 export function StarterScreen({
   plugin,
   session,
-  onPick,
   onUseSkill,
 }: {
   plugin: AxxaPlugin;
   session: ChatSession;
-  /** Coloca um texto no composer (não envia). */
-  onPick: (text: string) => void;
   onUseSkill: (skill: Skill) => void;
 }) {
   const cfg = session.config;
@@ -135,19 +103,6 @@ export function StarterScreen({
           </button>
         </div>
       )}
-
-      <div className="axxa-suggestions">
-        {mode.suggestions.map((s) => (
-          <button
-            key={s.label}
-            type="button"
-            className="axxa-chip"
-            onClick={() => onPick(s.text)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
 
       {skills.length > 0 && (
         <div className="axxa-starter-skills">
