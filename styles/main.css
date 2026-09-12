@@ -119,12 +119,26 @@ body.is-mobile.axxa-fullscreen .workspace {
   background-color: var(--background-primary) !important;
 }
 
-/* A MESMA faixa aparece com o teclado aberto mesmo fora do fullscreen: o
-   Obsidian encolhe o `.app-container` (`max-height: 100vh - keyboard-height`)
-   e o que fica embaixo é o `body`, pintado pelo tema com outra cor. Pintando o
-   body enquanto o teclado está aberto, a faixa passa a ser a mesma superfície
-   do painel. A classe sai quando o teclado fecha. */
-body.is-mobile.axxa-keyboard-open {
+/* A MESMA faixa aparece com o teclado aberto FORA do fullscreen, e é a mais
+   visível: o Obsidian encolhe a gaveta pra cima da navbar flutuante, e entre o
+   fim da gaveta e o teclado sobra a superfície do app (body e a cadeia do
+   .app-container), que o tema pinta em outra cor — a barra cinza. Pintar só o
+   body não bastava; a faixa vinha da cadeia. Aqui as quatro superfícies
+   possíveis recebem o canvas do painel, então a faixa deixa de existir
+   visualmente. Tudo escopado na classe do teclado, que sai quando ele fecha. */
+body.is-mobile.axxa-keyboard-open,
+body.is-mobile.axxa-keyboard-open .app-container,
+body.is-mobile.axxa-keyboard-open .horizontal-main-container,
+body.is-mobile.axxa-keyboard-open .workspace {
+  background-color: var(--background-primary) !important;
+}
+
+/* A outra coisa que pode ocupar aquela faixa é a navbar global, que o Obsidian
+   levanta pra cima do teclado (`.is-floating-nav`: margin-bottom negativo pela
+   --keyboard-height). Só o FUNDO dela acompanha o painel — os ícones seguem
+   visíveis e clicáveis, e a regra vale só enquanto o teclado está aberto com a
+   AXXA ativa. */
+body.is-mobile.axxa-keyboard-open .mobile-navbar {
   background-color: var(--background-primary) !important;
 }
 
