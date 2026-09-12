@@ -125,6 +125,22 @@ body.is-mobile.axxa-fullscreen .workspace > .mod-root {
   background-color: var(--background-primary) !important;
 }
 
+/* A MESMA faixa, no modo NORMAL com o teclado aberto: o Obsidian levanta a
+   gaveta e a navbar flutuante pra cima do teclado, e o que fica entre o fim do
+   nosso painel e o teclado é superfície do APP — largura inteira, inclusive
+   fora da gaveta. Aqui pintamos só essas superfícies de fora; a leaf e a
+   `.view-content` ficam de FORA da regra de propósito: pintá-las é o que
+   deixou preta a faixa do chrome nativo (0.5.15/0.5.16). Sai quando o teclado
+   fecha. */
+body.is-mobile.axxa-keyboard-open,
+body.is-mobile.axxa-keyboard-open .app-container,
+body.is-mobile.axxa-keyboard-open .horizontal-main-container,
+body.is-mobile.axxa-keyboard-open .workspace,
+body.is-mobile.axxa-keyboard-open .workspace > .mod-root,
+body.is-mobile.axxa-keyboard-open .mobile-navbar {
+  background-color: var(--background-primary) !important;
+}
+
 /* E a faixa do safe-area de baixo: se `100dvh` não inclui a área da barra de
    gestos, a gaveta termina acima dela. Este preenchimento cobre exatamente
    essa altura com o nosso canvas, sem mexer em altura nenhuma (é `fixed`, fora

@@ -23,6 +23,9 @@ export const VIEW_TYPE_AXXA = "axxa-os-ai-agent";
 /** Espera a animação da gaveta terminar antes de reavaliar a geometria. */
 const DRAWER_SETTLE_MS = 260;
 
+/** Abaixo disto é barra do OS / arredondamento, não teclado. */
+const KEYBOARD_MIN_PX = 120;
+
 export class AxxaView extends ItemView {
   private root: Root | null = null;
   private session: ChatSession | null = null;
@@ -31,6 +34,7 @@ export class AxxaView extends ItemView {
   private drawerCheckTimer: number | null = null;
   /** Último valor lido de --keyboard-height (early-return do observer). */
   private lastKeyboardHeight = -1;
+  private viewportCleanup: (() => void) | null = null;
   private settingsUnsub: (() => void) | null = null;
 
   constructor(
@@ -114,21 +118,31 @@ export class AxxaView extends ItemView {
    * no CSS, que o teclado é descontado.
    */
   private syncKeyboard = (): void => {
-    const docEl = this.containerEl.doc.documentElement;
-    const height = parseFloat(
-      docEl.style.getPropertyValue("--keyboard-height") || "0"
-    );
-    if (height === this.lastKeyboardHeight) return;
-    this.lastKeyboardHeight = height;
-
-    // Re-busca a gaveta a cada update — sobrevive a migração entre janelas.
     const drawer = this.containerEl.closest(".workspace-drawer");
     if (!drawer) return;
+    const win = this.containerEl.doc.defaultView;
+    const vv = win?.visualViewport ?? null;
+
+    // Sinal 1: a var que o Obsidian publica inline no <html>.
+    const published = parseFloat(
+      this.containerEl.doc.documentElement.style.getPropertyValue(
+        "--keyboard-height"
+      ) || "0"
+    );
+    // Sinal 2: quanto da janela o teclado está cobrindo, medido. Existe porque
+    // o sinal 1 sozinho não acendeu a classe no aparelho do Rafael (a pintura
+    // escopada nela nunca valeu) — e a classe é o que liga o cosmético.
+    const covered =
+      vv && win ? Math.max(0, win.innerHeight - (vv.height + vv.offsetTop)) : 0;
+    const signal = published > 0 ? published : covered;
+    if (signal === this.lastKeyboardHeight) return;
+    this.lastKeyboardHeight = signal;
+
     // Multi-tab: só vale com a AXXA na aba ativa da gaveta.
     const active = !!this.containerEl.closest(
       ".workspace-drawer-active-tab-content"
     );
-    const open = active && height > 0;
+    const open = active && signal >= KEYBOARD_MIN_PX;
     drawer.classList.toggle("axxa-keyboard-open", open);
     this.containerEl.doc.body.classList.toggle("axxa-keyboard-open", open);
   };
@@ -152,11 +166,26 @@ export class AxxaView extends ItemView {
       attributes: true,
       attributeFilter: ["style"],
     });
+
+    // ...e o viewport visível, que é o sinal 2. A GEOMETRIA não sai daqui:
+    // quem encolhe a gaveta é o Obsidian (e, no fullscreen, a nossa altura).
+    const win = this.containerEl.doc.defaultView;
+    const vv = win?.visualViewport;
+    vv?.addEventListener("resize", this.syncKeyboard);
+    vv?.addEventListener("scroll", this.syncKeyboard);
+    win?.addEventListener("resize", this.syncKeyboard);
+    this.viewportCleanup = () => {
+      vv?.removeEventListener("resize", this.syncKeyboard);
+      vv?.removeEventListener("scroll", this.syncKeyboard);
+      win?.removeEventListener("resize", this.syncKeyboard);
+    };
   }
 
   private teardownKeyboardObserver(): void {
     this.keyboardObserver?.disconnect();
     this.keyboardObserver = null;
+    this.viewportCleanup?.();
+    this.viewportCleanup = null;
     this.lastKeyboardHeight = -1;
     const drawer = this.containerEl.closest(".workspace-drawer");
     drawer?.classList.remove("axxa-keyboard-open");
