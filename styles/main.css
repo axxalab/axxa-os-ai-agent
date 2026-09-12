@@ -102,6 +102,15 @@ body.is-mobile.axxa-fullscreen .workspace {
   background-color: var(--background-primary) !important;
 }
 
+/* A MESMA faixa aparece com o teclado aberto mesmo fora do fullscreen: o
+   Obsidian encolhe o `.app-container` (`max-height: 100vh - keyboard-height`)
+   e o que fica embaixo é o `body`, pintado pelo tema com outra cor. Pintando o
+   body enquanto o teclado está aberto, a faixa passa a ser a mesma superfície
+   do painel. A classe sai quando o teclado fecha. */
+body.is-mobile.axxa-keyboard-open {
+  background-color: var(--background-primary) !important;
+}
+
 /* Tela cheia de verdade — 100vw × 100dvh. A gaveta direita do mobile é de
    largura PARCIAL (deixa uma faixa do editor atrás) e o `top/bottom: 0` dela
    não basta: sem altura NOSSA, a cadeia de containers não propaga a viewport
@@ -111,8 +120,12 @@ body.is-mobile.axxa-fullscreen .workspace {
 body.is-mobile .workspace-drawer.axxa-fullscreen {
   width: 100vw !important;
   max-width: 100vw !important;
-  height: 100vh !important;
-  height: 100dvh !important;
+  /* `100%` e não `100dvh`: a gaveta é `position: fixed`, então 100% é a altura
+     do viewport E acompanha a janela encolhendo — que é o que o Android faz
+     quando o teclado abre. `dvh` NÃO acompanha esse resize (medido no
+     aparelho): era por isso que o composer ficava atrás do teclado só no
+     fullscreen, enquanto no modo normal (sem altura nossa) ele subia. */
+  height: 100% !important;
 }
 
 /* Propaga a viewport pela cadeia de containers até a view da AXXA. */
@@ -186,7 +199,7 @@ body.is-mobile
    especificidade, não por ordem no arquivo — que é frágil e já mordeu antes. */
 body.is-mobile .workspace-drawer.axxa-fullscreen.axxa-keyboard-open,
 body.is-mobile .workspace-drawer.axxa-keyboard-open {
-  height: var(--axxa-kb-viewport, 100dvh) !important;
+  height: var(--axxa-kb-viewport, 100%) !important;
 }
 
 /* ── tokens ────────────────────────────────────────────────────────────── */

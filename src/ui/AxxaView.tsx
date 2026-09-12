@@ -33,6 +33,9 @@ export class AxxaView extends ItemView {
   private drawerObserver: MutationObserver | null = null;
   private drawerCheckTimer: number | null = null;
   private viewportCleanup: (() => void) | null = null;
+  /** Maior altura de janela já vista nesta largura (ver syncKeyboard). */
+  private maxViewportH = 0;
+  private lastViewportW = 0;
   private settingsUnsub: (() => void) | null = null;
 
   constructor(
@@ -132,18 +135,33 @@ export class AxxaView extends ItemView {
     );
     const covered =
       vv && win ? Math.max(0, win.innerHeight - (vv.height + vv.offsetTop)) : 0;
-    const open = active && (published > 0 || covered >= KEYBOARD_MIN_PX);
+
+    // 3º sinal — o que faltava no Android: lá a WebView ENCOLHE com o teclado,
+    // então nem `--keyboard-height` nem `visualViewport` acusam cobertura
+    // (innerHeight e vv.height encolhem juntos). O que denuncia é a janela ter
+    // ficado menor do que já foi. Guardamos o maior valor por LARGURA, pra
+    // rotação não ser confundida com teclado.
+    if (win && win.innerWidth !== this.lastViewportW) {
+      this.lastViewportW = win.innerWidth;
+      this.maxViewportH = 0;
+    }
+    const usableNow = vv ? vv.height + vv.offsetTop : (win?.innerHeight ?? 0);
+    if (win) this.maxViewportH = Math.max(this.maxViewportH, win.innerHeight);
+    const shrunk = this.maxViewportH - usableNow >= KEYBOARD_MIN_PX;
+
+    const open =
+      active && (published > 0 || covered >= KEYBOARD_MIN_PX || shrunk);
 
     drawer.classList.toggle("axxa-keyboard-open", open);
     // O body também, pros modais — que vivem FORA da gaveta — poderem reagir.
     this.containerEl.doc.body.classList.toggle("axxa-keyboard-open", open);
 
     const el = drawer as HTMLElement;
-    if (open && vv) {
-      // offsetTop entra porque a gaveta é ancorada no TOPO do layout viewport:
-      // a altura útil vai do topo até o fim da parte visível.
-      const usable = Math.round(vv.height + vv.offsetTop);
-      el.style.setProperty("--axxa-kb-viewport", `${usable}px`);
+    if (open) {
+      // Altura útil = do topo do layout viewport até o fim da parte visível.
+      // Serve pros dois mundos: no Android já vem encolhida, no iOS é a parte
+      // acima do teclado.
+      el.style.setProperty("--axxa-kb-viewport", `${Math.round(usableNow)}px`);
     } else {
       el.style.removeProperty("--axxa-kb-viewport");
     }
