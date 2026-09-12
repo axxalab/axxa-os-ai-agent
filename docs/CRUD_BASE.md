@@ -35,15 +35,29 @@
 | `src/main.ts` | plugin: settings (enxutas), SecretStorage das chaves, cache de summaries de chat, índice RAG no load, auto-reindex, watcher de skills |
 | `src/i18n/en-us.ts` | strings (o motor usa `ai`, `agent`, `vault`, `systemPrompt`, `chat`, `conversations`; o resto é legado da UI antiga — pode ser podado) |
 
-## A casca crua (`src/ui/`)
+## A casca (`src/ui/`)
 
-Componentes nativos do Obsidian + React/Preact mínimo, **zero CSS** além do
-esqueleto de layout em `styles/main.css`.
+React/Preact mínimo sobre componentes nativos do Obsidian. O CSS em
+`styles/main.css` tira **todas** as cores das variáveis do tema do usuário —
+só os tokens de forma (espaço, raio, alvo de toque) são nossos.
+
+**Redesign, camada 1 (tela inicial do chat + menu lateral):**
 
 - `AxxaView.tsx` — a ItemView; cria uma `ChatSession` por view.
-- `App.tsx` — nav (Chats / Projects / Skills / Settings).
-- `ChatView.tsx` — lista de chats (abrir / renomear / apagar), mensagens,
-  composer com modo · provider · modelo · effort (travam após a 1ª mensagem).
+- `App.tsx` — uma tela por vez (Chats / Projects / Skills) + o `Drawer`.
+- `Drawer.tsx` — **o menu lateral**: nova conversa, navegação, Settings e o
+  histórico de chats (abrir · renomear · apagar, busca a partir de 8 chats).
+  Scrim + slide, fecha no Esc / no scrim / ao navegar.
+- `StarterScreen.tsx` — **a tela inicial de cada chat**: saudação, seletor de
+  modo (Chat / Vault Q&A / Agent), aviso de key faltando, atalhos que
+  preenchem o composer e as skills do usuário.
+- `ChatView.tsx` — topbar (menu · título · nova conversa), timeline e
+  composer. Provider/modelo ficam em pills e **somem quando a sessão trava**
+  (aparecem na topbar); o effort continua livre. O modo se escolhe na
+  StarterScreen — depois do 1º envio ele não muda mais.
+- `Icon.tsx` — ícone Lucide via `setIcon` nativo.
+- `menu.ts` — `openPicker` / `openActions` sobre o `Menu` do Obsidian (sheet
+  no mobile, popup no desktop).
 - `ProjectsView.tsx` — CRUD de projetos, fontes, chats do projeto.
 - `SkillsView.tsx` — CRUD de skills; "Use" injeta o corpo no composer.
 - `SettingsTab.ts` — chave + modelo por provider, defaults, pastas, RAG

@@ -1,28 +1,28 @@
 // src/ui/App.tsx
-// Casca CRUD crua — nav + 3 telas (Chats / Projects / Skills). Sem design:
-// componentes nativos, zero CSS além do esqueleto de layout. Tudo que a UI
-// faz passa pela ChatSession (src/core/session.ts) ou pelo plugin.
+// A casca. Uma tela por vez (Chats / Projects / Skills) + o menu lateral, que
+// é onde vivem as opções: nova conversa, histórico, navegação e Settings.
+// Tudo que a UI faz passa pela ChatSession (src/core/session.ts) ou pelo plugin.
 
-import { useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import type AxxaPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
 import type { Skill } from "../skills/skills";
 import { ChatView } from "./ChatView";
 import { ProjectsView } from "./ProjectsView";
 import { SkillsView } from "./SkillsView";
-import { openPluginSettings } from "./modals";
-
-type ViewId = "chat" | "projects" | "skills";
-const VIEWS: Array<{ id: ViewId; label: string }> = [
-  { id: "chat", label: "Chats" },
-  { id: "projects", label: "Projects" },
-  { id: "skills", label: "Skills" },
-];
+import { Drawer, type ViewId } from "./Drawer";
+import { Icon } from "./Icon";
 
 export interface ComposerInject {
   text: string;
   nonce: number;
 }
+
+const PAGE_TITLE: Record<ViewId, string> = {
+  chat: "Chats",
+  projects: "Projects",
+  skills: "Skills",
+};
 
 export function App({
   plugin,
@@ -32,6 +32,7 @@ export function App({
   session: ChatSession;
 }) {
   const [view, setView] = useState<ViewId>("chat");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [inject, setInject] = useState<ComposerInject | null>(null);
   const [, force] = useReducer((n: number) => n + 1, 0);
 
@@ -45,6 +46,8 @@ export function App({
     };
   }, [session, plugin]);
 
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
   const useSkill = (skill: Skill) => {
     // Skill com modo preferido troca o modo (no-op se a sessão já travou).
     if (isChatMode(skill.mode)) session.setMode(skill.mode);
@@ -54,33 +57,60 @@ export function App({
 
   return (
     <div className="axxa-root">
-      <nav className="axxa-nav">
-        {VIEWS.map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            disabled={view === v.id}
-            onClick={() => setView(v.id)}
-          >
-            {v.label}
-          </button>
-        ))}
-        <button type="button" onClick={() => openPluginSettings(plugin)}>
-          Settings
-        </button>
-        <small className="axxa-nav-version">v{plugin.manifest.version}</small>
-      </nav>
-      {view === "chat" && (
-        <ChatView plugin={plugin} session={session} inject={inject} />
-      )}
-      {view === "projects" && (
-        <ProjectsView
+      {view === "chat" ? (
+        <ChatView
           plugin={plugin}
           session={session}
-          onOpenChat={() => setView("chat")}
+          inject={inject}
+          onOpenMenu={() => setMenuOpen(true)}
+          onUseSkill={useSkill}
         />
+      ) : (
+        <div className="axxa-chat">
+          <header className="axxa-topbar">
+            <button
+              type="button"
+              className="axxa-icon-btn"
+              aria-label="Open menu"
+              onClick={() => setMenuOpen(true)}
+            >
+              <Icon name="menu" />
+            </button>
+            <div className="axxa-topbar-title">
+              <span className="axxa-topbar-name">{PAGE_TITLE[view]}</span>
+            </div>
+            <button
+              type="button"
+              className="axxa-icon-btn"
+              aria-label="Back to chat"
+              onClick={() => setView("chat")}
+            >
+              <Icon name="message-square" />
+            </button>
+          </header>
+          <div className="axxa-messages axxa-page">
+            {view === "projects" && (
+              <ProjectsView
+                plugin={plugin}
+                session={session}
+                onOpenChat={() => setView("chat")}
+              />
+            )}
+            {view === "skills" && (
+              <SkillsView plugin={plugin} onUse={useSkill} />
+            )}
+          </div>
+        </div>
       )}
-      {view === "skills" && <SkillsView plugin={plugin} onUse={useSkill} />}
+
+      <Drawer
+        plugin={plugin}
+        session={session}
+        open={menuOpen}
+        view={view}
+        onNavigate={setView}
+        onClose={closeMenu}
+      />
     </div>
   );
 }

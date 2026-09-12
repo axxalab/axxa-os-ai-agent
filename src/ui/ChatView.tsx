@@ -1,21 +1,32 @@
 // src/ui/ChatView.tsx
-// CRUD de chats + mensagens + composer, cru. Lista de conversas (abrir /
-// renomear / apagar), timeline do store, seletores de modo / provider / modelo
-// / effort (travam após a 1ª mensagem) e envio com streaming.
+// A tela do chat: barra do topo (menu · título · nova conversa), o corpo
+// (StarterScreen enquanto vazio, timeline depois) e o composer. O MODO se
+// escolhe na tela inicial; provider e modelo ficam nos pills do composer e
+// somem quando a sessão trava (1º envio) — o effort continua livre sempre.
+//
+// O histórico de conversas NÃO mora aqui: é o menu lateral (Drawer.tsx).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type AxxaPlugin from "../main";
 import {
   useChatStore,
   type ActivityMeta,
   type ChatMessage,
 } from "../store/chat";
-import { CHAT_MODES, isChatMode, type ChatSession } from "../core/session";
-import { PROVIDERS } from "../core/providersMeta";
-import { EFFORT_LEVELS, EFFORT_LABELS } from "../core/effort";
-import type { ChatSummary } from "../core/chatPersistence";
+import type { ChatSession } from "../core/session";
+import { PROVIDERS, providerConfigured } from "../core/providersMeta";
+import {
+  EFFORT_LEVELS,
+  EFFORT_LABELS,
+  EFFORT_EMOJIS,
+  EFFORT_DESCRIPTIONS,
+  type EffortLevel,
+} from "../core/effort";
+import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
-import { PromptModal, ConfirmModal } from "./modals";
+import { Icon } from "./Icon";
+import { openPicker } from "./menu";
+import { StarterScreen } from "./StarterScreen";
 import type { ComposerInject } from "./App";
 
 const MODE_PLACEHOLDER: Record<string, string> = {
@@ -24,14 +35,24 @@ const MODE_PLACEHOLDER: Record<string, string> = {
   agent: "Tell the agent what to do in your vault…",
 };
 
+const MODE_LABEL: Record<string, string> = {
+  chat: "Chat",
+  "vault-qa": "Vault Q&A",
+  agent: "Agent",
+};
+
 export function ChatView({
   plugin,
   session,
   inject,
+  onOpenMenu,
+  onUseSkill,
 }: {
   plugin: AxxaPlugin;
   session: ChatSession;
   inject: ComposerInject | null;
+  onOpenMenu: () => void;
+  onUseSkill: (skill: Skill) => void;
 }) {
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
@@ -39,36 +60,41 @@ export function ChatView({
   const streamingId = useChatStore((s) => s.streamingMessageId);
   const currentChatId = useChatStore((s) => s.currentChatId);
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
-  const tokensIn = useChatStore((s) => s.tokensIn);
-  const tokensOut = useChatStore((s) => s.tokensOut);
   // Lido do store pra re-renderizar quando a sessão trava/destrava.
   const locked = useChatStore((s) => s.sessionProvider) !== null;
   const cfg = session.config;
 
-  const [chats, setChats] = useState<ChatSummary[]>(
-    plugin.chatSummaries ?? []
-  );
   const [draft, setDraft] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    let alive = true;
-    void plugin.loadChatSummaries().then((all) => {
-      if (alive) setChats(all);
-    });
-    const unsub = plugin.onChatsChange(() =>
-      setChats(plugin.chatSummaries ?? [])
-    );
-    return () => {
-      alive = false;
-      unsub();
-    };
-  }, [plugin]);
-
-  // Skill "Use": entra no rascunho (abaixo do que já estava escrito).
+  // Skill "Use" / sugestão: entra no rascunho, abaixo do que já estava escrito.
   useEffect(() => {
     if (!inject) return;
     setDraft((d) => (d.trim() ? `${d}\n\n${inject.text}` : inject.text));
+    textareaRef.current?.focus();
   }, [inject]);
+
+  // Composer cresce com o texto. Mede com height:0 (altura definida) — com
+  // `auto` o textarea é um flex item e pode ser medido esticado, o que fazia
+  // o composer abrir tomando meia tela.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.height = "0px";
+      const max = Math.round(window.innerHeight * 0.4);
+      el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    };
+    const raf = window.requestAnimationFrame(fit);
+    return () => window.cancelAnimationFrame(raf);
+  }, [draft]);
+
+  // Timeline colada no fim enquanto chega texto novo.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, streamingId]);
 
   const submit = async () => {
     const text = draft.trim();
@@ -77,188 +103,188 @@ export function ChatView({
     await session.send(text);
   };
 
-  const onRename = async (c: ChatSummary) => {
-    const title = await new PromptModal(plugin.app, {
-      title: "Rename chat",
-      label: "Title",
-      initial: c.title,
-      submitLabel: "Rename",
-    }).openAndWait();
-    if (title && title !== c.title) await session.rename(c, title);
+  const pickText = (text: string) => {
+    setDraft(text);
+    textareaRef.current?.focus();
   };
 
-  const onDelete = async (c: ChatSummary) => {
-    const ok = await new ConfirmModal(plugin.app, {
-      title: `Delete "${c.title || "Untitled"}"?`,
-      body: "The chat file goes to the system trash (recoverable).",
-      confirmLabel: "Delete",
-      danger: true,
-    }).openAndWait();
-    if (ok) await session.delete(c);
-  };
-
-  const models = session.modelOptions(cfg.provider);
+  const empty = messages.length === 0 && !loadingChat;
+  const effort = cfg.effort as EffortLevel;
 
   return (
     <div className="axxa-chat">
-      <section className="axxa-chats">
-        <div className="axxa-row">
-          <button type="button" onClick={() => session.newChat()}>
-            New chat
-          </button>
-          <strong>
+      <header className="axxa-topbar">
+        <button
+          type="button"
+          className="axxa-icon-btn"
+          aria-label="Open menu"
+          onClick={onOpenMenu}
+        >
+          <Icon name="menu" />
+        </button>
+        <div className="axxa-topbar-title">
+          <span className="axxa-topbar-name">
             {currentChatId ? currentChatTitle || "Untitled" : "New chat"}
-          </strong>
-          <small>
-            {locked
-              ? `locked: ${cfg.provider} / ${cfg.model} / ${cfg.mode}`
-              : "not started"}
-            {" · "}in {tokensIn} · out {tokensOut}
-          </small>
-        </div>
-        <ul>
-          {chats.map((c) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                disabled={c.id === currentChatId}
-                onClick={() => void session.load(c)}
-              >
-                {c.title || "Untitled"}
-              </button>{" "}
-              <small>
-                {c.mode} · {c.provider}/{c.model} ·{" "}
-                {c.date.slice(0, 16).replace("T", " ")} · {c.messageCount} msgs
-              </small>{" "}
-              <button type="button" onClick={() => void onRename(c)}>
-                Rename
-              </button>{" "}
-              <button type="button" onClick={() => void onDelete(c)}>
-                Delete
-              </button>
-            </li>
-          ))}
-          {chats.length === 0 && (
-            <li>
-              <em>No chats yet.</em>
-            </li>
+          </span>
+          {locked && (
+            <span className="axxa-topbar-meta">
+              {MODE_LABEL[cfg.mode] ?? cfg.mode} · {cfg.model}
+            </span>
           )}
-        </ul>
-      </section>
+        </div>
+        <button
+          type="button"
+          className="axxa-icon-btn"
+          aria-label="New chat"
+          disabled={empty && !currentChatId}
+          onClick={() => session.newChat()}
+        >
+          <Icon name="square-pen" />
+        </button>
+      </header>
 
-      <section className="axxa-messages">
-        {loadingChat && (
-          <p>
-            <em>Loading…</em>
-          </p>
-        )}
-        {messages.map((m) => (
-          <MessageRow
-            key={m.id}
-            msg={m}
+      <div className="axxa-messages" ref={scrollRef}>
+        {loadingChat && <p className="axxa-empty-line">Loading…</p>}
+        {empty ? (
+          <StarterScreen
             plugin={plugin}
-            streaming={m.id === streamingId}
+            session={session}
+            onPick={pickText}
+            onUseSkill={onUseSkill}
           />
-        ))}
-        {messages.length === 0 && !loadingChat && (
-          <p>
-            <em>Send a message to start.</em>
-          </p>
+        ) : (
+          messages.map((m) => (
+            <MessageRow
+              key={m.id}
+              msg={m}
+              plugin={plugin}
+              streaming={m.id === streamingId}
+            />
+          ))
         )}
-      </section>
+      </div>
 
       <section className="axxa-composer">
-        <div className="axxa-row">
-          <label>
-            Mode{" "}
-            <select
-              value={cfg.mode}
-              disabled={locked}
-              onChange={(e) => {
-                const v = e.currentTarget.value;
-                if (isChatMode(v)) session.setMode(v);
-              }}
-            >
-              {CHAT_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </label>{" "}
-          <label>
-            Provider{" "}
-            <select
-              value={cfg.provider}
-              disabled={locked}
-              onChange={(e) => session.setProvider(e.currentTarget.value)}
-            >
-              {PROVIDERS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                  {plugin.providerCredential(p.id).trim() ? "" : " (no key)"}
-                </option>
-              ))}
-            </select>
-          </label>{" "}
-          <label>
-            Model{" "}
-            <select
-              value={cfg.model}
-              disabled={locked}
-              onChange={(e) => session.setModel(e.currentTarget.value)}
-            >
-              {models.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </label>{" "}
-          <label>
-            Effort{" "}
-            <select
-              value={cfg.effort}
-              onChange={(e) => session.setEffort(e.currentTarget.value)}
-            >
-              {EFFORT_LEVELS.map((l) => (
-                <option key={l} value={l}>
-                  {EFFORT_LABELS[l]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <textarea
-          rows={3}
-          value={draft}
-          placeholder={MODE_PLACEHOLDER[cfg.mode] ?? ""}
-          onChange={(e) => setDraft(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              void submit();
+        {/* Travada a sessão, provider/modelo/modo já aparecem no topo — aqui
+            fica só o effort, que continua livre no meio da conversa. */}
+        <div className="axxa-pills">
+          {!locked && (
+            <>
+              <Pill
+                icon="plug"
+                label={
+                  PROVIDERS.find((p) => p.id === cfg.provider)?.name ??
+                  cfg.provider
+                }
+                onClick={(e) =>
+                  openPicker(
+                    e,
+                    PROVIDERS.map((p) => ({
+                      value: p.id,
+                      label: p.name,
+                      note: providerConfigured(plugin, p.id)
+                        ? undefined
+                        : "no key",
+                    })),
+                    cfg.provider,
+                    (v) => session.setProvider(v)
+                  )
+                }
+              />
+              <Pill
+                icon="cpu"
+                label={cfg.model || "no model"}
+                onClick={(e) =>
+                  openPicker(
+                    e,
+                    session
+                      .modelOptions(cfg.provider)
+                      .map((m) => ({ value: m, label: m })),
+                    cfg.model,
+                    (v) => session.setModel(v)
+                  )
+                }
+              />
+            </>
+          )}
+          <Pill
+            label={`${EFFORT_EMOJIS[effort] ?? ""} ${
+              EFFORT_LABELS[effort] ?? cfg.effort
+            }`}
+            onClick={(e) =>
+              openPicker(
+                e,
+                EFFORT_LEVELS.map((l) => ({
+                  value: l,
+                  label: EFFORT_LABELS[l],
+                  note: EFFORT_DESCRIPTIONS[l],
+                })),
+                cfg.effort,
+                (v) => session.setEffort(v)
+              )
             }
-          }}
-        />
-        <div className="axxa-row">
+          />
+        </div>
+
+        <div className="axxa-input">
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={draft}
+            placeholder={MODE_PLACEHOLDER[cfg.mode] ?? ""}
+            onChange={(e) => setDraft(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                void submit();
+              }
+            }}
+          />
           {isLoading ? (
-            <button type="button" onClick={() => session.stop()}>
-              Stop
+            <button
+              type="button"
+              className="axxa-send is-stop"
+              aria-label="Stop"
+              onClick={() => session.stop()}
+            >
+              <Icon name="square" size={16} />
             </button>
           ) : (
             <button
               type="button"
+              className="axxa-send"
+              aria-label="Send"
               disabled={!draft.trim()}
               onClick={() => void submit()}
             >
-              Send
+              <Icon name="arrow-up" size={18} />
             </button>
           )}
-          <small>Ctrl/Cmd+Enter sends</small>
         </div>
       </section>
     </div>
+  );
+}
+
+function Pill({
+  icon,
+  label,
+  onClick,
+}: {
+  icon?: string;
+  label: string;
+  onClick: (e: MouseEvent) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="axxa-pill"
+      onClick={(e) => onClick(e as unknown as MouseEvent)}
+    >
+      {icon && <Icon name={icon} size={14} />}
+      <span className="axxa-pill-label">{label}</span>
+      <Icon name="chevron-down" size={14} />
+    </button>
   );
 }
 
@@ -277,14 +303,10 @@ function MessageRow({
   plugin: AxxaPlugin;
   streaming: boolean;
 }) {
-  const time = new Date(msg.timestamp).toLocaleTimeString();
   switch (msg.type) {
     case "user":
       return (
         <div className="axxa-msg axxa-msg-user">
-          <div className="axxa-msg-head">
-            <b>You</b> <small>{time}</small>
-          </div>
           <div className="axxa-msg-text">{msg.content}</div>
         </div>
       );
@@ -295,12 +317,8 @@ function MessageRow({
             "axxa-msg axxa-msg-ai" + (msg.isError ? " axxa-msg-error" : "")
           }
         >
-          <div className="axxa-msg-head">
-            <b>{msg.isError ? "Error" : "Assistant"}</b> <small>{time}</small>
-            {msg.truncated && <small> · truncated</small>}
-          </div>
           {msg.reasoning && (
-            <details>
+            <details className="axxa-details">
               <summary>Reasoning</summary>
               <pre className="axxa-msg-text">{msg.reasoning}</pre>
             </details>
@@ -308,21 +326,23 @@ function MessageRow({
           {msg.isError ? (
             <div className="axxa-msg-text">{msg.content}</div>
           ) : (
-            <Markdown app={plugin.app} text={msg.content} streaming={streaming} />
+            <Markdown
+              app={plugin.app}
+              text={msg.content}
+              streaming={streaming}
+            />
           )}
+          {msg.truncated && <small className="axxa-msg-note">truncated</small>}
           {msg.agentSteps && msg.agentSteps.length > 0 && (
-            <details>
+            <details className="axxa-details">
               <summary>{msg.agentSteps.length} tool call(s)</summary>
               <ul>
                 {msg.agentSteps.map((s) => (
                   <li key={s.id}>
                     <code>
-                      {s.ok ? "✓" : "✗"} {s.name}{" "}
-                      {JSON.stringify(s.arguments)}
+                      {s.ok ? "✓" : "✗"} {s.name} {JSON.stringify(s.arguments)}
                     </code>
-                    {s.result && (
-                      <pre className="axxa-msg-text">{s.result}</pre>
-                    )}
+                    {s.result && <pre className="axxa-msg-text">{s.result}</pre>}
                   </li>
                 ))}
               </ul>
@@ -333,13 +353,22 @@ function MessageRow({
     case "ai-comment":
       return (
         <div className="axxa-msg axxa-msg-comment">
-          <em>
-            [{msg.activity ? msg.activity.phase : "note"}]{" "}
+          <Icon
+            name={
+              msg.activity?.phase === "failed"
+                ? "alert-triangle"
+                : msg.activity?.phase === "done"
+                  ? "check"
+                  : "loader"
+            }
+            size={13}
+          />
+          <span>
             {msg.activity ? activityText(msg.activity) : msg.content}
-          </em>
-          {msg.activity && msg.content && <small> — {msg.content}</small>}
+            {msg.activity && msg.content ? ` — ${msg.content}` : ""}
+          </span>
           {msg.activity?.detail && (
-            <details>
+            <details className="axxa-details">
               <summary>details</summary>
               <pre className="axxa-msg-text">{msg.activity.detail}</pre>
             </details>
@@ -350,17 +379,21 @@ function MessageRow({
       return (
         <div className="axxa-msg axxa-msg-options">
           <div>{msg.prompt}</div>
-          {msg.options.map((o, i) => (
-            <button
-              key={i}
-              type="button"
-              disabled={msg.selectedIndex !== undefined}
-              onClick={() => useChatStore.getState().selectOption(msg.id, i)}
-            >
-              {msg.selectedIndex === i ? "● " : ""}
-              {o}
-            </button>
-          ))}
+          <div className="axxa-suggestions">
+            {msg.options.map((o, i) => (
+              <button
+                key={i}
+                type="button"
+                className={
+                  msg.selectedIndex === i ? "axxa-chip is-active" : "axxa-chip"
+                }
+                disabled={msg.selectedIndex !== undefined}
+                onClick={() => useChatStore.getState().selectOption(msg.id, i)}
+              >
+                {o}
+              </button>
+            ))}
+          </div>
         </div>
       );
     default:
