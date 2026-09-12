@@ -62,10 +62,15 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
   inline no `<html>`; um MutationObserver no atributo `style` marca
   `.axxa-keyboard-open` na gaveta e no body) e o **fullscreen mobile**
   (`.axxa-fullscreen`, opt-in em `settings.mobileFullscreen`, toggle no menu
-  lateral). Ambos portados da casca 0.3.0, onde já rodaram no aparelho. A
-  altura da gaveta com o teclado aberto sai de `visualViewport.height`
-  (`--axxa-kb-viewport`), nunca de `100dvh - --keyboard-height`: no Android a
-  WebView já encolhe sozinha e a subtração cortaria duas vezes.
+  lateral). Ambos portados da casca 0.2.x, onde já rodaram no aparelho.
+
+  **Regra da altura da gaveta** (0.1.254 e 0.1.255, em
+  `docs/archive/MOBILE-FULLSCREEN.md`): quando o teclado abre, o **próprio
+  Obsidian** encolhe a gaveta até o topo do teclado. Então o plugin **não
+  define altura de gaveta** — exceto no fullscreen, que impõe largura própria
+  e por isso precisa impor altura também; lá, e só lá, ela desconta
+  `--keyboard-height`. O observer do teclado só alterna classes (chrome da
+  gaveta, pintura do body): não toca em geometria.
 - `fullscreenScope.ts` — regras PURAS de escopo do fullscreen (`isRightDrawer`,
   `isDrawerOnScreen`), testadas em `tests/fullscreenScope.test.ts`. Ficam fora
   da view de propósito: erradas, deixam o Obsidian sem chrome.
@@ -73,8 +78,10 @@ só os tokens de forma (espaço, raio, alvo de toque) são nossos.
   O CSS do fullscreen tem quatro peças que só juntas funcionam (aprendidas no
   aparelho, 0.1.243→0.1.252 — a fonte é `git show 0.2.37:styles/main.css`, NÃO
   a 0.3.0, que zerou o CSS):
-  1. a gaveta e toda a cadeia de containers vão a **100vw × 100dvh** — a
-     gaveta direita é parcial, esconder o chrome não basta;
+  1. a gaveta vai a **100vw** e a cadeia de containers junto, com a altura em
+     `calc(100dvh - var(--keyboard-height))` — a gaveta direita é parcial,
+     esconder o chrome não basta; e como a altura passa a ser nossa, o
+     desconto do teclado devolve o encolhimento que era do app;
   2. a cadeia inteira pinta o **mesmo canvas**, senão sobra faixa preta da
      leaf nativa nos cantos e durante o transform;
   3. `.view-content` zera padding/margin — sem navbar não há o que reservar;

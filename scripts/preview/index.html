@@ -171,14 +171,12 @@
       // Altura útil MEDIDA, como a AxxaView faz com visualViewport.height —
       // e recalculada no resize, também como ela. (No aparelho o valor vem do
       // viewport; aqui é derivado do ?kb=.)
-      // Espelha a AxxaView: a altura da gaveta é SEMPRE a área visível
-      // medida. Aqui o "?kb=" faz o papel do teclado cobrindo a tela.
+      // Espelha o comportamento REAL do Obsidian mobile (docs/archive/
+      // MOBILE-FULLSCREEN.md, 0.1.255): quando o teclado abre, o PRÓPRIO app
+      // encolhe a gaveta até o topo do teclado. O plugin não mexe nisso — só
+      // o fullscreen, que impõe altura própria, desconta a var.
       const syncKb = () => {
-        drawer.classList.add("axxa-viewport-sync");
-        drawer.style.setProperty(
-          "--axxa-kb-viewport",
-          window.innerHeight - kb + "px"
-        );
+        drawer.style.height = kb > 0 ? window.innerHeight - kb + "px" : "";
       };
       syncKb();
       window.addEventListener("resize", syncKb);
