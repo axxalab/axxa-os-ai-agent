@@ -559,8 +559,9 @@ body.theme-dark {
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.18),
     0 0 0 1px var(--axxa-line);
-  transform: translateX(calc(var(--axxa-seg, 0) * 100%));
-  transition: transform 220ms cubic-bezier(0.4, 0.2, 0.2, 1);
+  transition:
+    left 220ms cubic-bezier(0.4, 0.2, 0.2, 1),
+    width 220ms cubic-bezier(0.4, 0.2, 0.2, 1);
 }
 
 .axxa-root .axxa-mode {
@@ -1287,90 +1288,125 @@ body.is-mobile .axxa-root .axxa-history-more {
    app.css estiliza `button` com 0,1,1, então os seletores daqui prefixam a
    raiz pra passar na frente. */
 
-.axxa-settings-root .axxa-settings-nav {
+/* Segmented control das Settings — mesmo componente da tela inicial: trilho
+   com thumb deslizante (`::before` posicionado por `--axxa-seg`). Diferença:
+   o número de colunas é variável (`--axxa-seg-count`), porque são 5 ou 6 abas
+   conforme a plataforma, e seis providers.
+   NUNCA quebra linha: colunas iguais, `nowrap`, e o rótulo encolhe com
+   ellipsis antes de empurrar qualquer coisa pra uma segunda linha. */
+.axxa-settings-root .axxa-seg {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--size-4-2);
-  margin-bottom: var(--size-4-2);
-  padding-bottom: var(--size-4-2);
-  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 3px;
+  border-radius: 999px;
+  background-color: var(--background-secondary);
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
 }
 
-.axxa-settings-root button.axxa-stab {
+/* O thumb segue o item ativo por MEDIDA (placeThumb), porque as colunas são do
+   tamanho do conteúdo: com seis providers, colunas iguais cortavam os nomes. */
+.axxa-settings-root .axxa-seg::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 3px;
+  bottom: 3px;
+  left: var(--axxa-seg-x, 3px);
+  width: var(--axxa-seg-w, 0px);
+  border-radius: 999px;
+  background-color: var(--background-primary);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.18),
+    0 0 0 1px var(--background-modifier-border);
+  transition:
+    left 220ms cubic-bezier(0.4, 0.2, 0.2, 1),
+    width 220ms cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+.axxa-settings-root button.axxa-seg-item {
+  position: relative;
+  z-index: 1;
   appearance: none;
   -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 0 1 auto;
+  min-width: 0;
   height: auto;
-  min-height: 0;
+  min-height: 30px;
   margin: 0;
-  padding: var(--size-4-2) var(--size-4-3);
-  border: 1px solid var(--background-modifier-border);
+  /* 6px e não mais: com seis providers, cada 1px de padding custa 12px na
+     linha inteira — é o que separa "OpenRouter" inteiro de "OpenRou…". */
+  padding: 0 6px;
+  border: 0;
   border-radius: 999px;
   background-color: transparent;
   box-shadow: none;
   color: var(--text-muted);
-  font-size: var(--font-ui-small);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
+  transition: color 160ms ease;
 }
 
-.axxa-settings-root button.axxa-stab:hover {
-  background-color: var(--background-modifier-hover);
+.axxa-settings-root button.axxa-seg-item > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.axxa-settings-root button.axxa-seg-item:hover:not(.is-active),
+.axxa-settings-root button.axxa-seg-item:hover:not(.is-active):not(:disabled) {
+  background-color: transparent;
   color: var(--text-normal);
 }
 
-.axxa-settings-root button.axxa-stab.is-active {
-  border-color: var(--interactive-accent);
-  background-color: var(--background-modifier-hover);
+.axxa-settings-root button.axxa-seg-item.is-active {
   color: var(--text-normal);
   font-weight: var(--font-semibold);
+}
+
+/* Estado do provider sem ocupar largura: configurado = texto normal,
+   sem credencial = apagado. */
+.axxa-settings-root button.axxa-seg-item.is-ready {
+  color: var(--text-normal);
+}
+
+.axxa-settings-root .axxa-settings-subnav button.axxa-seg-item:not(.is-ready) {
+  color: var(--text-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .axxa-settings-root .axxa-seg::before,
+  .axxa-settings-root button.axxa-seg-item {
+    transition: none;
+  }
+}
+
+.axxa-settings-root .axxa-settings-nav {
+  margin-bottom: var(--size-4-3);
+}
+
+.axxa-settings-root .axxa-settings-subnav {
+  margin-bottom: var(--size-4-4);
+}
+
+/* A linha dos providers é a mais apertada (seis nomes, um deles
+   "OpenRouter"): 4px de padding é o que faz ela caber inteira num painel de
+   375px sem cortar nenhum nome. */
+.axxa-settings-root .axxa-settings-subnav button.axxa-seg-item {
+  padding: 0 4px;
+  /* …e um ponto de fonte a menos, que é o que sobrava pra caber inteiro. */
+  font-size: calc(var(--font-ui-smaller) - 1px);
 }
 
 .axxa-settings-root .axxa-settings-blurb {
   margin: 0 0 var(--size-4-4);
   color: var(--text-muted);
   font-size: var(--font-ui-small);
-}
-
-/* Sub-abas dos providers: o ponto mostra quem já está configurado, então dá
-   pra ver o estado dos seis sem abrir um por um. */
-.axxa-settings-root .axxa-settings-subnav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--size-4-2);
-  margin-bottom: var(--size-4-3);
-}
-
-.axxa-settings-root button.axxa-ssub {
-  appearance: none;
-  -webkit-appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--size-4-2);
-  height: auto;
-  min-height: 0;
-  margin: 0;
-  padding: var(--size-4-1) var(--size-4-3);
-  border: 1px solid transparent;
-  border-radius: var(--radius-m, 8px);
-  background-color: var(--background-modifier-hover);
-  box-shadow: none;
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-  cursor: pointer;
-}
-
-.axxa-settings-root button.axxa-ssub.is-active {
-  border-color: var(--interactive-accent);
-  color: var(--text-normal);
-  font-weight: var(--font-semibold);
-}
-
-.axxa-settings-root .axxa-ssub-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background-color: var(--text-faint);
-}
-
-.axxa-settings-root button.axxa-ssub.is-ready .axxa-ssub-dot {
-  background-color: var(--interactive-accent);
 }

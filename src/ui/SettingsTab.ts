@@ -47,6 +47,11 @@ const PROVIDER_FIELDS: Record<string, { key?: KeyField; model: ModelField }> = {
   ollama: { model: "ollamaModel" },
 };
 
+/** Nomes curtos pras colunas do segmented (o nome cheio fica no conteúdo). */
+const SHORT_PROVIDER: Record<string, string> = {
+  nim: "NIM",
+};
+
 type TabId = "providers" | "chat" | "vault" | "rag" | "agent" | "mobile";
 
 interface TabDef {
@@ -71,8 +76,8 @@ const TABS: TabDef[] = [
   { id: "vault", label: "Vault", blurb: "Where the plugin writes in your vault." },
   {
     id: "rag",
-    label: "Vault Q&A",
-    blurb: "The local index that grounds answers in your notes.",
+    label: "Q&A",
+    blurb: "Vault Q&A: the local index that grounds answers in your notes.",
   },
   {
     id: "agent",
@@ -108,11 +113,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const tabs = TABS.filter((t) => !t.mobileOnly || Platform.isMobile);
     if (!tabs.some((t) => t.id === this.tab)) this.tab = tabs[0].id;
 
-    const nav = containerEl.createDiv({ cls: "axxa-settings-nav" });
+    // Segmented control, igual ao da tela inicial: trilho + thumb que desliza
+    // pelo índice ativo (--axxa-seg). Colunas iguais e nada de quebrar linha.
+    const nav = containerEl.createDiv({ cls: "axxa-seg axxa-settings-nav" });
     for (const t of tabs) {
       const btn = nav.createEl("button", {
         text: t.label,
-        cls: t.id === this.tab ? "axxa-stab is-active" : "axxa-stab",
+        cls: t.id === this.tab ? "axxa-seg-item is-active" : "axxa-seg-item",
       });
       btn.setAttribute("type", "button");
       btn.setAttribute("aria-pressed", String(t.id === this.tab));
@@ -121,6 +128,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
         this.display();
       };
     }
+    this.placeThumb(nav);
 
     const current = tabs.find((t) => t.id === this.tab);
     if (current) {
@@ -153,6 +161,24 @@ export class AxxaSettingsTab extends PluginSettingTab {
     }
   }
 
+  /**
+   * Posiciona o thumb do segmented sobre o item ativo. As colunas são do
+   * tamanho do CONTEÚDO (colunas iguais cortavam "OpenRouter" e "Anthropic"
+   * num painel de 375px), então o thumb não dá pra calcular só em CSS.
+   */
+  private placeThumb(row: HTMLElement): void {
+    const put = () => {
+      const active = row.querySelector<HTMLElement>(".axxa-seg-item.is-active");
+      if (!active) return;
+      row.style.setProperty("--axxa-seg-x", `${active.offsetLeft}px`);
+      row.style.setProperty("--axxa-seg-w", `${active.offsetWidth}px`);
+    };
+    put();
+    // De novo no frame seguinte: na primeira passada as fontes podem não ter
+    // assentado e a medida sai errada por alguns píxeis.
+    window.requestAnimationFrame(put);
+  }
+
   private get s() {
     return this.plugin.settings;
   }
@@ -163,26 +189,29 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private renderProviders(el: HTMLElement): void {
     if (!PROVIDER_FIELDS[this.provider]) this.provider = PROVIDERS[0].id;
 
-    // Sub-abas: o ponto ao lado do nome diz se aquele provider já está pronto,
-    // então dá pra ver o estado dos seis sem abrir um por um.
-    const sub = el.createDiv({ cls: "axxa-settings-subnav" });
+    // Sub-abas: quem já tem credencial aparece em texto normal, quem não tem
+    // fica apagado — dá pra ver o estado dos seis sem abrir um por um.
+    const sub = el.createDiv({ cls: "axxa-seg axxa-settings-subnav" });
     for (const p of PROVIDERS) {
       const ready = providerConfigured(this.plugin, p.id);
       const btn = sub.createEl("button", {
         cls:
-          "axxa-ssub" +
+          "axxa-seg-item" +
           (p.id === this.provider ? " is-active" : "") +
           (ready ? " is-ready" : ""),
       });
       btn.setAttribute("type", "button");
       btn.setAttribute("aria-pressed", String(p.id === this.provider));
-      btn.createSpan({ cls: "axxa-ssub-dot" });
-      btn.createSpan({ text: p.name });
+      // Sem ponto: ele custava 11px por coluna, e com seis providers é a
+      // diferença entre caber e cortar o nome. Quem está configurado aparece
+      // em texto normal; quem não está, apagado.
+      btn.setText(SHORT_PROVIDER[p.id] ?? p.name);
       btn.onclick = () => {
         this.provider = p.id;
         this.display();
       };
     }
+    this.placeThumb(sub);
 
     const p = PROVIDERS.find((x) => x.id === this.provider);
     const f = PROVIDER_FIELDS[this.provider];
