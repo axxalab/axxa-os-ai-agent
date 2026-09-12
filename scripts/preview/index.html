@@ -171,15 +171,14 @@
       // Altura útil MEDIDA, como a AxxaView faz com visualViewport.height —
       // e recalculada no resize, também como ela. (No aparelho o valor vem do
       // viewport; aqui é derivado do ?kb=.)
+      // Espelha a AxxaView: a altura da gaveta é SEMPRE a área visível
+      // medida. Aqui o "?kb=" faz o papel do teclado cobrindo a tela.
       const syncKb = () => {
-        if (kb > 0) {
-          drawer.style.setProperty(
-            "--axxa-kb-viewport",
-            window.innerHeight - kb + "px"
-          );
-        } else {
-          drawer.style.removeProperty("--axxa-kb-viewport");
-        }
+        drawer.classList.add("axxa-viewport-sync");
+        drawer.style.setProperty(
+          "--axxa-kb-viewport",
+          window.innerHeight - kb + "px"
+        );
       };
       syncKb();
       window.addEventListener("resize", syncKb);

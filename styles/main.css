@@ -111,21 +111,18 @@ body.is-mobile.axxa-keyboard-open {
   background-color: var(--background-primary) !important;
 }
 
-/* Tela cheia de verdade — 100vw × 100dvh. A gaveta direita do mobile é de
-   largura PARCIAL (deixa uma faixa do editor atrás) e o `top/bottom: 0` dela
-   não basta: sem altura NOSSA, a cadeia de containers não propaga a viewport
-   e sobra o editor na base. Sem `position: fixed` de propósito — preserva o
-   transform nativo, então o swipe pra fechar continua. `!important` vence
-   largura inline que o Obsidian tenha setado. */
+/* Tela cheia de verdade. A gaveta direita do mobile é de largura PARCIAL
+   (deixa uma faixa do editor atrás), então esconder o chrome não basta: ela
+   passa a ocupar a largura inteira. Sem `position: fixed` de propósito —
+   preserva o transform nativo, então o swipe pra fechar continua.
+   `!important` vence largura inline que o Obsidian tenha setado. */
 body.is-mobile .workspace-drawer.axxa-fullscreen {
   width: 100vw !important;
   max-width: 100vw !important;
-  /* `100%` e não `100dvh`: a gaveta é `position: fixed`, então 100% é a altura
-     do viewport E acompanha a janela encolhendo — que é o que o Android faz
-     quando o teclado abre. `dvh` NÃO acompanha esse resize (medido no
-     aparelho): era por isso que o composer ficava atrás do teclado só no
-     fullscreen, enquanto no modo normal (sem altura nossa) ele subia. */
-  height: 100% !important;
+  /* SEM altura aqui. A altura da gaveta tem uma fonte só — a regra
+     `.axxa-viewport-sync` abaixo, que usa a medida do visualViewport. Toda vez
+     que essa altura veio de unidade CSS (100vh, 100dvh, 100dvh - teclado) ela
+     acertou uma plataforma e quebrou a outra. */
 }
 
 /* Propaga a viewport pela cadeia de containers até a view da AXXA. */
@@ -187,19 +184,18 @@ body.is-mobile
   display: none !important;
 }
 
-/* …e a gaveta termina no topo do teclado — é isto que faz o composer subir,
-   nos dois modos. A gaveta é `position: fixed; top: 0; bottom: 0`, então o
-   `.app-container` encolher (o que o Obsidian faz com --keyboard-height) não
-   a alcança; com `height` definida, o `bottom: 0` é ignorado.
-   A altura é MEDIDA (`--axxa-kb-viewport` = visualViewport.height, posta pela
-   AxxaView), nunca `100dvh - --keyboard-height`: no Android a WebView já
-   encolhe com o teclado, e a subtração cortava uma segunda vez. */
-/* O primeiro seletor cobre o caso fullscreen com especificidade MAIOR que a
-   regra de tela cheia (que também define height): assim o teclado ganha por
-   especificidade, não por ordem no arquivo — que é frágil e já mordeu antes. */
-body.is-mobile .workspace-drawer.axxa-fullscreen.axxa-keyboard-open,
-body.is-mobile .workspace-drawer.axxa-keyboard-open {
-  height: var(--axxa-kb-viewport, 100%) !important;
+/* A ALTURA DA GAVETA — regra única, e a única que define height.
+   `--axxa-kb-viewport` é `visualViewport.height + offsetTop`, posta pela
+   AxxaView: por definição, onde termina a área VISÍVEL no mesmo sistema de
+   coordenadas em que a gaveta está ancorada (`position: fixed`). Vale com
+   teclado, sem teclado, com a WebView encolhendo ou não — nenhuma unidade de
+   CSS precisa estar certa sobre a plataforma. Com `height` definida, o
+   `bottom: 0` do Obsidian é ignorado.
+   Se a var não existir (sem visualViewport, ou pinch zoom), o `var()` sem
+   fallback invalida a declaração e a gaveta volta ao `top/bottom: 0` nativo —
+   que é o comportamento padrão correto. */
+body.is-mobile .workspace-drawer.axxa-viewport-sync {
+  height: var(--axxa-kb-viewport) !important;
 }
 
 /* ── tokens ────────────────────────────────────────────────────────────── */

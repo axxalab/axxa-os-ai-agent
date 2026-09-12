@@ -33,7 +33,7 @@ export class AxxaView extends ItemView {
   private drawerObserver: MutationObserver | null = null;
   private drawerCheckTimer: number | null = null;
   private viewportCleanup: (() => void) | null = null;
-  /** Maior altura de janela já vista nesta largura (ver syncKeyboard). */
+  /** Maior altura de janela já vista nesta largura (ver syncViewport). */
   private maxViewportH = 0;
   private lastViewportW = 0;
   private settingsUnsub: (() => void) | null = null;
@@ -75,13 +75,22 @@ export class AxxaView extends ItemView {
       this.applyFullscreen()
     );
     this.registerEvent(
-      this.app.workspace.on("active-leaf-change", () => this.applyFullscreen())
+      this.app.workspace.on("active-leaf-change", () => {
+        this.applyFullscreen();
+        this.syncViewport();
+      })
     );
     this.registerEvent(
-      this.app.workspace.on("layout-change", () => this.applyFullscreen())
+      this.app.workspace.on("layout-change", () => {
+        this.applyFullscreen();
+        this.syncViewport();
+      })
     );
     this.registerEvent(
-      this.app.workspace.on("resize", () => this.applyFullscreen())
+      this.app.workspace.on("resize", () => {
+        this.applyFullscreen();
+        this.syncViewport();
+      })
     );
     this.setupDrawerObserver();
   }
@@ -102,32 +111,61 @@ export class AxxaView extends ItemView {
   // ── teclado ───────────────────────────────────────────────────────────────
 
   /**
-   * Teclado mobile. Dois sinais, porque um só mente dependendo da plataforma:
+   * Sincroniza a altura da gaveta com o VIEWPORT VISÍVEL, e marca se o teclado
+   * está aberto.
    *
-   * 1. O Obsidian publica `--keyboard-height` INLINE no `<html>` — observamos o
-   *    atributo `style` (técnica do plugin Copilot) porque detectar o teclado
-   *    direto é inconsistente entre iOS e Android.
-   * 2. O `visualViewport`, que diz quanta tela sobrou DE FATO.
+   * Por que a altura sai de medida e não de CSS: a gaveta é
+   * `position: fixed; top: 0; bottom: 0`, e quanto dela o usuário enxerga
+   * depende de coisas que variam por plataforma e por versão — em umas a
+   * WebView encolhe com o teclado, em outras o teclado só cobre; `100dvh` ora
+   * acompanha o teclado, ora não; `--keyboard-height` ora é publicada, ora
+   * não. Cada tentativa de escrever isso em CSS acertou um caso e quebrou o
+   * outro.
    *
-   * A altura sai sempre de (2), nunca de conta com (1): no Android a WebView
-   * encolhe sozinha com o teclado, então `100dvh` JÁ exclui o teclado e
-   * subtrair `--keyboard-height` de novo cortava uma segunda vez — era o
-   * composer indo pro topo com um vão embaixo. `visualViewport.height` é a
-   * altura útil nas duas plataformas: no Android ela já vem encolhida, no iOS
-   * ela é a parte acima do teclado.
+   * `visualViewport.height + offsetTop` é, por definição, onde termina a área
+   * visível em coordenadas de layout — o mesmo sistema em que a gaveta está
+   * ancorada. Então essa medida é a altura certa em TODOS os casos: com
+   * teclado, sem teclado, com a WebView encolhendo ou não. É a única fonte de
+   * altura da gaveta (`--axxa-kb-viewport`); nenhuma regra de CSS concorre.
    *
-   * A medida vira `--axxa-kb-viewport` na gaveta (que é `position: fixed;
-   * top: 0; bottom: 0`, e por isso não encolhe junto com o `.app-container`).
+   * A detecção de "teclado aberto" continua existindo, mas só para o que é
+   * cosmético: esconder o chrome da gaveta e pintar a faixa do body.
    */
-  private syncKeyboard = (): void => {
-    const drawer = this.containerEl.closest(".workspace-drawer");
+  private syncViewport = (): void => {
+    const drawer = this.containerEl.closest(".workspace-drawer") as
+      | HTMLElement
+      | null;
     if (!drawer) return;
     const win = this.containerEl.doc.defaultView;
     const vv = win?.visualViewport ?? null;
-    // Multi-tab: só mexemos enquanto a AXXA é a aba ativa da gaveta.
+    const body = this.containerEl.doc.body;
+
+    // Multi-tab: com outra aba ativa na gaveta, não mexemos em nada dela.
     const active = !!this.containerEl.closest(
       ".workspace-drawer-active-tab-content"
     );
+    if (!active) {
+      drawer.classList.remove("axxa-viewport-sync", "axxa-keyboard-open");
+      drawer.style.removeProperty("--axxa-kb-viewport");
+      body.classList.remove("axxa-keyboard-open");
+      return;
+    }
+
+    // Pinch zoom mexe no visualViewport sem ter teclado nenhum: fora de escala
+    // 1, devolvemos a gaveta pro `top/bottom: 0` do Obsidian.
+    const zoomed = !!vv && Math.abs(vv.scale - 1) > 0.05;
+    if (!vv || zoomed) {
+      drawer.classList.remove("axxa-viewport-sync");
+      drawer.style.removeProperty("--axxa-kb-viewport");
+    } else {
+      drawer.style.setProperty(
+        "--axxa-kb-viewport",
+        `${Math.round(vv.height + vv.offsetTop)}px`
+      );
+      drawer.classList.add("axxa-viewport-sync");
+    }
+
+    // ── só cosmético daqui pra baixo ──────────────────────────────────────
     const published = parseFloat(
       this.containerEl.doc.documentElement.style.getPropertyValue(
         "--keyboard-height"
@@ -135,36 +173,24 @@ export class AxxaView extends ItemView {
     );
     const covered =
       vv && win ? Math.max(0, win.innerHeight - (vv.height + vv.offsetTop)) : 0;
-
-    // 3º sinal — o que faltava no Android: lá a WebView ENCOLHE com o teclado,
-    // então nem `--keyboard-height` nem `visualViewport` acusam cobertura
-    // (innerHeight e vv.height encolhem juntos). O que denuncia é a janela ter
-    // ficado menor do que já foi. Guardamos o maior valor por LARGURA, pra
-    // rotação não ser confundida com teclado.
+    // 3º sinal: onde a WebView encolhe junto com o teclado, os dois de cima
+    // não acusam nada — o que denuncia é a janela estar menor do que a maior
+    // já vista NAQUELA largura (a largura entra pra rotação não virar teclado).
     if (win && win.innerWidth !== this.lastViewportW) {
       this.lastViewportW = win.innerWidth;
       this.maxViewportH = 0;
     }
-    const usableNow = vv ? vv.height + vv.offsetTop : (win?.innerHeight ?? 0);
+    const usable = vv ? vv.height + vv.offsetTop : (win?.innerHeight ?? 0);
     if (win) this.maxViewportH = Math.max(this.maxViewportH, win.innerHeight);
-    const shrunk = this.maxViewportH - usableNow >= KEYBOARD_MIN_PX;
-
     const open =
-      active && (published > 0 || covered >= KEYBOARD_MIN_PX || shrunk);
+      published > 0 ||
+      covered >= KEYBOARD_MIN_PX ||
+      this.maxViewportH - usable >= KEYBOARD_MIN_PX;
 
     drawer.classList.toggle("axxa-keyboard-open", open);
-    // O body também, pros modais — que vivem FORA da gaveta — poderem reagir.
-    this.containerEl.doc.body.classList.toggle("axxa-keyboard-open", open);
-
-    const el = drawer as HTMLElement;
-    if (open) {
-      // Altura útil = do topo do layout viewport até o fim da parte visível.
-      // Serve pros dois mundos: no Android já vem encolhida, no iOS é a parte
-      // acima do teclado.
-      el.style.setProperty("--axxa-kb-viewport", `${Math.round(usableNow)}px`);
-    } else {
-      el.style.removeProperty("--axxa-kb-viewport");
-    }
+    // No body também: os modais vivem FORA da gaveta, e é o body que aparece
+    // na faixa abaixo do `.app-container` encolhido.
+    body.classList.toggle("axxa-keyboard-open", open);
   };
 
   /** Relatório do layout no aparelho (comando "Copy mobile layout report"). */
@@ -178,10 +204,10 @@ export class AxxaView extends ItemView {
     const win = this.containerEl.doc.defaultView;
 
     // Check inicial: cobre o teclado já aberto quando a view monta.
-    this.syncKeyboard();
+    this.syncViewport();
 
     // (1) `--keyboard-height` muda → o Obsidian mexeu no style do <html>.
-    this.keyboardObserver = new MutationObserver(this.syncKeyboard);
+    this.keyboardObserver = new MutationObserver(this.syncViewport);
     this.keyboardObserver.observe(docEl, {
       attributes: true,
       attributeFilter: ["style"],
@@ -189,13 +215,15 @@ export class AxxaView extends ItemView {
 
     // (2) o viewport visível mudou de tamanho (teclado, rotação, barra do OS).
     const vv = win?.visualViewport;
-    vv?.addEventListener("resize", this.syncKeyboard);
-    vv?.addEventListener("scroll", this.syncKeyboard);
-    win?.addEventListener("resize", this.syncKeyboard);
+    vv?.addEventListener("resize", this.syncViewport);
+    vv?.addEventListener("scroll", this.syncViewport);
+    win?.addEventListener("resize", this.syncViewport);
+    win?.addEventListener("focusin", this.syncViewport);
     this.viewportCleanup = () => {
-      vv?.removeEventListener("resize", this.syncKeyboard);
-      vv?.removeEventListener("scroll", this.syncKeyboard);
-      win?.removeEventListener("resize", this.syncKeyboard);
+      vv?.removeEventListener("resize", this.syncViewport);
+      vv?.removeEventListener("scroll", this.syncViewport);
+      win?.removeEventListener("resize", this.syncViewport);
+      win?.removeEventListener("focusin", this.syncViewport);
     };
   }
 
@@ -204,9 +232,11 @@ export class AxxaView extends ItemView {
     this.keyboardObserver = null;
     this.viewportCleanup?.();
     this.viewportCleanup = null;
-    const drawer = this.containerEl.closest(".workspace-drawer");
-    drawer?.classList.remove("axxa-keyboard-open");
-    (drawer as HTMLElement | null)?.style.removeProperty("--axxa-kb-viewport");
+    const drawer = this.containerEl.closest(".workspace-drawer") as
+      | HTMLElement
+      | null;
+    drawer?.classList.remove("axxa-keyboard-open", "axxa-viewport-sync");
+    drawer?.style.removeProperty("--axxa-kb-viewport");
     this.containerEl.doc.body.classList.remove("axxa-keyboard-open");
   }
 
