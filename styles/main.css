@@ -2099,12 +2099,6 @@ body.is-mobile .axxa-root .axxa-history-more {
 }
 
 /* Favoritos na tela inicial. */
-.axxa-root .axxa-starter-favs {
-  display: flex;
-  flex-direction: column;
-  gap: var(--axxa-2);
-}
-
 /* ── modo de voz ────────────────────────────────────────────────────────
    A TROCA: o composer de texto desce e o dock de áudio sobe no lugar.
 
