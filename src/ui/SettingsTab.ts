@@ -16,7 +16,12 @@
 import { App, Notice, Platform, PluginSettingTab, Setting, setIcon } from "obsidian";
 import type { ButtonComponent } from "obsidian";
 import type AxxaPlugin from "../main";
-import { PROVIDERS, providerConfigured } from "../core/providersMeta";
+import {
+  PROVIDERS,
+  providerConfigured,
+  providerHealth,
+  type ProviderHealth,
+} from "../core/providersMeta";
 import { EFFORT_LEVELS, EFFORT_LABELS } from "../core/effort";
 import { CHAT_MODES } from "../core/session";
 import { getAllEmbeddingModels } from "../rag/types";
@@ -56,6 +61,14 @@ const PROVIDER_FIELDS: Record<string, { key?: KeyField; model: ModelField }> = {
 
 /** Favoritos aparecem na tela inicial; mais que isso vira lista, não atalho. */
 const FAVORITE_LIMIT = 5;
+
+/** O que a bolinha do trilho quer dizer (vai no tooltip do item). */
+const HEALTH_TEXT: Record<ProviderHealth, string> = {
+  off: "no credential",
+  unknown: "not tested",
+  ok: "connected",
+  fail: "last test failed",
+};
 
 /** O que a linha de conexão diz em cada estado. */
 const CONN_TEXT: Record<string, (detail?: string) => string> = {
@@ -272,6 +285,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
       // no tooltip e no conteúdo logo abaixo ("OpenAI API key").
       const mark = btn.createSpan({ cls: "axxa-seg-logo" });
       setIcon(mark, p.icon);
+      // Bolinha de conexão: cinza vazado = sem credencial, cinza cheio = tem
+      // mas nunca testou, verde = testou e respondeu, vermelho = recusou.
+      mark.createSpan({ cls: "axxa-seg-dot" });
       btn.setAttribute("aria-label", p.name);
       btn.setAttribute("title", p.name);
       btn.dataset.provider = p.id;
@@ -339,6 +355,15 @@ export class AxxaSettingsTab extends PluginSettingTab {
     };
   }
 
+  /** Estado da conexão: o desta sessão, senão o último teste gravado. */
+  private connOf(id: string): ConnState {
+    const live = this.conn[id];
+    if (live) return live;
+    const saved = this.s.providerStatus?.[id];
+    if (!saved) return { state: "unknown" };
+    return { state: saved.ok ? "ok" : "fail", detail: saved.detail };
+  }
+
   /**
    * Testa a credencial pedindo a lista de modelos ao provider. É o mesmo
    * caminho do "Fetch models" — e como a resposta JÁ é o catálogo, guardar ele
@@ -364,8 +389,27 @@ export class AxxaSettingsTab extends PluginSettingTab {
         detail: err instanceof Error ? err.message : String(err),
       };
     }
+    // Grava: quem mais precisa do resultado é o CHAT, que não vai testar
+    // sozinho na hora de abrir a folha de modelos.
+    const now = this.conn[providerId];
+    (this.s.providerStatus ??= {})[providerId] = {
+      ok: now.state === "ok",
+      at: Date.now(),
+      detail: now.detail,
+    };
+    await this.save();
     this.renderProviderBody();
     this.syncReady();
+  }
+
+  /** Saúde mostrada na bolinha — o teste desta sessão manda na frente do
+   *  gravado (acabou de testar e ainda não fechou as settings). */
+  private healthOf(id: string): ProviderHealth {
+    if (!providerConfigured(this.plugin, id)) return "off";
+    const live = this.conn[id];
+    if (live?.state === "ok") return "ok";
+    if (live?.state === "fail") return "fail";
+    return providerHealth(this.plugin, id);
   }
 
   /** Reacende os logos do trilho conforme quem tem credencial. */
@@ -377,8 +421,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
       const id = btn.dataset.provider;
       if (!id) continue;
       btn.toggleClass("is-ready", providerConfigured(this.plugin, id));
-      // Ponto verde = testado e respondendo. Dá pra ver os seis de uma vez.
-      btn.toggleClass("is-live", this.conn[id]?.state === "ok");
+      const health = this.healthOf(id);
+      const dot = btn.querySelector<HTMLElement>(".axxa-seg-dot");
+      if (dot) {
+        dot.className = `axxa-seg-dot is-${health}`;
+        dot.setAttribute("aria-hidden", "true");
+      }
+      btn.setAttribute("title", `${PROVIDERS.find((x) => x.id === id)?.name ?? id} · ${HEALTH_TEXT[health]}`);
     }
   }
 
@@ -442,7 +491,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // "Tem chave" e "a chave funciona" são coisas diferentes; o trilho mostra a
     // primeira, esta linha mostra a segunda. O teste é o listModels do próprio
     // provider (o motor já tem) — se ele responde, a credencial vale.
-    const st = this.conn[p.id] ?? { state: "unknown" };
+    const st = this.connOf(p.id);
     const conn = new Setting(el)
       .setName("Connection")
       .setDesc(CONN_TEXT[st.state](st.detail))

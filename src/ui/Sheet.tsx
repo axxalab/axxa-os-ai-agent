@@ -90,7 +90,15 @@ export function SheetSeg({
   onPick,
   label,
 }: {
-  items: { id: string; icon: string; label: string; dim?: boolean }[];
+  items: {
+    id: string;
+    icon: string;
+    label: string;
+    /** Bolinha de conexão. Bloqueado (off/fail) também não é clicável. */
+    health?: "off" | "unknown" | "ok" | "fail";
+    /** Por que está bloqueado — vira o tooltip. */
+    blocked?: string | null;
+  }[];
   activeId: string;
   onPick: (id: string) => void;
   label: string;
@@ -118,14 +126,23 @@ export function SheetSeg({
           className={
             "axxa-sheet-seg-item" +
             (it.id === activeId ? " is-active" : "") +
-            (it.dim ? " is-dim" : "")
+            (it.blocked ? " is-blocked" : "")
           }
           aria-pressed={it.id === activeId}
           aria-label={it.label}
-          title={it.label}
+          title={it.blocked ? `${it.label} — ${it.blocked}` : it.label}
+          disabled={!!it.blocked && it.id !== activeId}
           onClick={() => onPick(it.id)}
         >
-          <Icon name={it.icon} size={20} />
+          <span className="axxa-sheet-seg-mark">
+            <Icon name={it.icon} size={20} />
+            {it.health && (
+              <span
+                className={`axxa-seg-dot is-${it.health}`}
+                aria-hidden="true"
+              />
+            )}
+          </span>
         </button>
       ))}
     </div>
@@ -147,7 +164,9 @@ export function SheetRow({
   note,
   badge,
   icon,
+  dot,
   selected,
+  disabled,
   onClick,
 }: {
   title: string;
@@ -157,20 +176,31 @@ export function SheetRow({
   badge?: string;
   /** Ícone no círculo à esquerda — inclui os logos dos providers. */
   icon?: string;
+  /** Bolinha de conexão no canto do ícone. */
+  dot?: "off" | "unknown" | "ok" | "fail";
   selected?: boolean;
+  /** Sem credencial ou reprovado no teste: fica visível, mas não escolhível. */
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className={selected ? "axxa-sheet-row is-active" : "axxa-sheet-row"}
+      className={
+        (selected ? "axxa-sheet-row is-active" : "axxa-sheet-row") +
+        (disabled ? " is-blocked" : "")
+      }
       aria-pressed={selected === true}
+      disabled={disabled}
       onClick={onClick}
     >
       {badge && <span className="axxa-sheet-badge">{badge}</span>}
       {!badge && icon && (
         <span className="axxa-sheet-badge">
           <Icon name={icon} size={18} />
+          {dot && (
+            <span className={`axxa-seg-dot is-${dot}`} aria-hidden="true" />
+          )}
         </span>
       )}
       <span className="axxa-sheet-row-main">

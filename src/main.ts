@@ -39,6 +39,15 @@ import type {
 } from "./core/effort";
 import type { RoleId, RoleModelEntry } from "./providers/modelRoles";
 
+/** Resultado do último teste de credencial de um provider. */
+export interface ProviderStatus {
+  ok: boolean;
+  /** Epoch ms do teste — mostrado como "testado há X". */
+  at: number;
+  /** Contagem de modelos (ok) ou a mensagem de erro (falha). */
+  detail?: string;
+}
+
 export interface AxxaSettings {
   // ---- Providers (BYOK). As chaves vivem no SecretStorage do SO; aqui só em
   // memória (persistableSettings() zera antes de gravar o data.json).
@@ -61,6 +70,10 @@ export interface AxxaSettings {
   activeModels: Record<string, string[]>;
   /** Modelos FAVORITOS por provider — aparecem na tela inicial. Máx. 5. */
   favoriteModels: Record<string, string[]>;
+  /** Último teste de conexão por provider (Settings → Test). Persiste porque
+   *  quem precisa do resultado é o CHAT: ele não vai testar sozinho na hora de
+   *  abrir a folha de modelos. */
+  providerStatus: Record<string, ProviderStatus>;
   /** Modelo-padrão por PAPEL (chat/reasoning/image/video/tts/embedding/other). */
   roleModels: Partial<Record<RoleId, RoleModelEntry>>;
   /** Provider preferido quando o MESMO modelo existe em 2+ providers. */
@@ -150,6 +163,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },
   favoriteModels: {},
+  providerStatus: {},
   roleModels: {},
   modelProvider: {},
   discoveredEmbeddings: {},

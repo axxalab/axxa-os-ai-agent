@@ -34,7 +34,7 @@ const plugin = {
   chatSummaries: chats,
   settings: {
     openaiApiKey: "sk-test",
-    anthropicApiKey: "",
+    anthropicApiKey: "sk-ant",
     activeModels: {
       openai: ["gpt-5", "gpt-4o", "gpt-4o-mini"],
       anthropic: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
@@ -42,6 +42,14 @@ const plugin = {
     favoriteModels: {
       openai: ["gpt-5", "gpt-4o"],
       anthropic: ["claude-opus-5"],
+    },
+    // Um de cada estado, pra ver as quatro bolinhas de uma vez:
+    // openai testado OK · gemini reprovado · anthropic com chave sem teste ·
+    // o resto sem credencial.
+    geminiApiKey: "gm-test",
+    providerStatus: {
+      openai: { ok: true, at: Date.now(), detail: "24 models available." },
+      gemini: { ok: false, at: Date.now(), detail: "401 invalid key" },
     },
     projects: [],
   },
@@ -51,7 +59,8 @@ const plugin = {
   loadChatSummaries: async () => chats,
   onChatsChange: () => () => {},
   onSettingsChange: () => () => {},
-  providerCredential: (id: string) => (id === "openai" ? "sk-test" : ""),
+  providerCredential: (id: string) =>
+    ({ openai: "sk-test", anthropic: "sk-ant", gemini: "gm-test" })[id] ?? "",
   // Catálogo falso: o preview não fala com a rede. Grande e bagunçado DE
   // PROPÓSITO — é assim que o catálogo real chega, e é o que o agrupamento
   // por papel/família tem que domar.

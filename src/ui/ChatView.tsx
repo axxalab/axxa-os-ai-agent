@@ -14,7 +14,11 @@ import {
   type ChatMessage,
 } from "../store/chat";
 import type { ChatSession } from "../core/session";
-import { PROVIDERS, providerConfigured } from "../core/providersMeta";
+import {
+  PROVIDERS,
+  providerBlockedReason,
+  providerHealth,
+} from "../core/providersMeta";
 import {
   getModelCard,
   prettyModelName,
@@ -45,6 +49,14 @@ const MODE_PLACEHOLDER: Record<string, string> = {
   chat: "Message the model…",
   "vault-qa": "Ask something about your notes…",
   agent: "Tell the agent what to do in your vault…",
+};
+
+/** Legenda da linha do provider quando ele NÃO está bloqueado. */
+const PROVIDER_NOTE: Record<string, string> = {
+  ok: "Connected",
+  unknown: "Key configured — not tested yet",
+  off: "",
+  fail: "",
 };
 
 const MODE_LABEL: Record<string, string> = {
@@ -288,23 +300,24 @@ export function ChatView({
         onClose={closeSheet}
       >
         <SheetGroup>
-          {PROVIDERS.map((p) => (
-            <SheetRow
-              key={p.id}
-              icon={p.icon}
-              title={p.name}
-              note={
-                providerConfigured(plugin, p.id)
-                  ? "Key configured"
-                  : "No API key yet"
-              }
-              selected={p.id === cfg.provider}
-              onClick={() => {
-                session.setProvider(p.id);
-                closeSheet();
-              }}
-            />
-          ))}
+          {PROVIDERS.map((p) => {
+            const blocked = providerBlockedReason(plugin, p.id);
+            return (
+              <SheetRow
+                key={p.id}
+                icon={p.icon}
+                dot={providerHealth(plugin, p.id)}
+                title={p.name}
+                note={blocked ?? PROVIDER_NOTE[providerHealth(plugin, p.id)]}
+                selected={p.id === cfg.provider}
+                disabled={!!blocked && p.id !== cfg.provider}
+                onClick={() => {
+                  session.setProvider(p.id);
+                  closeSheet();
+                }}
+              />
+            );
+          })}
         </SheetGroup>
       </Sheet>
 
@@ -322,7 +335,8 @@ export function ChatView({
             id: p.id,
             icon: p.icon,
             label: p.name,
-            dim: !providerConfigured(plugin, p.id),
+            health: providerHealth(plugin, p.id),
+            blocked: providerBlockedReason(plugin, p.id),
           }))}
         />
         <SheetGroup>

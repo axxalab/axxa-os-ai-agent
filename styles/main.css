@@ -1018,9 +1018,30 @@ body.theme-dark {
   box-shadow: none;
 }
 
-/* Sem credencial: apagado. Mesma informação que o trilho das Settings dá. */
-.axxa-root button.axxa-sheet-seg-item.is-dim {
+.axxa-root .axxa-sheet-seg-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Bloqueado = sem credencial ou reprovado no último teste. Continua visível
+   (é informação: o provider existe), mas não escolhível — no chat, escolher
+   um provider que não responde só leva a um erro lá na frente. */
+.axxa-root button.axxa-sheet-seg-item.is-blocked,
+.axxa-root button.axxa-sheet-seg-item:disabled {
   color: var(--text-faint);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.axxa-root button.axxa-sheet-row.is-blocked,
+.axxa-root button.axxa-sheet-row:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.axxa-root button.axxa-sheet-row:disabled:hover {
+  background: none;
 }
 
 .axxa-root button.axxa-sheet-seg-item.is-active {
@@ -1620,21 +1641,44 @@ body.is-mobile .axxa-root .axxa-history-more {
   }
 }
 
-/* Provider TESTADO e respondendo: ponto verde no canto do logo. "Tem chave"
-   (is-ready, o logo aceso) e "a chave funciona" são coisas diferentes. */
-.axxa-settings-root button.axxa-seg-item.is-live .axxa-seg-logo {
+/* Bolinha de conexão no canto do logo — o MESMO indicador em todo trilho de
+   provider (Settings e folha do composer), por isso os dois escopos aqui.
+   Vazado = sem credencial · cinza = tem chave, nunca testada · verde =
+   respondeu · vermelho = recusou. */
+.axxa-settings-root .axxa-seg-logo,
+.axxa-root .axxa-sheet-seg-mark,
+.axxa-root .axxa-sheet-badge {
   position: relative;
 }
 
-.axxa-settings-root button.axxa-seg-item.is-live .axxa-seg-logo::after {
-  content: "";
+.axxa-settings-root .axxa-seg-dot,
+.axxa-root .axxa-seg-dot {
   position: absolute;
   top: -1px;
-  right: -3px;
-  width: 6px;
-  height: 6px;
+  right: -4px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
+  border: 1px solid var(--text-faint);
+  background-color: transparent;
+}
+
+.axxa-settings-root .axxa-seg-dot.is-unknown,
+.axxa-root .axxa-seg-dot.is-unknown {
+  border-color: var(--text-muted);
+  background-color: var(--text-muted);
+}
+
+.axxa-settings-root .axxa-seg-dot.is-ok,
+.axxa-root .axxa-seg-dot.is-ok {
+  border-color: var(--color-green);
   background-color: var(--color-green);
+}
+
+.axxa-settings-root .axxa-seg-dot.is-fail,
+.axxa-root .axxa-seg-dot.is-fail {
+  border-color: var(--color-red);
+  background-color: var(--color-red);
 }
 
 /* Colar: aparece só quando o campo está vazio, encostado nele. */
