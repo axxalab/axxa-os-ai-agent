@@ -13,11 +13,13 @@ export type EffortLevel = "low" | "med" | "high" | "xhigh" | "max";
 
 export const EFFORT_LEVELS: EffortLevel[] = ["low", "med", "high", "xhigh", "max"];
 
+/** Nome por extenso. Abreviar ("Med", "xHigh") economizava três letras num
+ *  lugar onde sobra espaço, e obrigava a decifrar. */
 export const EFFORT_LABELS: Record<EffortLevel, string> = {
   low: "Low",
-  med: "Med",
+  med: "Medium",
   high: "High",
-  xhigh: "xHigh",
+  xhigh: "Extra high",
   max: "Max",
 };
 
