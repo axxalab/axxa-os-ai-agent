@@ -28,8 +28,11 @@ const plugin = {
   manifest: { version: PREVIEW_VERSION, id: "axxa-os-ai-agent" },
   app: {},
   skills: [
-    { id: "s1", name: "Daily note", description: "Start today's note", icon: "calendar", body: "", path: "" },
-    { id: "s2", name: "Summarize", description: "Summarize a note", icon: "align-left", body: "", path: "" },
+    // `body` preenchido de propósito: é ele que cai no composer. Com body
+    // vazio (como estava) o atalho "funcionava" sem escrever nada, e o preview
+    // não conseguia mostrar a diferença entre certo e quebrado.
+    { id: "s1", name: "Daily note", description: "Start today's note", icon: "calendar", body: "Open today's daily note and list what's still open.", path: "" },
+    { id: "s2", name: "Summarize", description: "Summarize a note", icon: "align-left", body: "Summarize the note I'm looking at in five bullets.", path: "" },
   ],
   chatSummaries: chats,
   settings: {

@@ -803,6 +803,43 @@ body.theme-dark {
   gap: var(--axxa-2);
 }
 
+/* O grupo da direita (voz + enviar) encosta na borda: o `auto` no bloco dos
+   pills empurra, sem precisar de espaçador vazio no meio. */
+.axxa-root .axxa-pills {
+  margin-right: auto;
+}
+
+/* Botões redondos do composer (+ e voz): mesmo diâmetro do enviar, mas
+   superfície discreta — o acento é do enviar, que é a ação. */
+.axxa-root button.axxa-round-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-hover);
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.axxa-root button.axxa-round-btn:hover:not(:disabled) {
+  background-color: var(--axxa-raised);
+  color: var(--text-normal);
+}
+
+/* Gravando: o botão vira o "parar", em vermelho, pulsando devagar — o estado
+   precisa ser óbvio, é microfone aberto. */
+.axxa-root button.axxa-round-btn.is-recording {
+  background-color: var(--color-red);
+  color: var(--text-on-accent);
+  animation: axxa-pulse 1.4s ease-in-out infinite;
+}
+
 /* Fade curto acima do composer: as mensagens dissolvem no canvas antes da
    faixa sólida, em vez de cortarem secas na borda (0.2.37). */
 .axxa-root .axxa-composer::before {
@@ -843,11 +880,6 @@ body.theme-dark {
   background-color: var(--axxa-hover);
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
-}
-
-.axxa-root .axxa-pill-mark {
-  flex: 0 0 auto;
-  color: var(--text-muted);
 }
 
 .axxa-root .axxa-pill:hover:not(:disabled) {

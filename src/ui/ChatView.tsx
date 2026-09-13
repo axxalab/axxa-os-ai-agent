@@ -7,6 +7,7 @@
 // O histórico de conversas NÃO mora aqui: é o menu lateral (Drawer.tsx).
 
 import { useEffect, useRef, useState } from "react";
+import { Notice } from "obsidian";
 import type AxxaPlugin from "../main";
 import {
   useChatStore,
@@ -26,10 +27,10 @@ import {
 import {
   EFFORT_LEVELS,
   EFFORT_LABELS,
-  EFFORT_EMOJIS,
   EFFORT_DESCRIPTIONS,
   type EffortLevel,
 } from "../core/effort";
+import { transcribeAudio } from "../providers/transcribe";
 import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
@@ -49,6 +50,9 @@ const MODE_PLACEHOLDER: Record<string, string> = {
   "vault-qa": "Ask something about your notes…",
   agent: "Tell the agent what to do in your vault…",
 };
+
+/** Modelo de transcrição. O motor documenta este como o padrão dele. */
+const TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
 
 /** Título da folha de modelos em cada nível. */
 const MODEL_SHEET_TITLE: Record<string, string> = {
@@ -88,7 +92,7 @@ export function ChatView({
 
   const [draft, setDraft] = useState("");
   /** Qual bottom sheet do composer está aberta. */
-  const [sheet, setSheet] = useState<"model" | "effort" | null>(
+  const [sheet, setSheet] = useState<"model" | "effort" | "plus" | null>(
     null
   );
   /** Provider que a folha de modelos está MOSTRANDO — não é o da sessão até
@@ -99,6 +103,9 @@ export function ChatView({
   const [modelView, setModelView] = useState<"root" | "list" | "effort">(
     "root"
   );
+  /** Gravando? O botão vira "parar" e o recorder vive no ref. */
+  const [recording, setRecording] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -146,7 +153,7 @@ export function ChatView({
   };
 
   // Abrir uma sheet tira o foco do campo — senão o teclado sobe por cima dela.
-  const openSheet = (which: "model" | "effort") => {
+  const openSheet = (which: "model" | "effort" | "plus") => {
     textareaRef.current?.blur();
     // A folha de modelos abre sempre no provider da sessão, e no primeiro nível.
     if (which === "model") {
@@ -165,6 +172,67 @@ export function ChatView({
   const rest = session
     .modelOptions(pickProvider)
     .filter((m) => !favorites.includes(m));
+
+  // ── modo de voz ─────────────────────────────────────────────────────────
+  // Grava no aparelho e manda transcrever — `transcribeAudio` já existia no
+  // motor (OpenAI /audio/transcriptions, via requestUrl pra furar o CORS do
+  // WebView) e nunca tinha sido ligado a nada nesta casca. O texto entra no
+  // rascunho; quem manda é o usuário.
+  const toggleVoice = async () => {
+    if (recorderRef.current) {
+      recorderRef.current.stop();
+      return;
+    }
+    const key = plugin.providerCredential("openai");
+    if (!key) {
+      new Notice("Voice needs an OpenAI key — add one in Settings › Providers.");
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      new Notice("Microphone blocked — allow it for Obsidian and try again.");
+      return;
+    }
+    const rec = new MediaRecorder(stream);
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      recorderRef.current = null;
+      setRecording(false);
+      const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
+      if (blob.size === 0) return;
+      const working = new Notice("Transcribing…", 0);
+      try {
+        const text = await transcribeAudio({
+          apiKey: key,
+          model: TRANSCRIBE_MODEL,
+          // A extensão tem que bater com o que o aparelho gravou: é por ela
+          // que o motor monta o content-type do multipart.
+          filename: `voice.${blob.type.includes("mp4") ? "mp4" : "webm"}`,
+          data: new Uint8Array(await blob.arrayBuffer()),
+        });
+        const clean = text.trim();
+        if (clean) setDraft((d) => (d.trim() ? `${d} ${clean}` : clean));
+        else new Notice("Nothing was heard.");
+      } catch (err) {
+        new Notice(
+          `Transcription failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      } finally {
+        working.hide();
+      }
+    };
+    rec.start();
+    recorderRef.current = rec;
+    setRecording(true);
+  };
 
   /** Tocar num modelo comita as DUAS coisas: o provider da folha e o modelo. */
   const chooseModel = (model: string) => {
@@ -247,29 +315,38 @@ export function ChatView({
             }}
           />
 
+          {/* Barra do composer no formato da referência: + à esquerda, o
+              modelo ao lado, e à direita voz e enviar. O provider saiu do pill
+              (ele é o trilho DENTRO da folha) e o effort também (virou um nível
+              dela) — o que sobra aqui é o que se usa a cada mensagem. */}
           <div className="axxa-input-bar">
-            {/* Travada a sessão, provider/modelo já aparecem na topbar — aqui
-                fica só o effort, que continua livre no meio da conversa. */}
+            <button
+              type="button"
+              className="axxa-round-btn"
+              aria-label="Add to chat"
+              onClick={() => openSheet("plus")}
+            >
+              <Icon name="plus" size={20} />
+            </button>
+
             <div className="axxa-pills">
-              {/* Um botão só pro modelo: o provider virou o trilho de logos
-                  DENTRO da folha, então ter um seletor separado era pedir a
-                  mesma coisa duas vezes. O logo aqui diz de quem é o modelo. */}
-              {!locked && (
-                <Pill
-                  icon={
-                    PROVIDERS.find((p) => p.id === cfg.provider)?.icon
-                  }
-                  label={cfg.model || "no model"}
-                  onClick={() => openSheet("model")}
-                />
-              )}
               <Pill
-                label={`${EFFORT_EMOJIS[effort] ?? ""} ${
-                  EFFORT_LABELS[effort] ?? cfg.effort
-                }`}
-                onClick={() => openSheet("effort")}
+                label={prettyModelName(cfg.model) || "no model"}
+                onClick={() => openSheet("model")}
               />
             </div>
+
+            <button
+              type="button"
+              className={
+                recording ? "axxa-round-btn is-recording" : "axxa-round-btn"
+              }
+              aria-label={recording ? "Stop recording" : "Voice mode"}
+              aria-pressed={recording}
+              onClick={() => void toggleVoice()}
+            >
+              <Icon name={recording ? "square" : "mic"} size={18} />
+            </button>
 
             {isLoading ? (
               <button
@@ -306,7 +383,7 @@ export function ChatView({
         onClose={closeSheet}
         onBack={modelView === "root" ? undefined : () => setModelView("root")}
       >
-        {modelView === "root" && (
+        {modelView === "root" && !locked && (
           <SheetSeg
             label="Provider"
             activeId={pickProvider}
@@ -351,6 +428,14 @@ export function ChatView({
           </SheetGroup>
         ) : (
           <>
+            {locked ? (
+              <SheetGroup>
+                <SheetNote>
+                  This chat is locked to {prettyModelName(cfg.model)} — start a
+                  new chat to pick another model. Effort still changes freely.
+                </SheetNote>
+              </SheetGroup>
+            ) : (
             <SheetGroup>
               {(favorites.length > 0 ? favorites : rest).map((m) => (
                 <ModelRow
@@ -368,10 +453,11 @@ export function ChatView({
                 </SheetNote>
               )}
             </SheetGroup>
+            )}
             {/* Navegação num cartão só, abaixo dos modelos: a lista inteira e
                 o effort. Os dois abrem OUTRO nível desta mesma folha. */}
             <SheetGroup>
-              {favorites.length > 0 && rest.length > 0 && (
+              {!locked && favorites.length > 0 && rest.length > 0 && (
                 <SheetNavRow
                   title="Show list"
                   note={`${rest.length} more ${
@@ -388,6 +474,30 @@ export function ChatView({
             </SheetGroup>
           </>
         )}
+      </Sheet>
+
+      {/* O "+" abre o que dá pra ACRESCENTAR à conversa. Hoje são as skills —
+          o mesmo atalho da tela inicial, alcançável no meio do papo. */}
+      <Sheet title="Add to chat" open={sheet === "plus"} onClose={closeSheet}>
+        <SheetGroup>
+          {plugin.skills.map((sk) => (
+            <SheetRow
+              key={sk.id}
+              title={sk.name}
+              note={sk.description}
+              onClick={() => {
+                onUseSkill(sk);
+                closeSheet();
+              }}
+            />
+          ))}
+          {plugin.skills.length === 0 && (
+            <SheetNote>
+              No skills yet — they live as notes in your vault, and show up here
+              once you create one.
+            </SheetNote>
+          )}
+        </SheetGroup>
       </Sheet>
 
       <Sheet title="Effort" open={sheet === "effort"} onClose={closeSheet}>
@@ -434,18 +544,9 @@ function ModelRow({
   );
 }
 
-function Pill({
-  label,
-  icon,
-  onClick,
-}: {
-  label: string;
-  icon?: string;
-  onClick: () => void;
-}) {
+function Pill({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button type="button" className="axxa-pill" onClick={onClick}>
-      {icon && <Icon name={icon} size={15} className="axxa-pill-mark" />}
       <span className="axxa-pill-label">{label}</span>
       <Icon name="chevron-down" size={14} />
     </button>
