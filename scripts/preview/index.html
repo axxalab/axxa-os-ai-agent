@@ -177,6 +177,24 @@
         // mostrava um layout que o aparelho nunca teve.
         document.body.classList.remove("is-mobile", "is-phone");
       }
+      // ?mic=fake troca o microfone por um oscilador: MediaRecorder e
+      // AnalyserNode passam a ver um stream DE VERDADE (chunks reais, nível
+      // real), sem depender de permissão nem de hardware. É o único jeito de
+      // exercitar o modo de voz aqui — a rede continua falsa no stub.
+      if (q.get("mic") === "fake") {
+        navigator.mediaDevices = navigator.mediaDevices || {};
+        navigator.mediaDevices.getUserMedia = async () => {
+          const ctx = new AudioContext();
+          const dest = ctx.createMediaStreamDestination();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          gain.gain.value = 0.3;
+          osc.frequency.value = 220;
+          osc.connect(gain).connect(dest);
+          osc.start();
+          return dest.stream;
+        };
+      }
       // ?kb=300 simula o teclado: é a MESMA variável que o Obsidian mantém.
       const kb = Number(q.get("kb") ?? 0);
       document.documentElement.style.setProperty("--keyboard-height", kb + "px");

@@ -75,7 +75,13 @@ export function Sheet({
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     startY.current = e.clientY;
     dragY.current = 0;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // Mesma razão do microfone: capturar é bom, mas lançar aqui mataria o
+    // arrasto inteiro. Sem captura o gesto segue funcionando sobre o puxador.
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* segue sem captura */
+    }
     panelRef.current?.classList.add("is-dragging");
   };
 

@@ -832,12 +832,154 @@ body.theme-dark {
   color: var(--text-normal);
 }
 
-/* Gravando: o botão vira o "parar", em vermelho, pulsando devagar — o estado
+/* Gravando: o botão do microfone em vermelho, pulsando devagar — o estado
    precisa ser óbvio, é microfone aberto. */
 .axxa-root button.axxa-round-btn.is-recording {
   background-color: var(--color-red);
   color: var(--text-on-accent);
   animation: axxa-pulse 1.4s ease-in-out infinite;
+  /* O gesto é nosso: sem isto o WebView rola a tela no meio do arrasto. */
+  touch-action: none;
+}
+
+/* ── modo de voz ────────────────────────────────────────────────────────
+   Formato da referência (WhatsApp): segurando, a linha vira relógio + onda +
+   "slide to cancel", com o microfone ainda sob o dedo; travado, um painel de
+   duas linhas com descartar · pausar · usar. */
+
+.axxa-root .axxa-voice-hold {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  overflow: hidden;
+}
+
+.axxa-root .axxa-voice-rec {
+  flex: 0 0 auto;
+  color: var(--color-red);
+  animation: axxa-pulse 1.4s ease-in-out infinite;
+}
+
+.axxa-root .axxa-voice-time {
+  flex: 0 0 auto;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.axxa-root .axxa-voice-cancel {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+  transition: transform 80ms linear;
+}
+
+/* Onda do microfone: barras que crescem com o som. */
+.axxa-root .axxa-voice-wave {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  overflow: hidden;
+}
+
+.axxa-root .axxa-voice-bar {
+  flex: 0 0 2px;
+  border-radius: 1px;
+  background-color: var(--text-faint);
+}
+
+.axxa-root .axxa-voice-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-3);
+}
+
+.axxa-root .axxa-voice-head {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-3);
+}
+
+.axxa-root .axxa-voice-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-3);
+}
+
+.axxa-root button.axxa-voice-trash,
+.axxa-root button.axxa-voice-done {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: var(--axxa-r-pill);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.axxa-root button.axxa-voice-trash {
+  background-color: color-mix(in srgb, var(--color-red) 18%, transparent);
+  color: var(--color-red);
+}
+
+.axxa-root button.axxa-voice-done {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* A pílula do meio ocupa o vão — como na referência. */
+.axxa-root button.axxa-voice-toggle {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--axxa-2);
+  min-height: 40px;
+  border: none;
+  border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-hover);
+  box-shadow: none;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+
+.axxa-root button.axxa-voice-toggle.is-resume {
+  background-color: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  color: var(--text-accent);
+}
+
+.axxa-root .axxa-voice-working {
+  flex: 1 1 auto;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+/* Cadeado: a dica de pra onde arrastar pra soltar o dedo. */
+.axxa-root .axxa-voice-lock {
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--axxa-1) var(--axxa-2);
+  border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-hover);
+  color: var(--text-muted);
 }
 
 /* Fade curto acima do composer: as mensagens dissolvem no canvas antes da

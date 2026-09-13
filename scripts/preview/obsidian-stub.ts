@@ -16,7 +16,25 @@ export class Notice {
   setMessage() {}
   hide() {}
 }
-export async function requestUrl(): Promise<unknown> {
+/** Frase falsa da transcrição — cresce a cada chamada, que é como o parcial
+ *  se comporta de verdade (o texto vai aparecendo enquanto se fala). */
+const FAKE_WORDS =
+  "isso aqui é a transcrição chegando aos poucos enquanto eu falo no microfone do celular".split(
+    " "
+  );
+let fakeCalls = 0;
+
+export async function requestUrl(opts: { url?: string }): Promise<unknown> {
+  // O preview NÃO fala com a rede. A transcrição é a exceção MODELADA: sem ela
+  // não dá pra ver o texto crescendo, que é o coração do modo de voz.
+  if (opts?.url && /audio\/transcriptions/.test(opts.url)) {
+    fakeCalls += 1;
+    await new Promise((r) => setTimeout(r, 220));
+    return {
+      status: 200,
+      json: { text: FAKE_WORDS.slice(0, Math.min(fakeCalls * 4, FAKE_WORDS.length)).join(" ") },
+    };
+  }
   throw new Error("no network in preview");
 }
 export class Plugin {}

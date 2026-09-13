@@ -30,10 +30,11 @@ import {
   EFFORT_DESCRIPTIONS,
   type EffortLevel,
 } from "../core/effort";
-import { transcribeAudio } from "../providers/transcribe";
 import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
+import { useVoice } from "./useVoice";
+import { VoiceHold, VoicePanel } from "./VoiceBar";
 import {
   Sheet,
   SheetGroup,
@@ -51,8 +52,12 @@ const MODE_PLACEHOLDER: Record<string, string> = {
   agent: "Tell the agent what to do in your vault…",
 };
 
-/** Modelo de transcrição. O motor documenta este como o padrão dele. */
-const TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
+/** Arrasto pra ESQUERDA que cancela a gravação. */
+const CANCEL_PX = 90;
+/** Arrasto pra CIMA que trava (mãos livres). */
+const LOCK_PX = 70;
+/** Abaixo disso o toque foi um clique, não um "segurar". */
+const TAP_MS = 400;
 
 /** Título da folha de modelos em cada nível. */
 const MODEL_SHEET_TITLE: Record<string, string> = {
@@ -103,9 +108,12 @@ export function ChatView({
   const [modelView, setModelView] = useState<"root" | "list" | "effort">(
     "root"
   );
-  /** Gravando? O botão vira "parar" e o recorder vive no ref. */
-  const [recording, setRecording] = useState(false);
-  const recorderRef = useRef<MediaRecorder | null>(null);
+  /** Quanto o dedo arrastou pra esquerda enquanto segura o microfone. */
+  const [slide, setSlide] = useState(0);
+  const micRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  /** O rascunho de ANTES da gravação: o transcrito entra depois dele, e
+   *  cancelar devolve exatamente isto. */
+  const baseDraftRef = useRef("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -174,64 +182,65 @@ export function ChatView({
     .filter((m) => !favorites.includes(m));
 
   // ── modo de voz ─────────────────────────────────────────────────────────
-  // Grava no aparelho e manda transcrever — `transcribeAudio` já existia no
-  // motor (OpenAI /audio/transcriptions, via requestUrl pra furar o CORS do
-  // WebView) e nunca tinha sido ligado a nada nesta casca. O texto entra no
-  // rascunho; quem manda é o usuário.
-  const toggleVoice = async () => {
-    if (recorderRef.current) {
-      recorderRef.current.stop();
-      return;
-    }
-    const key = plugin.providerCredential("openai");
-    if (!key) {
-      new Notice("Voice needs an OpenAI key — add one in Settings › Providers.");
-      return;
-    }
-    let stream: MediaStream;
+  // O gravador mora em useVoice; aqui fica só o GESTO do botão (segurar pra
+  // gravar, arrastar pra cancelar, pra cima pra travar) e o rascunho.
+  const voice = useVoice({
+    apiKey: () => plugin.providerCredential("openai"),
+    onTranscript: (text) => {
+      const base = baseDraftRef.current.trim();
+      setDraft(base ? `${base} ${text}` : text);
+    },
+    onNotice: (m) => {
+      new Notice(m);
+    },
+    onCancel: () => setDraft(baseDraftRef.current),
+  });
+
+  const onMicDown = async (e: React.PointerEvent<HTMLButtonElement>) => {
+    // A captura é um LUXO: com ela o dedo pode sair do botão e o arrasto
+    // continua chegando. Sem ela o gesto ainda funciona sobre o botão. Mas ela
+    // LANÇA quando o ponteiro não está ativo (acontece em WebView), e aí
+    // levaria junto o `voice.start()` logo abaixo — o microfone nem abriria.
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
-      new Notice("Microphone blocked — allow it for Obsidian and try again.");
+      /* segue sem captura */
+    }
+    micRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+    baseDraftRef.current = draft;
+    setSlide(0);
+    const ok = await voice.start();
+    if (!ok) micRef.current = null;
+  };
+
+  const onMicMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const from = micRef.current;
+    if (!from || voice.state !== "hold") return;
+    const dx = e.clientX - from.x;
+    const dy = e.clientY - from.y;
+    // Pra ESQUERDA joga fora; pra CIMA trava e o dedo pode sair.
+    if (dx < -CANCEL_PX) {
+      micRef.current = null;
+      voice.cancel();
       return;
     }
-    const rec = new MediaRecorder(stream);
-    const chunks: Blob[] = [];
-    rec.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
-    rec.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop());
-      recorderRef.current = null;
-      setRecording(false);
-      const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
-      if (blob.size === 0) return;
-      const working = new Notice("Transcribing…", 0);
-      try {
-        const text = await transcribeAudio({
-          apiKey: key,
-          model: TRANSCRIBE_MODEL,
-          // A extensão tem que bater com o que o aparelho gravou: é por ela
-          // que o motor monta o content-type do multipart.
-          filename: `voice.${blob.type.includes("mp4") ? "mp4" : "webm"}`,
-          data: new Uint8Array(await blob.arrayBuffer()),
-        });
-        const clean = text.trim();
-        if (clean) setDraft((d) => (d.trim() ? `${d} ${clean}` : clean));
-        else new Notice("Nothing was heard.");
-      } catch (err) {
-        new Notice(
-          `Transcription failed: ${
-            err instanceof Error ? err.message : String(err)
-          }`
-        );
-      } finally {
-        working.hide();
-      }
-    };
-    rec.start();
-    recorderRef.current = rec;
-    setRecording(true);
+    if (dy < -LOCK_PX) {
+      micRef.current = null;
+      voice.lock();
+      return;
+    }
+    setSlide(Math.min(0, dx));
+  };
+
+  const onMicUp = () => {
+    const from = micRef.current;
+    micRef.current = null;
+    setSlide(0);
+    if (!from) return;
+    // Toque curto = mãos livres. Sem isso um clique viraria um clipe de 200ms,
+    // que é o jeito mais fácil de parecer quebrado.
+    if (Date.now() - from.t < TAP_MS) voice.lock();
+    else voice.finish();
   };
 
   /** Tocar num modelo comita as DUAS coisas: o provider da folha e o modelo. */
@@ -319,56 +328,87 @@ export function ChatView({
               modelo ao lado, e à direita voz e enviar. O provider saiu do pill
               (ele é o trilho DENTRO da folha) e o effort também (virou um nível
               dela) — o que sobra aqui é o que se usa a cada mensagem. */}
-          <div className="axxa-input-bar">
-            <button
-              type="button"
-              className="axxa-round-btn"
-              aria-label="Add to chat"
-              onClick={() => openSheet("plus")}
-            >
-              <Icon name="plus" size={20} />
-            </button>
+          {/* Travado ou pausado, o painel de voz TOMA a barra inteira (é o
+              formato da referência). Segurando, ele divide a linha com o
+              microfone, que continua sob o dedo. */}
+          {voice.state === "locked" || voice.state === "paused" ? (
+            <VoicePanel voice={voice} />
+          ) : (
+            <div className="axxa-input-bar">
+              {voice.state === "hold" ? (
+                <VoiceHold voice={voice} slide={slide} />
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="axxa-round-btn"
+                    aria-label="Add to chat"
+                    onClick={() => openSheet("plus")}
+                  >
+                    <Icon name="plus" size={20} />
+                  </button>
 
-            <div className="axxa-pills">
-              <Pill
-                label={prettyModelName(cfg.model) || "no model"}
-                onClick={() => openSheet("model")}
-              />
+                  <div className="axxa-pills">
+                    <Pill
+                      label={prettyModelName(cfg.model) || "no model"}
+                      onClick={() => openSheet("model")}
+                    />
+                  </div>
+                </>
+              )}
+
+              {voice.state === "working" ? (
+                <span className="axxa-voice-working">Transcribing…</span>
+              ) : (
+                <>
+                  {/* Cadeado do WhatsApp: aparece enquanto segura e diz pra
+                      onde arrastar pra soltar o dedo. */}
+                  {voice.state === "hold" && (
+                    <span className="axxa-voice-lock" aria-hidden="true">
+                      <Icon name="lock" size={16} />
+                      <Icon name="chevron-up" size={14} />
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className={
+                      voice.state === "hold"
+                        ? "axxa-round-btn is-recording"
+                        : "axxa-round-btn"
+                    }
+                    aria-label="Hold to record, slide up to lock"
+                    onPointerDown={(e) => void onMicDown(e)}
+                    onPointerMove={onMicMove}
+                    onPointerUp={onMicUp}
+                    onPointerCancel={onMicUp}
+                  >
+                    <Icon name="mic" size={18} />
+                  </button>
+                </>
+              )}
+
+              {isLoading ? (
+                <button
+                  type="button"
+                  className="axxa-send is-stop"
+                  aria-label="Stop"
+                  onClick={() => session.stop()}
+                >
+                  <Icon name="square" size={16} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="axxa-send"
+                  aria-label="Send"
+                  disabled={!draft.trim()}
+                  onClick={() => void submit()}
+                >
+                  <Icon name="arrow-up" size={18} />
+                </button>
+              )}
             </div>
-
-            <button
-              type="button"
-              className={
-                recording ? "axxa-round-btn is-recording" : "axxa-round-btn"
-              }
-              aria-label={recording ? "Stop recording" : "Voice mode"}
-              aria-pressed={recording}
-              onClick={() => void toggleVoice()}
-            >
-              <Icon name={recording ? "square" : "mic"} size={18} />
-            </button>
-
-            {isLoading ? (
-              <button
-                type="button"
-                className="axxa-send is-stop"
-                aria-label="Stop"
-                onClick={() => session.stop()}
-              >
-                <Icon name="square" size={16} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="axxa-send"
-                aria-label="Send"
-                disabled={!draft.trim()}
-                onClick={() => void submit()}
-              >
-                <Icon name="arrow-up" size={18} />
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </section>
 
