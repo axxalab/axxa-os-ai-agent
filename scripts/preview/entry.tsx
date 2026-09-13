@@ -183,7 +183,7 @@ if (scenario === "thread") {
     { id: "m2", type: "ai-comment", content: "", timestamp: Date.now() - 55000, activity: { phase: "done", pendingText: "Searching the vault…", doneText: "Read 4 notes" } },
     { id: "m3", type: "ai-response", content: "Three notes cover it. In **Learning/Spaced repetition.md** you settled on a 2-day → 1-week → 1-month ladder, and noted that the jump to a month was where recall broke down.\n\nThe open question you left in **Inbox/Anki backlog.md** was whether to split decks by topic or by difficulty.", timestamp: Date.now() - 50000 },
     { id: "m4", type: "user", content: "Draft a note that answers that open question.", timestamp: Date.now() - 20000 },
-    { id: "m5", type: "ai-response", content: "Splitting by difficulty is the better fit for how you review — topic decks recreate the cramming pattern you flagged in June.", timestamp: Date.now() - 10000,
+    { id: "m5", type: "ai-response", reasoning: "O usuário quer uma nota que responda à pergunta em aberto. Vale olhar as duas notas citadas antes de escrever, porque a conclusão de junho contradiz a hipótese de dividir por tópico — e é essa contradição que a nota precisa resolver.", content: "Splitting by difficulty is the better fit for how you review — topic decks recreate the cramming pattern you flagged in June.", timestamp: Date.now() - 10000,
       // Ações de agente: é o que alimenta o chip e a folha de auditoria.
       // Lista LONGA de propósito: é com onze linhas que dá pra ver se a folha
       // rola sem fim ou se cabe na tela.

@@ -817,18 +817,6 @@ body.theme-dark {
   font-size: var(--font-ui-smaller);
 }
 
-.axxa-root .axxa-details summary {
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-}
-
-.axxa-root .axxa-details pre {
-  max-height: 40vh;
-  overflow: auto;
-  font-size: var(--font-ui-smaller);
-}
-
 .axxa-root .axxa-empty-line {
   margin: 0;
   color: var(--text-faint);
@@ -2389,6 +2377,24 @@ body.is-mobile .axxa-root .axxa-history-more {
 .axxa-root button.axxa-tools-chip:hover:not(:disabled) {
   background: none;
   color: var(--text-normal);
+}
+
+/* Dentro da linha de narração o chip é menor e não quebra a linha. */
+.axxa-root button.axxa-tools-chip.is-inline {
+  align-self: center;
+  margin-top: 0;
+  font-family: inherit;
+  font-size: var(--font-ui-smaller);
+}
+
+/* Raciocínio é PROSA, não saída de comando: fonte de leitura e sem mono. */
+.axxa-root .axxa-tool-block.is-prose {
+  font-family: var(--font-text);
+  font-size: 15px;
+  line-height: 1.55;
+  background-color: transparent;
+  padding: 0;
+  max-height: 60vh;
 }
 
 /* Detalhe de uma ação dentro da folha. */

@@ -322,7 +322,9 @@ export function ChatView({
               actions={actionsByResponse.get(m.id)}
               onOpenTools={(acoes) => {
                 setTools(acoes);
-                setToolAt(null);
+                // Lista de UM item é uma parada a mais sem informação: abre
+                // direto no detalhe.
+                setToolAt(acoes.length === 1 ? 0 : null);
               }}
             />
           ))
@@ -562,7 +564,11 @@ export function ChatView({
           setTools(null);
           setToolAt(null);
         }}
-        onBack={toolAt !== null ? () => setToolAt(null) : undefined}
+        onBack={
+          toolAt !== null && (tools?.length ?? 0) > 1
+            ? () => setToolAt(null)
+            : undefined
+        }
       >
         {toolAt !== null && tools ? (
           <ToolDetail action={tools[toolAt]} />
@@ -646,18 +652,27 @@ function activityText(a: ActivityMeta): string {
  *  "o que ele fez aí?". */
 export type TurnAction =
   | { kind: "step"; step: AIToolStep }
-  | { kind: "activity"; activity: ActivityMeta };
+  | { kind: "activity"; activity: ActivityMeta }
+  /** O raciocínio do modelo. Mesma natureza: texto gerado que interessa ter,
+   *  não ter na frente. */
+  | { kind: "reasoning"; text: string };
 
 function actionTitle(a: TurnAction): string {
-  return a.kind === "step" ? a.step.name : activityText(a.activity);
+  if (a.kind === "step") return a.step.name;
+  if (a.kind === "activity") return activityText(a.activity);
+  return "Reasoning";
 }
 
 function actionNote(a: TurnAction): string | undefined {
-  return a.kind === "step" ? toolSummary(a.step) : undefined;
+  if (a.kind === "step") return toolSummary(a.step);
+  if (a.kind === "reasoning") return `${a.text.length} chars`;
+  return undefined;
 }
 
 function actionFailed(a: TurnAction): boolean {
-  return a.kind === "step" ? !a.step.ok : a.activity.phase === "failed";
+  if (a.kind === "step") return !a.step.ok;
+  if (a.kind === "activity") return a.activity.phase === "failed";
+  return false;
 }
 
 /** Resumo de uma linha dos argumentos — o suficiente pra reconhecer a ação. */
@@ -674,10 +689,12 @@ function ToolDetail({ action }: { action: TurnAction }) {
   const ok = !actionFailed(action);
   return (
     <div className="axxa-tool-detail">
-      <p className={ok ? "axxa-tool-state is-ok" : "axxa-tool-state"}>
-        <Icon name={ok ? "check" : "x"} size={14} />
-        {ok ? "Completed" : "Failed"}
-      </p>
+      {action.kind !== "reasoning" && (
+        <p className={ok ? "axxa-tool-state is-ok" : "axxa-tool-state"}>
+          <Icon name={ok ? "check" : "x"} size={14} />
+          {ok ? "Completed" : "Failed"}
+        </p>
+      )}
       {action.kind === "step" ? (
         <>
           <p className="axxa-tool-label">Arguments</p>
@@ -689,13 +706,15 @@ function ToolDetail({ action }: { action: TurnAction }) {
             {action.step.result || "(empty)"}
           </pre>
         </>
-      ) : (
+      ) : action.kind === "activity" ? (
         <>
           <p className="axxa-tool-label">What happened</p>
           <pre className="axxa-tool-block">
             {action.activity.detail || activityText(action.activity)}
           </pre>
         </>
+      ) : (
+        <pre className="axxa-tool-block is-prose">{action.text}</pre>
       )}
     </div>
   );
@@ -761,10 +780,16 @@ function MessageRow({
           }
         >
           {msg.reasoning && (
-            <details className="axxa-details">
-              <summary>Reasoning</summary>
-              <pre className="axxa-msg-text">{msg.reasoning}</pre>
-            </details>
+            <button
+              type="button"
+              className="axxa-tools-chip"
+              onClick={() =>
+                onOpenTools?.([{ kind: "reasoning", text: msg.reasoning ?? "" }])
+              }
+            >
+              <span>Reasoning</span>
+              <Icon name="chevron-right" size={15} />
+            </button>
           )}
           {msg.isError ? (
             <div className="axxa-msg-text">{msg.content}</div>
@@ -814,10 +839,19 @@ function MessageRow({
             {msg.activity && msg.content ? ` — ${msg.content}` : ""}
           </span>
           {msg.activity?.detail && (
-            <details className="axxa-details">
-              <summary>details</summary>
-              <pre className="axxa-msg-text">{msg.activity.detail}</pre>
-            </details>
+            // Mesmo caminho de tudo o mais: abre na folha. Um <details> aqui
+            // empurrava a conversa toda pra baixo no meio de uma rodada.
+            <button
+              type="button"
+              className="axxa-tools-chip is-inline"
+              onClick={() =>
+                msg.activity &&
+                onOpenTools?.([{ kind: "activity", activity: msg.activity }])
+              }
+            >
+              <span>details</span>
+              <Icon name="chevron-right" size={14} />
+            </button>
           )}
         </div>
       );
