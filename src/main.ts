@@ -83,10 +83,19 @@ export interface AxxaSettings {
   voiceLanguage: string;
   /** Leitura em voz alta: o botão de ouvir a resposta. */
   ttsEnabled: boolean;
-  /** Modelo de TTS (texto → fala). */
+  /** Quem fala: "openai" ou "eleven". */
+  ttsProvider: string;
+  /** Modelo de TTS da OpenAI (texto → fala). */
   ttsModel: string;
-  /** Voz do TTS (alloy, nova, …). */
+  /** Voz da OpenAI (alloy, nova, …). */
   ttsVoice: string;
+  /** Key da ElevenLabs — é ela que dá acesso à VOZ CLONADA do usuário. */
+  elevenApiKey: string;
+  elevenModel: string;
+  /** voice_id escolhido na conta ElevenLabs. */
+  elevenVoice: string;
+  /** Vozes lidas da conta (id + nome), pra não pedir a lista toda hora. */
+  elevenVoices: { id: string; name: string; category?: string }[];
   /** Modelo-padrão por PAPEL (chat/reasoning/image/video/tts/embedding/other). */
   roleModels: Partial<Record<RoleId, RoleModelEntry>>;
   /** Provider preferido quando o MESMO modelo existe em 2+ providers. */
@@ -181,8 +190,13 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   voiceModel: "gpt-4o-mini-transcribe",
   voiceLanguage: "",
   ttsEnabled: false,
+  ttsProvider: "openai",
   ttsModel: "gpt-4o-mini-tts",
   ttsVoice: "alloy",
+  elevenApiKey: "",
+  elevenModel: "eleven_multilingual_v2",
+  elevenVoice: "",
+  elevenVoices: [],
   roleModels: {},
   modelProvider: {},
   discoveredEmbeddings: {},

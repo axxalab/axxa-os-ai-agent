@@ -67,6 +67,11 @@ const plugin = {
     ttsEnabled: true,
     ttsModel: "gpt-4o-mini-tts",
     ttsVoice: "alloy",
+    ttsProvider: "openai",
+    elevenApiKey: "",
+    elevenModel: "eleven_multilingual_v2",
+    elevenVoice: "",
+    elevenVoices: [],
     projects: [],
   },
   // A casca grava em quase toda interação; sem isto o clique morre num

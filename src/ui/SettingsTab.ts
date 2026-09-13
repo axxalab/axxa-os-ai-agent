@@ -34,11 +34,14 @@ import {
 import { buildModelCatalog } from "./modelCatalog";
 import { prettyModelName } from "../providers/modelDescriptions";
 import {
+  OPENAI_TTS_MODELS,
+  OPENAI_VOICES,
   speak,
   STT_MODELS,
-  TTS_MODELS,
-  TTS_VOICES,
+  TTS_PROVIDERS,
+  ttsReady,
 } from "./readAloud";
+import { ELEVEN_MODELS, elevenVoices } from "../providers/elevenlabs";
 import { PERMISSION_LABELS } from "../agent/permissions";
 import type { PermissionLevel } from "../agent/types";
 
@@ -78,7 +81,7 @@ const SPEECH_LANGS: [string, string][] = [
 ];
 
 /** Frase do botão Test — curta, pra não virar conta. */
-const SAMPLE_LINE = "This is the voice that will read your answers.";
+const SAMPLE_LINE = "This is the voice that will read your answers out loud.";
 
 /** Favoritos aparecem na tela inicial; mais que isso vira lista, não atalho. */
 const FAVORITE_LIMIT = 5;
@@ -162,6 +165,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
   /** Resultado do último teste de conexão de cada provider (só na sessão). */
   private conn: Record<string, ConnState> = {};
   private fetching = false;
+  private fetchingVoices = false;
 
   // Nós que o re-render PARCIAL reaproveita. Trocar de aba ou de provider
   // chamava display(), que esvazia o container inteiro: a tela piscava como se
@@ -348,7 +352,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
    */
   private addPasteButton(
     row: Setting,
-    field: KeyField | "ollamaEndpoint"
+    field: KeyField | "ollamaEndpoint" | "elevenApiKey"
   ): void {
     const btn = row.controlEl.createEl("button", { cls: "axxa-paste-btn" });
     btn.setAttribute("type", "button");
@@ -849,31 +853,26 @@ export class AxxaSettingsTab extends PluginSettingTab {
     this.renderVoice(el);
   }
 
-  // ── Voz ───────────────────────────────────────────────────────────────────
-  // As duas direções passam pela OpenAI (é lá que moram os dois endpoints que
-  // o motor já fala), então a chave da OpenAI é o pré-requisito de ambas — e a
-  // linha abaixo diz isso quando ela falta, em vez de deixar o usuário
-  // descobrir na hora que aperta o microfone.
+  // ── Voz ────────────────────────────────────────────────────────────────────
+  // Duas coisas diferentes moram aqui, e a escrita tenta deixar isso claro:
+  // FALAR COM o chat (ditado) e OUVIR o chat (leitura). Cada uma na ordem em
+  // que a pessoa decide: ligo? por quem? com que voz?
 
   private renderVoice(el: HTMLElement): void {
     const s = this.s;
-    const temKey = !!this.plugin.providerCredential("openai");
 
     const brand = new Setting(el).setName("Voice").setHeading();
     const mark = brand.nameEl.createSpan({ cls: "axxa-settings-brand" });
     setIcon(mark, "mic");
     brand.nameEl.prepend(mark);
+    brand.setDesc("Talk to the chat, and let it talk back.");
 
-    if (!temKey) {
-      brand.setDesc(
-        "Both directions run on OpenAI — add that key in Providers to use them."
-      );
-    }
-
-    // ── fala → texto ────────────────────────────────────────────────────
+    // ── ditado ─────────────────────────────────────────────────
     new Setting(el)
-      .setName("Dictation")
-      .setDesc("The microphone in the composer. Off, the button doesn't show.")
+      .setName("Talk instead of typing")
+      .setDesc(
+        "Puts a microphone in the composer: you speak, the words land in the box, and you send when you are happy with them."
+      )
       .addToggle((t) =>
         t.setValue(s.voiceEnabled).onChange(async (v) => {
           s.voiceEnabled = v;
@@ -883,9 +882,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
       );
 
     if (s.voiceEnabled) {
+      if (!this.plugin.providerCredential("openai")) {
+        this.hint(el, "Dictation runs on OpenAI — add that key in Providers.");
+      }
       new Setting(el)
-        .setName("Dictation model")
-        .setDesc("What turns your speech into text.")
+        .setName("Ears")
+        .setDesc(
+          "Mini is quick, cheap and gets normal speech right; the full one is better with names, accents and noise."
+        )
         .addDropdown((d) => {
           for (const m of STT_MODELS) d.addOption(m, prettyModelName(m));
           d.setValue(s.voiceModel).onChange(async (v) => {
@@ -895,9 +899,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
         });
 
       new Setting(el)
-        .setName("Spoken language")
+        .setName("What you speak")
         .setDesc(
-          "Telling it the language makes short takes more accurate. Auto works, just guesses."
+          "Naming your language beats letting it guess — short takes are where guessing goes wrong."
         )
         .addDropdown((d) => {
           for (const [code, label] of SPEECH_LANGS) d.addOption(code, label);
@@ -908,10 +912,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
         });
     }
 
-    // ── texto → fala ────────────────────────────────────────────────────
+    // ── leitura ────────────────────────────────────────────────
     new Setting(el)
-      .setName("Read aloud")
-      .setDesc("Adds a listen button to every answer.")
+      .setName("Read answers out loud")
+      .setDesc("Adds a Listen button under every answer.")
       .addToggle((t) =>
         t.setValue(s.ttsEnabled).onChange(async (v) => {
           s.ttsEnabled = v;
@@ -920,38 +924,177 @@ export class AxxaSettingsTab extends PluginSettingTab {
         })
       );
 
-    if (s.ttsEnabled) {
-      new Setting(el)
-        .setName("Voice model")
-        .setDesc("gpt-4o-mini-tts follows tone; tts-1 is the cheap classic.")
-        .addDropdown((d) => {
-          for (const m of TTS_MODELS) d.addOption(m, m);
-          d.setValue(s.ttsModel).onChange(async (v) => {
-            s.ttsModel = v;
+    if (!s.ttsEnabled) return;
+
+    new Setting(el)
+      .setName("Who reads")
+      .setDesc(
+        "OpenAI voices are ready to use. ElevenLabs sounds better and is the only one that can read in YOUR voice — clone it in their app and it shows up in the list below."
+      )
+      .addDropdown((d) => {
+        for (const p of TTS_PROVIDERS) {
+          const ok = ttsReady(this.plugin, p.id);
+          d.addOption(p.id, ok ? p.label : p.label + " (needs " + p.needs + ")");
+        }
+        d.setValue(s.ttsProvider).onChange(async (v) => {
+          s.ttsProvider = v;
+          await this.save();
+          this.renderBody();
+        });
+      });
+
+    if (s.ttsProvider === "eleven") this.renderEleven(el);
+    else this.renderOpenAiTts(el);
+  }
+
+  /** Uma linha de recado — o que falta pra aquilo ali funcionar. */
+  private hint(el: HTMLElement, text: string): void {
+    el.createEl("p", { cls: "axxa-settings-hint", text });
+  }
+
+  private renderOpenAiTts(el: HTMLElement): void {
+    const s = this.s;
+    if (!this.plugin.providerCredential("openai")) {
+      this.hint(el, "Add your OpenAI key in Providers to hear anything.");
+    }
+    new Setting(el)
+      .setName("Voice")
+      .setDesc("Eleven of them. Hit Play sample to hear the one you picked.")
+      .addDropdown((d) => {
+        for (const v of OPENAI_VOICES) d.addOption(v, v);
+        d.setValue(s.ttsVoice).onChange(async (v) => {
+          s.ttsVoice = v;
+          await this.save();
+        });
+      });
+
+    new Setting(el)
+      .setName("Quality")
+      .setDesc(
+        "gpt-4o-mini-tts reads with intention; tts-1 is the cheap classic; the HD one is the same voice, cleaner."
+      )
+      .addDropdown((d) => {
+        for (const m of OPENAI_TTS_MODELS) d.addOption(m, m);
+        d.setValue(s.ttsModel).onChange(async (v) => {
+          s.ttsModel = v;
+          await this.save();
+        });
+      });
+
+    this.testRow(el);
+  }
+
+  private renderEleven(el: HTMLElement): void {
+    const s = this.s;
+    const row = new Setting(el)
+      .setName("ElevenLabs key")
+      .setDesc("From elevenlabs.io › Profile › API key. Stays on this device.")
+      .addText((t) => {
+        t.inputEl.type = "password";
+        t.setPlaceholder("key…")
+          .setValue(s.elevenApiKey)
+          .onChange(async (v) => {
+            s.elevenApiKey = v.trim();
             await this.save();
           });
-        });
+      });
+    if (!s.elevenApiKey) this.addPasteButton(row, "elevenApiKey");
 
+    new Setting(el)
+      .setName("Your voices")
+      .setDesc(
+        "Fetch what your account has — the stock voices and any you cloned, including your own."
+      )
+      .addButton((b) =>
+        b
+          .setButtonText(this.fetchingVoices ? "Fetching…" : "Fetch voices")
+          .setCta()
+          // Sem trava por key vazia: digitar a chave não re-renderiza esta
+          // linha (re-renderizar a cada tecla roubaria o foco do campo), então
+          // o botão ficaria desabilitado depois de a key existir. Sem key, a
+          // própria chamada avisa.
+          .setDisabled(this.fetchingVoices)
+          .onClick(() => void this.fetchVoices())
+      );
+
+    if (s.elevenVoices.length > 0) {
       new Setting(el)
         .setName("Voice")
-        .setDesc("Who reads it. Hit Test to hear the one you picked.")
+        .setDesc("Cloned ones are marked — that is the one that sounds like you.")
         .addDropdown((d) => {
-          for (const v of TTS_VOICES) d.addOption(v, v);
-          d.setValue(s.ttsVoice).onChange(async (v) => {
-            s.ttsVoice = v;
-            await this.save();
-          });
+          for (const v of s.elevenVoices) {
+            const own =
+              v.category === "cloned" || v.category === "professional";
+            d.addOption(v.id, own ? v.name + " · yours" : v.name);
+          }
+          d.setValue(s.elevenVoice || s.elevenVoices[0].id).onChange(
+            async (v) => {
+              s.elevenVoice = v;
+              await this.save();
+            }
+          );
+        });
+    } else if (s.elevenApiKey) {
+      this.hint(el, "No voices loaded yet — hit Fetch voices.");
+    }
+
+    new Setting(el)
+      .setName("Quality")
+      .setDesc("Multilingual sounds best; the faster ones answer sooner.")
+      .addDropdown((d) => {
+        for (const m of ELEVEN_MODELS) d.addOption(m.id, m.label);
+        d.setValue(s.elevenModel).onChange(async (v) => {
+          s.elevenModel = v;
+          await this.save();
+        });
+      });
+
+    this.testRow(el);
+  }
+
+  /** O botão que prova que a voz escolhida funciona. */
+  private testRow(el: HTMLElement): void {
+    new Setting(el)
+      .setName("Test")
+      .setDesc("Plays one short line with the settings above.")
+      .addButton((b) =>
+        b.setButtonText("Play sample").onClick(async () => {
+          b.setButtonText("Playing…").setDisabled(true);
+          // `speak` precisa começar DENTRO do clique: é lá que ele destrava o
+          // áudio (o navegador recusa tocar fora do gesto).
+          await speak(this.plugin, SAMPLE_LINE);
+          b.setButtonText("Play sample").setDisabled(false);
         })
-        .addButton((b) =>
-          b
-            .setButtonText("Test")
-            .setDisabled(!temKey)
-            .onClick(async () => {
-              b.setButtonText("Playing…").setDisabled(true);
-              await speak(this.plugin, SAMPLE_LINE);
-              b.setButtonText("Test").setDisabled(false);
-            })
-        );
+      );
+  }
+
+  private async fetchVoices(): Promise<void> {
+    if (this.fetchingVoices) return;
+    this.fetchingVoices = true;
+    this.renderBody();
+    try {
+      const voices = await elevenVoices(this.s.elevenApiKey);
+      this.s.elevenVoices = voices.map((v) => ({
+        id: v.id,
+        name: v.name,
+        category: v.category,
+      }));
+      if (!this.s.elevenVoice && voices[0]) this.s.elevenVoice = voices[0].id;
+      await this.save();
+      const minhas = voices.filter(
+        (v) => v.category === "cloned" || v.category === "professional"
+      ).length;
+      new Notice(
+        voices.length + " voices" + (minhas > 0 ? " · " + minhas + " yours" : "") + "."
+      );
+    } catch (err) {
+      new Notice(
+        "Could not load voices: " +
+          (err instanceof Error ? err.message : String(err))
+      );
+    } finally {
+      this.fetchingVoices = false;
+      this.renderBody();
     }
   }
 

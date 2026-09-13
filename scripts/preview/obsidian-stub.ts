@@ -39,7 +39,49 @@ export async function requestUrl(opts: { url?: string }): Promise<unknown> {
       json: { text: FAKE_WORDS.slice(0, Math.min(fakeCalls * 4, FAKE_WORDS.length)).join(" ") },
     };
   }
+  // TTS: devolve um WAV mudo de verdade, pra dar pra exercitar o caminho
+  // inteiro (blob → <audio> → play) sem falar com a rede.
+  if (opts?.url && /audio\/speech|text-to-speech/.test(opts.url)) {
+    await new Promise((r) => setTimeout(r, 300));
+    return { status: 200, arrayBuffer: silentWav() };
+  }
+  if (opts?.url && /elevenlabs\.io\/v1\/voices/.test(opts.url)) {
+    await new Promise((r) => setTimeout(r, 300));
+    return {
+      status: 200,
+      json: {
+        voices: [
+          { voice_id: "v-rachel", name: "Rachel", category: "premade" },
+          { voice_id: "v-rafael", name: "Rafael", category: "cloned" },
+        ],
+      },
+    };
+  }
   throw new Error("no network in preview");
+}
+
+/** WAV de 0.2s em silêncio — cabeçalho montado à mão. */
+function silentWav(): ArrayBuffer {
+  const rate = 8000;
+  const frames = rate / 5;
+  const buf = new ArrayBuffer(44 + frames * 2);
+  const v = new DataView(buf);
+  const ascii = (off: number, str: string) => {
+    for (let i = 0; i < str.length; i++) v.setUint8(off + i, str.charCodeAt(i));
+  };
+  ascii(0, "RIFF");
+  v.setUint32(4, 36 + frames * 2, true);
+  ascii(8, "WAVEfmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  ascii(36, "data");
+  v.setUint32(40, frames * 2, true);
+  return buf;
 }
 export class Plugin {}
 export class PluginSettingTab {

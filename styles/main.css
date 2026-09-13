@@ -1709,6 +1709,14 @@ body.is-mobile .axxa-root .axxa-history-more {
   height: 18px;
 }
 
+/* Recado curto entre linhas de setting: o que falta pra aquilo funcionar. */
+.axxa-settings-root .axxa-settings-hint {
+  margin: 0 0 var(--size-4-2);
+  padding: 0 var(--size-4-4);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
 .axxa-settings-root .axxa-settings-blurb {
   margin: 0 0 var(--size-4-4);
   color: var(--text-muted);
