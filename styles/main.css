@@ -1229,6 +1229,39 @@ body.theme-dark {
   overflow: hidden;
 }
 
+/* No MOBILE as duas camadas são `fixed`, não `absolute`. O motivo está escrito
+   na 0.2.37, em `.axxa-plus-overlay`, e é literal:
+
+     "o .view-content da AXXA tem padding-bottom de clearance da navbar mobile,
+      então o .axxa-root (ancestral posicionado) NÃO chega ao fundo real → o
+      sheet parava acima e abria um vão. fixed cobre o viewport inteiro e
+      encosta no fundo, igual os modais nativos do Obsidian."
+
+   É a MESMA faixa de baixo que a gente caçou por seis releases: aqui ela volta
+   porque a folha para onde o `.axxa-root` para, e o que fica embaixo dela não é
+   a folha. Com `fixed`, a folha encosta na base de verdade.
+
+   Só no mobile: no desktop o `fixed` atravessa a leaf e o overlay cobre a
+   janela inteira do Obsidian (o P1-19 da mesma versão), por cima do explorer.
+   Lá o painel é o limite certo. */
+body.is-mobile .axxa-root .axxa-sheet-layer,
+body.is-mobile .axxa-root .axxa-drawer-layer {
+  position: fixed;
+  z-index: 1000;
+}
+
+/* Teclado aberto: a folha precisa CABER acima dele (regra da 0.2.37 em
+   `.axxa-plus-sheet`). Hoje é cinto de segurança — abrir uma folha tira o foco
+   do campo, então o teclado já desce —, mas uma folha aberta com teclado no ar
+   estouraria o topo sem isto.
+   O `padding-bottom: var(--keyboard-height)` que a 0.2.37 punha no overlay NÃO
+   vem junto de propósito: lá o overlay podia ancorar no viewport; aqui a
+   cadeia da gaveta já desconta o teclado, e somar de novo é o double-count que
+   jogava o sheet pro topo (bug 0.1.246, documentado lá mesmo). */
+body.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet {
+  max-height: calc(100vh - var(--keyboard-height, 0px) - 16px);
+}
+
 .axxa-root .axxa-drawer-layer.is-open {
   visibility: visible;
   pointer-events: auto;
