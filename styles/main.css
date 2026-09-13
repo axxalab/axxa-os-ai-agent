@@ -376,6 +376,9 @@ body.theme-dark {
 
   --axxa-line: var(--background-modifier-border);
   --axxa-hover: var(--background-modifier-hover);
+  /* Tempo das camadas que entram e saem (folha, véu, menu) — um valor só pra
+     elas nunca desencontrarem. */
+  --axxa-sheet-ms: 260ms;
   --axxa-tap: 34px;
   --axxa-drawer-w: min(300px, 84%);
   /* Medida de leitura: em painel largo a conversa centraliza em vez de
@@ -937,7 +940,10 @@ body.theme-dark {
   flex-direction: column;
   /* Dois tamanhos, trocados pelo arrasto no puxador: o normal é a altura do
      conteúdo com teto baixo; o grande vai quase até o topo. Folha curta não
-     muda nada — ela já cabe. */
+     muda nada — ela já cabe. O `min-height: 0` explícito é o que torna o
+     crescer animável: o valor inicial da propriedade é `auto`, e de `auto` o
+     navegador não interpola. */
+  min-height: 0;
   max-height: 62%;
   /* Sem respiro EMBAIXO aqui: ele é da área rolável (regra do
      .axxa-sheet-body). Como padding da folha, virava uma faixa morta na cor
@@ -955,13 +961,24 @@ body.theme-dark {
   background-color: var(--axxa-canvas);
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.28);
   transform: translateY(100%);
-  transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  /* ease-in-out, e não a curva de saída de antes. Medido: com
+     `cubic-bezier(0.32, 0.72, 0, 1)` a folha andava 73% do caminho nos
+     primeiros 60ms e arrastava o resto por mais 165ms — na tela isso lê como
+     um pulo seguido de um rastro. A curva simétrica entra devagar, e é isso
+     que faz parecer que a folha SOBE em vez de aparecer. */
+  transition:
+    transform var(--axxa-sheet-ms) ease-in-out,
+    min-height var(--axxa-sheet-ms) ease-in-out,
+    max-height var(--axxa-sheet-ms) ease-in-out;
 }
 
 /* Grande é ALTURA, não só teto: com `max-height` sozinho, arrastar pra cima
-   numa folha curta não mexia em nada e o gesto parecia quebrado. */
+   numa folha curta não mexia em nada e o gesto parecia quebrado. É
+   `min-height`, e não `height`: o tamanho pequeno é `auto`, e `auto → 94%` não
+   é interpolável — a folha PULAVA de um tamanho pro outro. De 0 a 94% de
+   min-height o navegador anima. */
 .axxa-root .axxa-sheet.is-full {
-  height: 94%;
+  min-height: 94%;
   max-height: 94%;
 }
 
@@ -1272,7 +1289,8 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet {
   inset: 0;
   background-color: var(--background-modifier-cover, rgba(0, 0, 0, 0.45));
   opacity: 0;
-  transition: opacity 160ms ease;
+  /* Mesma curva e mesmo tempo da folha: o véu e a folha são um movimento só. */
+  transition: opacity var(--axxa-sheet-ms) ease-in-out;
 }
 
 /* Vale pras DUAS camadas. A sheet ficou sem scrim por muito tempo sem
@@ -1296,7 +1314,7 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet {
   border-right: 1px solid var(--axxa-line);
   box-shadow: 0 0 24px rgba(0, 0, 0, 0.18);
   transform: translateX(-100%);
-  transition: transform 180ms ease;
+  transition: transform var(--axxa-sheet-ms) ease-in-out;
   overflow: hidden;
 }
 
