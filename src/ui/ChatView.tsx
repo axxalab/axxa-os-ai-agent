@@ -6,7 +6,7 @@
 //
 // O histórico de conversas NÃO mora aqui: é o menu lateral (Drawer.tsx).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "obsidian";
 import type AxxaPlugin from "../main";
 import {
@@ -108,7 +108,7 @@ export function ChatView({
   const [liveText, setLiveText] = useState("");
   /** Ações do agente abertas na folha (null = fechada) e qual delas está
    *  aberta no segundo nível. */
-  const [tools, setTools] = useState<AIToolStep[] | null>(null);
+  const [tools, setTools] = useState<TurnAction[] | null>(null);
   const [toolAt, setToolAt] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -134,6 +134,42 @@ export function ChatView({
     const raf = window.requestAnimationFrame(fit);
     return () => window.cancelAnimationFrame(raf);
   }, [draft]);
+
+  // As narrações ("Listed root — 7 items") de uma rodada JÁ TERMINADA saem da
+  // conversa e vão pra folha, junto das tool calls: elas são o passo a passo,
+  // e passo a passo é auditoria. A que ainda está rodando FICA — é ela que diz
+  // que tem coisa acontecendo.
+  const { hiddenIds, actionsByResponse } = useMemo(() => {
+    const hiddenIds = new Set<string>();
+    const actionsByResponse = new Map<string, TurnAction[]>();
+    let bucket: ChatMessage[] = [];
+    for (const m of messages) {
+      if (m.type === "ai-comment" && m.activity) {
+        bucket.push(m);
+        continue;
+      }
+      if (m.type === "ai-response") {
+        const narradas: TurnAction[] = bucket
+          .map((c) =>
+            c.type === "ai-comment" && c.activity
+              ? ({ kind: "activity", activity: c.activity } as TurnAction)
+              : null
+          )
+          .filter((a): a is TurnAction => a !== null);
+        const passos: TurnAction[] = (m.agentSteps ?? []).map((step) => ({
+          kind: "step",
+          step,
+        }));
+        const todas = [...narradas, ...passos];
+        if (todas.length > 0) actionsByResponse.set(m.id, todas);
+        for (const c of bucket) hiddenIds.add(c.id);
+        bucket = [];
+      } else if (m.type === "user") {
+        bucket = [];
+      }
+    }
+    return { hiddenIds, actionsByResponse };
+  }, [messages]);
 
   // Timeline colada no fim enquanto chega texto novo.
   const stickToBottom = () => {
@@ -275,14 +311,17 @@ export function ChatView({
         {empty ? (
           <StarterScreen plugin={plugin} session={session} />
         ) : (
-          messages.map((m) => (
+          messages
+            .filter((m) => !hiddenIds.has(m.id))
+            .map((m) => (
             <MessageRow
               key={m.id}
               msg={m}
               plugin={plugin}
               streaming={m.id === streamingId}
-              onOpenTools={(steps) => {
-                setTools(steps);
+              actions={actionsByResponse.get(m.id)}
+              onOpenTools={(acoes) => {
+                setTools(acoes);
                 setToolAt(null);
               }}
             />
@@ -513,7 +552,7 @@ export function ChatView({
       <Sheet
         title={
           toolAt !== null && tools
-            ? tools[toolAt].name
+            ? actionTitle(tools[toolAt])
             : `Ran ${tools?.length ?? 0} ${
                 (tools?.length ?? 0) === 1 ? "action" : "actions"
               }`
@@ -526,15 +565,15 @@ export function ChatView({
         onBack={toolAt !== null ? () => setToolAt(null) : undefined}
       >
         {toolAt !== null && tools ? (
-          <ToolDetail step={tools[toolAt]} />
+          <ToolDetail action={tools[toolAt]} />
         ) : (
           <SheetGroup>
-            {(tools ?? []).map((step, i) => (
+            {(tools ?? []).map((a, i) => (
               <SheetRow
-                key={step.id}
-                title={step.name}
-                note={toolSummary(step)}
-                tag={step.ok ? undefined : "failed"}
+                key={i}
+                title={actionTitle(a)}
+                note={actionNote(a)}
+                tag={actionFailed(a) ? "failed" : undefined}
                 onClick={() => setToolAt(i)}
               />
             ))}
@@ -601,6 +640,25 @@ function activityText(a: ActivityMeta): string {
   return a.failedText ?? "Failed";
 }
 
+/** O que o agente fez numa rodada: a chamada de tool OU a narração dela. As
+ *  duas coisas moram na mesma folha porque, pra quem lê, são a mesma pergunta:
+ *  "o que ele fez aí?". */
+export type TurnAction =
+  | { kind: "step"; step: AIToolStep }
+  | { kind: "activity"; activity: ActivityMeta };
+
+function actionTitle(a: TurnAction): string {
+  return a.kind === "step" ? a.step.name : activityText(a.activity);
+}
+
+function actionNote(a: TurnAction): string | undefined {
+  return a.kind === "step" ? toolSummary(a.step) : undefined;
+}
+
+function actionFailed(a: TurnAction): boolean {
+  return a.kind === "step" ? !a.step.ok : a.activity.phase === "failed";
+}
+
 /** Resumo de uma linha dos argumentos — o suficiente pra reconhecer a ação. */
 function toolSummary(step: AIToolStep): string {
   const args = Object.entries(step.arguments ?? {});
@@ -611,19 +669,33 @@ function toolSummary(step: AIToolStep): string {
 }
 
 /** Detalhe de uma ação: o que foi pedido e o que voltou. */
-function ToolDetail({ step }: { step: AIToolStep }) {
+function ToolDetail({ action }: { action: TurnAction }) {
+  const ok = !actionFailed(action);
   return (
     <div className="axxa-tool-detail">
-      <p className={step.ok ? "axxa-tool-state is-ok" : "axxa-tool-state"}>
-        <Icon name={step.ok ? "check" : "x"} size={14} />
-        {step.ok ? "Completed" : "Failed"}
+      <p className={ok ? "axxa-tool-state is-ok" : "axxa-tool-state"}>
+        <Icon name={ok ? "check" : "x"} size={14} />
+        {ok ? "Completed" : "Failed"}
       </p>
-      <p className="axxa-tool-label">Arguments</p>
-      <pre className="axxa-tool-block">
-        {JSON.stringify(step.arguments ?? {}, null, 2)}
-      </pre>
-      <p className="axxa-tool-label">Result</p>
-      <pre className="axxa-tool-block">{step.result || "(empty)"}</pre>
+      {action.kind === "step" ? (
+        <>
+          <p className="axxa-tool-label">Arguments</p>
+          <pre className="axxa-tool-block">
+            {JSON.stringify(action.step.arguments ?? {}, null, 2)}
+          </pre>
+          <p className="axxa-tool-label">Result</p>
+          <pre className="axxa-tool-block">
+            {action.step.result || "(empty)"}
+          </pre>
+        </>
+      ) : (
+        <>
+          <p className="axxa-tool-label">What happened</p>
+          <pre className="axxa-tool-block">
+            {action.activity.detail || activityText(action.activity)}
+          </pre>
+        </>
+      )}
     </div>
   );
 }
@@ -663,12 +735,15 @@ function MessageRow({
   msg,
   plugin,
   streaming,
+  actions,
   onOpenTools,
 }: {
   msg: ChatMessage;
   plugin: AxxaPlugin;
   streaming: boolean;
-  onOpenTools?: (steps: AIToolStep[]) => void;
+  /** Tudo que o agente fez nesta rodada — narrações + tool calls. */
+  actions?: TurnAction[];
+  onOpenTools?: (actions: TurnAction[]) => void;
 }) {
   switch (msg.type) {
     case "user":
@@ -703,17 +778,17 @@ function MessageRow({
             <ReadAloudButton plugin={plugin} text={msg.content} />
           )}
           {msg.truncated && <small className="axxa-msg-note">truncated</small>}
-          {msg.agentSteps && msg.agentSteps.length > 0 && (
+          {actions && actions.length > 0 && (
             // O que o agente FEZ vira um chip: quem quer ver abre a folha, e
             // quem não quer não leva um <details> no meio da leitura.
             <button
               type="button"
               className="axxa-tools-chip"
-              onClick={() => onOpenTools?.(msg.agentSteps ?? [])}
+              onClick={() => onOpenTools?.(actions)}
             >
               <span>
-                Ran {msg.agentSteps.length}{" "}
-                {msg.agentSteps.length === 1 ? "action" : "actions"}
+                Ran {actions.length}{" "}
+                {actions.length === 1 ? "action" : "actions"}
               </span>
               <Icon name="chevron-right" size={15} />
             </button>

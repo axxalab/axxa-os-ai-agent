@@ -202,6 +202,47 @@ if (scenario === "thread") {
 (window as unknown as { __chat: unknown }).__chat = useChatStore;
 
 const host = document.getElementById("app");
+
+if (scenario === "confirm") {
+  // Espelha o markup do ConfirmationModal (mesmas classes) dentro da árvore de
+  // modal do Obsidian — é o único jeito de OLHAR esse desenho sem rodar o
+  // agente de verdade.
+  const wrap = document.createElement("div");
+  wrap.className = "modal-container mod-dim";
+  const modal = document.createElement("div");
+  modal.className = "modal";
+  const content = document.createElement("div");
+  content.className = "modal-content axxa-confirm-modal";
+  content.innerHTML = [
+    "<h2>Review Agent change</h2>",
+    '<div class="axxa-confirm-summary">',
+    '<div class="axxa-confirm-tool-name">vault_create</div>',
+    '<div class="axxa-confirm-tool-desc">Creates a new vault file with the given content.</div>',
+    "</div>",
+    '<div class="axxa-confirm-preview">',
+    '<div class="axxa-confirm-path axxa-confirm-path-add">',
+    '<span class="axxa-confirm-path-label">Create</span>',
+    '<span class="axxa-confirm-path-val">PROJECTS/CREATIVE SYSTEMS.md</span>',
+    "</div>",
+    '<pre class="axxa-diff-block axxa-diff-add"># CREATIVE SYSTEMS',
+    "",
+    "## Purpose",
+    "This note was created to capture a broad, practical view of how creative systems work in day to day practice, with enough text to prove that long lines wrap instead of running off the screen.",
+    "",
+    "## Core Principles",
+    "Creative work improves when it is treated as a system instead of a mood.",
+    "[+803 chars]</pre>",
+    "</div>",
+    '<div class="setting-item"><div class="setting-item-info"></div><div class="setting-item-control">',
+    '<button class="axxa-confirm-deny">Deny</button>',
+    '<button class="axxa-confirm-approveall">Approve all</button>',
+    '<button class="mod-cta">Approve</button>',
+    "</div></div>",
+  ].join("\n");
+  modal.appendChild(content);
+  wrap.appendChild(modal);
+  document.body.appendChild(wrap);
+}
 if (scenario === "settings") {
   // Renderiza a ABA DE SETTINGS (que é Setting API nativa, não React) dentro
   // do mesmo painel, pra dar pra olhar o desenho das abas.
