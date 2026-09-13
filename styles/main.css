@@ -1202,6 +1202,32 @@ body.theme-dark {
   color: var(--text-faint);
 }
 
+/* Linha de navegação: uma linha só. O valor encosta no chevron e o título fica
+   à esquerda — duas alturas pra dizer "Effort · Med" era desperdício de tela. */
+.axxa-root .axxa-sheet-row.is-nav {
+  padding-top: var(--axxa-3);
+  padding-bottom: var(--axxa-3);
+}
+
+.axxa-root .axxa-sheet-row.is-nav .axxa-sheet-row-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.axxa-root .axxa-sheet-row-value {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
 .axxa-root .axxa-sheet-row + .axxa-sheet-row {
   box-shadow: inset 0 1px 0 var(--axxa-line);
 }

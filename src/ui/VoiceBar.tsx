@@ -11,6 +11,7 @@
 
 import { Icon } from "./Icon";
 import type { Voice } from "./useVoice";
+import { commit, warn } from "./haptics";
 
 export function VoiceDock({ voice }: { voice: Voice }) {
   const working = voice.state === "working";
@@ -21,7 +22,10 @@ export function VoiceDock({ voice }: { voice: Voice }) {
         className="axxa-voice-x"
         aria-label="Discard recording"
         disabled={working}
-        onClick={voice.cancel}
+        onClick={() => {
+          warn();
+          voice.cancel();
+        }}
       >
         <Icon name="x" size={20} />
       </button>
@@ -47,7 +51,10 @@ export function VoiceDock({ voice }: { voice: Voice }) {
         className="axxa-voice-ok"
         aria-label="Use this transcript"
         disabled={working}
-        onClick={voice.finish}
+        onClick={() => {
+          commit();
+          voice.finish();
+        }}
       >
         <Icon name="check" size={22} />
       </button>

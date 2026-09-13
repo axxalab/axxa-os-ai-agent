@@ -96,6 +96,8 @@ export interface AxxaSettings {
   elevenVoice: string;
   /** Vozes lidas da conta (id + nome), pra não pedir a lista toda hora. */
   elevenVoices: { id: string; name: string; category?: string }[];
+  /** Feedback tátil nos toques (só no celular, e só onde o aparelho suporta). */
+  hapticsEnabled: boolean;
   /** Modelo-padrão por PAPEL (chat/reasoning/image/video/tts/embedding/other). */
   roleModels: Partial<Record<RoleId, RoleModelEntry>>;
   /** Provider preferido quando o MESMO modelo existe em 2+ providers. */
@@ -197,6 +199,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   elevenModel: "eleven_multilingual_v2",
   elevenVoice: "",
   elevenVoices: [],
+  hapticsEnabled: true,
   roleModels: {},
   modelProvider: {},
   discoveredEmbeddings: {},

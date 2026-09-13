@@ -17,6 +17,7 @@ import { ChatSession } from "../core/session";
 import { App } from "./App";
 import { isDrawerOnScreen, isRightDrawer } from "./fullscreenScope";
 import { buildLayoutReport } from "./layoutReport";
+import { hapticsOn, setHapticsEnabled } from "./haptics";
 
 export const VIEW_TYPE_AXXA = "axxa-os-ai-agent";
 
@@ -32,6 +33,7 @@ export class AxxaView extends ItemView {
   /** Último valor lido de --keyboard-height (early-return do observer). */
   private lastKeyboardHeight = -1;
   private settingsUnsub: (() => void) | null = null;
+  private hapticsOff: (() => void) | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -60,15 +62,22 @@ export class AxxaView extends ItemView {
     this.root = createRoot(container);
     this.root.render(<App plugin={this.plugin} session={this.session} />);
 
+    // Tato: um ouvinte só, na raiz, pega TODO clique da casca — botão novo
+    // nasce com feedback sem ninguém precisar lembrar. Os momentos com
+    // significado próprio (abrir, enviar, descartar) chamam o seu.
+    setHapticsEnabled(this.plugin.settings.hapticsEnabled !== false);
+    this.hapticsOff = hapticsOn(container);
+
     this.setupKeyboardObserver();
 
     // Fullscreen é opt-in e reativo: re-aplica a cada saveSettings (o toggle
     // vive no menu lateral) e a cada troca de aba/layout — senão a classe
     // ficaria na gaveta com OUTRA view ativa, escondendo o chrome dela.
     this.applyFullscreen();
-    this.settingsUnsub = this.plugin.onSettingsChange(() =>
-      this.applyFullscreen()
-    );
+    this.settingsUnsub = this.plugin.onSettingsChange(() => {
+      setHapticsEnabled(this.plugin.settings.hapticsEnabled !== false);
+      this.applyFullscreen();
+    });
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", () => this.applyFullscreen())
     );
@@ -82,6 +91,8 @@ export class AxxaView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    this.hapticsOff?.();
+    this.hapticsOff = null;
     this.teardownKeyboardObserver();
     this.teardownDrawerObserver();
     this.settingsUnsub?.();

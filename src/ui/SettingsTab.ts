@@ -42,6 +42,7 @@ import {
   ttsReady,
 } from "./readAloud";
 import { ELEVEN_MODELS, elevenVoices } from "../providers/elevenlabs";
+import { hapticsOn, setHapticsEnabled, tap } from "./haptics";
 import { PERMISSION_LABELS } from "../agent/permissions";
 import type { PermissionLevel } from "../agent/types";
 
@@ -166,6 +167,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private conn: Record<string, ConnState> = {};
   private fetching = false;
   private fetchingVoices = false;
+  private hapticsOff: (() => void) | null = null;
 
   // Nós que o re-render PARCIAL reaproveita. Trocar de aba ou de provider
   // chamava display(), que esvazia o container inteiro: a tela piscava como se
@@ -191,6 +193,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("axxa-settings-root");
+    // Tato em tudo que se toca aqui dentro, sem precisar lembrar botão a botão.
+    this.hapticsOff?.();
+    this.hapticsOff = hapticsOn(containerEl);
 
     const tabs = this.tabs();
     if (!tabs.some((t) => t.id === this.tab)) this.tab = tabs[0].id;
@@ -1226,6 +1231,21 @@ export class AxxaSettingsTab extends PluginSettingTab {
         t.setValue(s.mobileFullscreen === true).onChange(async (v) => {
           s.mobileFullscreen = v;
           await this.save();
+        })
+      );
+
+    new Setting(el)
+      .setName("Haptics")
+      .setDesc(
+        "A short buzz on every tap. Android only — iPhone doesn't let a plugin touch the Taptic Engine."
+      )
+      .addToggle((t) =>
+        t.setValue(s.hapticsEnabled !== false).onChange(async (v) => {
+          s.hapticsEnabled = v;
+          setHapticsEnabled(v);
+          await this.save();
+          // Sente na hora o que acabou de ligar.
+          if (v) tap();
         })
       );
   }

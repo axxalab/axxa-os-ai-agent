@@ -19,6 +19,7 @@ import {
   type ReactNode,
 } from "react";
 import { Icon } from "./Icon";
+import { screen, tap } from "./haptics";
 
 /** Quanto puxar além da borda pra o gesto valer. Menos que isso é solavanco
  *  de rolagem, não intenção. */
@@ -69,6 +70,11 @@ export function Sheet({
     if (!open) setSize("peek");
   }, [open]);
 
+  // Abrir e fechar são eventos de TELA, não toques: pulso um tico mais longo.
+  useEffect(() => {
+    screen();
+  }, [open]);
+
   // ── arrasto no puxador ──────────────────────────────────────────────────
   // Pra cima cresce, pra baixo encolhe e, já pequena, fecha. Enquanto arrasta
   // a folha acompanha o dedo (com resistência pra cima, que é o limite).
@@ -103,10 +109,13 @@ export function Sheet({
       el.style.transform = "";
       el.classList.remove("is-dragging");
     }
-    if (dy < -48) setSize("full");
-    else if (dy > 48) {
+    if (dy < -48) {
+      setSize("full");
+      tap();
+    } else if (dy > 48) {
       if (size === "full") setSize("peek");
       else onClose();
+      tap();
     }
   };
 
@@ -166,8 +175,10 @@ export function Sheet({
       if (b === "top" && d > PULL_THRESHOLD) {
         if (sizeRef.current === "full") setSize("peek");
         else onClose();
+        tap();
       } else if (b === "bottom" && d < -PULL_THRESHOLD) {
         setSize("full");
+        tap();
       }
     };
 
@@ -355,12 +366,12 @@ export function SheetNavRow({
   note?: string;
   onClick: () => void;
 }) {
+  // O valor vai ao LADO do chevron, não numa segunda linha: a linha de
+  // navegação não precisa de duas alturas pra dizer "Effort · Med".
   return (
     <button type="button" className="axxa-sheet-row is-nav" onClick={onClick}>
-      <span className="axxa-sheet-row-main">
-        <span className="axxa-sheet-row-title">{title}</span>
-        {note && <span className="axxa-sheet-row-note">{note}</span>}
-      </span>
+      <span className="axxa-sheet-row-title">{title}</span>
+      {note && <span className="axxa-sheet-row-value">{note}</span>}
       <Icon name="chevron-right" size={18} className="axxa-sheet-chev" />
     </button>
   );

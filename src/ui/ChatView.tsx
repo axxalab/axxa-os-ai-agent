@@ -35,6 +35,7 @@ import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
 import { useVoice } from "./useVoice";
 import { speak, stopSpeaking } from "./readAloud";
+import { commit, screen, warn } from "./haptics";
 import { VoiceDock } from "./VoiceBar";
 import {
   Sheet,
@@ -146,6 +147,7 @@ export function ChatView({
   const submit = async () => {
     const text = draft.trim();
     if (!text || isLoading) return;
+    commit();
     setDraft("");
     await session.send(text);
   };
@@ -210,8 +212,12 @@ export function ChatView({
     if (arming || voice.state !== "idle") return;
     setLiveText("");
     setArming(true);
+    screen();
     const ok = await voice.start();
-    if (!ok) setArming(false);
+    if (!ok) {
+      setArming(false);
+      warn();
+    }
   };
   useEffect(() => {
     if (voice.state === "idle") setArming(false);

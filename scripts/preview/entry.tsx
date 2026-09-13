@@ -223,4 +223,10 @@ if (scenario === "settings") {
   })();
 } else if (host) {
   createRoot(host).render(<AxxaApp plugin={plugin} session={session} />);
+  // O mesmo que a AxxaView faz no aparelho: um ouvinte de tato na raiz. Sem
+  // isto o preview mostrava só os pulsos "com nome" e escondia os toques.
+  void import("./src/ui/haptics").then(({ hapticsOn, setHapticsEnabled }) => {
+    setHapticsEnabled(true);
+    hapticsOn(host);
+  });
 }
