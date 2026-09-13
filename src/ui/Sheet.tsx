@@ -341,21 +341,16 @@ export function SheetSeg({
  * nada: navega. Por isso o chevron pra direita, e não um check.
  */
 export function SheetNavRow({
-  icon,
   title,
   note,
   onClick,
 }: {
-  icon: string;
   title: string;
   note?: string;
   onClick: () => void;
 }) {
   return (
     <button type="button" className="axxa-sheet-row is-nav" onClick={onClick}>
-      <span className="axxa-sheet-badge">
-        <Icon name={icon} size={18} />
-      </span>
       <span className="axxa-sheet-row-main">
         <span className="axxa-sheet-row-title">{title}</span>
         {note && <span className="axxa-sheet-row-note">{note}</span>}
@@ -373,18 +368,15 @@ export function SheetNote({ children }: { children: ReactNode }) {
 export function SheetRow({
   title,
   note,
-  badge,
-  icon,
+  tag,
   selected,
   onClick,
 }: {
   title: string;
   /** Legenda em uma linha, abaixo do título. */
   note?: string;
-  /** Emoji no círculo à esquerda (opcional). */
-  badge?: string;
-  /** Ícone no círculo à esquerda — inclui os logos dos providers. */
-  icon?: string;
+  /** Etiqueta ao lado do título ("Default"). */
+  tag?: string;
   selected?: boolean;
   onClick: () => void;
 }) {
@@ -395,14 +387,11 @@ export function SheetRow({
       aria-pressed={selected === true}
       onClick={onClick}
     >
-      {badge && <span className="axxa-sheet-badge">{badge}</span>}
-      {!badge && icon && (
-        <span className="axxa-sheet-badge">
-          <Icon name={icon} size={18} />
-        </span>
-      )}
       <span className="axxa-sheet-row-main">
-        <span className="axxa-sheet-row-title">{title}</span>
+        <span className="axxa-sheet-row-title">
+          {title}
+          {tag && <span className="axxa-sheet-tag">{tag}</span>}
+        </span>
         {note && <span className="axxa-sheet-row-note">{note}</span>}
       </span>
       {selected && <Icon name="check" size={20} className="axxa-sheet-check" />}

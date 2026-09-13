@@ -57,6 +57,7 @@ const plugin = {
       openai: { ok: true, at: Date.now(), detail: "24 models available." },
       gemini: { ok: false, at: Date.now(), detail: "401 invalid key" },
     },
+    defaultEffort: "med",
     projects: [],
   },
   // A casca grava em quase toda interação; sem isto o clique morre num

@@ -1195,6 +1195,19 @@ body.theme-dark {
   gap: 2px;
 }
 
+/* Etiqueta ao lado do título ("Default") — no print ela é um pill discreto,
+   não um badge colorido: é informação de contexto, não estado escolhido. */
+.axxa-root .axxa-sheet-tag {
+  margin-left: var(--axxa-2);
+  padding: 1px 8px;
+  border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-canvas);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-normal);
+  vertical-align: middle;
+}
+
 .axxa-root .axxa-sheet-row-title {
   font-size: var(--font-ui-medium);
   line-height: 1.3;
@@ -1220,18 +1233,6 @@ body.theme-dark {
 
 .axxa-root .axxa-sheet-check {
   flex: 0 0 auto;
-}
-
-.axxa-root .axxa-sheet-badge {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--axxa-r-pill);
-  background-color: var(--axxa-canvas);
-  font-size: 15px;
 }
 
 /* ── menu lateral ──────────────────────────────────────────────────────── */
@@ -1763,8 +1764,7 @@ body.is-mobile .axxa-root .axxa-history-more {
    Vazado = sem credencial · cinza = tem chave, nunca testada · verde =
    respondeu · vermelho = recusou. */
 .axxa-settings-root .axxa-seg-logo,
-.axxa-root .axxa-sheet-seg-mark,
-.axxa-root .axxa-sheet-badge {
+.axxa-root .axxa-sheet-seg-mark {
   position: relative;
 }
 

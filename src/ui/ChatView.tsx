@@ -41,7 +41,6 @@ import {
   SheetRow,
   SheetSeg,
 } from "./Sheet";
-import { getModelFamily } from "../providers/modelFamily";
 import { StarterScreen } from "./StarterScreen";
 import type { ComposerInject } from "./App";
 
@@ -49,6 +48,13 @@ const MODE_PLACEHOLDER: Record<string, string> = {
   chat: "Message the model…",
   "vault-qa": "Ask something about your notes…",
   agent: "Tell the agent what to do in your vault…",
+};
+
+/** Título da folha de modelos em cada nível. */
+const MODEL_SHEET_TITLE: Record<string, string> = {
+  root: "Select model",
+  list: "Show list",
+  effort: "Effort",
 };
 
 const MODE_LABEL: Record<string, string> = {
@@ -90,7 +96,9 @@ export function ChatView({
    *  trocar nada por engano. */
   const [pickProvider, setPickProvider] = useState(cfg.provider);
   /** Nível da folha de modelos: os favoritos, ou a lista inteira. */
-  const [modelView, setModelView] = useState<"root" | "list">("root");
+  const [modelView, setModelView] = useState<"root" | "list" | "effort">(
+    "root"
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -293,10 +301,10 @@ export function ChatView({
           inteira aqui dentro — com seta pra voltar. Sem favorito não há de
           onde descer, então a lista já vem no primeiro nível. */}
       <Sheet
-        title={modelView === "list" ? "Show list" : "Select model"}
+        title={MODEL_SHEET_TITLE[modelView]}
         open={sheet === "model"}
         onClose={closeSheet}
-        onBack={modelView === "list" ? () => setModelView("root") : undefined}
+        onBack={modelView === "root" ? undefined : () => setModelView("root")}
       >
         {modelView === "root" && (
           <SheetSeg
@@ -313,7 +321,23 @@ export function ChatView({
           />
         )}
 
-        {modelView === "list" ? (
+        {modelView === "effort" ? (
+          <SheetGroup>
+            {EFFORT_LEVELS.map((l) => (
+              <SheetRow
+                key={l}
+                title={EFFORT_LABELS[l]}
+                note={EFFORT_DESCRIPTIONS[l]}
+                tag={l === plugin.settings.defaultEffort ? "Default" : undefined}
+                selected={l === cfg.effort}
+                onClick={() => {
+                  session.setEffort(l);
+                  closeSheet();
+                }}
+              />
+            ))}
+          </SheetGroup>
+        ) : modelView === "list" ? (
           <SheetGroup>
             {rest.map((m) => (
               <ModelRow
@@ -344,18 +368,24 @@ export function ChatView({
                 </SheetNote>
               )}
             </SheetGroup>
-            {favorites.length > 0 && rest.length > 0 && (
-              <SheetGroup>
+            {/* Navegação num cartão só, abaixo dos modelos: a lista inteira e
+                o effort. Os dois abrem OUTRO nível desta mesma folha. */}
+            <SheetGroup>
+              {favorites.length > 0 && rest.length > 0 && (
                 <SheetNavRow
-                  icon="list"
                   title="Show list"
                   note={`${rest.length} more ${
                     rest.length === 1 ? "model" : "models"
                   }`}
                   onClick={() => setModelView("list")}
                 />
-              </SheetGroup>
-            )}
+              )}
+              <SheetNavRow
+                title="Effort"
+                note={EFFORT_LABELS[effort] ?? cfg.effort}
+                onClick={() => setModelView("effort")}
+              />
+            </SheetGroup>
           </>
         )}
       </Sheet>
@@ -365,9 +395,9 @@ export function ChatView({
           {EFFORT_LEVELS.map((l) => (
             <SheetRow
               key={l}
-              badge={EFFORT_EMOJIS[l]}
               title={EFFORT_LABELS[l]}
               note={EFFORT_DESCRIPTIONS[l]}
+              tag={l === plugin.settings.defaultEffort ? "Default" : undefined}
               selected={l === cfg.effort}
               onClick={() => {
                 session.setEffort(l);
@@ -396,7 +426,6 @@ function ModelRow({
   const card = getModelCard(provider, model);
   return (
     <SheetRow
-      icon={getModelFamily(model).icon}
       title={prettyModelName(model)}
       note={card.goodFor ?? card.description}
       selected={selected}
