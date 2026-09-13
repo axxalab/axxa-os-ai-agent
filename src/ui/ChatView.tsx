@@ -101,9 +101,8 @@ export function ChatView({
   const [modelView, setModelView] = useState<"root" | "list" | "effort">(
     "root"
   );
-  /** O rascunho de ANTES da gravação: o transcrito entra depois dele, e
-   *  cancelar devolve exatamente isto. */
-  const baseDraftRef = useRef("");
+  /** O que já foi reconhecido nesta gravação (parcial ou final). */
+  const [liveText, setLiveText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -174,17 +173,26 @@ export function ChatView({
   // ── modo de voz ─────────────────────────────────────────────────────────
   // O gravador mora em useVoice; aqui fica só o GESTO do botão (segurar pra
   // gravar, arrastar pra cancelar, pra cima pra travar) e o rascunho.
+  // O texto reconhecido aparece ACIMA do dock enquanto se fala (é o que a
+  // referência faz) e só vira rascunho quando a gravação termina. Antes ele ia
+  // direto pro textarea — que fica colapsado durante a gravação, então ninguém
+  // via nada enquanto falava.
   const voice = useVoice({
     apiKey: () => plugin.providerCredential("openai"),
-    onTranscript: (text) => {
-      const base = baseDraftRef.current.trim();
-      setDraft(base ? `${base} ${text}` : text);
-    },
+    onTranscript: setLiveText,
     onNotice: (m) => {
       new Notice(m);
     },
-    onCancel: () => setDraft(baseDraftRef.current),
+    onCancel: () => setLiveText(""),
   });
+
+  // Acabou a gravação com texto na mão: agora sim ele entra no rascunho,
+  // depois do que já estava escrito.
+  useEffect(() => {
+    if (voice.state !== "idle" || !liveText) return;
+    setDraft((d) => (d.trim() ? `${d.trim()} ${liveText}` : liveText));
+    setLiveText("");
+  }, [voice.state, liveText]);
 
   // Um CLIQUE começa a gravar; o dock cuida do resto (✕ joga fora, ✓ usa o
   // texto). O gesto de segurar/arrastar saiu: dependia de o microfone abrir
@@ -197,7 +205,7 @@ export function ChatView({
   const [arming, setArming] = useState(false);
   const startVoice = async () => {
     if (arming || voice.state !== "idle") return;
-    baseDraftRef.current = draft;
+    setLiveText("");
     setArming(true);
     const ok = await voice.start();
     if (!ok) setArming(false);
@@ -348,7 +356,10 @@ export function ChatView({
             </div>
 
             <div className="axxa-swap-row">
-              <VoiceDock voice={voice} />
+              <div className="axxa-voice-side">
+                {liveText && <p className="axxa-voice-live">{liveText}</p>}
+                <VoiceDock voice={voice} />
+              </div>
             </div>
           </div>
       </section>

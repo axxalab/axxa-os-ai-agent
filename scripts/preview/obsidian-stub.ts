@@ -19,9 +19,9 @@ export class Notice {
 /** Frase falsa da transcrição — cresce a cada chamada, que é como o parcial
  *  se comporta de verdade (o texto vai aparecendo enquanto se fala). */
 const FAKE_WORDS =
-  "isso aqui é a transcrição chegando aos poucos enquanto eu falo no microfone do celular".split(
-    " "
-  );
+  ("perfeito chat só que assim a transcrição ela tem que aparecer desse mesmo " +
+    "jeito que eu vou falando aqui olha que eu vou tirar o print pra você e " +
+    "entendeu como é que funciona").split(" ");
 let fakeCalls = 0;
 
 export async function requestUrl(opts: { url?: string }): Promise<unknown> {

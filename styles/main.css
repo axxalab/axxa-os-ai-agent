@@ -2120,6 +2120,30 @@ body.is-mobile .axxa-root .axxa-history-more {
   pointer-events: auto;
 }
 
+/* A coluna do modo de voz: o texto reconhecido em cima, o dock embaixo. */
+.axxa-root .axxa-voice-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-3);
+}
+
+/* O texto que vai aparecendo enquanto se fala. Itálico e apagado como na
+   referência: é rascunho falado, ainda não é a mensagem. Mostra o FIM (as
+   últimas linhas) e corta em cima — é o que acabou de sair da boca que
+   interessa. */
+.axxa-root .axxa-voice-live {
+  margin: 0;
+  max-height: 5.6em;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
 /* O dock: [✕] onda [✓] numa barra arredondada, no formato da referência. */
 .axxa-root .axxa-voice-dock {
   display: flex;
