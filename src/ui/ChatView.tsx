@@ -35,8 +35,8 @@ import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
 import {
   Sheet,
-  SheetBlock,
   SheetGroup,
+  SheetNavRow,
   SheetNote,
   SheetRow,
   SheetSeg,
@@ -89,6 +89,8 @@ export function ChatView({
    *  alguém tocar num modelo. Dá pra espiar o catálogo de outro provider sem
    *  trocar nada por engano. */
   const [pickProvider, setPickProvider] = useState(cfg.provider);
+  /** Nível da folha de modelos: os favoritos, ou a lista inteira. */
+  const [modelView, setModelView] = useState<"root" | "list">("root");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -138,8 +140,11 @@ export function ChatView({
   // Abrir uma sheet tira o foco do campo — senão o teclado sobe por cima dela.
   const openSheet = (which: "model" | "effort") => {
     textareaRef.current?.blur();
-    // A folha de modelos abre sempre no provider da sessão.
-    if (which === "model") setPickProvider(cfg.provider);
+    // A folha de modelos abre sempre no provider da sessão, e no primeiro nível.
+    if (which === "model") {
+      setPickProvider(cfg.provider);
+      setModelView("root");
+    }
     setSheet(which);
   };
   const closeSheet = () => setSheet(null);
@@ -283,47 +288,47 @@ export function ChatView({
       </section>
 
       {/* Bottom sheets do composer — modelo · effort. */}
-      {/* Um CARTÃO só, do provider escolhido no trilho de logos acima: primeiro
-          os favoritos, depois o resto da lista marcada como Show nas Settings.
-          Cada linha leva o brasão da FAMÍLIA do modelo (getModelFamily) — o
-          logo do provider já é o trilho, repeti-lo em toda linha não diria
-          nada. */}
-      <Sheet title="Select model" open={sheet === "model"} onClose={closeSheet}>
-        <SheetSeg
-          label="Provider"
-          activeId={pickProvider}
-          onPick={setPickProvider}
-          items={PROVIDERS.map((p) => ({
-            id: p.id,
-            icon: p.icon,
-            label: p.name,
-            health: providerHealth(plugin, p.id),
-            blocked: providerBlockedReason(plugin, p.id),
-          }))}
-        />
-        <SheetGroup>
-          {favorites.length > 0 && (
-            <SheetBlock label="Favorites">
-              {favorites.map((m) => (
-                <ModelRow
-                  key={`fav-${m}`}
-                  provider={pickProvider}
-                  model={m}
-                  selected={m === cfg.model && pickProvider === cfg.provider}
-                  onClick={() => chooseModel(m)}
-                />
-              ))}
-            </SheetBlock>
-          )}
-          {rest.length > 0 && (
-            // Fechada quando já existe favorito: quem tem atalho raramente
-            // desce até a lista inteira.
-            <SheetBlock
-              label="Show list"
-              collapsible
-              defaultOpen={favorites.length === 0}
-            >
-              {rest.map((m) => (
+      {/* Dois níveis na MESMA folha, como o app da Claude: em cima os
+          favoritos (o atalho), e "Show list" é uma linha que abre a lista
+          inteira aqui dentro — com seta pra voltar. Sem favorito não há de
+          onde descer, então a lista já vem no primeiro nível. */}
+      <Sheet
+        title={modelView === "list" ? "Show list" : "Select model"}
+        open={sheet === "model"}
+        onClose={closeSheet}
+        onBack={modelView === "list" ? () => setModelView("root") : undefined}
+      >
+        {modelView === "root" && (
+          <SheetSeg
+            label="Provider"
+            activeId={pickProvider}
+            onPick={setPickProvider}
+            items={PROVIDERS.map((p) => ({
+              id: p.id,
+              icon: p.icon,
+              label: p.name,
+              health: providerHealth(plugin, p.id),
+              blocked: providerBlockedReason(plugin, p.id),
+            }))}
+          />
+        )}
+
+        {modelView === "list" ? (
+          <SheetGroup>
+            {rest.map((m) => (
+              <ModelRow
+                key={m}
+                provider={pickProvider}
+                model={m}
+                selected={m === cfg.model && pickProvider === cfg.provider}
+                onClick={() => chooseModel(m)}
+              />
+            ))}
+          </SheetGroup>
+        ) : (
+          <>
+            <SheetGroup>
+              {(favorites.length > 0 ? favorites : rest).map((m) => (
                 <ModelRow
                   key={m}
                   provider={pickProvider}
@@ -332,15 +337,27 @@ export function ChatView({
                   onClick={() => chooseModel(m)}
                 />
               ))}
-            </SheetBlock>
-          )}
-          {favorites.length === 0 && rest.length === 0 && (
-            <SheetNote>
-              Nothing marked to show for this provider yet — pick what appears
-              here in Settings → Providers.
-            </SheetNote>
-          )}
-        </SheetGroup>
+              {favorites.length === 0 && rest.length === 0 && (
+                <SheetNote>
+                  Nothing marked to show for this provider yet — pick what
+                  appears here in Settings → Providers.
+                </SheetNote>
+              )}
+            </SheetGroup>
+            {favorites.length > 0 && rest.length > 0 && (
+              <SheetGroup>
+                <SheetNavRow
+                  icon="list"
+                  title="Show list"
+                  note={`${rest.length} more ${
+                    rest.length === 1 ? "model" : "models"
+                  }`}
+                  onClick={() => setModelView("list")}
+                />
+              </SheetGroup>
+            )}
+          </>
+        )}
       </Sheet>
 
       <Sheet title="Effort" open={sheet === "effort"} onClose={closeSheet}>

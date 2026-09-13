@@ -36,7 +36,13 @@ const plugin = {
     openaiApiKey: "sk-test",
     anthropicApiKey: "sk-ant",
     activeModels: {
-      openai: ["gpt-5", "gpt-4o", "gpt-4o-mini"],
+      // Longa DE PROPÓSITO: é com a lista rolando que dá pra ver se o cartão
+      // chega no fim da tela ou morre atrás de uma faixa.
+      openai: [
+        "gpt-5", "gpt-4o", "gpt-4o-mini", "gpt-5-mini", "gpt-5-nano",
+        "gpt-4.1", "gpt-4.1-mini", "o3", "o3-mini", "o4-mini", "dall-e-3",
+        "tts-1", "tts-1-hd",
+      ],
       anthropic: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
     },
     favoriteModels: {

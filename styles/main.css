@@ -906,8 +906,10 @@ body.theme-dark {
      conteúdo com teto baixo; o grande vai quase até o topo. Folha curta não
      muda nada — ela já cabe. */
   max-height: 62%;
-  padding: var(--axxa-1) var(--axxa-3)
-    max(var(--safe-area-inset-bottom, 0px), var(--axxa-3));
+  /* Sem respiro EMBAIXO aqui: ele é da área rolável (regra do
+     .axxa-sheet-body). Como padding da folha, virava uma faixa morta na cor
+     dela cortando a última linha do cartão — a lista batia num degrau. */
+  padding: var(--axxa-1) var(--axxa-3) 0;
   border-top: 1px solid var(--axxa-line);
   border-top-left-radius: var(--axxa-r-lg);
   border-top-right-radius: var(--axxa-r-lg);
@@ -994,7 +996,9 @@ body.theme-dark {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-bottom: var(--axxa-2);
+  /* O respiro do safe-area mora AQUI: assim o cartão rola até o fim da tela em
+     vez de morrer atrás de uma faixa. */
+  padding-bottom: max(var(--safe-area-inset-bottom, 0px), var(--axxa-3));
 }
 
 /* Trilho de PROVIDERS dentro da folha. Colunas iguais (são todos logos), então
@@ -1074,56 +1078,6 @@ body.theme-dark {
   color: var(--text-accent);
 }
 
-/* Bloco rotulado DENTRO do cartão: separa favoritos da lista. */
-.axxa-root .axxa-sheet-block:not(:first-child) .axxa-sheet-block-head {
-  box-shadow: inset 0 1px 0 var(--axxa-line);
-  margin-top: var(--axxa-2);
-}
-
-.axxa-root .axxa-sheet-block-head {
-  display: flex;
-  align-items: center;
-  gap: var(--axxa-2);
-  width: 100%;
-  margin: 0;
-  padding: var(--axxa-3) var(--axxa-4) var(--axxa-1);
-  color: var(--text-faint);
-  font-size: var(--font-ui-smaller);
-  font-weight: var(--font-semibold);
-  letter-spacing: 0.04em;
-  text-align: left;
-  text-transform: uppercase;
-}
-
-/* Quando é botão, zera a pintura que o app.css dá a `button`. */
-.axxa-root button.axxa-sheet-block-head {
-  border: none;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.axxa-root .axxa-sheet-block:not(:first-child) button.axxa-sheet-block-head {
-  box-shadow: inset 0 1px 0 var(--axxa-line);
-}
-
-.axxa-root button.axxa-sheet-block-head:hover,
-.axxa-root button.axxa-sheet-block-head:hover:not(:disabled) {
-  background: none;
-  color: var(--text-muted);
-}
-
-.axxa-root .axxa-sheet-block-chev {
-  margin-left: auto;
-  transition: transform 140ms ease;
-}
-
-.axxa-root button.axxa-sheet-block-head.is-closed .axxa-sheet-block-chev {
-  transform: rotate(-90deg);
-}
-
 .axxa-root .axxa-sheet-note {
   margin: 0;
   padding: var(--axxa-4);
@@ -1135,9 +1089,15 @@ body.theme-dark {
 .axxa-root .axxa-sheet-group {
   display: flex;
   flex-direction: column;
-  border-radius: var(--axxa-r);
+  border-radius: var(--axxa-r-lg);
   background-color: var(--axxa-hover);
   overflow: hidden;
+}
+
+/* Cartões empilhados respiram entre si — é o que separa "os favoritos" de
+   "abrir a lista". */
+.axxa-root .axxa-sheet-group + .axxa-sheet-group {
+  margin-top: var(--axxa-3);
 }
 
 .axxa-root .axxa-sheet-row {
@@ -1146,9 +1106,22 @@ body.theme-dark {
   justify-content: flex-start;
   gap: var(--axxa-3);
   width: 100%;
-  padding: var(--axxa-3) var(--axxa-4);
+  padding: var(--axxa-4);
   text-align: left;
   color: var(--text-normal);
+}
+
+/* Selecionada ganha FUNDO, não só texto em accent: numa lista longa o accent
+   sozinho se perde. `--axxa-hover` é translúcido, então repetido sobre o
+   cartão ele CLAREIA — a linha sobe um degrau, como na referência, em vez de
+   virar um buraco escuro (que é o que `--axxa-raised` faz no tema escuro). */
+.axxa-root .axxa-sheet-row.is-active {
+  background-color: var(--axxa-hover);
+}
+
+.axxa-root .axxa-sheet-chev {
+  flex: 0 0 auto;
+  color: var(--text-faint);
 }
 
 .axxa-root .axxa-sheet-row + .axxa-sheet-row {

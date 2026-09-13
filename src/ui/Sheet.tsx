@@ -24,11 +24,15 @@ export function Sheet({
   title,
   open,
   onClose,
+  onBack,
   children,
 }: {
   title: string;
   open: boolean;
   onClose: () => void;
+  /** Quando existe, a folha está num nível interno: o X vira seta de voltar
+   *  (e o X migra pra direita, pra fechar continuar a um toque). */
+  onBack?: () => void;
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -118,14 +122,26 @@ export function Sheet({
           <button
             type="button"
             className="axxa-icon-btn"
-            aria-label="Close"
-            onClick={onClose}
+            aria-label={onBack ? "Back" : "Close"}
+            onClick={onBack ?? onClose}
           >
-            <Icon name="x" />
+            <Icon name={onBack ? "chevron-left" : "x"} />
           </button>
           <h3 className="axxa-sheet-title">{title}</h3>
-          {/* Espelha a largura do X pra manter o título no centro óptico. */}
-          <span className="axxa-sheet-head-spacer" aria-hidden="true" />
+          {/* Espelha a largura do botão pra manter o título no centro óptico —
+              e no nível interno esse lugar é do X. */}
+          {onBack ? (
+            <button
+              type="button"
+              className="axxa-icon-btn"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              <Icon name="x" />
+            </button>
+          ) : (
+            <span className="axxa-sheet-head-spacer" aria-hidden="true" />
+          )}
         </header>
         <div className="axxa-sheet-body">{children}</div>
       </div>
@@ -210,47 +226,31 @@ export function SheetSeg({
 }
 
 /**
- * Bloco rotulado DENTRO de um cartão ("Favorites", "Show list"). Com
- * `collapsible`, o rótulo vira botão e o bloco fecha — a lista de Show pode
- * ser longa, e quem já tem favorito quase nunca desce até ela.
+ * Linha que ABRE outro nível na mesma folha (o "Show list ›"). Não escolhe
+ * nada: navega. Por isso o chevron pra direita, e não um check.
  */
-export function SheetBlock({
-  label,
-  collapsible,
-  defaultOpen = true,
-  children,
+export function SheetNavRow({
+  icon,
+  title,
+  note,
+  onClick,
 }: {
-  label: string;
-  collapsible?: boolean;
-  defaultOpen?: boolean;
-  children: ReactNode;
+  icon: string;
+  title: string;
+  note?: string;
+  onClick: () => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  if (!collapsible) {
-    return (
-      <div className="axxa-sheet-block">
-        <p className="axxa-sheet-block-head">{label}</p>
-        <div className="axxa-sheet-block-body">{children}</div>
-      </div>
-    );
-  }
   return (
-    <div className="axxa-sheet-block">
-      <button
-        type="button"
-        className={
-          open
-            ? "axxa-sheet-block-head is-toggle"
-            : "axxa-sheet-block-head is-toggle is-closed"
-        }
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span>{label}</span>
-        <Icon name="chevron-down" size={14} className="axxa-sheet-block-chev" />
-      </button>
-      {open && <div className="axxa-sheet-block-body">{children}</div>}
-    </div>
+    <button type="button" className="axxa-sheet-row is-nav" onClick={onClick}>
+      <span className="axxa-sheet-badge">
+        <Icon name={icon} size={18} />
+      </span>
+      <span className="axxa-sheet-row-main">
+        <span className="axxa-sheet-row-title">{title}</span>
+        {note && <span className="axxa-sheet-row-note">{note}</span>}
+      </span>
+      <Icon name="chevron-right" size={18} className="axxa-sheet-chev" />
+    </button>
   );
 }
 
