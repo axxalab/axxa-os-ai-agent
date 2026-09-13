@@ -110,7 +110,17 @@ export function ChatView({
   );
   /** Quanto o dedo arrastou pra esquerda enquanto segura o microfone. */
   const [slide, setSlide] = useState(0);
-  const micRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const micRef = useRef<{
+    x: number;
+    y: number;
+    t: number;
+    /** A gravação já começou de fato? */
+    ready: boolean;
+    /** O que o dedo pediu ANTES de a gravação existir. */
+    pending: "lock" | "finish" | "cancel" | null;
+  } | null>(null);
+  /** Solta os listeners de janela do gesto em curso. */
+  const detachRef = useRef<(() => void) | null>(null);
   /** O rascunho de ANTES da gravação: o transcrito entra depois dele, e
    *  cancelar devolve exatamente isto. */
   const baseDraftRef = useRef("");
@@ -196,52 +206,107 @@ export function ChatView({
     onCancel: () => setDraft(baseDraftRef.current),
   });
 
-  const onMicDown = async (e: React.PointerEvent<HTMLButtonElement>) => {
-    // A captura é um LUXO: com ela o dedo pode sair do botão e o arrasto
-    // continua chegando. Sem ela o gesto ainda funciona sobre o botão. Mas ela
-    // LANÇA quando o ponteiro não está ativo (acontece em WebView), e aí
-    // levaria junto o `voice.start()` logo abaixo — o microfone nem abriria.
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      /* segue sem captura */
-    }
-    micRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
-    baseDraftRef.current = draft;
-    setSlide(0);
-    const ok = await voice.start();
-    if (!ok) micRef.current = null;
-  };
-
-  const onMicMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-    const from = micRef.current;
-    if (!from || voice.state !== "hold") return;
-    const dx = e.clientX - from.x;
-    const dy = e.clientY - from.y;
-    // Pra ESQUERDA joga fora; pra CIMA trava e o dedo pode sair.
-    if (dx < -CANCEL_PX) {
-      micRef.current = null;
-      voice.cancel();
+  /**
+   * O gesto do microfone.
+   *
+   * DUAS armadilhas aprendidas no aparelho, as duas de tempo:
+   *
+   * 1. Abrir o microfone LEVA TEMPO (permissão + warm-up). Num toque rápido o
+   *    dedo sai ANTES do stream ficar pronto: o "soltar" rodava com a gravação
+   *    ainda não iniciada, não fazia nada, e logo depois o start ligava o modo
+   *    "segurando" — sem ninguém segurando. Ficava travado nessa tela pra
+   *    sempre. Agora a intenção fica PENDENTE e é aplicada quando o gravador
+   *    fica pronto.
+   *
+   * 2. O "soltar" pode não chegar ao botão (captura perdida, o sistema rouba o
+   *    gesto). Por isso mover/soltar/cancelar são ouvidos na JANELA enquanto o
+   *    gesto dura — e não no elemento.
+   */
+  const applyIntent = (intent: "lock" | "finish" | "cancel") => {
+    const g = micRef.current;
+    if (!g) return;
+    if (!g.ready) {
+      // Gravação ainda abrindo: guarda o pedido pra quando ela existir.
+      g.pending = intent;
       return;
     }
-    if (dy < -LOCK_PX) {
-      micRef.current = null;
-      voice.lock();
-      return;
-    }
-    setSlide(Math.min(0, dx));
-  };
-
-  const onMicUp = () => {
-    const from = micRef.current;
     micRef.current = null;
+    detachRef.current?.();
+    detachRef.current = null;
     setSlide(0);
-    if (!from) return;
-    // Toque curto = mãos livres. Sem isso um clique viraria um clipe de 200ms,
-    // que é o jeito mais fácil de parecer quebrado.
-    if (Date.now() - from.t < TAP_MS) voice.lock();
+    if (intent === "cancel") voice.cancel();
+    else if (intent === "lock") voice.lock();
     else voice.finish();
   };
+
+  const onMicDown = async (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (micRef.current) return;
+    const id = e.pointerId;
+    micRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      t: Date.now(),
+      ready: false,
+      pending: null,
+    };
+    baseDraftRef.current = draft;
+    setSlide(0);
+
+    const onMove = (ev: PointerEvent) => {
+      const g = micRef.current;
+      if (!g || ev.pointerId !== id) return;
+      const dx = ev.clientX - g.x;
+      const dy = ev.clientY - g.y;
+      // Pra ESQUERDA joga fora; pra CIMA trava e o dedo pode sair.
+      if (dx < -CANCEL_PX) applyIntent("cancel");
+      else if (dy < -LOCK_PX) applyIntent("lock");
+      else setSlide(Math.min(0, dx));
+    };
+    const onUp = (ev: PointerEvent) => {
+      const g = micRef.current;
+      if (!g || ev.pointerId !== id) return;
+      // Toque curto = mãos livres. Sem isso um clique viraria um clipe de
+      // 200ms, que é o jeito mais fácil de parecer quebrado.
+      applyIntent(Date.now() - g.t < TAP_MS ? "lock" : "finish");
+    };
+    const detach = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    detachRef.current = detach;
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+
+    const ok = await voice.start();
+    const g = micRef.current;
+    if (!g) {
+      detach();
+      detachRef.current = null;
+      return;
+    }
+    if (!ok) {
+      micRef.current = null;
+      detach();
+      detachRef.current = null;
+      return;
+    }
+    g.ready = true;
+    // O dedo saiu enquanto o microfone abria? O pedido dele vale agora.
+    if (g.pending) applyIntent(g.pending);
+  };
+
+  // Rede de segurança: "segurando" sem gesto em curso é uma gravação órfã (o
+  // soltar se perdeu de algum jeito que a gente não previu). Em vez de deixar a
+  // tela morta, vira mãos livres — daí dá pra descartar ou confirmar.
+  useEffect(() => {
+    if (voice.state !== "hold") return;
+    const id = window.setTimeout(() => {
+      if (!micRef.current) voice.lock();
+    }, 500);
+    return () => window.clearTimeout(id);
+  }, [voice.state, voice.lock]);
 
   /** Tocar num modelo comita as DUAS coisas: o provider da folha e o modelo. */
   const chooseModel = (model: string) => {
@@ -378,9 +443,6 @@ export function ChatView({
                     }
                     aria-label="Hold to record, slide up to lock"
                     onPointerDown={(e) => void onMicDown(e)}
-                    onPointerMove={onMicMove}
-                    onPointerUp={onMicUp}
-                    onPointerCancel={onMicUp}
                   >
                     <Icon name="mic" size={18} />
                   </button>

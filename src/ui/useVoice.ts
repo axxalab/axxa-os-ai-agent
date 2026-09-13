@@ -19,6 +19,8 @@ import { transcribeAudio } from "../providers/transcribe";
 
 /** De quanto em quanto tempo o texto é atualizado durante a fala. */
 const INTERIM_MS = 4000;
+/** A primeira atualização sai antes: é ela que prova que está funcionando. */
+const FIRST_INTERIM_MS = 1800;
 /** Pedaços de 1s: é o que dá granularidade pro acumulado sem inundar. */
 const TIMESLICE_MS = 1000;
 /** Quantas barrinhas de nível a UI mostra. */
@@ -216,14 +218,18 @@ export function useVoice(opts: VoiceOptions): Voice {
       }
     }, 200);
 
-    // Texto aparecendo enquanto se fala.
-    interimRef.current = window.setInterval(() => {
+    // Texto aparecendo enquanto se fala. O PRIMEIRO sai mais cedo: o parcial
+    // custa o intervalo + a ida à rede, e esperar 4s+latência pra ver o
+    // primeiro pedaço parece que nada está acontecendo.
+    const rodada = () => {
       if (recRef.current?.state !== "recording") return;
       // requestData fecha um pedaço agora; sem isso o acumulado só cresce de
       // segundo em segundo e o parcial fica sempre atrasado.
       recRef.current.requestData();
       void transcribeSoFar(false);
-    }, INTERIM_MS);
+    };
+    window.setTimeout(rodada, FIRST_INTERIM_MS);
+    interimRef.current = window.setInterval(rodada, INTERIM_MS);
 
     // Nível do microfone.
     try {

@@ -189,7 +189,12 @@
         // Toda faixa entregue fica aqui: é assim que o teste PROVA que o
         // microfone foi liberado (track.readyState === "ended").
         window.__fakeTracks = [];
+        // ?micdelay=700 imita o celular: abrir o microfone LEVA TEMPO (permissão
+        // + warm-up). Com o microfone instantâneo do desktop, a corrida entre
+        // soltar o dedo e o stream ficar pronto nunca aparecia.
+        const micDelay = Number(q.get("micdelay") ?? 0);
         navigator.mediaDevices.getUserMedia = async () => {
+          if (micDelay) await new Promise((r) => setTimeout(r, micDelay));
           fakeCtx = fakeCtx || new AudioContext();
           const dest = fakeCtx.createMediaStreamDestination();
           const osc = fakeCtx.createOscillator();
