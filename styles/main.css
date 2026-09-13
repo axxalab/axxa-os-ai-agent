@@ -491,7 +491,9 @@ body.theme-dark {
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: var(--axxa-4);
+  /* Mais ar entre mensagens: na referência cada turno respira, e é isso que
+     faz a conversa parecer conversa em vez de log. */
+  gap: var(--axxa-5);
   padding: var(--axxa-4) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2);
 }
 
@@ -715,12 +717,81 @@ body.theme-dark {
 
 .axxa-root .axxa-markdown {
   white-space: normal;
+  /* Tipografia de LEITURA, não de interface: a resposta é texto pra ler, e no
+     Obsidian quem manda nisso é `--font-text` (a mesma das notas). Corpo maior
+     e entrelinha larga — a referência que o Rafael mandou é visivelmente mais
+     legível que a nossa por causa disso, não por causa de cor. */
+  font-family: var(--font-text);
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text-normal);
+}
+
+.axxa-root .axxa-markdown > * {
+  margin-block: 0 0.8em;
+}
+
+.axxa-root .axxa-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+/* Títulos dentro da resposta: escala curta (é conversa, não documento). */
+.axxa-root .axxa-markdown h1,
+.axxa-root .axxa-markdown h2,
+.axxa-root .axxa-markdown h3,
+.axxa-root .axxa-markdown h4 {
+  margin-block: 1.1em 0.5em;
+  line-height: 1.3;
+  font-weight: var(--font-semibold);
+}
+
+.axxa-root .axxa-markdown h1 {
+  font-size: 1.3em;
+}
+
+.axxa-root .axxa-markdown h2 {
+  font-size: 1.2em;
+}
+
+.axxa-root .axxa-markdown h3,
+.axxa-root .axxa-markdown h4 {
+  font-size: 1.08em;
+}
+
+.axxa-root .axxa-markdown ul,
+.axxa-root .axxa-markdown ol {
+  padding-left: 1.35em;
+}
+
+.axxa-root .axxa-markdown li {
+  margin-block: 0.25em;
+}
+
+.axxa-root .axxa-markdown li > p {
+  margin: 0;
+}
+
+/* Código no meio do texto: pílula discreta, como na referência. */
+.axxa-root .axxa-markdown :not(pre) > code {
+  padding: 0.1em 0.35em;
+  border-radius: var(--axxa-r-sm);
+  background-color: var(--axxa-hover);
+  font-size: 0.88em;
+}
+
+.axxa-root .axxa-markdown blockquote {
+  margin-left: 0;
+  padding-left: var(--axxa-3);
+  border-left: 2px solid var(--axxa-line);
+  color: var(--text-muted);
 }
 
 .axxa-root .axxa-msg-user {
   align-self: flex-end;
   max-width: 85%;
-  padding: var(--axxa-2) var(--axxa-3);
+  padding: var(--axxa-3) var(--axxa-4);
+  font-size: 16px;
+  line-height: 1.5;
   border-radius: var(--axxa-r-lg);
   border-bottom-right-radius: var(--axxa-r-sm);
   background-color: var(--axxa-raised);

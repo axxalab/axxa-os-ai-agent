@@ -190,6 +190,11 @@ if (scenario === "thread") {
   st.lockSession("openai", "gpt-5", "vault-qa");
 }
 
+// O store fica alcançável pelo console do preview: é assim que dá pra simular
+// um STREAM de verdade (token a token) e conferir se o markdown formata
+// enquanto chega, em vez de só no fim.
+(window as unknown as { __chat: unknown }).__chat = useChatStore;
+
 const host = document.getElementById("app");
 if (scenario === "settings") {
   // Renderiza a ABA DE SETTINGS (que é Setting API nativa, não React) dentro

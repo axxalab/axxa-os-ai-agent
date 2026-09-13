@@ -210,9 +210,44 @@ export class Component {
   load() {}
   unload() {}
 }
+/**
+ * Markdown de mentirinha — só o suficiente pra PROVAR que a formatação chega
+ * (negrito, itálico, título, lista, código). O renderer de verdade é o do
+ * Obsidian; aqui o que importa é o pipeline: quem chama, quando, e se pisca.
+ * `textContent` cru, como estava antes, escondia exatamente o bug do stream.
+ */
 export const MarkdownRenderer = {
   async render(_app: unknown, text: string, el: HTMLElement) {
-    el.textContent = text;
+    const esc = (t: string) =>
+      t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const inline = (t: string) =>
+      esc(t)
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+    const out: string[] = [];
+    let lista: string[] = [];
+    const fechaLista = () => {
+      if (lista.length) out.push("<ul>" + lista.join("") + "</ul>");
+      lista = [];
+    };
+    for (const linha of text.split(String.fromCharCode(10))) {
+      const h = linha.match(/^(#{1,4})\s+(.*)$/);
+      const li = linha.match(/^[-*]\s+(.*)$/);
+      if (h) {
+        fechaLista();
+        out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`);
+      } else if (li) {
+        lista.push(`<li>${inline(li[1])}</li>`);
+      } else if (linha.trim() === "") {
+        fechaLista();
+      } else {
+        fechaLista();
+        out.push(`<p>${inline(linha)}</p>`);
+      }
+    }
+    fechaLista();
+    el.innerHTML = out.join("");
   },
 };
 /** Registro do addIcon — o mesmo que o Obsidian mantém pros ícones custom. */
