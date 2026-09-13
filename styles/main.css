@@ -958,6 +958,19 @@ body.theme-dark {
   cursor: pointer;
 }
 
+/* Sem pause no aparelho: a pílula vira só o estado, sem cara de botão. */
+.axxa-root .axxa-voice-toggle.is-static {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 40px;
+  border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
 .axxa-root button.axxa-voice-toggle.is-resume {
   background-color: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
   color: var(--text-accent);

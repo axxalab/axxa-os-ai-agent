@@ -11,7 +11,7 @@
 // quem manda a mensagem continua sendo o usuário.
 
 import { Icon } from "./Icon";
-import { formatDuration, type Voice } from "./useVoice";
+import { CAN_PAUSE, formatDuration, type Voice } from "./useVoice";
 
 /** Onda do microfone. Sem ela, mudo e quebrado são a mesma tela. */
 function Wave({ levels }: { levels: number[] }) {
@@ -71,16 +71,21 @@ export function VoicePanel({ voice }: { voice: Voice }) {
         >
           <Icon name="trash-2" size={18} />
         </button>
-        <button
-          type="button"
-          className={
-            paused ? "axxa-voice-toggle is-resume" : "axxa-voice-toggle"
-          }
-          onClick={paused ? voice.resume : voice.pause}
-        >
-          <Icon name={paused ? "mic" : "pause"} size={18} />
-          <span>{paused ? "Resume" : "Pause"}</span>
-        </button>
+        {CAN_PAUSE ? (
+          <button
+            type="button"
+            className={
+              paused ? "axxa-voice-toggle is-resume" : "axxa-voice-toggle"
+            }
+            onClick={paused ? voice.resume : voice.pause}
+          >
+            <Icon name={paused ? "mic" : "pause"} size={18} />
+            <span>{paused ? "Resume" : "Pause"}</span>
+          </button>
+        ) : (
+          // WebView sem pause: em vez de um botão morto, o estado.
+          <span className="axxa-voice-toggle is-static">Recording…</span>
+        )}
         <button
           type="button"
           className="axxa-voice-done"

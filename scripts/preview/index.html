@@ -183,15 +183,22 @@
       // exercitar o modo de voz aqui — a rede continua falsa no stub.
       if (q.get("mic") === "fake") {
         navigator.mediaDevices = navigator.mediaDevices || {};
+        // Um contexto só: o navegador limita quantos AudioContext uma página
+        // pode abrir, e um por gravação esgotava depois de algumas.
+        let fakeCtx = null;
+        // Toda faixa entregue fica aqui: é assim que o teste PROVA que o
+        // microfone foi liberado (track.readyState === "ended").
+        window.__fakeTracks = [];
         navigator.mediaDevices.getUserMedia = async () => {
-          const ctx = new AudioContext();
-          const dest = ctx.createMediaStreamDestination();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
+          fakeCtx = fakeCtx || new AudioContext();
+          const dest = fakeCtx.createMediaStreamDestination();
+          const osc = fakeCtx.createOscillator();
+          const gain = fakeCtx.createGain();
           gain.gain.value = 0.3;
           osc.frequency.value = 220;
           osc.connect(gain).connect(dest);
           osc.start();
+          window.__fakeTracks.push(...dest.stream.getTracks());
           return dest.stream;
         };
       }

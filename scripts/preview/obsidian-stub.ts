@@ -29,7 +29,11 @@ export async function requestUrl(opts: { url?: string }): Promise<unknown> {
   // não dá pra ver o texto crescendo, que é o coração do modo de voz.
   if (opts?.url && /audio\/transcriptions/.test(opts.url)) {
     fakeCalls += 1;
-    await new Promise((r) => setTimeout(r, 220));
+    // Latência de verdade (?lag=ms, padrão 2.5s). O celular não responde em
+    // 200ms, e foi com a resposta INSTANTÂNEA que o preview escondeu o
+    // problema do Pause.
+    const lag = Number(new URLSearchParams(location.search).get("lag") ?? 2500);
+    await new Promise((r) => setTimeout(r, lag));
     return {
       status: 200,
       json: { text: FAKE_WORDS.slice(0, Math.min(fakeCalls * 4, FAKE_WORDS.length)).join(" ") },

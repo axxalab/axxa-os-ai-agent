@@ -25,6 +25,13 @@ const TIMESLICE_MS = 1000;
 const LEVEL_SLOTS = 48;
 /** Modelo de transcrição — o padrão que o motor documenta. */
 const MODEL = "gpt-4o-mini-transcribe";
+/** Teto da gravação. Depois disso a folha fecha sozinha. */
+const MAX_SECONDS = 300;
+
+/** Este WebView sabe pausar? Botão que não faz nada é pior que botão ausente. */
+export const CAN_PAUSE =
+  typeof MediaRecorder !== "undefined" &&
+  typeof MediaRecorder.prototype?.pause === "function";
 
 export type VoiceState =
   | "idle"
@@ -153,6 +160,10 @@ export function useVoice(opts: VoiceOptions): Voice {
 
   const start = useCallback(async () => {
     if (recRef.current) return false;
+    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices) {
+      optsRef.current.onNotice("This device can't record audio.");
+      return false;
+    }
     if (!optsRef.current.apiKey().trim()) {
       optsRef.current.onNotice(
         "Voice needs an OpenAI key — add one in Settings › Providers."
@@ -195,8 +206,13 @@ export function useVoice(opts: VoiceOptions): Voice {
     startedAtRef.current = Date.now();
     pausedAtRef.current = 0;
     tickRef.current = window.setInterval(() => {
-      if (recRef.current?.state === "recording") {
-        setSeconds((Date.now() - startedAtRef.current) / 1000);
+      if (recRef.current?.state !== "recording") return;
+      const elapsed = (Date.now() - startedAtRef.current) / 1000;
+      setSeconds(elapsed);
+      // Teto: gravação esquecida é microfone aberto pra sempre.
+      if (elapsed >= MAX_SECONDS) {
+        optsRef.current.onNotice("Recording stopped at 5 minutes.");
+        recRef.current.stop();
       }
     }, 200);
 
@@ -250,19 +266,32 @@ export function useVoice(opts: VoiceOptions): Voice {
 
   const pause = useCallback(() => {
     const rec = recRef.current;
-    if (!rec || rec.state !== "recording") return;
-    rec.pause();
+    if (!rec) return;
+    try {
+      if (rec.state === "recording") rec.pause();
+    } catch {
+      /* WebView sem pause: o estado abaixo conta a verdade */
+    }
     pausedAtRef.current = Date.now();
-    setState("paused");
+    // A UI segue o RECORDER, não o que a gente torceu pra acontecer: se o
+    // pause não pegou, o botão continua "Pause" em vez de mentir "Resume"
+    // num áudio que segue gravando.
+    setState(rec.state === "paused" ? "paused" : "locked");
   }, []);
 
   const resume = useCallback(() => {
     const rec = recRef.current;
-    if (!rec || rec.state !== "paused") return;
-    // O relógio anda com a gravação: o tempo parado não conta.
-    startedAtRef.current += Date.now() - pausedAtRef.current;
-    rec.resume();
-    setState("locked");
+    if (!rec) return;
+    try {
+      if (rec.state === "paused") rec.resume();
+    } catch {
+      /* idem */
+    }
+    if (rec.state === "recording") {
+      // O relógio anda com a gravação: o tempo parado não conta.
+      startedAtRef.current += Date.now() - pausedAtRef.current;
+      setState("locked");
+    }
   }, []);
 
   const cancel = useCallback(() => {
@@ -279,9 +308,29 @@ export function useVoice(opts: VoiceOptions): Voice {
   const finish = useCallback(() => {
     const rec = recRef.current;
     if (!rec) return;
-    if (rec.state === "paused") rec.resume();
-    if (rec.state !== "inactive") rec.stop();
-  }, []);
+    try {
+      if (rec.state === "paused") rec.resume();
+      if (rec.state !== "inactive") rec.stop();
+    } catch {
+      // Recorder já morto (o Android encerra a sessão de áudio sozinho quando
+      // outro app pega o microfone): limpa na mão pra não ficar estado preso.
+      cleanup();
+      setState("idle");
+    }
+  }, [cleanup]);
+
+  // Trocar de app com o microfone aberto é o jeito mais fácil de deixá-lo
+  // ligado sem ninguém olhando — e o Android reage a isso (a sessão de áudio
+  // fica disputada, o teclado pisca). Ao esconder a tela, fecha e guarda o que
+  // já foi falado.
+  useEffect(() => {
+    if (state === "idle" || state === "working") return;
+    const onHide = () => {
+      if (document.hidden) finish();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, [state, finish]);
 
   return { state, seconds, levels, start, lock, pause, resume, cancel, finish };
 }
