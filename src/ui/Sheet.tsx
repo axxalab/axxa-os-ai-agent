@@ -20,6 +20,10 @@ import {
 } from "react";
 import { Icon } from "./Icon";
 
+/** Quanto puxar além da borda pra fechar. Menos que isso é solavanco de
+ *  rolagem, não intenção. */
+const PULL_TO_CLOSE = 72;
+
 export function Sheet({
   title,
   open,
@@ -41,8 +45,6 @@ export function Sheet({
   const [size, setSize] = useState<"peek" | "full">("peek");
   const startY = useRef<number | null>(null);
   const dragY = useRef(0);
-  /** Borda em que o arrasto do CONTEÚDO começou (null = não começou colado). */
-  const edge = useRef<"top" | "bottom" | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -98,55 +100,98 @@ export function Sheet({
   };
 
   // ── arrasto no CONTEÚDO (puxar além da borda fecha) ─────────────────────
-  // Só engata quando a lista JÁ está no fim (ou no começo) na hora que o dedo
-  // encosta: no meio da lista o gesto é rolagem, e o navegador cuida dela.
-  const onBodyDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+  // Listener NATIVO, e não prop do React, por um motivo só: `touchmove` precisa
+  // ser não-passivo pra poder chamar preventDefault. Com pointer events o
+  // navegador assumia o gesto no scroller e disparava `pointercancel` — a
+  // folha andava dois píxeis e voltava (a "tremida"), sem nunca fechar.
+  useEffect(() => {
     const el = bodyRef.current;
-    if (!el) return;
-    const noTopo = el.scrollTop <= 0;
-    const noFim = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-    edge.current = noTopo ? "top" : noFim ? "bottom" : null;
-    // Lista que cabe inteira está nas DUAS bordas — puxar pra baixo fecha,
-    // que é o gesto que todo mundo tenta primeiro.
-    if (noTopo && noFim) edge.current = "top";
-    startY.current = e.clientY;
-    dragY.current = 0;
-  };
+    const panel = panelRef.current;
+    if (!open || !el || !panel) return;
 
-  const onBodyMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (startY.current === null || edge.current === null) return;
-    const dy = e.clientY - startY.current;
-    // Só conta o excesso na direção da borda; o resto é rolagem normal.
-    if ((edge.current === "top" && dy <= 0) || (edge.current === "bottom" && dy >= 0)) {
-      dragY.current = 0;
-      const el = panelRef.current;
-      if (el) el.style.transform = "";
-      return;
-    }
-    dragY.current = dy;
-    const el = panelRef.current;
-    if (!el) return;
-    el.classList.add("is-dragging");
-    // Pra baixo a folha segue o dedo; pra cima ela só cede um pouco (não há
-    // pra onde ir, o gesto é só a intenção de fechar).
-    el.style.transform = `translateY(${dy > 0 ? dy : dy * 0.25}px)`;
-  };
+    let y0: number | null = null;
+    let dy = 0;
+    let borda: "top" | "bottom" | null = null;
 
-  const onBodyUp = () => {
-    if (startY.current === null) return;
-    const dy = dragY.current;
-    const borda = edge.current;
-    startY.current = null;
-    edge.current = null;
-    const el = panelRef.current;
-    if (el) {
-      el.style.transform = "";
-      el.classList.remove("is-dragging");
-    }
-    // Passou da borda com folga? Fecha — dos DOIS lados, como o usuário pediu.
-    if (borda === "top" && dy > 96) onClose();
-    else if (borda === "bottom" && dy < -96) onClose();
-  };
+    const comecar = (y: number) => {
+      const noTopo = el.scrollTop <= 0;
+      const noFim = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      // Lista que cabe inteira está nas DUAS bordas; puxar pra baixo é o gesto
+      // que todo mundo tenta primeiro, então ela conta como "no topo".
+      borda = noTopo ? "top" : noFim ? "bottom" : null;
+      y0 = y;
+      dy = 0;
+    };
+
+    /** Devolve true quando o gesto é NOSSO (aí o move é engolido). */
+    const mover = (y: number): boolean => {
+      if (y0 === null || borda === null) return false;
+      const d = y - y0;
+      const puxando =
+        (borda === "top" && d > 0) || (borda === "bottom" && d < 0);
+      if (!puxando) {
+        dy = 0;
+        panel.style.transform = "";
+        return false;
+      }
+      dy = d;
+      panel.classList.add("is-dragging");
+      // Pra baixo segue o dedo; pra cima cede pouco — não há pra onde ir, o
+      // gesto ali é só a intenção de fechar.
+      panel.style.transform = `translateY(${d > 0 ? d : d * 0.25}px)`;
+      return true;
+    };
+
+    const soltar = () => {
+      const b = borda;
+      const d = dy;
+      y0 = null;
+      borda = null;
+      dy = 0;
+      panel.style.transform = "";
+      panel.classList.remove("is-dragging");
+      if ((b === "top" && d > PULL_TO_CLOSE) || (b === "bottom" && d < -PULL_TO_CLOSE)) {
+        onClose();
+      }
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) comecar(e.touches[0].clientY);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      if (mover(e.touches[0].clientY) && e.cancelable) e.preventDefault();
+    };
+    // Mouse (desktop e preview): o navegador não sequestra, pointer basta.
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") comecar(e.clientY);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") mover(e.clientY);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") soltar();
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", soltar);
+    el.addEventListener("touchcancel", soltar);
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onUp);
+    el.addEventListener("pointercancel", onUp);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", soltar);
+      el.removeEventListener("touchcancel", soltar);
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onUp);
+      el.removeEventListener("pointercancel", onUp);
+    };
+  }, [open, onClose]);
 
   return (
     <div
@@ -197,14 +242,7 @@ export function Sheet({
             <span className="axxa-sheet-head-spacer" aria-hidden="true" />
           )}
         </header>
-        <div
-          ref={bodyRef}
-          className="axxa-sheet-body"
-          onPointerDown={onBodyDown}
-          onPointerMove={onBodyMove}
-          onPointerUp={onBodyUp}
-          onPointerCancel={onBodyUp}
-        >
+        <div ref={bodyRef} className="axxa-sheet-body">
           {children}
         </div>
       </div>
