@@ -2352,6 +2352,75 @@ body.is-mobile .axxa-root .axxa-history-more {
   pointer-events: auto;
 }
 
+/* "Pensando": UMA linha enquanto a rodada acontece, com o texto varrido por um
+   brilho — é o que a referência faz, e o que diz "está vivo" sem ocupar
+   espaço. Tocável quando já há o que mostrar. */
+.axxa-root button.axxa-thinking {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-family: var(--font-text);
+  font-size: 15px;
+  cursor: pointer;
+  /* UMA linha, sempre: um caminho longo virava duas e empurrava a conversa. */
+  max-width: 100%;
+}
+
+.axxa-root button.axxa-thinking > svg {
+  flex: none;
+}
+
+.axxa-root button.axxa-thinking:disabled {
+  cursor: default;
+}
+
+.axxa-root button.axxa-thinking:hover:not(:disabled) {
+  background: none;
+}
+
+.axxa-root .axxa-thinking-label {
+  background: linear-gradient(
+    90deg,
+    var(--text-faint) 20%,
+    var(--text-normal) 45%,
+    var(--text-normal) 55%,
+    var(--text-faint) 80%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: axxa-shimmer 1.8s linear infinite;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@keyframes axxa-shimmer {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+/* Quem pediu menos movimento não perde a informação — só o brilho. */
+@media (prefers-reduced-motion: reduce) {
+  .axxa-root .axxa-thinking-label {
+    animation: none;
+    background: none;
+    color: var(--text-muted);
+  }
+}
+
 /* Chip das ações do agente: uma linha discreta que ABRE a folha. O que o
    agente fez é auditoria — importa poder ver, não ficar vendo. */
 .axxa-root button.axxa-tools-chip {

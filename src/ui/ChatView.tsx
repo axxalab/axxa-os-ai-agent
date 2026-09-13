@@ -146,6 +146,7 @@ export function ChatView({
     for (const m of messages) {
       if (m.type === "ai-comment" && m.activity) {
         bucket.push(m);
+        hiddenIds.add(m.id);
         continue;
       }
       if (m.type === "ai-response") {
@@ -170,6 +171,35 @@ export function ChatView({
     }
     return { hiddenIds, actionsByResponse };
   }, [messages]);
+
+  // A rodada EM CURSO: tudo que já aconteceu desde a última fala do usuário,
+  // sem resposta ainda. Vira UMA linha "pensando" — não uma pilha de
+  // narrações, que é o que empurrava a conversa pra fora da tela.
+  const liveTurn = useMemo(() => {
+    const bucket: TurnAction[] = [];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.type === "ai-response" || m.type === "user") break;
+      if (m.type === "ai-comment" && m.activity) {
+        bucket.unshift({ kind: "activity", activity: m.activity });
+      }
+    }
+    return bucket;
+  }, [messages]);
+
+  // O indicador some quando o TEXTO começa a sair: a partir daí quem mostra
+  // que tem coisa acontecendo é a própria resposta aparecendo.
+  const ultima = messages[messages.length - 1];
+  const jaEscrevendo =
+    ultima?.type === "ai-response" &&
+    ultima.id === streamingId &&
+    ultima.content.length > 0;
+  const pensandoAgora = (isLoading || liveTurn.length > 0) && !jaEscrevendo;
+  // O rótulo é a ação MAIS RECENTE — é ela que está acontecendo agora.
+  const pensandoTexto =
+    liveTurn.length > 0
+      ? actionTitle(liveTurn[liveTurn.length - 1])
+      : "Thinking…";
 
   // Timeline colada no fim enquanto chega texto novo.
   const stickToBottom = () => {
@@ -328,6 +358,26 @@ export function ChatView({
               }}
             />
           ))
+        )}
+
+        {/* O "pensando": UMA linha, com o texto em shimmer e um toque que abre
+            o que já foi feito. Enquanto a rodada corre é essa linha que diz que
+            tem coisa acontecendo; quando a resposta chega ela sai e o chip da
+            mensagem assume. */}
+        {pensandoAgora && (
+          <button
+            type="button"
+            className="axxa-thinking"
+            disabled={liveTurn.length === 0}
+            onClick={() => {
+              if (liveTurn.length === 0) return;
+              setTools(liveTurn);
+              setToolAt(liveTurn.length === 1 ? 0 : null);
+            }}
+          >
+            <span className="axxa-thinking-label">{pensandoTexto}</span>
+            {liveTurn.length > 0 && <Icon name="chevron-right" size={15} />}
+          </button>
         )}
       </div>
 
