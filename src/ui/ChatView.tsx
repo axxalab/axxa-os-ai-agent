@@ -34,7 +34,7 @@ import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
 import { useVoice } from "./useVoice";
-import { VoiceHold, VoicePanel } from "./VoiceBar";
+import { VoiceDock } from "./VoiceBar";
 import {
   Sheet,
   SheetGroup,
@@ -51,13 +51,6 @@ const MODE_PLACEHOLDER: Record<string, string> = {
   "vault-qa": "Ask something about your notes…",
   agent: "Tell the agent what to do in your vault…",
 };
-
-/** Arrasto pra ESQUERDA que cancela a gravação. */
-const CANCEL_PX = 90;
-/** Arrasto pra CIMA que trava (mãos livres). */
-const LOCK_PX = 70;
-/** Abaixo disso o toque foi um clique, não um "segurar". */
-const TAP_MS = 400;
 
 /** Título da folha de modelos em cada nível. */
 const MODEL_SHEET_TITLE: Record<string, string> = {
@@ -108,19 +101,6 @@ export function ChatView({
   const [modelView, setModelView] = useState<"root" | "list" | "effort">(
     "root"
   );
-  /** Quanto o dedo arrastou pra esquerda enquanto segura o microfone. */
-  const [slide, setSlide] = useState(0);
-  const micRef = useRef<{
-    x: number;
-    y: number;
-    t: number;
-    /** A gravação já começou de fato? */
-    ready: boolean;
-    /** O que o dedo pediu ANTES de a gravação existir. */
-    pending: "lock" | "finish" | "cancel" | null;
-  } | null>(null);
-  /** Solta os listeners de janela do gesto em curso. */
-  const detachRef = useRef<(() => void) | null>(null);
   /** O rascunho de ANTES da gravação: o transcrito entra depois dele, e
    *  cancelar devolve exatamente isto. */
   const baseDraftRef = useRef("");
@@ -206,107 +186,25 @@ export function ChatView({
     onCancel: () => setDraft(baseDraftRef.current),
   });
 
-  /**
-   * O gesto do microfone.
-   *
-   * DUAS armadilhas aprendidas no aparelho, as duas de tempo:
-   *
-   * 1. Abrir o microfone LEVA TEMPO (permissão + warm-up). Num toque rápido o
-   *    dedo sai ANTES do stream ficar pronto: o "soltar" rodava com a gravação
-   *    ainda não iniciada, não fazia nada, e logo depois o start ligava o modo
-   *    "segurando" — sem ninguém segurando. Ficava travado nessa tela pra
-   *    sempre. Agora a intenção fica PENDENTE e é aplicada quando o gravador
-   *    fica pronto.
-   *
-   * 2. O "soltar" pode não chegar ao botão (captura perdida, o sistema rouba o
-   *    gesto). Por isso mover/soltar/cancelar são ouvidos na JANELA enquanto o
-   *    gesto dura — e não no elemento.
-   */
-  const applyIntent = (intent: "lock" | "finish" | "cancel") => {
-    const g = micRef.current;
-    if (!g) return;
-    if (!g.ready) {
-      // Gravação ainda abrindo: guarda o pedido pra quando ela existir.
-      g.pending = intent;
-      return;
-    }
-    micRef.current = null;
-    detachRef.current?.();
-    detachRef.current = null;
-    setSlide(0);
-    if (intent === "cancel") voice.cancel();
-    else if (intent === "lock") voice.lock();
-    else voice.finish();
-  };
-
-  const onMicDown = async (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (micRef.current) return;
-    const id = e.pointerId;
-    micRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      t: Date.now(),
-      ready: false,
-      pending: null,
-    };
+  // Um CLIQUE começa a gravar; o dock cuida do resto (✕ joga fora, ✓ usa o
+  // texto). O gesto de segurar/arrastar saiu: dependia de o microfone abrir
+  // antes do dedo sair, e essa corrida travava a tela no aparelho.
+  //
+  // A troca começa NO CLIQUE, não quando o gravador fica pronto: abrir o
+  // microfone ocupa a thread principal, e a animação de altura é main-thread —
+  // disparada junto, ela era atropelada e virava um pulo. Assim ela roda
+  // enquanto o microfone abre, e o dock já aparece (onda parada) de imediato.
+  const [arming, setArming] = useState(false);
+  const startVoice = async () => {
+    if (arming || voice.state !== "idle") return;
     baseDraftRef.current = draft;
-    setSlide(0);
-
-    const onMove = (ev: PointerEvent) => {
-      const g = micRef.current;
-      if (!g || ev.pointerId !== id) return;
-      const dx = ev.clientX - g.x;
-      const dy = ev.clientY - g.y;
-      // Pra ESQUERDA joga fora; pra CIMA trava e o dedo pode sair.
-      if (dx < -CANCEL_PX) applyIntent("cancel");
-      else if (dy < -LOCK_PX) applyIntent("lock");
-      else setSlide(Math.min(0, dx));
-    };
-    const onUp = (ev: PointerEvent) => {
-      const g = micRef.current;
-      if (!g || ev.pointerId !== id) return;
-      // Toque curto = mãos livres. Sem isso um clique viraria um clipe de
-      // 200ms, que é o jeito mais fácil de parecer quebrado.
-      applyIntent(Date.now() - g.t < TAP_MS ? "lock" : "finish");
-    };
-    const detach = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
-    detachRef.current = detach;
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-
+    setArming(true);
     const ok = await voice.start();
-    const g = micRef.current;
-    if (!g) {
-      detach();
-      detachRef.current = null;
-      return;
-    }
-    if (!ok) {
-      micRef.current = null;
-      detach();
-      detachRef.current = null;
-      return;
-    }
-    g.ready = true;
-    // O dedo saiu enquanto o microfone abria? O pedido dele vale agora.
-    if (g.pending) applyIntent(g.pending);
+    if (!ok) setArming(false);
   };
-
-  // Rede de segurança: "segurando" sem gesto em curso é uma gravação órfã (o
-  // soltar se perdeu de algum jeito que a gente não previu). Em vez de deixar a
-  // tela morta, vira mãos livres — daí dá pra descartar ou confirmar.
   useEffect(() => {
-    if (voice.state !== "hold") return;
-    const id = window.setTimeout(() => {
-      if (!micRef.current) voice.lock();
-    }, 500);
-    return () => window.clearTimeout(id);
-  }, [voice.state, voice.lock]);
+    if (voice.state === "idle") setArming(false);
+  }, [voice.state]);
 
   /** Tocar num modelo comita as DUAS coisas: o provider da folha e o modelo. */
   const chooseModel = (model: string) => {
@@ -373,105 +271,86 @@ export function ChatView({
       {/* Composer: UM bloco só — campo em cima, barra de controles embaixo,
           sem régua horizontal separando nada. */}
       <section className="axxa-composer">
-        <div className="axxa-input">
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={draft}
-            placeholder={MODE_PLACEHOLDER[cfg.mode] ?? ""}
-            onFocus={onComposerFocus}
-            onChange={(e) => setDraft(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                void submit();
-              }
-            }}
-          />
+          {/* A TROCA: o composer de texto desce e o dock de áudio sobe no
+              lugar. As duas linhas do grid (1fr/0fr) animam a altura — é o que
+              faz um encolher enquanto o outro cresce, em vez de um sumir e o
+              outro aparecer. */}
+          <div
+            className="axxa-swap"
+            data-mode={voice.state !== "idle" || arming ? "voice" : "text"}
+          >
+            <div className="axxa-swap-row">
+            <div className="axxa-input">
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                value={draft}
+                placeholder={MODE_PLACEHOLDER[cfg.mode] ?? ""}
+                onFocus={onComposerFocus}
+                onChange={(e) => setDraft(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    void submit();
+                  }
+                }}
+              />
 
-          {/* Barra do composer no formato da referência: + à esquerda, o
-              modelo ao lado, e à direita voz e enviar. O provider saiu do pill
-              (ele é o trilho DENTRO da folha) e o effort também (virou um nível
-              dela) — o que sobra aqui é o que se usa a cada mensagem. */}
-          {/* Travado ou pausado, o painel de voz TOMA a barra inteira (é o
-              formato da referência). Segurando, ele divide a linha com o
-              microfone, que continua sob o dedo. */}
-          {voice.state === "locked" || voice.state === "paused" ? (
-            <VoicePanel voice={voice} />
-          ) : (
-            <div className="axxa-input-bar">
-              {voice.state === "hold" ? (
-                <VoiceHold voice={voice} slide={slide} />
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="axxa-round-btn"
-                    aria-label="Add to chat"
-                    onClick={() => openSheet("plus")}
-                  >
-                    <Icon name="plus" size={20} />
-                  </button>
-
-                  <div className="axxa-pills">
-                    <Pill
-                      label={prettyModelName(cfg.model) || "no model"}
-                      onClick={() => openSheet("model")}
-                    />
-                  </div>
-                </>
-              )}
-
-              {voice.state === "working" ? (
-                <span className="axxa-voice-working">Transcribing…</span>
-              ) : (
-                <>
-                  {/* Cadeado do WhatsApp: aparece enquanto segura e diz pra
-                      onde arrastar pra soltar o dedo. */}
-                  {voice.state === "hold" && (
-                    <span className="axxa-voice-lock" aria-hidden="true">
-                      <Icon name="lock" size={16} />
-                      <Icon name="chevron-up" size={14} />
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    className={
-                      voice.state === "hold"
-                        ? "axxa-round-btn is-recording"
-                        : "axxa-round-btn"
-                    }
-                    aria-label="Hold to record, slide up to lock"
-                    onPointerDown={(e) => void onMicDown(e)}
-                  >
-                    <Icon name="mic" size={18} />
-                  </button>
-                </>
-              )}
-
-              {isLoading ? (
+              {/* + à esquerda, o modelo ao lado, e à direita voz e enviar. */}
+              <div className="axxa-input-bar">
                 <button
                   type="button"
-                  className="axxa-send is-stop"
-                  aria-label="Stop"
-                  onClick={() => session.stop()}
+                  className="axxa-round-btn"
+                  aria-label="Add to chat"
+                  onClick={() => openSheet("plus")}
                 >
-                  <Icon name="square" size={16} />
+                  <Icon name="plus" size={20} />
                 </button>
-              ) : (
+
+                <div className="axxa-pills">
+                  <Pill
+                    label={prettyModelName(cfg.model) || "no model"}
+                    onClick={() => openSheet("model")}
+                  />
+                </div>
+
                 <button
                   type="button"
-                  className="axxa-send"
-                  aria-label="Send"
-                  disabled={!draft.trim()}
-                  onClick={() => void submit()}
+                  className="axxa-round-btn"
+                  aria-label="Voice mode"
+                  onClick={() => void startVoice()}
                 >
-                  <Icon name="arrow-up" size={18} />
+                  <Icon name="mic" size={18} />
                 </button>
-              )}
+
+                {isLoading ? (
+                  <button
+                    type="button"
+                    className="axxa-send is-stop"
+                    aria-label="Stop"
+                    onClick={() => session.stop()}
+                  >
+                    <Icon name="square" size={16} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="axxa-send"
+                    aria-label="Send"
+                    disabled={!draft.trim()}
+                    onClick={() => void submit()}
+                  >
+                    <Icon name="arrow-up" size={18} />
+                  </button>
+                )}
+              </div>
             </div>
-          )}
-        </div>
+            </div>
+
+            <div className="axxa-swap-row">
+              <VoiceDock voice={voice} />
+            </div>
+          </div>
       </section>
 
       {/* Bottom sheets do composer — modelo · effort. */}

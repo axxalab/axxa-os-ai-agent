@@ -27,21 +27,13 @@ const TIMESLICE_MS = 1000;
 const LEVEL_SLOTS = 48;
 /** Modelo de transcrição — o padrão que o motor documenta. */
 const MODEL = "gpt-4o-mini-transcribe";
-/** Teto da gravação. Depois disso a folha fecha sozinha. */
+/** Teto da gravação. Depois disso ela fecha sozinha. */
 const MAX_SECONDS = 300;
-
-/** Este WebView sabe pausar? Botão que não faz nada é pior que botão ausente. */
-export const CAN_PAUSE =
-  typeof MediaRecorder !== "undefined" &&
-  typeof MediaRecorder.prototype?.pause === "function";
 
 export type VoiceState =
   | "idle"
-  /** Dedo na tela, gravando. */
-  | "hold"
-  /** Travado: grava sem segurar. */
-  | "locked"
-  | "paused"
+  /** Gravando (sempre mãos livres — o gesto virou um clique). */
+  | "recording"
   /** Transcrevendo o fim da gravação. */
   | "working";
 
@@ -53,9 +45,6 @@ export interface Voice {
   levels: number[];
   /** Começa a gravar. Rejeita silencioso (com aviso) se não der. */
   start: () => Promise<boolean>;
-  lock: () => void;
-  pause: () => void;
-  resume: () => void;
   /** Joga fora: nada vai pro texto. */
   cancel: () => void;
   /** Fecha a gravação e transcreve o resto. */
@@ -104,7 +93,6 @@ export function useVoice(opts: VoiceOptions): Voice {
   /** Cancelado? O onstop então não transcreve nem escreve nada. */
   const discardedRef = useRef(false);
   const startedAtRef = useRef(0);
-  const pausedAtRef = useRef(0);
 
   // Sempre o valor mais novo dentro dos callbacks do recorder (que são
   // registrados uma vez e viveriam com um fecho velho).
@@ -186,7 +174,9 @@ export function useVoice(opts: VoiceOptions): Voice {
     discardedRef.current = false;
     busyRef.current = false;
     setSeconds(0);
-    setLevels([]);
+    // Nasce cheia de zeros: assim a onda tem a largura final desde o primeiro
+    // quadro, em vez de crescer da esquerda e empurrar os botões.
+    setLevels(new Array(LEVEL_SLOTS).fill(0));
 
     const rec = new MediaRecorder(stream);
     rec.ondataavailable = (e) => {
@@ -206,7 +196,6 @@ export function useVoice(opts: VoiceOptions): Voice {
 
     // Relógio da gravação (pausa congela).
     startedAtRef.current = Date.now();
-    pausedAtRef.current = 0;
     tickRef.current = window.setInterval(() => {
       if (recRef.current?.state !== "recording") return;
       const elapsed = (Date.now() - startedAtRef.current) / 1000;
@@ -262,43 +251,9 @@ export function useVoice(opts: VoiceOptions): Voice {
       // Sem medidor a gravação continua — só perde a onda.
     }
 
-    setState("hold");
+    setState("recording");
     return true;
   }, [cleanup, transcribeSoFar]);
-
-  const lock = useCallback(() => {
-    setState((s) => (s === "hold" ? "locked" : s));
-  }, []);
-
-  const pause = useCallback(() => {
-    const rec = recRef.current;
-    if (!rec) return;
-    try {
-      if (rec.state === "recording") rec.pause();
-    } catch {
-      /* WebView sem pause: o estado abaixo conta a verdade */
-    }
-    pausedAtRef.current = Date.now();
-    // A UI segue o RECORDER, não o que a gente torceu pra acontecer: se o
-    // pause não pegou, o botão continua "Pause" em vez de mentir "Resume"
-    // num áudio que segue gravando.
-    setState(rec.state === "paused" ? "paused" : "locked");
-  }, []);
-
-  const resume = useCallback(() => {
-    const rec = recRef.current;
-    if (!rec) return;
-    try {
-      if (rec.state === "paused") rec.resume();
-    } catch {
-      /* idem */
-    }
-    if (rec.state === "recording") {
-      // O relógio anda com a gravação: o tempo parado não conta.
-      startedAtRef.current += Date.now() - pausedAtRef.current;
-      setState("locked");
-    }
-  }, []);
 
   const cancel = useCallback(() => {
     const rec = recRef.current;
@@ -315,7 +270,6 @@ export function useVoice(opts: VoiceOptions): Voice {
     const rec = recRef.current;
     if (!rec) return;
     try {
-      if (rec.state === "paused") rec.resume();
       if (rec.state !== "inactive") rec.stop();
     } catch {
       // Recorder já morto (o Android encerra a sessão de áudio sozinho quando
@@ -338,5 +292,5 @@ export function useVoice(opts: VoiceOptions): Voice {
     return () => document.removeEventListener("visibilitychange", onHide);
   }, [state, finish]);
 
-  return { state, seconds, levels, start, lock, pause, resume, cancel, finish };
+  return { state, seconds, levels, start, cancel, finish };
 }

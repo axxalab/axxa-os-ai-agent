@@ -1,100 +1,56 @@
 // src/ui/VoiceBar.tsx
-// A cara do modo de voz, no formato do WhatsApp (referência do Rafael):
+// O dock de voz: o composer de texto desce e ELE sobe no lugar.
 //
-//   SEGURANDO   🎤 0:03 ············ ‹ Slide to cancel      (+ cadeado acima)
-//   TRAVADO     0:11 ~~~~~~~~~~~~~~~~~~~~
-//               [🗑]  [ ⏸ Pause ]  [✓]
-//   PAUSADO     idem, com [🎙 Resume] em verde
+// Formato da referência (app da Claude): uma barra arredondada com [✕] à
+// esquerda, a onda no meio e [✓] à direita. Sem relógio, sem pausa, sem
+// arrasto — o gesto inteiro virou dois cliques: um pra começar, um pra
+// terminar (ou o ✕ pra jogar fora).
 //
-// Uma diferença de propósito: o botão verde aqui é um CHECK, não um avião de
-// papel. No WhatsApp ele manda o áudio; aqui a voz vira TEXTO no composer, e
-// quem manda a mensagem continua sendo o usuário.
+// O ✓ NÃO envia a mensagem: a voz vira TEXTO no composer, e quem envia é o
+// usuário. Por isso é um check, e não um avião de papel.
 
 import { Icon } from "./Icon";
-import { CAN_PAUSE, formatDuration, type Voice } from "./useVoice";
+import type { Voice } from "./useVoice";
 
-/** Onda do microfone. Sem ela, mudo e quebrado são a mesma tela. */
-function Wave({ levels }: { levels: number[] }) {
+export function VoiceDock({ voice }: { voice: Voice }) {
+  const working = voice.state === "working";
   return (
-    <div className="axxa-voice-wave" aria-hidden="true">
-      {levels.map((l, i) => (
-        <span
-          key={i}
-          className="axxa-voice-bar"
-          style={{ height: `${Math.max(3, Math.round(l * 22))}px` }}
-        />
-      ))}
-    </div>
-  );
-}
-
-/** Enquanto o dedo está na tela. */
-export function VoiceHold({
-  voice,
-  slide,
-}: {
-  voice: Voice;
-  /** Quanto o dedo já arrastou pra esquerda (negativo). */
-  slide: number;
-}) {
-  return (
-    <div className="axxa-voice-hold">
-      <Icon name="mic" size={18} className="axxa-voice-rec" />
-      <span className="axxa-voice-time">{formatDuration(voice.seconds)}</span>
-      <Wave levels={voice.levels} />
-      <span
-        className="axxa-voice-cancel"
-        style={{ transform: `translateX(${Math.max(slide, -60)}px)` }}
+    <div className="axxa-voice-dock">
+      <button
+        type="button"
+        className="axxa-voice-x"
+        aria-label="Discard recording"
+        disabled={working}
+        onClick={voice.cancel}
       >
-        <Icon name="chevron-left" size={14} />
-        Slide to cancel
-      </span>
-    </div>
-  );
-}
+        <Icon name="x" size={20} />
+      </button>
 
-/** Travado (mãos livres) ou pausado. */
-export function VoicePanel({ voice }: { voice: Voice }) {
-  const paused = voice.state === "paused";
-  return (
-    <div className="axxa-voice-panel">
-      <div className="axxa-voice-head">
-        <span className="axxa-voice-time">{formatDuration(voice.seconds)}</span>
-        <Wave levels={voice.levels} />
-      </div>
-      <div className="axxa-voice-actions">
-        <button
-          type="button"
-          className="axxa-voice-trash"
-          aria-label="Discard recording"
-          onClick={voice.cancel}
-        >
-          <Icon name="trash-2" size={18} />
-        </button>
-        {CAN_PAUSE ? (
-          <button
-            type="button"
-            className={
-              paused ? "axxa-voice-toggle is-resume" : "axxa-voice-toggle"
-            }
-            onClick={paused ? voice.resume : voice.pause}
-          >
-            <Icon name={paused ? "mic" : "pause"} size={18} />
-            <span>{paused ? "Resume" : "Pause"}</span>
-          </button>
-        ) : (
-          // WebView sem pause: em vez de um botão morto, o estado.
-          <span className="axxa-voice-toggle is-static">Recording…</span>
-        )}
-        <button
-          type="button"
-          className="axxa-voice-done"
-          aria-label="Use this transcript"
-          onClick={voice.finish}
-        >
-          <Icon name="check" size={20} />
-        </button>
-      </div>
+      {working ? (
+        <span className="axxa-voice-working">Transcribing…</span>
+      ) : (
+        // A onda é a única prova de que o microfone está ouvindo: sem ela,
+        // mudo e quebrado são a mesma tela.
+        <div className="axxa-voice-wave" aria-hidden="true">
+          {voice.levels.map((l, i) => (
+            <span
+              key={i}
+              className="axxa-voice-bar"
+              style={{ height: `${Math.max(3, Math.round(l * 26))}px` }}
+            />
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="axxa-voice-ok"
+        aria-label="Use this transcript"
+        disabled={working}
+        onClick={voice.finish}
+      >
+        <Icon name="check" size={22} />
+      </button>
     </div>
   );
 }
