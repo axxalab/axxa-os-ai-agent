@@ -20,9 +20,9 @@ import {
 } from "react";
 import { Icon } from "./Icon";
 
-/** Quanto puxar além da borda pra fechar. Menos que isso é solavanco de
- *  rolagem, não intenção. */
-const PULL_TO_CLOSE = 72;
+/** Quanto puxar além da borda pra o gesto valer. Menos que isso é solavanco
+ *  de rolagem, não intenção. */
+const PULL_THRESHOLD = 72;
 
 export function Sheet({
   title,
@@ -45,6 +45,11 @@ export function Sheet({
   const [size, setSize] = useState<"peek" | "full">("peek");
   const startY = useRef<number | null>(null);
   const dragY = useRef(0);
+  /** O gesto lê o tamanho por REF: os listeners nativos são registrados uma vez
+   *  por abertura, e um `size` capturado no fecho ficaria velho — foi o que fez
+   *  a folha grande FECHAR onde devia só encolher. */
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
 
   useEffect(() => {
     if (!open) return;
@@ -150,8 +155,13 @@ export function Sheet({
       dy = 0;
       panel.style.transform = "";
       panel.classList.remove("is-dragging");
-      if ((b === "top" && d > PULL_TO_CLOSE) || (b === "bottom" && d < -PULL_TO_CLOSE)) {
-        onClose();
+      // Uma direção, um significado — o mesmo do puxador, e o mesmo em toda
+      // folha: PRA CIMA cresce, PRA BAIXO diminui e, já pequena, fecha.
+      if (b === "top" && d > PULL_THRESHOLD) {
+        if (sizeRef.current === "full") setSize("peek");
+        else onClose();
+      } else if (b === "bottom" && d < -PULL_THRESHOLD) {
+        setSize("full");
       }
     };
 
