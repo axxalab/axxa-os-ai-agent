@@ -61,6 +61,12 @@ const plugin = {
       gemini: { ok: false, at: Date.now(), detail: "401 invalid key" },
     },
     defaultEffort: "med",
+    voiceEnabled: true,
+    voiceModel: "gpt-4o-mini-transcribe",
+    voiceLanguage: "pt",
+    ttsEnabled: true,
+    ttsModel: "gpt-4o-mini-tts",
+    ttsVoice: "alloy",
     projects: [],
   },
   // A casca grava em quase toda interação; sem isto o clique morre num

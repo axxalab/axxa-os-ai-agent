@@ -34,6 +34,7 @@ import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
 import { useVoice } from "./useVoice";
+import { speak, stopSpeaking } from "./readAloud";
 import { VoiceDock } from "./VoiceBar";
 import {
   Sheet,
@@ -179,6 +180,8 @@ export function ChatView({
   // via nada enquanto falava.
   const voice = useVoice({
     apiKey: () => plugin.providerCredential("openai"),
+    model: () => plugin.settings.voiceModel,
+    language: () => plugin.settings.voiceLanguage,
     onTranscript: setLiveText,
     onNotice: (m) => {
       new Notice(m);
@@ -322,14 +325,16 @@ export function ChatView({
                   />
                 </div>
 
-                <button
-                  type="button"
-                  className="axxa-round-btn"
-                  aria-label="Voice mode"
-                  onClick={() => void startVoice()}
-                >
-                  <Icon name="mic" size={18} />
-                </button>
+                {plugin.settings.voiceEnabled && (
+                  <button
+                    type="button"
+                    className="axxa-round-btn"
+                    aria-label="Voice mode"
+                    onClick={() => void startVoice()}
+                  >
+                    <Icon name="mic" size={18} />
+                  </button>
+                )}
 
                 {isLoading ? (
                   <button
@@ -551,6 +556,37 @@ function activityText(a: ActivityMeta): string {
   return a.failedText ?? "Failed";
 }
 
+/** Ouvir a resposta. O motor já tinha o TTS; faltava o botão. */
+function ReadAloudButton({
+  plugin,
+  text,
+}: {
+  plugin: AxxaPlugin;
+  text: string;
+}) {
+  const [speaking, setSpeaking] = useState(false);
+  return (
+    <button
+      type="button"
+      className={speaking ? "axxa-msg-listen is-on" : "axxa-msg-listen"}
+      aria-label={speaking ? "Stop" : "Read aloud"}
+      onClick={async () => {
+        if (speaking) {
+          stopSpeaking();
+          setSpeaking(false);
+          return;
+        }
+        setSpeaking(true);
+        await speak(plugin, text);
+        setSpeaking(false);
+      }}
+    >
+      <Icon name={speaking ? "square" : "volume-2"} size={15} />
+      <span>{speaking ? "Stop" : "Listen"}</span>
+    </button>
+  );
+}
+
 function MessageRow({
   msg,
   plugin,
@@ -588,6 +624,9 @@ function MessageRow({
               text={msg.content}
               streaming={streaming}
             />
+          )}
+          {plugin.settings.ttsEnabled && !msg.isError && msg.content.trim() && (
+            <ReadAloudButton plugin={plugin} text={msg.content} />
           )}
           {msg.truncated && <small className="axxa-msg-note">truncated</small>}
           {msg.agentSteps && msg.agentSteps.length > 0 && (

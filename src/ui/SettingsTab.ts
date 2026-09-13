@@ -33,6 +33,12 @@ import {
 } from "../providers/modelCapabilities";
 import { buildModelCatalog } from "./modelCatalog";
 import { prettyModelName } from "../providers/modelDescriptions";
+import {
+  speak,
+  STT_MODELS,
+  TTS_MODELS,
+  TTS_VOICES,
+} from "./readAloud";
 import { PERMISSION_LABELS } from "../agent/permissions";
 import type { PermissionLevel } from "../agent/types";
 
@@ -58,6 +64,21 @@ const PROVIDER_FIELDS: Record<string, { key?: KeyField; model: ModelField }> = {
   nim: { key: "nimApiKey", model: "nimModel" },
   ollama: { model: "ollamaModel" },
 };
+
+/** Idiomas oferecidos pro ditado. Vazio = deixa o modelo detectar. */
+const SPEECH_LANGS: [string, string][] = [
+  ["", "Auto (detect)"],
+  ["pt", "Português"],
+  ["en", "English"],
+  ["es", "Español"],
+  ["fr", "Français"],
+  ["de", "Deutsch"],
+  ["it", "Italiano"],
+  ["ja", "日本語"],
+];
+
+/** Frase do botão Test — curta, pra não virar conta. */
+const SAMPLE_LINE = "This is the voice that will read your answers.";
 
 /** Favoritos aparecem na tela inicial; mais que isso vira lista, não atalho. */
 const FAVORITE_LIMIT = 5;
@@ -824,6 +845,114 @@ export class AxxaSettingsTab extends PluginSettingTab {
           await this.save();
         });
       });
+
+    this.renderVoice(el);
+  }
+
+  // ── Voz ───────────────────────────────────────────────────────────────────
+  // As duas direções passam pela OpenAI (é lá que moram os dois endpoints que
+  // o motor já fala), então a chave da OpenAI é o pré-requisito de ambas — e a
+  // linha abaixo diz isso quando ela falta, em vez de deixar o usuário
+  // descobrir na hora que aperta o microfone.
+
+  private renderVoice(el: HTMLElement): void {
+    const s = this.s;
+    const temKey = !!this.plugin.providerCredential("openai");
+
+    const brand = new Setting(el).setName("Voice").setHeading();
+    const mark = brand.nameEl.createSpan({ cls: "axxa-settings-brand" });
+    setIcon(mark, "mic");
+    brand.nameEl.prepend(mark);
+
+    if (!temKey) {
+      brand.setDesc(
+        "Both directions run on OpenAI — add that key in Providers to use them."
+      );
+    }
+
+    // ── fala → texto ────────────────────────────────────────────────────
+    new Setting(el)
+      .setName("Dictation")
+      .setDesc("The microphone in the composer. Off, the button doesn't show.")
+      .addToggle((t) =>
+        t.setValue(s.voiceEnabled).onChange(async (v) => {
+          s.voiceEnabled = v;
+          await this.save();
+          this.renderBody();
+        })
+      );
+
+    if (s.voiceEnabled) {
+      new Setting(el)
+        .setName("Dictation model")
+        .setDesc("What turns your speech into text.")
+        .addDropdown((d) => {
+          for (const m of STT_MODELS) d.addOption(m, prettyModelName(m));
+          d.setValue(s.voiceModel).onChange(async (v) => {
+            s.voiceModel = v;
+            await this.save();
+          });
+        });
+
+      new Setting(el)
+        .setName("Spoken language")
+        .setDesc(
+          "Telling it the language makes short takes more accurate. Auto works, just guesses."
+        )
+        .addDropdown((d) => {
+          for (const [code, label] of SPEECH_LANGS) d.addOption(code, label);
+          d.setValue(s.voiceLanguage).onChange(async (v) => {
+            s.voiceLanguage = v;
+            await this.save();
+          });
+        });
+    }
+
+    // ── texto → fala ────────────────────────────────────────────────────
+    new Setting(el)
+      .setName("Read aloud")
+      .setDesc("Adds a listen button to every answer.")
+      .addToggle((t) =>
+        t.setValue(s.ttsEnabled).onChange(async (v) => {
+          s.ttsEnabled = v;
+          await this.save();
+          this.renderBody();
+        })
+      );
+
+    if (s.ttsEnabled) {
+      new Setting(el)
+        .setName("Voice model")
+        .setDesc("gpt-4o-mini-tts follows tone; tts-1 is the cheap classic.")
+        .addDropdown((d) => {
+          for (const m of TTS_MODELS) d.addOption(m, m);
+          d.setValue(s.ttsModel).onChange(async (v) => {
+            s.ttsModel = v;
+            await this.save();
+          });
+        });
+
+      new Setting(el)
+        .setName("Voice")
+        .setDesc("Who reads it. Hit Test to hear the one you picked.")
+        .addDropdown((d) => {
+          for (const v of TTS_VOICES) d.addOption(v, v);
+          d.setValue(s.ttsVoice).onChange(async (v) => {
+            s.ttsVoice = v;
+            await this.save();
+          });
+        })
+        .addButton((b) =>
+          b
+            .setButtonText("Test")
+            .setDisabled(!temKey)
+            .onClick(async () => {
+              b.setButtonText("Playing…").setDisabled(true);
+              await speak(this.plugin, SAMPLE_LINE);
+              b.setButtonText("Test").setDisabled(false);
+            })
+        );
+    }
   }
 
   // ── Vault ─────────────────────────────────────────────────────────────────

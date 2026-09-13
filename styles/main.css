@@ -2120,6 +2120,32 @@ body.is-mobile .axxa-root .axxa-history-more {
   pointer-events: auto;
 }
 
+/* Ouvir a resposta: discreto, no rodapé da mensagem — é ação secundária. */
+.axxa-root button.axxa-msg-listen {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  margin-top: var(--axxa-1);
+  padding: var(--axxa-1) var(--axxa-2);
+  border: none;
+  border-radius: var(--axxa-r-pill);
+  background: none;
+  box-shadow: none;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+
+.axxa-root button.axxa-msg-listen:hover:not(:disabled) {
+  background-color: var(--axxa-hover);
+  color: var(--text-normal);
+}
+
+.axxa-root button.axxa-msg-listen.is-on {
+  color: var(--text-accent);
+}
+
 /* A coluna do modo de voz: o texto reconhecido em cima, o dock embaixo. */
 .axxa-root .axxa-voice-side {
   display: flex;

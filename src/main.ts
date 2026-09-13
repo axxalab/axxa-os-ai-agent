@@ -74,6 +74,19 @@ export interface AxxaSettings {
    *  quem precisa do resultado é o CHAT: ele não vai testar sozinho na hora de
    *  abrir a folha de modelos. */
   providerStatus: Record<string, ProviderStatus>;
+  // ---- Voz (as duas direções passam pela OpenAI)
+  /** Ditado: o microfone do composer. Desligado, o botão nem aparece. */
+  voiceEnabled: boolean;
+  /** Modelo de transcrição (fala → texto). */
+  voiceModel: string;
+  /** Idioma da fala em ISO-639-1. Vazio = o modelo detecta. */
+  voiceLanguage: string;
+  /** Leitura em voz alta: o botão de ouvir a resposta. */
+  ttsEnabled: boolean;
+  /** Modelo de TTS (texto → fala). */
+  ttsModel: string;
+  /** Voz do TTS (alloy, nova, …). */
+  ttsVoice: string;
   /** Modelo-padrão por PAPEL (chat/reasoning/image/video/tts/embedding/other). */
   roleModels: Partial<Record<RoleId, RoleModelEntry>>;
   /** Provider preferido quando o MESMO modelo existe em 2+ providers. */
@@ -164,6 +177,12 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   },
   favoriteModels: {},
   providerStatus: {},
+  voiceEnabled: true,
+  voiceModel: "gpt-4o-mini-transcribe",
+  voiceLanguage: "",
+  ttsEnabled: false,
+  ttsModel: "gpt-4o-mini-tts",
+  ttsVoice: "alloy",
   roleModels: {},
   modelProvider: {},
   discoveredEmbeddings: {},

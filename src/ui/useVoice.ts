@@ -25,8 +25,6 @@ const FIRST_INTERIM_MS = 1800;
 const TIMESLICE_MS = 1000;
 /** Quantas barrinhas de nível a UI mostra. */
 const LEVEL_SLOTS = 48;
-/** Modelo de transcrição — o padrão que o motor documenta. */
-const MODEL = "gpt-4o-mini-transcribe";
 /** Teto da gravação. Depois disso ela fecha sozinha. */
 const MAX_SECONDS = 300;
 
@@ -54,6 +52,10 @@ export interface Voice {
 export interface VoiceOptions {
   /** Key da OpenAI — a transcrição mora lá. */
   apiKey: () => string;
+  /** Modelo de transcrição (vem das Settings). */
+  model: () => string;
+  /** ISO-639-1 da fala, ou vazio pra deixar o modelo detectar. */
+  language: () => string;
   /** Texto reconhecido até agora (parcial ou final). */
   onTranscript: (text: string) => void;
   /** Recado pro usuário (sem key, microfone bloqueado, falha na API). */
@@ -128,7 +130,8 @@ export function useVoice(opts: VoiceOptions): Voice {
     try {
       const text = await transcribeAudio({
         apiKey: optsRef.current.apiKey(),
-        model: MODEL,
+        model: optsRef.current.model(),
+        language: optsRef.current.language() || undefined,
         filename: `voice.${extensionFor(type)}`,
         data: new Uint8Array(await blob.arrayBuffer()),
       });
