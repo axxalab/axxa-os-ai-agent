@@ -1,6 +1,6 @@
 {
 	"name": "axxa-os-ai-agent",
-	"version": "0.5.60",
+	"version": "0.5.61",
 	"description": "AXXA OS — AI Agent (Obsidian plugin).",
 	"private": true,
 	"scripts": {

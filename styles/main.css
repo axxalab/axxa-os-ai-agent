@@ -2220,20 +2220,24 @@ body.is-mobile .axxa-root .axxa-history-more {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: var(--axxa-2);
+  gap: var(--axxa-1);
+  /* Sem caixa: na referência isto é TEXTO com um chevron, não um botão
+     desenhado. O que diz que dá pra tocar é o chevron e a cor mais apagada —
+     a borda fazia dele um objeto no meio da leitura. */
   margin-top: var(--axxa-1);
-  padding: var(--axxa-1) var(--axxa-3);
-  border: 1px solid var(--axxa-line);
-  border-radius: var(--axxa-r-pill);
+  padding: 0;
+  border: none;
+  border-radius: 0;
   background: none;
   box-shadow: none;
   color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
+  font-family: var(--font-text);
+  font-size: 15px;
   cursor: pointer;
 }
 
 .axxa-root button.axxa-tools-chip:hover:not(:disabled) {
-  background-color: var(--axxa-hover);
+  background: none;
   color: var(--text-normal);
 }
 

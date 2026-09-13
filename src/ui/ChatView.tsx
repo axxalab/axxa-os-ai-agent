@@ -711,12 +711,11 @@ function MessageRow({
               className="axxa-tools-chip"
               onClick={() => onOpenTools?.(msg.agentSteps ?? [])}
             >
-              <Icon name="terminal" size={14} />
               <span>
                 Ran {msg.agentSteps.length}{" "}
                 {msg.agentSteps.length === 1 ? "action" : "actions"}
               </span>
-              <Icon name="chevron-right" size={14} />
+              <Icon name="chevron-right" size={15} />
             </button>
           )}
         </div>
