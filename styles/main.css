@@ -1267,11 +1267,26 @@ body.theme-dark {
   color: var(--text-faint);
 }
 
-/* Linha de navegação: uma linha só. O valor encosta no chevron e o título fica
-   à esquerda — duas alturas pra dizer "Effort · Med" era desperdício de tela. */
-.axxa-root .axxa-sheet-row.is-nav {
-  padding-top: var(--axxa-3);
-  padding-bottom: var(--axxa-3);
+/* Linha de navegação (e a densa): uma linha só. O valor encosta na direita e o
+   título fica à esquerda — duas alturas pra dizer "Effort · Med" era
+   desperdício de tela, e numa lista de onze ações vira rolagem sem fim. */
+.axxa-root .axxa-sheet-row.is-nav,
+.axxa-root .axxa-sheet-row.is-dense {
+  padding-top: var(--axxa-2);
+  padding-bottom: var(--axxa-2);
+  gap: var(--axxa-2);
+}
+
+.axxa-root .axxa-sheet-row.is-dense .axxa-sheet-row-title {
+  /* O NOME não encolhe primeiro: quem perde espaço é o argumento à direita.
+     "vault_c…" não diz o que aconteceu; "path: PROJECTS/CREA…" ainda diz. */
+  flex: 0 0 auto;
+  max-width: 60%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
 }
 
 .axxa-root .axxa-sheet-row.is-nav .axxa-sheet-row-title {

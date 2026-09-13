@@ -185,10 +185,20 @@ if (scenario === "thread") {
     { id: "m4", type: "user", content: "Draft a note that answers that open question.", timestamp: Date.now() - 20000 },
     { id: "m5", type: "ai-response", content: "Splitting by difficulty is the better fit for how you review — topic decks recreate the cramming pattern you flagged in June.", timestamp: Date.now() - 10000,
       // Ações de agente: é o que alimenta o chip e a folha de auditoria.
+      // Lista LONGA de propósito: é com onze linhas que dá pra ver se a folha
+      // rola sem fim ou se cabe na tela.
       agentSteps: [
-        { id: "t1", name: "vault_search", arguments: { query: "spaced repetition" }, result: ["4 notes matched:", "Learning/Spaced repetition.md", "Inbox/Anki backlog.md"].join("\n"), ok: true },
-        { id: "t2", name: "vault_read", arguments: { path: "Learning/Spaced repetition.md" }, result: ["# Spaced repetition", "2 dias → 1 semana → 1 mês…"].join("\n"), ok: true },
-        { id: "t3", name: "vault_create", arguments: { path: "Inbox/Decks por dificuldade.md", content: "…" }, result: "Permission denied: destructive action needs confirmation", ok: false },
+        { id: "t1", name: "vault_list", arguments: {}, result: "7 items", ok: true },
+        { id: "t2", name: "vault_list", arguments: { folder: "PROJECTS" }, result: "16 items", ok: true },
+        { id: "t3", name: "vault_list", arguments: { folder: "TASKS" }, result: "4 items", ok: true },
+        { id: "t4", name: "vault_list", arguments: { folder: "DAILY" }, result: "8 items", ok: true },
+        { id: "t5", name: "vault_list", arguments: { folder: "NUTRITION 1.0" }, result: "12 items", ok: true },
+        { id: "t6", name: "vault_list", arguments: { folder: "axxa-ai" }, result: "1 item", ok: true },
+        { id: "t7", name: "vault_read", arguments: { path: "PROJECTS/FRAMEWORKS.md" }, result: "# Frameworks…", ok: true },
+        { id: "t8", name: "vault_search", arguments: { query: "spaced repetition" }, result: ["4 notes matched:", "Learning/Spaced repetition.md"].join("\n"), ok: true },
+        { id: "t9", name: "vault_edit", arguments: { path: "PROJECTS/FRAMEWORKS.md" }, result: "edited", ok: true },
+        { id: "t10", name: "vault_create", arguments: { path: "PROJECTS/CREATIVE SYSTEMS.md", content: "…" }, result: "created", ok: true },
+        { id: "t11", name: "vault_create", arguments: { path: "Inbox/Decks por dificuldade.md", content: "…" }, result: "Permission denied: destructive action needs confirmation", ok: false },
       ] },
   ] as never);
   st.setCurrentChatId("2");

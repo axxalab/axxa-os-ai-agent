@@ -571,6 +571,7 @@ export function ChatView({
             {(tools ?? []).map((a, i) => (
               <SheetRow
                 key={i}
+                dense
                 title={actionTitle(a)}
                 note={actionNote(a)}
                 tag={actionFailed(a) ? "failed" : undefined}

@@ -387,6 +387,7 @@ export function SheetRow({
   note,
   tag,
   selected,
+  dense,
   onClick,
 }: {
   title: string;
@@ -395,22 +396,39 @@ export function SheetRow({
   /** Etiqueta ao lado do título ("Default"). */
   tag?: string;
   selected?: boolean;
+  /** Uma linha só (nome à esquerda, legenda à direita). Pra lista longa —
+   *  onze ações em duas linhas cada viram rolagem sem fim. */
+  dense?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className={selected ? "axxa-sheet-row is-active" : "axxa-sheet-row"}
+      className={
+        "axxa-sheet-row" +
+        (selected ? " is-active" : "") +
+        (dense ? " is-dense" : "")
+      }
       aria-pressed={selected === true}
       onClick={onClick}
     >
-      <span className="axxa-sheet-row-main">
-        <span className="axxa-sheet-row-title">
-          {title}
-          {tag && <span className="axxa-sheet-tag">{tag}</span>}
+      {dense ? (
+        <>
+          <span className="axxa-sheet-row-title">
+            {title}
+            {tag && <span className="axxa-sheet-tag">{tag}</span>}
+          </span>
+          {note && <span className="axxa-sheet-row-value">{note}</span>}
+        </>
+      ) : (
+        <span className="axxa-sheet-row-main">
+          <span className="axxa-sheet-row-title">
+            {title}
+            {tag && <span className="axxa-sheet-tag">{tag}</span>}
+          </span>
+          {note && <span className="axxa-sheet-row-note">{note}</span>}
         </span>
-        {note && <span className="axxa-sheet-row-note">{note}</span>}
-      </span>
+      )}
       {selected && <Icon name="check" size={20} className="axxa-sheet-check" />}
     </button>
   );
