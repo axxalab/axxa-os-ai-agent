@@ -8,7 +8,6 @@ import type { CSSProperties } from "react";
 import type AxxaPlugin from "../main";
 import type { ChatMode, ChatSession } from "../core/session";
 import { CHAT_MODES } from "../core/session";
-import type { Skill } from "../skills/skills";
 import { providerConfigured, PROVIDERS } from "../core/providersMeta";
 import { Icon } from "./Icon";
 import { openPluginSettings } from "./modals";
@@ -49,18 +48,15 @@ function greeting(): string {
 export function StarterScreen({
   plugin,
   session,
-  onUseSkill,
 }: {
   plugin: AxxaPlugin;
   session: ChatSession;
-  onUseSkill: (skill: Skill) => void;
 }) {
   const cfg = session.config;
   const mode = MODES[cfg.mode];
   const hasKey = providerConfigured(plugin, cfg.provider);
   const providerName =
     PROVIDERS.find((p) => p.id === cfg.provider)?.name ?? cfg.provider;
-  const skills = plugin.skills.slice(0, 4);
   // Índice do modo ativo — move o thumb do segmented control via CSS.
   const activeIndex = Math.max(CHAT_MODES.indexOf(cfg.mode), 0);
 
@@ -103,25 +99,6 @@ export function StarterScreen({
         </div>
       )}
 
-      {skills.length > 0 && (
-        <div className="axxa-starter-skills">
-          <span className="axxa-section-label">Your skills</span>
-          <div className="axxa-suggestions">
-            {skills.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className="axxa-chip"
-                title={s.description}
-                onClick={() => onUseSkill(s)}
-              >
-                <Icon name={s.icon || "sparkles"} size={14} />
-                {s.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

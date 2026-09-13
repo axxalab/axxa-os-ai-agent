@@ -268,11 +268,7 @@ export function ChatView({
       <div className="axxa-messages" ref={scrollRef}>
         {loadingChat && <p className="axxa-empty-line">Loading…</p>}
         {empty ? (
-          <StarterScreen
-            plugin={plugin}
-            session={session}
-            onUseSkill={onUseSkill}
-          />
+          <StarterScreen plugin={plugin} session={session} />
         ) : (
           messages.map((m) => (
             <MessageRow
