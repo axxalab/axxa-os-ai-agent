@@ -2214,6 +2214,73 @@ body.is-mobile .axxa-root .axxa-history-more {
   pointer-events: auto;
 }
 
+/* Chip das ações do agente: uma linha discreta que ABRE a folha. O que o
+   agente fez é auditoria — importa poder ver, não ficar vendo. */
+.axxa-root button.axxa-tools-chip {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  margin-top: var(--axxa-1);
+  padding: var(--axxa-1) var(--axxa-3);
+  border: 1px solid var(--axxa-line);
+  border-radius: var(--axxa-r-pill);
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+
+.axxa-root button.axxa-tools-chip:hover:not(:disabled) {
+  background-color: var(--axxa-hover);
+  color: var(--text-normal);
+}
+
+/* Detalhe de uma ação dentro da folha. */
+.axxa-root .axxa-tool-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-2);
+}
+
+.axxa-root .axxa-tool-state {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  margin: 0;
+  color: var(--color-red);
+  font-size: var(--font-ui-small);
+}
+
+.axxa-root .axxa-tool-state.is-ok {
+  color: var(--color-green);
+}
+
+.axxa-root .axxa-tool-label {
+  margin: var(--axxa-2) 0 0;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.axxa-root .axxa-tool-block {
+  margin: 0;
+  padding: var(--axxa-3);
+  max-height: 40vh;
+  overflow: auto;
+  border-radius: var(--axxa-r);
+  background-color: var(--axxa-hover);
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Ouvir a resposta: discreto, no rodapé da mensagem — é ação secundária. */
 .axxa-root button.axxa-msg-listen {
   align-self: flex-start;

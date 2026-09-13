@@ -30,6 +30,7 @@ import {
   EFFORT_DESCRIPTIONS,
   type EffortLevel,
 } from "../core/effort";
+import type { AIToolStep } from "../agent/types";
 import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
@@ -105,6 +106,10 @@ export function ChatView({
   );
   /** O que já foi reconhecido nesta gravação (parcial ou final). */
   const [liveText, setLiveText] = useState("");
+  /** Ações do agente abertas na folha (null = fechada) e qual delas está
+   *  aberta no segundo nível. */
+  const [tools, setTools] = useState<AIToolStep[] | null>(null);
+  const [toolAt, setToolAt] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -276,6 +281,10 @@ export function ChatView({
               msg={m}
               plugin={plugin}
               streaming={m.id === streamingId}
+              onOpenTools={(steps) => {
+                setTools(steps);
+                setToolAt(null);
+              }}
             />
           ))
         )}
@@ -499,6 +508,40 @@ export function ChatView({
         </SheetGroup>
       </Sheet>
 
+      {/* O que o agente fez: lista numa folha, e cada ação abre a sua com
+          argumentos e resultado — o mesmo vai-e-volta da folha de modelos. */}
+      <Sheet
+        title={
+          toolAt !== null && tools
+            ? tools[toolAt].name
+            : `Ran ${tools?.length ?? 0} ${
+                (tools?.length ?? 0) === 1 ? "action" : "actions"
+              }`
+        }
+        open={tools !== null}
+        onClose={() => {
+          setTools(null);
+          setToolAt(null);
+        }}
+        onBack={toolAt !== null ? () => setToolAt(null) : undefined}
+      >
+        {toolAt !== null && tools ? (
+          <ToolDetail step={tools[toolAt]} />
+        ) : (
+          <SheetGroup>
+            {(tools ?? []).map((step, i) => (
+              <SheetRow
+                key={step.id}
+                title={step.name}
+                note={toolSummary(step)}
+                tag={step.ok ? undefined : "failed"}
+                onClick={() => setToolAt(i)}
+              />
+            ))}
+          </SheetGroup>
+        )}
+      </Sheet>
+
       <Sheet title="Effort" open={sheet === "effort"} onClose={closeSheet}>
         <SheetGroup>
           {EFFORT_LEVELS.map((l) => (
@@ -558,6 +601,33 @@ function activityText(a: ActivityMeta): string {
   return a.failedText ?? "Failed";
 }
 
+/** Resumo de uma linha dos argumentos — o suficiente pra reconhecer a ação. */
+function toolSummary(step: AIToolStep): string {
+  const args = Object.entries(step.arguments ?? {});
+  if (args.length === 0) return step.ok ? "done" : "failed";
+  const [chave, valor] = args[0];
+  const texto = typeof valor === "string" ? valor : JSON.stringify(valor);
+  return `${chave}: ${texto}`.slice(0, 80);
+}
+
+/** Detalhe de uma ação: o que foi pedido e o que voltou. */
+function ToolDetail({ step }: { step: AIToolStep }) {
+  return (
+    <div className="axxa-tool-detail">
+      <p className={step.ok ? "axxa-tool-state is-ok" : "axxa-tool-state"}>
+        <Icon name={step.ok ? "check" : "x"} size={14} />
+        {step.ok ? "Completed" : "Failed"}
+      </p>
+      <p className="axxa-tool-label">Arguments</p>
+      <pre className="axxa-tool-block">
+        {JSON.stringify(step.arguments ?? {}, null, 2)}
+      </pre>
+      <p className="axxa-tool-label">Result</p>
+      <pre className="axxa-tool-block">{step.result || "(empty)"}</pre>
+    </div>
+  );
+}
+
 /** Ouvir a resposta. O motor já tinha o TTS; faltava o botão. */
 function ReadAloudButton({
   plugin,
@@ -593,10 +663,12 @@ function MessageRow({
   msg,
   plugin,
   streaming,
+  onOpenTools,
 }: {
   msg: ChatMessage;
   plugin: AxxaPlugin;
   streaming: boolean;
+  onOpenTools?: (steps: AIToolStep[]) => void;
 }) {
   switch (msg.type) {
     case "user":
@@ -632,21 +704,20 @@ function MessageRow({
           )}
           {msg.truncated && <small className="axxa-msg-note">truncated</small>}
           {msg.agentSteps && msg.agentSteps.length > 0 && (
-            <details className="axxa-details">
-              <summary>{msg.agentSteps.length} tool call(s)</summary>
-              <ul>
-                {msg.agentSteps.map((s) => (
-                  <li key={s.id}>
-                    <code>
-                      {s.ok ? "✓" : "✗"} {s.name} {JSON.stringify(s.arguments)}
-                    </code>
-                    {s.result && (
-                      <pre className="axxa-msg-text">{s.result}</pre>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </details>
+            // O que o agente FEZ vira um chip: quem quer ver abre a folha, e
+            // quem não quer não leva um <details> no meio da leitura.
+            <button
+              type="button"
+              className="axxa-tools-chip"
+              onClick={() => onOpenTools?.(msg.agentSteps ?? [])}
+            >
+              <Icon name="terminal" size={14} />
+              <span>
+                Ran {msg.agentSteps.length}{" "}
+                {msg.agentSteps.length === 1 ? "action" : "actions"}
+              </span>
+              <Icon name="chevron-right" size={14} />
+            </button>
           )}
         </div>
       );

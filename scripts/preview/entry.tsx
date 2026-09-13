@@ -183,7 +183,13 @@ if (scenario === "thread") {
     { id: "m2", type: "ai-comment", content: "", timestamp: Date.now() - 55000, activity: { phase: "done", pendingText: "Searching the vault…", doneText: "Read 4 notes" } },
     { id: "m3", type: "ai-response", content: "Three notes cover it. In **Learning/Spaced repetition.md** you settled on a 2-day → 1-week → 1-month ladder, and noted that the jump to a month was where recall broke down.\n\nThe open question you left in **Inbox/Anki backlog.md** was whether to split decks by topic or by difficulty.", timestamp: Date.now() - 50000 },
     { id: "m4", type: "user", content: "Draft a note that answers that open question.", timestamp: Date.now() - 20000 },
-    { id: "m5", type: "ai-response", content: "Splitting by difficulty is the better fit for how you review — topic decks recreate the cramming pattern you flagged in June.", timestamp: Date.now() - 10000 },
+    { id: "m5", type: "ai-response", content: "Splitting by difficulty is the better fit for how you review — topic decks recreate the cramming pattern you flagged in June.", timestamp: Date.now() - 10000,
+      // Ações de agente: é o que alimenta o chip e a folha de auditoria.
+      agentSteps: [
+        { id: "t1", name: "vault_search", arguments: { query: "spaced repetition" }, result: ["4 notes matched:", "Learning/Spaced repetition.md", "Inbox/Anki backlog.md"].join("\n"), ok: true },
+        { id: "t2", name: "vault_read", arguments: { path: "Learning/Spaced repetition.md" }, result: ["# Spaced repetition", "2 dias → 1 semana → 1 mês…"].join("\n"), ok: true },
+        { id: "t3", name: "vault_create", arguments: { path: "Inbox/Decks por dificuldade.md", content: "…" }, result: "Permission denied: destructive action needs confirmation", ok: false },
+      ] },
   ] as never);
   st.setCurrentChatId("2");
   st.setCurrentChatTitle("What did I write about spaced repetition?");
