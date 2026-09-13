@@ -783,10 +783,14 @@ body.theme-dark {
   background-color: var(--axxa-canvas);
 }
 
+/* O tamanho aqui é calibrado contra o composer do app da Claude (o Rafael
+   comparou os dois lado a lado): cartão mais alto, controles de 36px e texto
+   maior. Antes eram 32px e 15px, e ficava visivelmente menor que a
+   referência. */
 .axxa-root .axxa-input {
   display: flex;
   flex-direction: column;
-  gap: var(--axxa-2);
+  gap: var(--axxa-3);
   padding: var(--axxa-3);
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-lg);
@@ -805,9 +809,7 @@ body.theme-dark {
 
 /* O grupo da direita (voz + enviar) encosta na borda: o `auto` no bloco dos
    pills empurra, sem precisar de espaçador vazio no meio. */
-.axxa-root .axxa-pills {
-  margin-right: auto;
-}
+
 
 /* Botões redondos do composer (+ e voz): mesmo diâmetro do enviar, mas
    superfície discreta — o acento é do enviar, que é a ação. */
@@ -816,8 +818,8 @@ body.theme-dark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
   border-radius: var(--axxa-r-pill);
@@ -845,15 +847,14 @@ body.theme-dark {
   pointer-events: none;
 }
 
+/* Sobrou UM pill (modelo). A rolagem horizontal e o fade de borda eram de
+   quando havia três aqui — com um só, o fade comia 24px e o nome virava "G…".
+   O `auto` é o que empurra voz e enviar pra direita. */
 .axxa-root .axxa-pills {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
-  gap: var(--axxa-2);
-  overflow-x: auto;
-  scrollbar-width: none;
-  /* Fade na borda: diz que a linha rola em vez de parecer cortada. */
-  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  margin-right: auto;
 }
 
 .axxa-root .axxa-pills::-webkit-scrollbar {
@@ -864,14 +865,14 @@ body.theme-dark {
   display: inline-flex;
   align-items: center;
   gap: var(--axxa-1);
-  flex: 0 0 auto;
-  max-width: 46%;
-  height: 30px;
-  padding: 0 var(--axxa-2);
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 36px;
+  padding: 0 var(--axxa-3);
   border-radius: var(--axxa-r-pill);
   background-color: var(--axxa-hover);
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
 }
 
 .axxa-root .axxa-pill:hover:not(:disabled) {
@@ -894,7 +895,7 @@ body.theme-dark {
   flex: 1 1 auto;
   min-width: 0;
   box-sizing: border-box;
-  min-height: 24px;
+  min-height: 26px;
   max-height: 40vh;
   padding: 0;
   border: 0;
@@ -905,7 +906,7 @@ body.theme-dark {
   outline: none;
   color: var(--text-normal);
   font-family: inherit;
-  font-size: var(--font-ui-medium);
+  font-size: 17px;
   line-height: 1.4;
   resize: none;
 }
@@ -915,8 +916,8 @@ body.theme-dark {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--axxa-r-pill);
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);

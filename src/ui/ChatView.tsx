@@ -315,7 +315,7 @@ export function ChatView({
                   aria-label="Add to chat"
                   onClick={() => openSheet("plus")}
                 >
-                  <Icon name="plus" size={20} />
+                  <Icon name="plus" size={22} />
                 </button>
 
                 <div className="axxa-pills">
@@ -332,7 +332,7 @@ export function ChatView({
                     aria-label="Voice mode"
                     onClick={() => void startVoice()}
                   >
-                    <Icon name="mic" size={18} />
+                    <Icon name="mic" size={20} />
                   </button>
                 )}
 
@@ -343,7 +343,7 @@ export function ChatView({
                     aria-label="Stop"
                     onClick={() => session.stop()}
                   >
-                    <Icon name="square" size={16} />
+                    <Icon name="square" size={18} />
                   </button>
                 ) : (
                   <button
@@ -353,7 +353,7 @@ export function ChatView({
                     disabled={!draft.trim()}
                     onClick={() => void submit()}
                   >
-                    <Icon name="arrow-up" size={18} />
+                    <Icon name="arrow-up" size={20} />
                   </button>
                 )}
               </div>
