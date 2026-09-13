@@ -809,6 +809,11 @@ body.theme-dark {
   font-size: var(--font-ui-smaller);
 }
 
+.axxa-root .axxa-pill-mark {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
 .axxa-root .axxa-pill:hover:not(:disabled) {
   background-color: var(--axxa-raised);
   color: var(--text-normal);
@@ -897,7 +902,10 @@ body.theme-dark {
   inset: auto 0 0 0;
   display: flex;
   flex-direction: column;
-  max-height: 88%;
+  /* Dois tamanhos, trocados pelo arrasto no puxador: o normal é a altura do
+     conteúdo com teto baixo; o grande vai quase até o topo. Folha curta não
+     muda nada — ela já cabe. */
+  max-height: 62%;
   padding: var(--axxa-1) var(--axxa-3)
     max(var(--safe-area-inset-bottom, 0px), var(--axxa-3));
   border-top: 1px solid var(--axxa-line);
@@ -915,8 +923,34 @@ body.theme-dark {
   transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* Grande é ALTURA, não só teto: com `max-height` sozinho, arrastar pra cima
+   numa folha curta não mexia em nada e o gesto parecia quebrado. */
+.axxa-root .axxa-sheet.is-full {
+  height: 94%;
+  max-height: 94%;
+}
+
+/* Enquanto o dedo está na tela a folha segue o dedo: transição atrapalha. */
+.axxa-root .axxa-sheet.is-dragging {
+  transition: none;
+}
+
 .axxa-root .axxa-sheet:focus {
   outline: none;
+}
+
+/* Zona de arrasto: o puxador com área de toque de verdade em volta.
+   `touch-action: none` porque o gesto é nosso — sem isso o WebView rola a
+   página no meio do arrasto. */
+.axxa-root .axxa-sheet-drag {
+  flex: 0 0 auto;
+  padding: var(--axxa-1) 0 0;
+  touch-action: none;
+  cursor: grab;
+}
+
+.axxa-root .axxa-sheet-drag:active {
+  cursor: grabbing;
 }
 
 .axxa-root .axxa-sheet-layer.is-open .axxa-sheet {
@@ -1034,34 +1068,60 @@ body.theme-dark {
   cursor: not-allowed;
 }
 
-.axxa-root button.axxa-sheet-row.is-blocked,
-.axxa-root button.axxa-sheet-row:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
-.axxa-root button.axxa-sheet-row:disabled:hover {
-  background: none;
-}
 
 .axxa-root button.axxa-sheet-seg-item.is-active {
   color: var(--text-accent);
 }
 
-/* Divisória rotulada DENTRO do cartão: separa favoritos da lista. */
-.axxa-root .axxa-sheet-block {
+/* Bloco rotulado DENTRO do cartão: separa favoritos da lista. */
+.axxa-root .axxa-sheet-block:not(:first-child) .axxa-sheet-block-head {
+  box-shadow: inset 0 1px 0 var(--axxa-line);
+  margin-top: var(--axxa-2);
+}
+
+.axxa-root .axxa-sheet-block-head {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  width: 100%;
   margin: 0;
   padding: var(--axxa-3) var(--axxa-4) var(--axxa-1);
   color: var(--text-faint);
   font-size: var(--font-ui-smaller);
   font-weight: var(--font-semibold);
   letter-spacing: 0.04em;
+  text-align: left;
   text-transform: uppercase;
 }
 
-.axxa-root .axxa-sheet-block:not(:first-child) {
+/* Quando é botão, zera a pintura que o app.css dá a `button`. */
+.axxa-root button.axxa-sheet-block-head {
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.axxa-root .axxa-sheet-block:not(:first-child) button.axxa-sheet-block-head {
   box-shadow: inset 0 1px 0 var(--axxa-line);
-  margin-top: var(--axxa-2);
+}
+
+.axxa-root button.axxa-sheet-block-head:hover,
+.axxa-root button.axxa-sheet-block-head:hover:not(:disabled) {
+  background: none;
+  color: var(--text-muted);
+}
+
+.axxa-root .axxa-sheet-block-chev {
+  margin-left: auto;
+  transition: transform 140ms ease;
+}
+
+.axxa-root button.axxa-sheet-block-head.is-closed .axxa-sheet-block-chev {
+  transform: rotate(-90deg);
 }
 
 .axxa-root .axxa-sheet-note {
@@ -1095,10 +1155,7 @@ body.theme-dark {
   box-shadow: inset 0 1px 0 var(--axxa-line);
 }
 
-/* Depois do rótulo de bloco a divisória sobra: o rótulo já separa. */
-.axxa-root .axxa-sheet-block + .axxa-sheet-row {
-  box-shadow: none;
-}
+
 
 .axxa-root .axxa-sheet-row:hover {
   background-color: var(--axxa-hover);
@@ -1681,9 +1738,13 @@ body.is-mobile .axxa-root .axxa-history-more {
   background-color: var(--color-red);
 }
 
-/* Colar: aparece só quando o campo está vazio, encostado nele. */
+/* Colar: aparece só quando o campo está vazio, encostado nele.
+   O tamanho vem do FLEX-BASIS, não do width: no celular o app.css manda
+   `.is-phone .modal .setting-item-control button { width: 100% }` com
+   especificidade (0,4,1) — inalcançável sem escalar seletor. Como ninguém lá
+   declara `flex`, a base de 32px ganha do width sem briga nenhuma. */
 .axxa-settings-root button.axxa-paste-btn {
-  flex: 0 0 auto;
+  flex: 0 0 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;

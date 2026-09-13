@@ -10,7 +10,14 @@
 // Fecha no scrim, no X e no Esc. Renderiza dentro da .axxa-root (que é
 // position: relative), então cobre só o painel da AXXA — nunca o app inteiro.
 
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { Icon } from "./Icon";
 
 export function Sheet({
@@ -25,6 +32,10 @@ export function Sheet({
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  /** peek = altura do conteúdo (teto baixo) · full = quase a tela toda. */
+  const [size, setSize] = useState<"peek" | "full">("peek");
+  const startY = useRef<number | null>(null);
+  const dragY = useRef(0);
 
   useEffect(() => {
     if (!open) return;
@@ -39,6 +50,46 @@ export function Sheet({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Fechou: volta pro tamanho pequeno, senão a próxima abre gigante.
+  useEffect(() => {
+    if (!open) setSize("peek");
+  }, [open]);
+
+  // ── arrasto no puxador ──────────────────────────────────────────────────
+  // Pra cima cresce, pra baixo encolhe e, já pequena, fecha. Enquanto arrasta
+  // a folha acompanha o dedo (com resistência pra cima, que é o limite).
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    startY.current = e.clientY;
+    dragY.current = 0;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    panelRef.current?.classList.add("is-dragging");
+  };
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (startY.current === null) return;
+    const dy = e.clientY - startY.current;
+    dragY.current = dy;
+    const el = panelRef.current;
+    // dy > 0 (pra baixo) segue o dedo; pra cima só 35%, que é o "encosto".
+    if (el) el.style.transform = `translateY(${Math.max(dy, dy * 0.35)}px)`;
+  };
+
+  const onPointerUp = () => {
+    if (startY.current === null) return;
+    const dy = dragY.current;
+    startY.current = null;
+    const el = panelRef.current;
+    if (el) {
+      el.style.transform = "";
+      el.classList.remove("is-dragging");
+    }
+    if (dy < -48) setSize("full");
+    else if (dy > 48) {
+      if (size === "full") setSize("peek");
+      else onClose();
+    }
+  };
+
   return (
     <div
       className={open ? "axxa-sheet-layer is-open" : "axxa-sheet-layer"}
@@ -47,13 +98,22 @@ export function Sheet({
       <div className="axxa-scrim" onClick={onClose} />
       <div
         ref={panelRef}
-        className="axxa-sheet"
+        className={size === "full" ? "axxa-sheet is-full" : "axxa-sheet"}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
       >
-        <div className="axxa-sheet-grab" aria-hidden="true" />
+        <div
+          className="axxa-sheet-drag"
+          title="Drag to resize"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+        >
+          <div className="axxa-sheet-grab" aria-hidden="true" />
+        </div>
         <header className="axxa-sheet-head">
           <button
             type="button"
@@ -149,9 +209,49 @@ export function SheetSeg({
   );
 }
 
-/** Divisória rotulada DENTRO de um cartão ("Favorites", "Show list"). */
-export function SheetBlock({ children }: { children: ReactNode }) {
-  return <p className="axxa-sheet-block">{children}</p>;
+/**
+ * Bloco rotulado DENTRO de um cartão ("Favorites", "Show list"). Com
+ * `collapsible`, o rótulo vira botão e o bloco fecha — a lista de Show pode
+ * ser longa, e quem já tem favorito quase nunca desce até ela.
+ */
+export function SheetBlock({
+  label,
+  collapsible,
+  defaultOpen = true,
+  children,
+}: {
+  label: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (!collapsible) {
+    return (
+      <div className="axxa-sheet-block">
+        <p className="axxa-sheet-block-head">{label}</p>
+        <div className="axxa-sheet-block-body">{children}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="axxa-sheet-block">
+      <button
+        type="button"
+        className={
+          open
+            ? "axxa-sheet-block-head is-toggle"
+            : "axxa-sheet-block-head is-toggle is-closed"
+        }
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span>{label}</span>
+        <Icon name="chevron-down" size={14} className="axxa-sheet-block-chev" />
+      </button>
+      {open && <div className="axxa-sheet-block-body">{children}</div>}
+    </div>
+  );
 }
 
 /** Linha de recado dentro do cartão (lista vazia, aviso). */
@@ -164,9 +264,7 @@ export function SheetRow({
   note,
   badge,
   icon,
-  dot,
   selected,
-  disabled,
   onClick,
 }: {
   title: string;
@@ -176,31 +274,20 @@ export function SheetRow({
   badge?: string;
   /** Ícone no círculo à esquerda — inclui os logos dos providers. */
   icon?: string;
-  /** Bolinha de conexão no canto do ícone. */
-  dot?: "off" | "unknown" | "ok" | "fail";
   selected?: boolean;
-  /** Sem credencial ou reprovado no teste: fica visível, mas não escolhível. */
-  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className={
-        (selected ? "axxa-sheet-row is-active" : "axxa-sheet-row") +
-        (disabled ? " is-blocked" : "")
-      }
+      className={selected ? "axxa-sheet-row is-active" : "axxa-sheet-row"}
       aria-pressed={selected === true}
-      disabled={disabled}
       onClick={onClick}
     >
       {badge && <span className="axxa-sheet-badge">{badge}</span>}
       {!badge && icon && (
         <span className="axxa-sheet-badge">
           <Icon name={icon} size={18} />
-          {dot && (
-            <span className={`axxa-seg-dot is-${dot}`} aria-hidden="true" />
-          )}
         </span>
       )}
       <span className="axxa-sheet-row-main">

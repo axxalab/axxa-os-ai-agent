@@ -125,7 +125,7 @@
       }
     </style>
   </head>
-  <body class="theme-dark is-mobile">
+  <body class="theme-dark is-mobile is-phone">
     <!-- Mesma árvore do mobile: a AXXA mora na gaveta DIREITA, dentro da aba
          ativa. É o que o CSS de fullscreen/teclado ancora. -->
     <div id="behind">editor por tras (workspace)</div>
@@ -171,7 +171,11 @@
         document.body.classList.replace("theme-dark", "theme-light");
       }
       if (q.get("device") === "desktop") {
-        document.body.classList.remove("is-mobile");
+        // `is-phone` anda junto com `is-mobile` no celular de verdade, e é ELA
+        // que o app.css usa nas regras mais agressivas de settings
+        // (`.is-phone .modal … button { width: 100% }`). Sem ela o preview
+        // mostrava um layout que o aparelho nunca teve.
+        document.body.classList.remove("is-mobile", "is-phone");
       }
       // ?kb=300 simula o teclado: é a MESMA variável que o Obsidian mantém.
       const kb = Number(q.get("kb") ?? 0);

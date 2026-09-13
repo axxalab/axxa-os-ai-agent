@@ -179,9 +179,25 @@ if (scenario === "settings") {
       {} as never,
       plugin as never
     ) as unknown as { containerEl: HTMLElement; display: () => void };
+    // A ÁRVORE REAL das settings: o app.css tem regras presas a
+    // `.is-phone .modal .setting-item-control …`. Um div solto no #app não
+    // recebia nenhuma delas — o preview mostrava uma linha de controle que o
+    // celular nunca teve.
+    const modal = document.createElement("div");
+    modal.className = "modal mod-settings preview-settings-modal";
+    const content = document.createElement("div");
+    content.className = "modal-content vertical-tabs-container";
+    const tabContent = document.createElement("div");
+    tabContent.className = "vertical-tab-content-container";
+    const inner = document.createElement("div");
+    inner.className = "vertical-tab-content";
     tab.containerEl = document.createElement("div");
     tab.containerEl.className = "axxa-settings-preview";
-    host?.appendChild(tab.containerEl);
+    inner.appendChild(tab.containerEl);
+    tabContent.appendChild(inner);
+    content.appendChild(tabContent);
+    modal.appendChild(content);
+    host?.appendChild(modal);
     tab.display();
   })();
 } else if (host) {

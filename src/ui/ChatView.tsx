@@ -51,14 +51,6 @@ const MODE_PLACEHOLDER: Record<string, string> = {
   agent: "Tell the agent what to do in your vault…",
 };
 
-/** Legenda da linha do provider quando ele NÃO está bloqueado. */
-const PROVIDER_NOTE: Record<string, string> = {
-  ok: "Connected",
-  unknown: "Key configured — not tested yet",
-  off: "",
-  fail: "",
-};
-
 const MODE_LABEL: Record<string, string> = {
   chat: "Chat",
   "vault-qa": "Vault Q&A",
@@ -90,7 +82,7 @@ export function ChatView({
 
   const [draft, setDraft] = useState("");
   /** Qual bottom sheet do composer está aberta. */
-  const [sheet, setSheet] = useState<"provider" | "model" | "effort" | null>(
+  const [sheet, setSheet] = useState<"model" | "effort" | null>(
     null
   );
   /** Provider que a folha de modelos está MOSTRANDO — não é o da sessão até
@@ -144,7 +136,7 @@ export function ChatView({
   };
 
   // Abrir uma sheet tira o foco do campo — senão o teclado sobe por cima dela.
-  const openSheet = (which: "provider" | "model" | "effort") => {
+  const openSheet = (which: "model" | "effort") => {
     textareaRef.current?.blur();
     // A folha de modelos abre sempre no provider da sessão.
     if (which === "model") setPickProvider(cfg.provider);
@@ -246,20 +238,17 @@ export function ChatView({
             {/* Travada a sessão, provider/modelo já aparecem na topbar — aqui
                 fica só o effort, que continua livre no meio da conversa. */}
             <div className="axxa-pills">
+              {/* Um botão só pro modelo: o provider virou o trilho de logos
+                  DENTRO da folha, então ter um seletor separado era pedir a
+                  mesma coisa duas vezes. O logo aqui diz de quem é o modelo. */}
               {!locked && (
-                <>
-                  <Pill
-                    label={
-                      PROVIDERS.find((p) => p.id === cfg.provider)?.name ??
-                      cfg.provider
-                    }
-                    onClick={() => openSheet("provider")}
-                  />
-                  <Pill
-                    label={cfg.model || "no model"}
-                    onClick={() => openSheet("model")}
-                  />
-                </>
+                <Pill
+                  icon={
+                    PROVIDERS.find((p) => p.id === cfg.provider)?.icon
+                  }
+                  label={cfg.model || "no model"}
+                  onClick={() => openSheet("model")}
+                />
               )}
               <Pill
                 label={`${EFFORT_EMOJIS[effort] ?? ""} ${
@@ -293,34 +282,7 @@ export function ChatView({
         </div>
       </section>
 
-      {/* Bottom sheets do composer — provider · modelo · effort. */}
-      <Sheet
-        title="Select provider"
-        open={sheet === "provider"}
-        onClose={closeSheet}
-      >
-        <SheetGroup>
-          {PROVIDERS.map((p) => {
-            const blocked = providerBlockedReason(plugin, p.id);
-            return (
-              <SheetRow
-                key={p.id}
-                icon={p.icon}
-                dot={providerHealth(plugin, p.id)}
-                title={p.name}
-                note={blocked ?? PROVIDER_NOTE[providerHealth(plugin, p.id)]}
-                selected={p.id === cfg.provider}
-                disabled={!!blocked && p.id !== cfg.provider}
-                onClick={() => {
-                  session.setProvider(p.id);
-                  closeSheet();
-                }}
-              />
-            );
-          })}
-        </SheetGroup>
-      </Sheet>
-
+      {/* Bottom sheets do composer — modelo · effort. */}
       {/* Um CARTÃO só, do provider escolhido no trilho de logos acima: primeiro
           os favoritos, depois o resto da lista marcada como Show nas Settings.
           Cada linha leva o brasão da FAMÍLIA do modelo (getModelFamily) — o
@@ -340,26 +302,38 @@ export function ChatView({
           }))}
         />
         <SheetGroup>
-          {favorites.length > 0 && <SheetBlock>Favorites</SheetBlock>}
-          {favorites.map((m) => (
-            <ModelRow
-              key={`fav-${m}`}
-              provider={pickProvider}
-              model={m}
-              selected={m === cfg.model && pickProvider === cfg.provider}
-              onClick={() => chooseModel(m)}
-            />
-          ))}
-          {rest.length > 0 && <SheetBlock>Show list</SheetBlock>}
-          {rest.map((m) => (
-            <ModelRow
-              key={m}
-              provider={pickProvider}
-              model={m}
-              selected={m === cfg.model && pickProvider === cfg.provider}
-              onClick={() => chooseModel(m)}
-            />
-          ))}
+          {favorites.length > 0 && (
+            <SheetBlock label="Favorites">
+              {favorites.map((m) => (
+                <ModelRow
+                  key={`fav-${m}`}
+                  provider={pickProvider}
+                  model={m}
+                  selected={m === cfg.model && pickProvider === cfg.provider}
+                  onClick={() => chooseModel(m)}
+                />
+              ))}
+            </SheetBlock>
+          )}
+          {rest.length > 0 && (
+            // Fechada quando já existe favorito: quem tem atalho raramente
+            // desce até a lista inteira.
+            <SheetBlock
+              label="Show list"
+              collapsible
+              defaultOpen={favorites.length === 0}
+            >
+              {rest.map((m) => (
+                <ModelRow
+                  key={m}
+                  provider={pickProvider}
+                  model={m}
+                  selected={m === cfg.model && pickProvider === cfg.provider}
+                  onClick={() => chooseModel(m)}
+                />
+              ))}
+            </SheetBlock>
+          )}
           {favorites.length === 0 && rest.length === 0 && (
             <SheetNote>
               Nothing marked to show for this provider yet — pick what appears
@@ -414,9 +388,18 @@ function ModelRow({
   );
 }
 
-function Pill({ label, onClick }: { label: string; onClick: () => void }) {
+function Pill({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon?: string;
+  onClick: () => void;
+}) {
   return (
     <button type="button" className="axxa-pill" onClick={onClick}>
+      {icon && <Icon name={icon} size={15} className="axxa-pill-mark" />}
       <span className="axxa-pill-label">{label}</span>
       <Icon name="chevron-down" size={14} />
     </button>
