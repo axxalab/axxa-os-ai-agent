@@ -35,8 +35,14 @@ const plugin = {
   settings: {
     openaiApiKey: "sk-test",
     anthropicApiKey: "",
-    activeModels: { openai: ["gpt-5", "gpt-4o", "gpt-4o-mini"] },
-    favoriteModels: { openai: ["gpt-5", "gpt-4o"] },
+    activeModels: {
+      openai: ["gpt-5", "gpt-4o", "gpt-4o-mini"],
+      anthropic: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
+    },
+    favoriteModels: {
+      openai: ["gpt-5", "gpt-4o"],
+      anthropic: ["claude-opus-5"],
+    },
     projects: [],
   },
   // A casca grava em quase toda interação; sem isto o clique morre num
@@ -67,8 +73,22 @@ const plugin = {
   seedExampleSkills: async () => {},
 } as unknown as AxxaPlugin;
 
+/** Modelo padrão de cada provider — o que o motor tira do settings. */
+const FAKE_DEFAULT_MODEL: Record<string, string> = {
+  openai: "gpt-5",
+  anthropic: "claude-sonnet-5",
+  gemini: "gemini-2.5-flash",
+  openrouter: "meta/llama-3.3-70b-instruct:free",
+  nim: "nvidia/llama-3.3-nemotron-super-49b",
+  ollama: "llama3.2",
+};
+
 let mode = "chat";
 let effort = "med";
+// Provider/modelo da sessão falsa. Guardar de verdade importa: é o que prova
+// que escolher um modelo de OUTRO provider na folha comita os dois.
+let provider = "openai";
+let model = "gpt-5";
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
@@ -76,8 +96,8 @@ const session = {
   get config() {
     const st = useChatStore.getState();
     return {
-      provider: st.sessionProvider ?? "openai",
-      model: st.sessionModel ?? "gpt-5",
+      provider: st.sessionProvider ?? provider,
+      model: st.sessionModel ?? model,
       mode: st.sessionMode ?? mode,
       effort,
       locked: st.sessionProvider !== null,
@@ -87,13 +107,27 @@ const session = {
     mode = m;
     emit();
   },
-  setProvider: emit,
-  setModel: emit,
+  setProvider: (p: string) => {
+    provider = p;
+    model = FAKE_DEFAULT_MODEL[p] ?? "";
+    emit();
+  },
+  setModel: (m: string) => {
+    model = m;
+    emit();
+  },
   setEffort: (e: string) => {
     effort = e;
     emit();
   },
-  modelOptions: () => ["gpt-5", "gpt-4o", "gpt-4o-mini"],
+  // Igual ao motor: a lista marcada como Show DAQUELE provider (+ o atual).
+  // A versão que ignorava o argumento mostrava modelo da OpenAI dentro da
+  // Anthropic — o preview mentindo de novo.
+  modelOptions: (provider: string) => {
+    const shown = plugin.settings.activeModels?.[provider] ?? [];
+    const cur = FAKE_DEFAULT_MODEL[provider];
+    return cur && !shown.includes(cur) ? [cur, ...shown] : shown;
+  },
   apiKeyFor: () => "sk-test",
   send: async () => {},
   stop: () => {},

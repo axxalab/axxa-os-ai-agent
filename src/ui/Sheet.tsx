@@ -10,7 +10,7 @@
 // Fecha no scrim, no X e no Esc. Renderiza dentro da .axxa-root (que é
 // position: relative), então cobre só o painel da AXXA — nunca o app inteiro.
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Icon } from "./Icon";
 
 export function Sheet({
@@ -78,9 +78,68 @@ export function SheetGroup({ children }: { children: ReactNode }) {
   return <div className="axxa-sheet-group">{children}</div>;
 }
 
-/** Rótulo de seção acima de um cartão ("Other models"). */
-export function SheetLabel({ children }: { children: ReactNode }) {
-  return <p className="axxa-sheet-label">{children}</p>;
+/**
+ * Segmented control DENTRO da folha — hoje, os providers. Colunas iguais
+ * (são todos logos, mesma largura), então o thumb é só o índice ativo: nada
+ * de medir nó, ao contrário do das Settings, onde os rótulos têm larguras
+ * diferentes.
+ */
+export function SheetSeg({
+  items,
+  activeId,
+  onPick,
+  label,
+}: {
+  items: { id: string; icon: string; label: string; dim?: boolean }[];
+  activeId: string;
+  onPick: (id: string) => void;
+  label: string;
+}) {
+  const index = Math.max(
+    items.findIndex((i) => i.id === activeId),
+    0
+  );
+  return (
+    <div
+      className="axxa-sheet-seg"
+      role="group"
+      aria-label={label}
+      style={
+        {
+          "--axxa-seg": index,
+          "--axxa-seg-count": items.length,
+        } as CSSProperties
+      }
+    >
+      {items.map((it) => (
+        <button
+          key={it.id}
+          type="button"
+          className={
+            "axxa-sheet-seg-item" +
+            (it.id === activeId ? " is-active" : "") +
+            (it.dim ? " is-dim" : "")
+          }
+          aria-pressed={it.id === activeId}
+          aria-label={it.label}
+          title={it.label}
+          onClick={() => onPick(it.id)}
+        >
+          <Icon name={it.icon} size={20} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Divisória rotulada DENTRO de um cartão ("Favorites", "Show list"). */
+export function SheetBlock({ children }: { children: ReactNode }) {
+  return <p className="axxa-sheet-block">{children}</p>;
+}
+
+/** Linha de recado dentro do cartão (lista vazia, aviso). */
+export function SheetNote({ children }: { children: ReactNode }) {
+  return <p className="axxa-sheet-note">{children}</p>;
 }
 
 export function SheetRow({

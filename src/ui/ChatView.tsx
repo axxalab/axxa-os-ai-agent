@@ -29,7 +29,15 @@ import {
 import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
-import { Sheet, SheetGroup, SheetLabel, SheetRow } from "./Sheet";
+import {
+  Sheet,
+  SheetBlock,
+  SheetGroup,
+  SheetNote,
+  SheetRow,
+  SheetSeg,
+} from "./Sheet";
+import { getModelFamily } from "../providers/modelFamily";
 import { StarterScreen } from "./StarterScreen";
 import type { ComposerInject } from "./App";
 
@@ -73,6 +81,10 @@ export function ChatView({
   const [sheet, setSheet] = useState<"provider" | "model" | "effort" | null>(
     null
   );
+  /** Provider que a folha de modelos está MOSTRANDO — não é o da sessão até
+   *  alguém tocar num modelo. Dá pra espiar o catálogo de outro provider sem
+   *  trocar nada por engano. */
+  const [pickProvider, setPickProvider] = useState(cfg.provider);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -122,9 +134,27 @@ export function ChatView({
   // Abrir uma sheet tira o foco do campo — senão o teclado sobe por cima dela.
   const openSheet = (which: "provider" | "model" | "effort") => {
     textareaRef.current?.blur();
+    // A folha de modelos abre sempre no provider da sessão.
+    if (which === "model") setPickProvider(cfg.provider);
     setSheet(which);
   };
   const closeSheet = () => setSheet(null);
+
+  // Os dois blocos do cartão de modelos. Favoritar já implica Show, então o
+  // segundo bloco tira os favoritos pra ninguém aparecer duas vezes.
+  const favorites = (
+    plugin.settings.favoriteModels?.[pickProvider] ?? []
+  ).slice(0, 5);
+  const rest = session
+    .modelOptions(pickProvider)
+    .filter((m) => !favorites.includes(m));
+
+  /** Tocar num modelo comita as DUAS coisas: o provider da folha e o modelo. */
+  const chooseModel = (model: string) => {
+    if (pickProvider !== cfg.provider) session.setProvider(pickProvider);
+    session.setModel(model);
+    closeSheet();
+  };
 
   const empty = messages.length === 0 && !loadingChat;
   const effort = cfg.effort as EffortLevel;
@@ -278,26 +308,50 @@ export function ChatView({
         </SheetGroup>
       </Sheet>
 
+      {/* Um CARTÃO só, do provider escolhido no trilho de logos acima: primeiro
+          os favoritos, depois o resto da lista marcada como Show nas Settings.
+          Cada linha leva o brasão da FAMÍLIA do modelo (getModelFamily) — o
+          logo do provider já é o trilho, repeti-lo em toda linha não diria
+          nada. */}
       <Sheet title="Select model" open={sheet === "model"} onClose={closeSheet}>
-        <SheetLabel>
-          {PROVIDERS.find((p) => p.id === cfg.provider)?.name ?? cfg.provider}
-        </SheetLabel>
+        <SheetSeg
+          label="Provider"
+          activeId={pickProvider}
+          onPick={setPickProvider}
+          items={PROVIDERS.map((p) => ({
+            id: p.id,
+            icon: p.icon,
+            label: p.name,
+            dim: !providerConfigured(plugin, p.id),
+          }))}
+        />
         <SheetGroup>
-          {session.modelOptions(cfg.provider).map((m) => {
-            const card = getModelCard(cfg.provider, m);
-            return (
-              <SheetRow
-                key={m}
-                title={prettyModelName(m)}
-                note={card.goodFor ?? card.description}
-                selected={m === cfg.model}
-                onClick={() => {
-                  session.setModel(m);
-                  closeSheet();
-                }}
-              />
-            );
-          })}
+          {favorites.length > 0 && <SheetBlock>Favorites</SheetBlock>}
+          {favorites.map((m) => (
+            <ModelRow
+              key={`fav-${m}`}
+              provider={pickProvider}
+              model={m}
+              selected={m === cfg.model && pickProvider === cfg.provider}
+              onClick={() => chooseModel(m)}
+            />
+          ))}
+          {rest.length > 0 && <SheetBlock>Show list</SheetBlock>}
+          {rest.map((m) => (
+            <ModelRow
+              key={m}
+              provider={pickProvider}
+              model={m}
+              selected={m === cfg.model && pickProvider === cfg.provider}
+              onClick={() => chooseModel(m)}
+            />
+          ))}
+          {favorites.length === 0 && rest.length === 0 && (
+            <SheetNote>
+              Nothing marked to show for this provider yet — pick what appears
+              here in Settings → Providers.
+            </SheetNote>
+          )}
         </SheetGroup>
       </Sheet>
 
@@ -319,6 +373,30 @@ export function ChatView({
         </SheetGroup>
       </Sheet>
     </div>
+  );
+}
+
+/** Linha de modelo: brasão da família + nome + o que ele faz. */
+function ModelRow({
+  provider,
+  model,
+  selected,
+  onClick,
+}: {
+  provider: string;
+  model: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const card = getModelCard(provider, model);
+  return (
+    <SheetRow
+      icon={getModelFamily(model).icon}
+      title={prettyModelName(model)}
+      note={card.goodFor ?? card.description}
+      selected={selected}
+      onClick={onClick}
+    />
   );
 }
 
