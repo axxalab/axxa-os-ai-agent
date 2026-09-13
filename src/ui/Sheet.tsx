@@ -36,10 +36,13 @@ export function Sheet({
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   /** peek = altura do conteúdo (teto baixo) · full = quase a tela toda. */
   const [size, setSize] = useState<"peek" | "full">("peek");
   const startY = useRef<number | null>(null);
   const dragY = useRef(0);
+  /** Borda em que o arrasto do CONTEÚDO começou (null = não começou colado). */
+  const edge = useRef<"top" | "bottom" | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -94,6 +97,57 @@ export function Sheet({
     }
   };
 
+  // ── arrasto no CONTEÚDO (puxar além da borda fecha) ─────────────────────
+  // Só engata quando a lista JÁ está no fim (ou no começo) na hora que o dedo
+  // encosta: no meio da lista o gesto é rolagem, e o navegador cuida dela.
+  const onBodyDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const noTopo = el.scrollTop <= 0;
+    const noFim = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+    edge.current = noTopo ? "top" : noFim ? "bottom" : null;
+    // Lista que cabe inteira está nas DUAS bordas — puxar pra baixo fecha,
+    // que é o gesto que todo mundo tenta primeiro.
+    if (noTopo && noFim) edge.current = "top";
+    startY.current = e.clientY;
+    dragY.current = 0;
+  };
+
+  const onBodyMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (startY.current === null || edge.current === null) return;
+    const dy = e.clientY - startY.current;
+    // Só conta o excesso na direção da borda; o resto é rolagem normal.
+    if ((edge.current === "top" && dy <= 0) || (edge.current === "bottom" && dy >= 0)) {
+      dragY.current = 0;
+      const el = panelRef.current;
+      if (el) el.style.transform = "";
+      return;
+    }
+    dragY.current = dy;
+    const el = panelRef.current;
+    if (!el) return;
+    el.classList.add("is-dragging");
+    // Pra baixo a folha segue o dedo; pra cima ela só cede um pouco (não há
+    // pra onde ir, o gesto é só a intenção de fechar).
+    el.style.transform = `translateY(${dy > 0 ? dy : dy * 0.25}px)`;
+  };
+
+  const onBodyUp = () => {
+    if (startY.current === null) return;
+    const dy = dragY.current;
+    const borda = edge.current;
+    startY.current = null;
+    edge.current = null;
+    const el = panelRef.current;
+    if (el) {
+      el.style.transform = "";
+      el.classList.remove("is-dragging");
+    }
+    // Passou da borda com folga? Fecha — dos DOIS lados, como o usuário pediu.
+    if (borda === "top" && dy > 96) onClose();
+    else if (borda === "bottom" && dy < -96) onClose();
+  };
+
   return (
     <div
       className={open ? "axxa-sheet-layer is-open" : "axxa-sheet-layer"}
@@ -143,7 +197,16 @@ export function Sheet({
             <span className="axxa-sheet-head-spacer" aria-hidden="true" />
           )}
         </header>
-        <div className="axxa-sheet-body">{children}</div>
+        <div
+          ref={bodyRef}
+          className="axxa-sheet-body"
+          onPointerDown={onBodyDown}
+          onPointerMove={onBodyMove}
+          onPointerUp={onBodyUp}
+          onPointerCancel={onBodyUp}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -652,9 +652,6 @@ export default class AxxaPlugin extends Plugin {
     this.settingsTab = new AxxaSettingsTab(this.app, this);
     this.addSettingTab(this.settingsTab);
 
-    // Mede a navbar mobile pra compensar layout (--axxa-status-bar-clearance)
-    this.setupStatusBarClearance();
-
     // Auto-reindex do RAG (opt-in) — re-embeda notas modificadas em background
     this.setupAutoReindex();
 
@@ -668,8 +665,6 @@ export default class AxxaPlugin extends Plugin {
   }
 
   onunload() {
-    // Limpa a variável CSS pra não vazar entre reloads
-    document.documentElement.style.removeProperty("--axxa-status-bar-clearance");
     // Cancela timers/abort pendentes pra não vazar entre reloads (v0.1.228)
     if (this.autoReindexTimer !== null) {
       window.clearTimeout(this.autoReindexTimer);
@@ -685,40 +680,6 @@ export default class AxxaPlugin extends Plugin {
     }
     this.autoReindexController?.abort();
     this.autoReindexController = null;
-  }
-
-  /**
-   * Mede a altura da mobile-navbar do Obsidian e expõe via CSS variable
-   * `--axxa-status-bar-clearance`. O CSS usa essa variável pra compensar
-   * o padding-bottom da view, evitando que conteúdo fique escondido
-   * atrás de barras inferiores.
-   *
-   * Re-medido em mudanças de layout / resize (orientação, popout, etc).
-   */
-  private setupStatusBarClearance() {
-    if (!Platform.isMobile) return;
-
-    const update = () => {
-      const navbar = document.querySelector(".mobile-navbar") as HTMLElement | null;
-      const clearance = navbar?.offsetHeight ?? 0;
-      document.documentElement.style.setProperty(
-        "--axxa-status-bar-clearance",
-        `${clearance}px`
-      );
-    };
-
-    update();
-
-    // Atualiza quando o layout muda (mostrar/esconder navbar, popout, etc)
-    this.registerEvent(this.app.workspace.on("layout-change", update));
-    this.registerEvent(this.app.workspace.on("resize", update));
-    // ...e quando um setting muda: ligar/desligar o fullscreen esconde/mostra a
-    // navbar, e sem esta medida a var guardava a altura ANTIGA — o sheet do
-    // Vault Q&A ficava boiando acima da borda. O toggle roda no mesmo tick que
-    // aplica as classes, então medimos no frame seguinte. v0.1.254
-    this.settingsListeners.add(() =>
-      window.requestAnimationFrame(() => update())
-    );
   }
 
   /**

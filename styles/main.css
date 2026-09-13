@@ -21,7 +21,14 @@
    BLOCO VERBATIM da casca 0.2.37 (`git show 0.2.37:styles/main.css`, linhas
    5–242), que é a versão que roda certa no aparelho. Única adaptação: o nome
    da nossa barra de topo (`.axxa-header` → `.axxa-topbar`). Não reescrever: se
-   algo aqui parecer errado, conferir antes contra aquela versão. */
+   algo aqui parecer errado, conferir antes contra aquela versão.
+
+   NOTA (0.5.40): o `--axxa-status-bar-clearance` citado lá dentro não é mais
+   publicado por ninguém — o main.ts media a navbar e escrevia a variável, mas
+   no mobile a adaptação logo abaixo zera esse padding-bottom e no desktop ela
+   nunca era escrita. Ou seja: o valor real sempre foi o fallback `0px`, e a
+   medição inteira era trabalho jogado fora. O `var(…, 0px)` fica como está
+   pra não mexer no bloco transplantado. */
 
 
 .workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
@@ -305,6 +312,32 @@ body.is-mobile
 body.is-mobile .workspace-drawer.axxa-keyboard-open {
   height: calc(100vh - var(--keyboard-height, 0px)) !important;
   height: calc(100dvh - var(--keyboard-height, 0px)) !important;
+}
+
+/* 3. MODAL com o teclado aberto — regra da 0.2.37 (linhas 5999–6014) que se
+   perdeu no CSS zerado da 0.3.0. O ConfirmationModal do agente continua
+   pondo `.axxa-modal-keyboard-aware` em si mesmo, mas ninguém lia mais essa
+   classe: com o teclado aberto (o usuário digitou, mandou, o agente pergunta)
+   o modal ficava centralizado atrás do teclado. Volta como estava lá. */
+body.is-mobile.axxa-keyboard-open
+  .modal-container:has(.axxa-modal-keyboard-aware) {
+  align-items: flex-start !important;
+  padding-top: 16px;
+}
+
+body.is-mobile.axxa-keyboard-open
+  .modal-container:has(.axxa-modal-keyboard-aware)
+  .modal {
+  margin-top: 0;
+  max-height: calc(100vh - var(--keyboard-height, 50vh) - 32px);
+  overflow-y: auto;
+}
+
+@supports not (selector(body:has(*))) {
+  body.is-mobile.axxa-keyboard-open .modal-container {
+    align-items: flex-start !important;
+    padding-top: 16px;
+  }
 }
 
 /* ── tokens ────────────────────────────────────────────────────────────── */

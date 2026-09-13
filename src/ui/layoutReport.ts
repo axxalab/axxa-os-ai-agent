@@ -94,18 +94,10 @@ export function buildLayoutReport(containerEl: HTMLElement): string {
     )} / ${cssVar("--safe-area-inset-bottom")}`,
     `  env(safe-area-inset-*) t/r/b/l ........ ${env.top} / ${env.right} / ${env.bottom} / ${env.left}`,
     `  --navbar-height ....................... ${cssVar("--navbar-height")}`,
-    `  --axxa-status-bar-clearance ........... ${cssVar(
-      "--axxa-status-bar-clearance"
-    )}`,
     "",
     "[classes]",
     `  body .................... ${body.className || "—"}`,
     `  gaveta .................. ${drawer?.className ?? "ausente"}`,
-    `  --axxa-kb-viewport ...... ${
-      (drawer as HTMLElement | null)?.style.getPropertyValue(
-        "--axxa-kb-viewport"
-      ) || "não setada"
-    }`,
     "",
     "[geometria]  (bottom = distância do topo da tela)",
     `  gaveta .................. ${rect(drawer)}  bg=${bg(drawer, win)}`,
