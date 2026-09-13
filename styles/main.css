@@ -1394,7 +1394,8 @@ body.is-mobile .axxa-root .axxa-history-more {
 
 @media (prefers-reduced-motion: reduce) {
   .axxa-settings-root .axxa-seg::before,
-  .axxa-settings-root button.axxa-seg-item {
+  .axxa-settings-root button.axxa-seg-item,
+  .axxa-settings-root .axxa-model-section-chev {
     transition: none;
   }
 }
@@ -1515,17 +1516,62 @@ body.is-mobile .axxa-root .axxa-history-more {
   margin-left: var(--size-4-1);
 }
 
-/* Seção de FAMÍLIA dentro do papel (GPT-5, o-series, Llama…). */
-.axxa-settings-root .axxa-model-section {
+/* Seção de FAMÍLIA dentro do papel (GPT-5, o-series, Llama…). É um BOTÃO:
+   abre e fecha a classe inteira. Zera a pintura que o app.css dá a `button`
+   (`button:not(.clickable-icon)`, 0,1,1) — aqui ele é um título, não um
+   controle pintado. */
+.axxa-settings-root button.axxa-model-section {
   display: flex;
   align-items: center;
   gap: var(--size-4-2);
+  width: 100%;
   padding: var(--size-4-3) var(--size-4-4) var(--size-4-1);
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
   color: var(--text-muted);
+  font-family: inherit;
   font-size: var(--font-ui-smaller);
   font-weight: var(--font-semibold);
+  line-height: inherit;
   letter-spacing: 0.02em;
+  text-align: left;
   text-transform: uppercase;
+  cursor: pointer;
+}
+
+.axxa-settings-root button.axxa-model-section:hover,
+.axxa-settings-root button.axxa-model-section:hover:not(:disabled) {
+  background: none;
+  box-shadow: none;
+  color: var(--text-normal);
+}
+
+/* Fechada, a seção vira a linha da lista: ganha a divisória que a primeira
+   linha do grupo daria. */
+.axxa-settings-root button.axxa-model-section.is-closed {
+  padding-bottom: var(--size-4-3);
+}
+
+.axxa-settings-root .axxa-model-section-chev {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-faint);
+  transition: transform 140ms ease;
+}
+
+.axxa-settings-root .axxa-model-section-chev svg {
+  width: 15px;
+  height: 15px;
+}
+
+.axxa-settings-root button.axxa-model-section.is-closed .axxa-model-section-chev {
+  transform: rotate(-90deg);
+}
+
+.axxa-settings-root .axxa-model-fam.is-closed {
+  display: none;
 }
 
 .axxa-settings-root .axxa-model-section-ico {
@@ -1556,9 +1602,8 @@ body.is-mobile .axxa-root .axxa-history-more {
   font-weight: var(--font-normal);
 }
 
-/* A primeira linha depois do título de seção não leva divisória: o próprio
-   título já separa. */
-.axxa-settings-root .axxa-model-section + .axxa-model-row {
+/* A primeira linha do grupo não leva divisória: o título já separa. */
+.axxa-settings-root .axxa-model-fam > .axxa-model-row:first-child {
   border-top: none;
 }
 

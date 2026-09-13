@@ -14,6 +14,7 @@
 // A aba escolhida sobrevive ao re-render (indexar chama display() de novo).
 
 import { App, Notice, Platform, PluginSettingTab, Setting, setIcon } from "obsidian";
+import type { ButtonComponent } from "obsidian";
 import type AxxaPlugin from "../main";
 import { PROVIDERS, providerConfigured } from "../core/providersMeta";
 import { EFFORT_LEVELS, EFFORT_LABELS } from "../core/effort";
@@ -105,7 +106,21 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private catalog: Record<string, string[]> = {};
   /** Papel selecionado no filtro da lista de modelos ("all" = sem filtro). */
   private kind = "all";
+  /** Seções de família fechadas — chave `provider:papel:família`. */
+  private collapsed = new Set<string>();
   private fetching = false;
+
+  // Nós que o re-render PARCIAL reaproveita. Trocar de aba ou de provider
+  // chamava display(), que esvazia o container inteiro: a tela piscava como se
+  // recarregasse tudo (e recarregava mesmo — nav, blurb, todos os Setting).
+  // Agora cada controle troca só a região que ele manda.
+  private navEl: HTMLElement | null = null;
+  private blurbEl: HTMLElement | null = null;
+  private bodyEl: HTMLElement | null = null;
+  private subnavEl: HTMLElement | null = null;
+  private providerBodyEl: HTMLElement | null = null;
+  private modelsEl: HTMLElement | null = null;
+  private fetchBtn: ButtonComponent | null = null;
 
   constructor(
     app: App,
@@ -114,12 +129,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
     super(app, plugin);
   }
 
+  /** Monta a casca UMA vez: nav + blurb + corpo. Só o corpo troca depois. */
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("axxa-settings-root");
 
-    const tabs = TABS.filter((t) => !t.mobileOnly || Platform.isMobile);
+    const tabs = this.tabs();
     if (!tabs.some((t) => t.id === this.tab)) this.tab = tabs[0].id;
 
     // Segmented control, igual ao da tela inicial: trilho + thumb que desliza
@@ -132,22 +148,43 @@ export class AxxaSettingsTab extends PluginSettingTab {
       });
       btn.setAttribute("type", "button");
       btn.setAttribute("aria-pressed", String(t.id === this.tab));
-      btn.onclick = () => {
-        this.tab = t.id;
-        this.display();
-      };
+      btn.dataset.tab = t.id;
+      btn.onclick = () => this.setTab(t.id);
     }
+    this.navEl = nav;
     this.placeThumb(nav);
 
-    const current = tabs.find((t) => t.id === this.tab);
-    if (current) {
-      containerEl.createEl("p", {
-        text: current.blurb,
-        cls: "axxa-settings-blurb",
-      });
-    }
+    this.blurbEl = containerEl.createEl("p", { cls: "axxa-settings-blurb" });
+    this.bodyEl = containerEl.createDiv({ cls: "axxa-settings-body" });
+    this.renderBody();
+  }
 
-    const body = containerEl.createDiv({ cls: "axxa-settings-body" });
+  private tabs(): TabDef[] {
+    return TABS.filter((t) => !t.mobileOnly || Platform.isMobile);
+  }
+
+  /** Troca de aba SEM remontar a casca: só o estado do trilho e o corpo. */
+  private setTab(id: TabId): void {
+    if (id === this.tab) return;
+    this.tab = id;
+    if (this.navEl) {
+      for (const btn of Array.from(
+        this.navEl.querySelectorAll<HTMLElement>(".axxa-seg-item")
+      )) {
+        const active = btn.dataset.tab === id;
+        btn.toggleClass("is-active", active);
+        btn.setAttribute("aria-pressed", String(active));
+      }
+      this.placeThumb(this.navEl);
+    }
+    this.renderBody();
+  }
+
+  private renderBody(): void {
+    const body = this.bodyEl;
+    if (!body) return;
+    body.empty();
+    this.blurbEl?.setText(this.tabs().find((t) => t.id === this.tab)?.blurb ?? "");
     switch (this.tab) {
       case "providers":
         this.renderProviders(body);
@@ -218,15 +255,51 @@ export class AxxaSettingsTab extends PluginSettingTab {
       setIcon(mark, p.icon);
       btn.setAttribute("aria-label", p.name);
       btn.setAttribute("title", p.name);
-      btn.onclick = () => {
-        this.provider = p.id;
-        // Outro provider, outros papéis: um filtro herdado mostraria uma lista
-        // vazia sem explicar por quê.
-        this.kind = "all";
-        this.display();
-      };
+      btn.dataset.provider = p.id;
+      btn.onclick = () => this.setProvider(p.id);
     }
+    this.subnavEl = sub;
     this.placeThumb(sub);
+
+    this.providerBodyEl = el.createDiv();
+    this.renderProviderBody();
+  }
+
+  /** Troca de provider mexendo só no trilho e no corpo da sub-aba. */
+  private setProvider(id: string): void {
+    if (id === this.provider) return;
+    this.provider = id;
+    // Outro provider, outros papéis: um filtro herdado mostraria uma lista
+    // vazia sem explicar por quê.
+    this.kind = "all";
+    if (this.subnavEl) {
+      for (const btn of Array.from(
+        this.subnavEl.querySelectorAll<HTMLElement>(".axxa-seg-item")
+      )) {
+        const active = btn.dataset.provider === id;
+        btn.toggleClass("is-active", active);
+        btn.setAttribute("aria-pressed", String(active));
+      }
+      this.placeThumb(this.subnavEl);
+    }
+    this.renderProviderBody();
+  }
+
+  /** Reacende os logos do trilho conforme quem tem credencial. */
+  private syncReady(): void {
+    if (!this.subnavEl) return;
+    for (const btn of Array.from(
+      this.subnavEl.querySelectorAll<HTMLElement>(".axxa-seg-item")
+    )) {
+      const id = btn.dataset.provider;
+      if (id) btn.toggleClass("is-ready", providerConfigured(this.plugin, id));
+    }
+  }
+
+  private renderProviderBody(): void {
+    const el = this.providerBodyEl;
+    if (!el) return;
+    el.empty();
 
     const p = PROVIDERS.find((x) => x.id === this.provider);
     const f = PROVIDER_FIELDS[this.provider];
@@ -253,6 +326,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
             .onChange(async (v) => {
               s[key] = v.trim();
               await this.save();
+              // O trilho mostra quem já tem credencial: sem isto o logo só
+              // acenderia na próxima vez que o corpo fosse remontado.
+              this.syncReady();
             });
         });
     } else {
@@ -266,6 +342,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
             .onChange(async (v) => {
               s.ollamaEndpoint = v.trim();
               await this.save();
+              this.syncReady();
             })
         );
     }
@@ -290,23 +367,33 @@ export class AxxaSettingsTab extends PluginSettingTab {
       .setDesc(
         "Fetch what this provider offers today, then choose what shows up where."
       )
-      .addButton((b) =>
-        b
-          .setButtonText(this.fetching ? "Fetching…" : "Fetch models")
+      .addButton((b) => {
+        this.fetchBtn = b;
+        b.setButtonText(this.fetching ? "Fetching…" : "Fetch models")
           .setCta()
           .setDisabled(this.fetching)
-          .onClick(() => void this.fetchModels(p.id))
-      );
+          .onClick(() => void this.fetchModels(p.id));
+      });
+
+    this.modelsEl = el.createDiv({ cls: "axxa-models" });
+    this.renderModels();
+  }
+
+  /** A lista de modelos — o único pedaço que os toggles e o filtro remontam. */
+  private renderModels(): void {
+    const list = this.modelsEl;
+    const p = PROVIDERS.find((x) => x.id === this.provider);
+    if (!list || !p) return;
+    list.empty();
 
     // A lista é o catálogo buscado UNIDO ao que já está marcado — sem fetch,
     // o usuário ainda vê e desmarca o que configurou antes.
-    const shown = s.activeModels[p.id] ?? [];
-    const favs = s.favoriteModels?.[p.id] ?? [];
+    const shown = this.s.activeModels[p.id] ?? [];
+    const favs = this.s.favoriteModels?.[p.id] ?? [];
     const models = Array.from(
       new Set([...(this.catalog[p.id] ?? []), ...shown, ...favs])
     ).sort();
 
-    const list = el.createDiv({ cls: "axxa-models" });
     if (models.length === 0) {
       list.createEl("p", {
         cls: "axxa-models-empty",
@@ -354,7 +441,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
         if (active) btn.createSpan({ cls: "axxa-seg-label", text: it.label });
         btn.onclick = () => {
           this.kind = it.id;
-          this.display();
+          this.renderModels();
         };
       }
       this.placeThumb(filter);
@@ -367,7 +454,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
         // Família sem linhagem conhecida ("Other") vira o próprio papel: uma
         // seção "OTHER · Text embedding" não informa nada.
         const orfa = fam.id === "other";
-        const sec = list.createDiv({ cls: "axxa-model-section" });
+        const key = `${p.id}:${g.id}:${fam.id}`;
+        const closed = this.collapsed.has(key);
+
+        const sec = list.createEl("button", {
+          cls: closed ? "axxa-model-section is-closed" : "axxa-model-section",
+        });
+        sec.setAttribute("type", "button");
+        sec.setAttribute("aria-expanded", String(!closed));
         const mark = sec.createSpan({ cls: "axxa-model-section-ico" });
         setIcon(mark, orfa ? g.icon : fam.icon);
         sec.createSpan({
@@ -383,7 +477,24 @@ export class AxxaSettingsTab extends PluginSettingTab {
           cls: "axxa-model-section-count",
           text: String(fam.models.length),
         });
-        for (const m of fam.models) this.modelRow(list, p.id, m);
+        const chev = sec.createSpan({ cls: "axxa-model-section-chev" });
+        setIcon(chev, "chevron-down");
+
+        const wrap = list.createDiv({
+          cls: closed ? "axxa-model-fam is-closed" : "axxa-model-fam",
+        });
+        for (const m of fam.models) this.modelRow(wrap, p.id, m);
+
+        // Abrir/fechar é só classe: remontar a lista pra esconder linhas
+        // custaria o mesmo piscar que estamos tirando daqui.
+        sec.onclick = () => {
+          const fechar = !this.collapsed.has(key);
+          if (fechar) this.collapsed.add(key);
+          else this.collapsed.delete(key);
+          sec.toggleClass("is-closed", fechar);
+          wrap.toggleClass("is-closed", fechar);
+          sec.setAttribute("aria-expanded", String(!fechar));
+        };
       }
     }
   }
@@ -426,7 +537,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     showBtn.onclick = async () => {
       this.toggleInList("activeModels", providerId, m);
       await this.save();
-      this.display();
+      this.renderModels();
     };
 
     const isFav = favs.includes(m);
@@ -455,7 +566,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
         this.addToList("activeModels", providerId, m);
       }
       await this.save();
-      this.display();
+      this.renderModels();
     };
   }
 
@@ -463,7 +574,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private async fetchModels(providerId: string): Promise<void> {
     if (this.fetching) return;
     this.fetching = true;
-    this.display();
+    this.syncFetchBtn();
+    this.renderModels();
     try {
       const models = await this.plugin.scanModels(providerId);
       this.catalog[providerId] = models;
@@ -479,8 +591,16 @@ export class AxxaSettingsTab extends PluginSettingTab {
       );
     } finally {
       this.fetching = false;
-      this.display();
+      this.syncFetchBtn();
+      this.renderModels();
     }
+  }
+
+  /** O botão de fetch é a única coisa fora da lista que muda no fetch. */
+  private syncFetchBtn(): void {
+    this.fetchBtn
+      ?.setButtonText(this.fetching ? "Fetching…" : "Fetch models")
+      .setDisabled(this.fetching);
   }
 
   private addToList(
@@ -622,7 +742,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
             await deleteIndex(this.app.vault.adapter, s.ragIndexPath);
             this.plugin.vectorIndex = null;
             new Notice("Index deleted.");
-            this.display();
+            this.renderBody();
           })
       );
   }
@@ -683,7 +803,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const s = this.s;
     this.indexing = new AbortController();
     const notice = new Notice("Indexing vault…", 0);
-    this.display();
+    this.renderBody();
     try {
       this.plugin.vectorIndex = await indexVault(this.plugin.vectorIndex, {
         app: this.app,
@@ -717,7 +837,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       }
     } finally {
       this.indexing = null;
-      this.display();
+      this.renderBody();
     }
   }
 }
