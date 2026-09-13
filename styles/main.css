@@ -1489,6 +1489,95 @@ body.is-mobile .axxa-root .axxa-history-more {
   font-size: var(--font-ui-smaller);
 }
 
+/* Ponto de estado da conexão, ao lado de "Connection". Cinza = não testado,
+   verde = respondeu, vermelho = recusou. */
+.axxa-settings-root .axxa-conn-name {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.axxa-settings-root .axxa-conn-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-faint);
+}
+
+.axxa-settings-root .axxa-conn-dot.is-testing {
+  background-color: var(--text-muted);
+  animation: axxa-pulse 1.1s ease-in-out infinite;
+}
+
+.axxa-settings-root .axxa-conn-dot.is-ok {
+  background-color: var(--color-green);
+}
+
+.axxa-settings-root .axxa-conn-dot.is-fail {
+  background-color: var(--color-red);
+}
+
+.axxa-settings-root .axxa-conn-desc.is-ok {
+  color: var(--text-success, var(--color-green));
+}
+
+.axxa-settings-root .axxa-conn-desc.is-fail {
+  color: var(--text-error, var(--color-red));
+}
+
+@keyframes axxa-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Provider TESTADO e respondendo: ponto verde no canto do logo. "Tem chave"
+   (is-ready, o logo aceso) e "a chave funciona" são coisas diferentes. */
+.axxa-settings-root button.axxa-seg-item.is-live .axxa-seg-logo {
+  position: relative;
+}
+
+.axxa-settings-root button.axxa-seg-item.is-live .axxa-seg-logo::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-green);
+}
+
+/* Colar: aparece só quando o campo está vazio, encostado nele. */
+.axxa-settings-root button.axxa-paste-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.axxa-settings-root button.axxa-paste-btn:hover,
+.axxa-settings-root button.axxa-paste-btn:hover:not(:disabled) {
+  background-color: var(--background-modifier-hover);
+  box-shadow: none;
+  color: var(--text-normal);
+}
+
+.axxa-settings-root button.axxa-paste-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Filtro por PAPEL: segmented só de ícones, com o rótulo aparecendo no item
    ativo. Sete papéis com nome não cabem em 375px — e a régua do segmented
    aqui é a mesma de sempre: nunca quebrar em duas linhas. */

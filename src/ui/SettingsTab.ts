@@ -57,6 +57,21 @@ const PROVIDER_FIELDS: Record<string, { key?: KeyField; model: ModelField }> = {
 /** Favoritos aparecem na tela inicial; mais que isso vira lista, não atalho. */
 const FAVORITE_LIMIT = 5;
 
+/** O que a linha de conexão diz em cada estado. */
+const CONN_TEXT: Record<string, (detail?: string) => string> = {
+  unknown: () => "Not tested yet — hit Test to check the credential.",
+  testing: () => "Talking to the provider…",
+  ok: (d) => `Connected. ${d ?? ""}`.trim(),
+  fail: (d) => `Failed. ${d ?? ""}`.trim(),
+};
+
+/** Estado do teste de conexão. "unknown" = ainda não testou nesta sessão. */
+interface ConnState {
+  state: "unknown" | "testing" | "ok" | "fail";
+  /** Quantos modelos o provider respondeu (ok) ou o erro (fail). */
+  detail?: string;
+}
+
 type TabId = "providers" | "chat" | "vault" | "rag" | "agent" | "mobile";
 
 interface TabDef {
@@ -106,8 +121,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private catalog: Record<string, string[]> = {};
   /** Papel selecionado no filtro da lista de modelos ("all" = sem filtro). */
   private kind = "all";
-  /** Seções de família fechadas — chave `provider:papel:família`. */
-  private collapsed = new Set<string>();
+  /** A ÚNICA seção de família aberta (`provider:papel:família`). Nascem todas
+   *  fechadas: com sete classes abertas a lista volta a ser a rolagem sem fim
+   *  que o agrupamento veio resolver. */
+  private openFam: string | null = null;
+  /** Resultado do último teste de conexão de cada provider (só na sessão). */
+  private conn: Record<string, ConnState> = {};
   private fetching = false;
 
   // Nós que o re-render PARCIAL reaproveita. Trocar de aba ou de provider
@@ -259,6 +278,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       btn.onclick = () => this.setProvider(p.id);
     }
     this.subnavEl = sub;
+    this.syncReady();
     this.placeThumb(sub);
 
     this.providerBodyEl = el.createDiv();
@@ -285,6 +305,69 @@ export class AxxaSettingsTab extends PluginSettingTab {
     this.renderProviderBody();
   }
 
+  /**
+   * Botão "colar" no fim da linha, pro campo que está vazio. Lê o clipboard só
+   * no clique — nunca sozinho — e não registra o conteúdo em lugar nenhum.
+   */
+  private addPasteButton(
+    row: Setting,
+    field: KeyField | "ollamaEndpoint"
+  ): void {
+    const btn = row.controlEl.createEl("button", { cls: "axxa-paste-btn" });
+    btn.setAttribute("type", "button");
+    btn.setAttribute("aria-label", "Paste from clipboard");
+    btn.setAttribute("title", "Paste from clipboard");
+    setIcon(btn, "clipboard-paste");
+    btn.onclick = async () => {
+      let text = "";
+      try {
+        text = (await navigator.clipboard.readText()).trim();
+      } catch {
+        new Notice("This device won't let the plugin read the clipboard — paste into the field by hand.");
+        return;
+      }
+      if (!text) {
+        new Notice("Clipboard is empty.");
+        return;
+      }
+      this.s[field] = text;
+      await this.save();
+      // Some o botão, aparece a chave, e o trilho acende.
+      this.renderProviderBody();
+      this.syncReady();
+      new Notice("Pasted.");
+    };
+  }
+
+  /**
+   * Testa a credencial pedindo a lista de modelos ao provider. É o mesmo
+   * caminho do "Fetch models" — e como a resposta JÁ é o catálogo, guardar ele
+   * aqui evita uma segunda ida à rede pra pedir o que acabou de chegar.
+   */
+  private async testConnection(providerId: string): Promise<void> {
+    if (this.conn[providerId]?.state === "testing") return;
+    this.conn[providerId] = { state: "testing" };
+    this.renderProviderBody();
+    try {
+      const models = await this.plugin.scanModels(providerId);
+      if (models.length > 0) this.catalog[providerId] = models;
+      this.conn[providerId] = {
+        state: "ok",
+        detail:
+          models.length > 0
+            ? `${models.length} models available.`
+            : "The provider answered, but listed no models.",
+      };
+    } catch (err) {
+      this.conn[providerId] = {
+        state: "fail",
+        detail: err instanceof Error ? err.message : String(err),
+      };
+    }
+    this.renderProviderBody();
+    this.syncReady();
+  }
+
   /** Reacende os logos do trilho conforme quem tem credencial. */
   private syncReady(): void {
     if (!this.subnavEl) return;
@@ -292,7 +375,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
       this.subnavEl.querySelectorAll<HTMLElement>(".axxa-seg-item")
     )) {
       const id = btn.dataset.provider;
-      if (id) btn.toggleClass("is-ready", providerConfigured(this.plugin, id));
+      if (!id) continue;
+      btn.toggleClass("is-ready", providerConfigured(this.plugin, id));
+      // Ponto verde = testado e respondendo. Dá pra ver os seis de uma vez.
+      btn.toggleClass("is-live", this.conn[id]?.state === "ok");
     }
   }
 
@@ -316,7 +402,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     if (f.key) {
       const key = f.key;
-      new Setting(el)
+      const row = new Setting(el)
         .setName("API key")
         .setDesc("Stored in the OS keychain (not in data.json).")
         .addText((t) => {
@@ -331,8 +417,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
               this.syncReady();
             });
         });
+      // Colar: só no campo VAZIO. Chave de API não se digita no celular — vem
+      // colada do gerenciador de senhas, e o toque longo no campo de senha é
+      // justamente onde o teclado do Android costuma não oferecer "colar".
+      if (!s[key]) this.addPasteButton(row, key);
     } else {
-      new Setting(el)
+      const row = new Setting(el)
         .setName("Endpoint")
         .setDesc("Local server address. Ollama needs no key.")
         .addText((t) =>
@@ -345,7 +435,26 @@ export class AxxaSettingsTab extends PluginSettingTab {
               this.syncReady();
             })
         );
+      if (!s.ollamaEndpoint) this.addPasteButton(row, "ollamaEndpoint");
     }
+
+    // ── conexão ───────────────────────────────────────────────────────────
+    // "Tem chave" e "a chave funciona" são coisas diferentes; o trilho mostra a
+    // primeira, esta linha mostra a segunda. O teste é o listModels do próprio
+    // provider (o motor já tem) — se ele responde, a credencial vale.
+    const st = this.conn[p.id] ?? { state: "unknown" };
+    const conn = new Setting(el)
+      .setName("Connection")
+      .setDesc(CONN_TEXT[st.state](st.detail))
+      .addButton((b) => {
+        b.setButtonText(st.state === "testing" ? "Testing…" : "Test")
+          .setDisabled(st.state === "testing" || !providerConfigured(this.plugin, p.id))
+          .onClick(() => void this.testConnection(p.id));
+      });
+    conn.nameEl.addClass("axxa-conn-name");
+    const dot = conn.nameEl.createSpan({ cls: `axxa-conn-dot is-${st.state}` });
+    conn.nameEl.prepend(dot);
+    conn.descEl.addClass(`axxa-conn-desc`, `is-${st.state}`);
 
     const modelField = f.model;
     new Setting(el)
@@ -449,13 +558,25 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     const visible =
       this.kind === "all" ? groups : groups.filter((g) => g.id === this.kind);
+    // Acordeão: uma classe aberta por vez. Guardo os pares pra abrir/fechar só
+    // trocando classe — remontar a lista seria o piscar que já tiramos daqui.
+    const panes: { key: string; sec: HTMLElement; wrap: HTMLElement }[] = [];
+    const applyOpen = () => {
+      for (const pane of panes) {
+        const closed = pane.key !== this.openFam;
+        pane.sec.toggleClass("is-closed", closed);
+        pane.wrap.toggleClass("is-closed", closed);
+        pane.sec.setAttribute("aria-expanded", String(!closed));
+      }
+    };
+
     for (const g of visible) {
       for (const fam of g.families) {
         // Família sem linhagem conhecida ("Other") vira o próprio papel: uma
         // seção "OTHER · Text embedding" não informa nada.
         const orfa = fam.id === "other";
         const key = `${p.id}:${g.id}:${fam.id}`;
-        const closed = this.collapsed.has(key);
+        const closed = key !== this.openFam;
 
         const sec = list.createEl("button", {
           cls: closed ? "axxa-model-section is-closed" : "axxa-model-section",
@@ -485,15 +606,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
         });
         for (const m of fam.models) this.modelRow(wrap, p.id, m);
 
-        // Abrir/fechar é só classe: remontar a lista pra esconder linhas
-        // custaria o mesmo piscar que estamos tirando daqui.
+        panes.push({ key, sec, wrap });
         sec.onclick = () => {
-          const fechar = !this.collapsed.has(key);
-          if (fechar) this.collapsed.add(key);
-          else this.collapsed.delete(key);
-          sec.toggleClass("is-closed", fechar);
-          wrap.toggleClass("is-closed", fechar);
-          sec.setAttribute("aria-expanded", String(!fechar));
+          this.openFam = this.openFam === key ? null : key;
+          applyOpen();
         };
       }
     }

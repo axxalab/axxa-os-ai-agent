@@ -42,7 +42,7 @@ export class Setting {
   // provider). Criados no construtor, iguais aos de la.
   nameEl: HTMLElement;
   descEl: HTMLElement;
-  private controlEl: HTMLElement;
+  controlEl: HTMLElement;
 
   constructor(el?: HTMLElement) {
     this.settingEl = document.createElement("div");
