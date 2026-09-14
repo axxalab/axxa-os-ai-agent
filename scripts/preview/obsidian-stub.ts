@@ -319,15 +319,20 @@ export const MarkdownRenderer = {
     // produz (e onde o Prism dele pinta os tokens). Sem isto o preview não
     // mostrava bloco de código NENHUM — a formatação sumia calada.
     let cerca: { marca: string; lang: string; linhas: string[] } | null = null;
+    // O Obsidian injeta um botão de copiar dentro de todo bloco de código. Sem
+    // ele aqui, o preview mostrava um bloco que não existe no aparelho — e foi
+    // justamente o botão que apareceu fora do lugar.
+    const bloco = (lang: string, linhas: string[]) =>
+      '<pre><button class="copy-code-button">Copy</button><code class="language-' +
+      lang +
+      '">' +
+      esc(linhas.join(String.fromCharCode(10))) +
+      "</code></pre>";
     for (const linha of text.split(String.fromCharCode(10))) {
       const abre = linha.match(/^ {0,3}(`{3,}|~{3,})\s*([A-Za-z0-9_+-]*)\s*$/);
       if (cerca) {
         if (abre && abre[1][0] === cerca.marca[0] && abre[1].length >= cerca.marca.length) {
-          out.push(
-            '<pre><code class="language-' + cerca.lang + '">' +
-              esc(cerca.linhas.join(String.fromCharCode(10))) +
-              "</code></pre>"
-          );
+          out.push(bloco(cerca.lang, cerca.linhas));
           cerca = null;
         } else {
           cerca.linhas.push(linha);
@@ -375,13 +380,7 @@ export const MarkdownRenderer = {
     }
     fechaLista();
     fechaTabela();
-    if (cerca) {
-      out.push(
-        '<pre><code class="language-' + cerca.lang + '">' +
-          esc(cerca.linhas.join(String.fromCharCode(10))) +
-          "</code></pre>"
-      );
-    }
+    if (cerca) out.push(bloco(cerca.lang, cerca.linhas));
     el.innerHTML = out.join("");
   },
 };

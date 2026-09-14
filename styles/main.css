@@ -823,13 +823,17 @@ body.theme-dark {
    empurrar a conversa — e as cores dos tokens são do Prism do Obsidian, então
    aqui não se define `color` em descendente nenhum. */
 .axxa-root .axxa-markdown pre {
+  position: relative;
   margin-block: 0.9em;
   padding: var(--axxa-3);
   border: 1px solid var(--axxa-line);
-  border-radius: var(--axxa-r-md);
+  border-radius: var(--axxa-r-lg);
   background-color: var(--code-background, var(--axxa-raised));
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
+  /* Quem rola é o <code>, não o <pre>: um filho absoluto dentro de um
+     scroller ANDA junto com o conteúdo, e o botão de copiar ia passear pro
+     lado ao rolar o código. Com o scroll um nível abaixo, ele fica firme no
+     canto. */
+  overflow: visible;
 }
 
 .axxa-root .axxa-markdown pre > code {
@@ -841,6 +845,39 @@ body.theme-dark {
   font-size: 0.82em;
   line-height: 1.5;
   white-space: pre;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/* O botão de copiar do Obsidian. As regras dele são todas escopadas em
+   `.markdown-rendered`, e o nosso container não é — por isso ele caía no
+   fluxo, embaixo e à esquerda, empurrando a altura do bloco. Aqui ele volta
+   pro lugar: canto de cima à direita, flutuando sobre o código. */
+.axxa-root .axxa-markdown pre > button.copy-code-button {
+  position: absolute;
+  top: var(--axxa-2);
+  inset-inline-end: var(--axxa-2);
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 5px 8px;
+  border: none;
+  border-radius: var(--axxa-r-sm);
+  /* Fundo OPACO, igual ao do bloco: a linha longa passa por baixo dele ao
+     rolar, e com fundo translúcido os dois viravam um borrão. O contorno de
+     1px é o que separa o botão do código. */
+  background-color: var(--code-background, var(--axxa-raised));
+  box-shadow: 0 0 0 1px var(--axxa-line);
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-smaller);
+  line-height: 1;
+}
+
+.axxa-root .axxa-markdown pre > button.copy-code-button:hover {
+  background-color: var(--background-modifier-hover);
+  box-shadow: 0 0 0 1px var(--axxa-line);
+  color: var(--text-normal);
 }
 
 /* TABELA com grade de verdade. Sem isto ela saía como texto solto: as colunas
