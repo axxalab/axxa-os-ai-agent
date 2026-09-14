@@ -421,11 +421,17 @@ export function ChatView({
     // A chave é lida AGORA: o 1º envio de uma conversa nova ganha um id no meio
     // do send, e limpar depois apagaria o rascunho da conversa errada.
     const chave = draftKey;
+    // Limpa NA HORA. `send()` só resolve quando a rodada INTEIRA termina — se
+    // a limpeza esperar por isso, o texto fica no campo durante toda a
+    // resposta e, quando ela acaba, apaga o que a pessoa escreveu no meio.
+    writeDraft(chave, "");
     const foi = await session.send(text);
-    // Só limpa o que de fato virou mensagem. Sem key na 1ª mensagem o send
-    // desiste antes de criar a bolha do usuário — aí o texto tem que voltar
-    // pro campo, não sumir das duas pontas.
-    if (foi) writeDraft(chave, "");
+    // Devolve se o envio nem engatou (sem key na 1ª mensagem, por exemplo).
+    // Essa desistência é síncrona, então a volta é imediata — e só acontece se
+    // o campo continuar vazio, pra não passar por cima de outra frase.
+    if (!foi && !(useChatStore.getState().drafts[chave] ?? "").trim()) {
+      writeDraft(chave, text);
+    }
   };
 
   // Abrir uma sheet tira o foco do campo — senão o teclado sobe por cima dela.
