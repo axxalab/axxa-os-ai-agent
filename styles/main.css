@@ -1013,7 +1013,14 @@ body.theme-dark {
   padding: var(--axxa-3);
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-lg);
-  background-color: var(--axxa-canvas);
+  /* O cartão de escrever é a superfície ELEVADA aqui — mas translúcida, pra
+     não virar um bloco sólido colado na conversa. A faixa atrás é opaca
+     (canvas), então a mistura é estável e não depende do que está rolando
+     atrás; por isso também não há blur: não haveria o que borrar. */
+  background-color: color-mix(in srgb, var(--axxa-raised) 62%, transparent);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 6px 18px rgba(0, 0, 0, 0.16);
 }
 
 .axxa-root .axxa-input:focus-within {
@@ -1097,7 +1104,9 @@ body.theme-dark {
   padding: 4px 4px 4px 6px;
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-pill);
-  background-color: var(--axxa-raised);
+  /* Os pills usam a cor da FAIXA: eles são etiquetas do que vai junto, não uma
+     superfície própria — quem tem superfície é o cartão de escrever. */
+  background-color: var(--axxa-canvas);
   color: var(--text-normal);
   font-size: var(--font-ui-smaller);
 }
