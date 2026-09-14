@@ -278,6 +278,40 @@ export function Sheet({
 }
 
 /** Cartão que agrupa linhas (divisória entre elas, cantos arredondados). */
+/** A fileira de três do topo da folha — os caminhos principais, grandes o
+ *  bastante pra acertar com o polegar. O que é secundário desce pra lista. */
+export function SheetTiles({ children }: { children: ReactNode }) {
+  return <div className="axxa-sheet-tiles">{children}</div>;
+}
+
+export function SheetTile({
+  icon,
+  label,
+  /** Explicação curta quando o caminho não está disponível agora. */
+  hint,
+  disabled,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  hint?: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={disabled ? "axxa-sheet-tile is-off" : "axxa-sheet-tile"}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon name={icon} size={26} />
+      <span className="axxa-sheet-tile-label">{label}</span>
+      {hint && <span className="axxa-sheet-tile-hint">{hint}</span>}
+    </button>
+  );
+}
+
 /** Campo de busca no topo de uma folha (lista de notas). Fica ACIMA da lista
  *  de propósito: com o teclado aberto, o que sobra de tela é o topo. */
 export function SheetSearch({
@@ -415,6 +449,8 @@ export function SheetRow({
   dense,
   icon,
   iconTone,
+  badge,
+  chevron,
   onClick,
 }: {
   title: string;
@@ -432,6 +468,10 @@ export function SheetRow({
   icon?: string;
   /** "danger" pinta o ícone de vermelho (ação que falhou). */
   iconTone?: "danger";
+  /** Ícone dentro de um círculo (linhas de destino, como no "+"). */
+  badge?: boolean;
+  /** Seta à direita — a linha leva pra outro lugar. */
+  chevron?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -448,11 +488,10 @@ export function SheetRow({
       {icon && (
         <Icon
           name={icon}
-          size={dense ? 16 : 18}
+          size={badge ? 20 : dense ? 16 : 18}
           className={
-            iconTone === "danger"
-              ? "axxa-sheet-row-icon is-danger"
-              : "axxa-sheet-row-icon"
+            (badge ? "axxa-sheet-row-icon is-badge" : "axxa-sheet-row-icon") +
+            (iconTone === "danger" ? " is-danger" : "")
           }
         />
       )}
@@ -474,6 +513,9 @@ export function SheetRow({
         </span>
       )}
       {selected && <Icon name="check" size={20} className="axxa-sheet-check" />}
+      {chevron && (
+        <Icon name="chevron-right" size={18} className="axxa-sheet-chev" />
+      )}
     </button>
   );
 }

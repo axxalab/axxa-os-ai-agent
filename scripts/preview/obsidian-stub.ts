@@ -25,6 +25,21 @@ const FAKE_WORDS =
 let fakeCalls = 0;
 
 export async function requestUrl(opts: { url?: string }): Promise<unknown> {
+  // Página web de mentira — é o que o "Link" do "+" busca. Sem isso não dava
+  // pra ver o anexo de link nascer.
+  if (opts?.url && /^https?:/.test(opts.url) && !/\/v1\//.test(opts.url)) {
+    await new Promise((r) => setTimeout(r, 300));
+    return {
+      status: 200,
+      text: [
+        "<html><head><title>Spaced repetition — Wikipedia</title></head>",
+        "<body><script>ignora()</script><h1>Spaced repetition</h1>",
+        "<p>Spaced repetition is an evidence-based learning technique.</p>",
+        "<p>It is usually performed with flashcards &amp; software.</p>",
+        "</body></html>",
+      ].join(""),
+    };
+  }
   // O preview NÃO fala com a rede. A transcrição é a exceção MODELADA: sem ela
   // não dá pra ver o texto crescendo, que é o coração do modo de voz.
   if (opts?.url && /audio\/transcriptions/.test(opts.url)) {
@@ -244,6 +259,15 @@ export class Setting {
 }
 export class TFile {}
 export class TFolder {}
+/** Base64 de um ArrayBuffer — o Obsidian expõe isso e a casca usa pra anexar
+ *  um artefato do vault como imagem. */
+export function arrayBufferToBase64(buf: ArrayBuffer): string {
+  let bin = "";
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
 export class Component {
   load() {}
   unload() {}

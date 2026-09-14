@@ -986,6 +986,63 @@ body.theme-dark {
   color: var(--text-normal);
 }
 
+/* Os três caminhos principais do "+": cartões VAZADOS lado a lado, ícone em
+   cima e nome embaixo. São os destinos grandes; o que é secundário desce pra
+   lista de baixo, cheia. */
+.axxa-root .axxa-sheet-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--axxa-2);
+  margin-bottom: var(--axxa-3);
+}
+
+.axxa-root button.axxa-sheet-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--axxa-2);
+  min-height: 104px;
+  padding: var(--axxa-3) var(--axxa-2);
+  border: 1px solid var(--axxa-line);
+  border-radius: var(--axxa-r-lg);
+  background: none;
+  box-shadow: none;
+  color: var(--text-normal);
+  text-align: center;
+}
+
+.axxa-root button.axxa-sheet-tile:hover:not(:disabled) {
+  background-color: var(--axxa-hover);
+}
+
+/* Indisponível NÃO some: some esconde o caminho e deixa a pessoa procurando.
+   Fica visível, apagado, e diz por quê. */
+.axxa-root button.axxa-sheet-tile.is-off,
+.axxa-root button.axxa-sheet-tile:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.axxa-root .axxa-sheet-tile-label {
+  font-size: var(--font-ui-medium);
+  line-height: 1.2;
+}
+
+.axxa-root .axxa-sheet-tile-hint {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+/* Brasão redondo das linhas de destino (PDF, link, skill, artefato). */
+.axxa-root .axxa-sheet-row-icon.is-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-hover);
+  color: var(--text-normal);
+}
+
 /* Busca dentro da folha (lista de notas). */
 .axxa-root .axxa-sheet-search {
   display: flex;

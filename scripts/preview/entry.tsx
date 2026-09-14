@@ -32,8 +32,14 @@ const plugin = {
   app: {
     vault: {
       getMarkdownFiles: () => FAKE_NOTES,
+      // getFiles inclui a MÍDIA — é dela que sai a lista de artefatos.
+      getFiles: () => [...FAKE_NOTES, ...FAKE_ARTIFACTS],
       getAbstractFileByPath: (p: string) =>
-        FAKE_NOTES.find((f) => f.path === p) ?? null,
+        [...FAKE_NOTES, ...FAKE_ARTIFACTS].find((f) => f.path === p) ?? null,
+      adapter: {
+        readBinary: async () =>
+          Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]).buffer,
+      },
       cachedRead: async (f: { path: string }) =>
         `# ${f.path.split("/").pop()}
 
@@ -308,13 +314,21 @@ if (scenario === "thread") {
 /** Notas do vault falso — nomes parecidos de propósito, que é onde o ranking
  *  do buscador mostra serviço. */
 const FAKE_NOTES = [
-  { path: "PROJECTS/FRAMEWORKS.md", basename: "FRAMEWORKS", stat: { mtime: 5 } },
-  { path: "PROJECTS/CREATIVE SYSTEMS.md", basename: "CREATIVE SYSTEMS", stat: { mtime: 8 } },
-  { path: "DAILY/2026-09-14.md", basename: "2026-09-14", stat: { mtime: 99 } },
-  { path: "TASKS/Inbox.md", basename: "Inbox", stat: { mtime: 40 } },
-  { path: "Learning/Spaced repetition.md", basename: "Spaced repetition", stat: { mtime: 30 } },
-  { path: "Notas/2024/framing-de-produto/rascunho.md", basename: "rascunho", stat: { mtime: 10 } },
-  { path: "NUTRITION 1.0/Plano semanal.md", basename: "Plano semanal", stat: { mtime: 20 } },
+  { path: "PROJECTS/FRAMEWORKS.md", basename: "FRAMEWORKS", extension: "md", stat: { mtime: 5 } },
+  { path: "PROJECTS/CREATIVE SYSTEMS.md", basename: "CREATIVE SYSTEMS", extension: "md", stat: { mtime: 8 } },
+  { path: "DAILY/2026-09-14.md", basename: "2026-09-14", extension: "md", stat: { mtime: 99 } },
+  { path: "TASKS/Inbox.md", basename: "Inbox", extension: "md", stat: { mtime: 40 } },
+  { path: "Learning/Spaced repetition.md", basename: "Spaced repetition", extension: "md", stat: { mtime: 30 } },
+  { path: "Notas/2024/framing-de-produto/rascunho.md", basename: "rascunho", extension: "md", stat: { mtime: 10 } },
+  { path: "NUTRITION 1.0/Plano semanal.md", basename: "Plano semanal", extension: "md", stat: { mtime: 20 } },
+];
+
+/** O que o plugin "gerou" — a lista de artefatos do "+". */
+const FAKE_ARTIFACTS = [
+  { path: "axxa-ai/generation/images/1731-gato-de-oculos.png", basename: "1731-gato-de-oculos", extension: "png", stat: { mtime: 900 } },
+  { path: "axxa-ai/generation/images/1731-gato-de-oculos.md", basename: "1731-gato-de-oculos", extension: "md", stat: { mtime: 901 } },
+  { path: "axxa-ai/generation/audio/1730-resumo-falado.mp3", basename: "1730-resumo-falado", extension: "mp3", stat: { mtime: 800 } },
+  { path: "axxa-ai/generation/video/1729-clipe.mp4", basename: "1729-clipe", extension: "mp4", stat: { mtime: 700 } },
 ];
 
 /** Conteúdo de exemplo do modal de aprovação (?s=confirm). */

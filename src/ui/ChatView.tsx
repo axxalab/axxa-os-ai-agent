@@ -15,7 +15,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { Notice, Platform } from "obsidian";
+import {
+  arrayBufferToBase64,
+  Notice,
+  Platform,
+  requestUrl,
+} from "obsidian";
 import type AxxaPlugin from "../main";
 import {
   NEW_CHAT_DRAFT,
@@ -49,6 +54,22 @@ import { speak, stopSpeaking } from "./readAloud";
 import { commit, screen, warn } from "./haptics";
 import { composerMaxHeight, readKeyboardHeight } from "./composerSize";
 import { pasteIsBig, pastedNote } from "./pasteAttachment";
+import {
+  htmlTitle,
+  htmlToText,
+  isImageExt,
+  linkNote,
+  normalizeUrl,
+  rankArtifacts,
+  vaultArtifacts,
+  attachmentIcon,
+  attachmentLabel,
+  artifactIcon,
+  GENERATION_DIR,
+  type ArtifactLike,
+} from "./attachSources";
+import { getModelCapabilities } from "../providers/modelCapabilities";
+import { PromptModal } from "./modals";
 import { VoiceDock } from "./VoiceBar";
 import {
   Sheet,
@@ -58,6 +79,8 @@ import {
   SheetRow,
   SheetSearch,
   SheetSeg,
+  SheetTile,
+  SheetTiles,
 } from "./Sheet";
 import {
   rankNotes,
@@ -74,6 +97,14 @@ const MODE_PLACEHOLDER: Record<string, string> = {
   chat: "Message the model…",
   "vault-qa": "Ask something about your notes…",
   agent: "Tell the agent what to do in your vault…",
+};
+
+/** Título da folha do "+" em cada nível. */
+const PLUS_SHEET_TITLE: Record<string, string> = {
+  root: "Add context",
+  notes: "Attach note",
+  skills: "Use a skill",
+  artifacts: "Attach artifact",
 };
 
 /** Título da folha de modelos em cada nível. */
@@ -155,10 +186,17 @@ export function ChatView({
   const [mention, setMention] = useState<{ start: number; query: string } | null>(
     null
   );
-  /** Nível da folha do "+": a raiz ou o buscador de notas. */
-  const [plusView, setPlusView] = useState<"root" | "notes">("root");
+  /** Nível da folha do "+": a raiz, ou uma das listas. */
+  const [plusView, setPlusView] = useState<
+    "root" | "notes" | "skills" | "artifacts"
+  >("root");
   const [noteQuery, setNoteQuery] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
+  /** Três seletores nativos: galeria, câmera e PDF. São inputs separados
+   *  porque `capture` muda o comportamento do aparelho — o mesmo input não
+   *  pode ser as duas coisas. */
+  const imageRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const pdfRef = useRef<HTMLInputElement>(null);
   /** Ações do agente abertas na folha (null = fechada) e qual delas está
    *  aberta no segundo nível. */
   const [tools, setTools] = useState<TurnAction[] | null>(null);
@@ -342,6 +380,77 @@ export function ChatView({
     }, 0);
   };
 
+  /** PDF: vai como anexo mesmo quando o modelo não lê — nesse caso o motor
+   *  registra o arquivo na conversa em vez de mandar, e o aviso já apareceu na
+   *  linha do menu. */
+  const anexarPdf = (file: File) => {
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      const dataUrl = String(leitor.result ?? "");
+      if (!dataUrl.startsWith("data:")) return;
+      addAttachment({ type: "pdf", name: file.name, dataUrl });
+    };
+    leitor.onerror = () => new Notice("Could not read that file.");
+    leitor.readAsDataURL(file);
+  };
+
+  /** Link: busca a página e anexa o TEXTO dela. Sem isto, colar uma URL só
+   *  dava ao modelo o endereço — e ele não navega. */
+  const anexarLink = async () => {
+    const digitado = await new PromptModal(plugin.app, {
+      title: "Attach link",
+      label: "Address",
+      placeholder: "https://…",
+      submitLabel: "Fetch",
+    }).openAndWait();
+    const url = normalizeUrl(digitado ?? "");
+    if (!url) {
+      if (digitado) new Notice("That doesn't look like an address.");
+      return;
+    }
+    const aviso = new Notice(`Fetching ${url}…`, 0);
+    try {
+      // `requestUrl` do Obsidian: sem CORS, que é o que faz isso funcionar no
+      // celular.
+      const res = await requestUrl({ url });
+      const texto = htmlToText(res.text ?? "");
+      if (!texto) {
+        new Notice("Nothing readable at that address.");
+        return;
+      }
+      addAttachment(linkNote(url, htmlTitle(res.text ?? ""), texto));
+    } catch {
+      new Notice("Could not reach that address.");
+    } finally {
+      aviso.hide();
+    }
+  };
+
+  /** Artefato: o que o plugin gerou volta pra conversa. Imagem vira anexo de
+   *  imagem de verdade (o modelo VÊ); o resto entra como referência. */
+  const anexarArtefato = async (a: ArtifactLike) => {
+    try {
+      if (isImageExt(a.extension) && modeloVeImagem) {
+        const bin = await plugin.app.vault.adapter.readBinary(a.path);
+        const mime = a.extension.toLowerCase() === "png" ? "image/png" : "image/jpeg";
+        addAttachment({
+          type: "image",
+          dataUrl: `data:${mime};base64,${arrayBufferToBase64(bin)}`,
+          mimeType: mime,
+          name: `${a.basename}.${a.extension}`,
+        });
+        return;
+      }
+      addAttachment({
+        type: "note",
+        path: a.path,
+        content: `Arquivo gerado pelo plugin: ${a.path}`,
+      });
+    } catch {
+      new Notice("Could not read that file.");
+    }
+  };
+
   /** Colar. Duas coisas que o campo não fazia:
    *   - imagem da área de transferência (print) vira anexo
    *   - bloco grande vira anexo em vez de virar parede de texto */
@@ -474,9 +583,20 @@ export function ChatView({
     [mention, plugin.app]
   );
 
-  /** O modelo da sessão enxerga imagem? */
+  /** O que ESTE modelo aceita como entrada. Imagem e PDF não somem do menu
+   *  quando ele não lê — aparecem indisponíveis, que é diferente de não
+   *  existir. */
+  const caps = getModelCapabilities(cfg.provider, cfg.model);
   const modeloVeImagem =
+    caps.vision ||
     getModelCard(cfg.provider, cfg.model).category === "chat-vision";
+  const modeloLePdf = caps.pdf === true;
+
+  /** O que o próprio plugin gerou (imagens, áudio, vídeo). */
+  const artefatos = useMemo(() => {
+    if (sheet !== "plus" || plusView !== "artifacts") return [];
+    return rankArtifacts(vaultArtifacts(plugin.app));
+  }, [sheet, plusView, plugin.app]);
 
   // Os dois blocos do cartão de modelos. Favoritar já implica Show, então o
   // segundo bloco tira os favoritos pra ninguém aparecer duas vezes.
@@ -757,15 +877,38 @@ export function ChatView({
                 >
                   <Icon name="plus" size={22} />
                 </button>
-                {/* Seletor nativo: no celular é ele que abre galeria/câmera. */}
+                {/* Seletores nativos: galeria, câmera e PDF. */}
                 <input
-                  ref={fileRef}
+                  ref={imageRef}
                   type="file"
                   accept="image/*"
                   hidden
                   onChange={(e) => {
                     const f = e.currentTarget.files?.[0];
                     if (f) anexarImagem(f);
+                    e.currentTarget.value = "";
+                  }}
+                />
+                <input
+                  ref={cameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.currentTarget.files?.[0];
+                    if (f) anexarImagem(f);
+                    e.currentTarget.value = "";
+                  }}
+                />
+                <input
+                  ref={pdfRef}
+                  type="file"
+                  accept="application/pdf"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.currentTarget.files?.[0];
+                    if (f) anexarPdf(f);
                     e.currentTarget.value = "";
                   }}
                 />
@@ -947,11 +1090,15 @@ export function ChatView({
 
       {/* O "+" abre o que dá pra ACRESCENTAR à conversa. Hoje são as skills —
           o mesmo atalho da tela inicial, alcançável no meio do papo. */}
+      {/* O "+": três caminhos grandes em cima (nota, câmera, imagem) e o
+          resto em lista — PDF, link, skill, artefato. Desenho da referência:
+          cartões vazados na fileira, e as linhas num cartão cheio com brasão
+          redondo e seta. */}
       <Sheet
-        title={plusView === "notes" ? "Attach note" : "Add to chat"}
+        title={PLUS_SHEET_TITLE[plusView]}
         open={sheet === "plus"}
         onClose={closeSheet}
-        onBack={plusView === "notes" ? () => setPlusView("root") : undefined}
+        onBack={plusView === "root" ? undefined : () => setPlusView("root")}
       >
         {plusView === "notes" ? (
           <>
@@ -979,91 +1126,130 @@ export function ChatView({
               )}
             </SheetGroup>
           </>
-        ) : (
-        <>
-        <SheetGroup>
-          <SheetNavRow
-            title="Attach note"
-            note="From your vault"
-            onClick={() => {
-              setNoteQuery("");
-              setPlusView("notes");
-            }}
-          />
-          {/* Imagem só onde ela serve: modelo sem visão ignoraria o anexo. */}
-          {modeloVeImagem && (
-            <SheetRow
-              title="Attach image"
-              note="Photo or screenshot"
-              icon="image"
-              onClick={() => {
-                closeSheet();
-                fileRef.current?.click();
-              }}
-            />
-          )}
-        </SheetGroup>
-        <SheetGroup>
-          {plugin.skills.map((sk) => (
-            <SheetRow
-              key={sk.id}
-              title={sk.name}
-              note={sk.description}
-              onClick={() => {
-                onUseSkill(sk);
-                closeSheet();
-              }}
-            />
-          ))}
-          {plugin.skills.length === 0 && (
-            <SheetNote>
-              No skills yet — they live as notes in your vault, and show up here
-              once you create one.
-            </SheetNote>
-          )}
-        </SheetGroup>
-        </>
-        )}
-      </Sheet>
-
-      {/* O que o agente fez: lista numa folha, e cada ação abre a sua com
-          argumentos e resultado — o mesmo vai-e-volta da folha de modelos. */}
-      <Sheet
-        title={
-          toolAt !== null && tools
-            ? actionTitle(tools[toolAt])
-            : `Ran ${tools?.length ?? 0} ${
-                (tools?.length ?? 0) === 1 ? "action" : "actions"
-              }`
-        }
-        open={tools !== null}
-        onClose={() => {
-          setTools(null);
-          setToolAt(null);
-        }}
-        onBack={
-          toolAt !== null && (tools?.length ?? 0) > 1
-            ? () => setToolAt(null)
-            : undefined
-        }
-      >
-        {toolAt !== null && tools ? (
-          <ToolDetail action={tools[toolAt]} />
-        ) : (
+        ) : plusView === "skills" ? (
           <SheetGroup>
-            {(tools ?? []).map((a, i) => (
+            {plugin.skills.map((sk) => (
               <SheetRow
-                key={i}
-                dense
-                icon={actionIcon(a)}
-                iconTone={actionFailed(a) ? "danger" : undefined}
-                title={actionTitle(a)}
-                note={actionNote(a)}
-                tag={actionFailed(a) ? "failed" : undefined}
-                onClick={() => setToolAt(i)}
+                key={sk.id}
+                title={sk.name}
+                note={sk.description}
+                onClick={() => {
+                  onUseSkill(sk);
+                  closeSheet();
+                }}
               />
             ))}
+            {plugin.skills.length === 0 && (
+              <SheetNote>
+                No skills yet — they live as notes in your vault, and show up
+                here once you create one.
+              </SheetNote>
+            )}
           </SheetGroup>
+        ) : plusView === "artifacts" ? (
+          <SheetGroup>
+            {artefatos.map((a) => (
+              <SheetRow
+                key={a.path}
+                dense
+                icon={artifactIcon(a.extension)}
+                title={a.basename}
+                note={a.path}
+                onClick={() => {
+                  void anexarArtefato(a);
+                  closeSheet();
+                }}
+              />
+            ))}
+            {artefatos.length === 0 && (
+              <SheetNote>
+                Nothing generated yet — images, audio and video made here land
+                in {GENERATION_DIR} and show up in this list.
+              </SheetNote>
+            )}
+          </SheetGroup>
+        ) : (
+          <>
+            <SheetTiles>
+              <SheetTile
+                icon="file-text"
+                label="Notes"
+                onClick={() => {
+                  setNoteQuery("");
+                  setPlusView("notes");
+                }}
+              />
+              <SheetTile
+                icon="camera"
+                label="Camera"
+                disabled={!modeloVeImagem}
+                hint={modeloVeImagem ? undefined : "unavailable"}
+                onClick={() => {
+                  closeSheet();
+                  cameraRef.current?.click();
+                }}
+              />
+              <SheetTile
+                icon="image"
+                label="Image"
+                disabled={!modeloVeImagem}
+                hint={modeloVeImagem ? undefined : "unavailable"}
+                onClick={() => {
+                  closeSheet();
+                  imageRef.current?.click();
+                }}
+              />
+            </SheetTiles>
+
+            <SheetGroup>
+              <SheetRow
+                badge
+                chevron
+                icon="file-type-2"
+                title="PDF"
+                note={
+                  modeloLePdf
+                    ? "From this device"
+                    : "This model can't read PDFs"
+                }
+                onClick={() => {
+                  closeSheet();
+                  pdfRef.current?.click();
+                }}
+              />
+              <SheetRow
+                badge
+                chevron
+                icon="link"
+                title="Link"
+                note="Fetch a page as context"
+                onClick={() => {
+                  closeSheet();
+                  void anexarLink();
+                }}
+              />
+              <SheetRow
+                badge
+                chevron
+                icon="sparkles"
+                title="Skill"
+                note={
+                  plugin.skills.length > 0
+                    ? `${plugin.skills.length} in your vault`
+                    : "None yet"
+                }
+                onClick={() => setPlusView("skills")}
+              />
+              <SheetRow
+                badge
+                chevron
+                icon="box"
+                title="Artifact"
+                note="Images, audio and video made here"
+                onClick={() => setPlusView("artifacts")}
+              />
+            </SheetGroup>
+          </>
         )}
       </Sheet>
 
@@ -1118,22 +1304,6 @@ function Pill({ label, onClick }: { label: string; onClick: () => void }) {
       <Icon name="chevron-down" size={14} />
     </button>
   );
-}
-
-/** Ícone do chip de anexo — o mesmo vocabulário da folha de ações. */
-function attachmentIcon(a: MessageAttachment): string {
-  if (a.type === "image") return "image";
-  if (a.type === "pdf") return "file-text";
-  if (a.type === "audio") return "mic";
-  return "file-text";
-}
-
-/** Rótulo curto: o nome do arquivo, não o caminho inteiro. */
-function attachmentLabel(a: MessageAttachment): string {
-  if (a.type === "note") return a.path.split("/").pop() ?? a.path;
-  if (a.type === "image") return a.name ?? "Image";
-  if (a.type === "pdf") return a.name;
-  return a.path.split("/").pop() ?? "Audio";
 }
 
 function activityText(a: ActivityMeta): string {
