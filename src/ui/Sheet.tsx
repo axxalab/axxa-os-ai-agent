@@ -278,6 +278,31 @@ export function Sheet({
 }
 
 /** Cartão que agrupa linhas (divisória entre elas, cantos arredondados). */
+/** Campo de busca no topo de uma folha (lista de notas). Fica ACIMA da lista
+ *  de propósito: com o teclado aberto, o que sobra de tela é o topo. */
+export function SheetSearch({
+  value,
+  placeholder,
+  onChange,
+}: {
+  value: string;
+  placeholder: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="axxa-sheet-search">
+      <Icon name="search" size={16} />
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        autoFocus
+        onChange={(e) => onChange(e.currentTarget.value)}
+      />
+    </div>
+  );
+}
+
 export function SheetGroup({ children }: { children: ReactNode }) {
   return <div className="axxa-sheet-group">{children}</div>;
 }

@@ -68,8 +68,6 @@ export class ChatSession {
   private readonly approveAllRef = { current: false };
   /** Projeto que vai receber o chat criado no próximo 1º envio. */
   private pendingProjectId: string | null = null;
-  /** Fontes do projeto — viram notas de contexto no próximo envio. */
-  private pendingNotes: NoteAttachment[] = [];
   private saveTimer: number | null = null;
   private pendingSave: (() => void) | null = null;
   private skipNextSave = false;
@@ -222,11 +220,17 @@ export class ChatSession {
   // ── Conversa ────────────────────────────────────────────────────────────
 
   /** Envia uma mensagem no modo ativo (chat / vault-qa / agent). */
-  async send(text: string): Promise<void> {
+  /**
+   * Envia a mensagem. Devolve `false` quando a rodada NEM COMEÇOU (texto vazio,
+   * outra rodada em curso, provider sem key no 1º envio) — nesses casos a
+   * mensagem do usuário não chega a existir em lugar nenhum, e quem chamou
+   * precisa saber pra devolver o texto ao campo em vez de perdê-lo.
+   */
+  async send(text: string): Promise<boolean> {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed) return false;
     const st = useChatStore.getState();
-    if (st.isLoading) return;
+    if (st.isLoading) return false;
     const cfg = this.config;
     const provider = getProvider(cfg.provider);
 
@@ -243,7 +247,7 @@ export class ChatSession {
         isError: true,
         errorCode: "no-key",
       });
-      return;
+      return false;
     }
 
     // 1ª mensagem: id + título + lock da sessão (+ associação ao projeto).
@@ -265,9 +269,11 @@ export class ChatSession {
       }
     }
 
-    const attachments =
-      this.pendingNotes.length > 0 ? [...this.pendingNotes] : undefined;
-    this.pendingNotes = [];
+    // Anexos escolhidos no composer (nota, imagem, texto colado) — o store é
+    // quem guarda, porque é ele que a tela observa pra desenhar os chips.
+    const pendentes = st.attachments;
+    const attachments = pendentes.length > 0 ? [...pendentes] : undefined;
+    if (pendentes.length > 0) st.setAttachments([]);
 
     st.addMessage({ type: "user", content: trimmed });
     this.emit();
@@ -297,11 +303,26 @@ export class ChatSession {
     } finally {
       this.emit();
     }
+
+    // Quem escreveu enquanto a resposta chegava entra agora. Fica AQUI, e não
+    // na tela, porque a tela pode ter sido desmontada no meio (Projects,
+    // Skills, gaveta fechada) — e a mensagem não pode evaporar por isso.
+    const fila = useChatStore.getState().queued;
+    if (fila.length > 0) {
+      const [proxima, ...resto] = fila;
+      useChatStore.getState().setAttachments([]);
+      useChatStore.setState({ queued: resto });
+      // A recursão esvazia o resto da fila, uma rodada de cada vez.
+      await this.send(proxima);
+    }
+    return true;
   }
 
   /** Interrompe o stream / o turno do agente em andamento. */
   stop(): void {
     this.abortRef.current?.abort();
+    // Parar é parar: o que estava na fila não pode disparar sozinho depois.
+    useChatStore.getState().clearQueued();
   }
 
   /** Nova conversa (destrava a sessão). `mode` opcional já fixa o modo. */
@@ -309,7 +330,6 @@ export class ChatSession {
     this.abortRef.current?.abort();
     this.flushSave();
     this.pendingProjectId = null;
-    this.pendingNotes = [];
     useChatStore.getState().newChat();
     if (mode) {
       this.mode = mode;
@@ -338,7 +358,7 @@ export class ChatSession {
         missing.push(src.split("/").pop() ?? src);
       }
     }
-    this.pendingNotes = notes;
+    useChatStore.getState().setAttachments(notes);
     if (missing.length > 0) {
       new Notice(`Project sources not found: ${missing.join(", ")}`);
     }
@@ -376,7 +396,7 @@ export class ChatSession {
       // Abrir um chat NÃO é atividade: pula o próximo ciclo do auto-save.
       this.skipNextSave = true;
       this.pendingProjectId = null;
-      this.pendingNotes = [];
+      st.setAttachments([]);
       st.setMessages(restored);
       st.setCurrentChatId(chat.id);
       st.setCurrentChatTitle(chat.title);

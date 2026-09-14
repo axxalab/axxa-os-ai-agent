@@ -25,6 +25,8 @@ export interface ImageAttachment {
   dataUrl: string;
   /** Mime type — útil pra providers que exigem (Anthropic, Gemini nativo). */
   mimeType?: string;
+  /** Nome do arquivo escolhido — só pra mostrar no chip do composer. */
+  name?: string;
 }
 
 /** Nota do vault anexada — inlinada como contexto markdown no prompt. */

@@ -854,6 +854,168 @@ body.theme-dark {
   border-color: var(--background-modifier-border-hover, var(--axxa-line));
 }
 
+/* Lista do `[[` — flutua logo acima do campo, com a nota mais provável em
+   cima. Altura limitada: ela sugere, não toma a tela. */
+.axxa-root .axxa-mention {
+  display: flex;
+  flex-direction: column;
+  max-height: 40vh;
+  margin-bottom: var(--axxa-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--axxa-line);
+  border-radius: var(--axxa-r-md);
+  background-color: var(--axxa-raised);
+  box-shadow: var(--shadow-s, 0 4px 16px rgba(0, 0, 0, 0.25));
+}
+
+.axxa-root button.axxa-mention-row {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  width: 100%;
+  padding: var(--axxa-2) var(--axxa-3);
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text-normal);
+  text-align: left;
+}
+
+.axxa-root button.axxa-mention-row + button.axxa-mention-row {
+  box-shadow: inset 0 1px 0 var(--axxa-line);
+}
+
+.axxa-root button.axxa-mention-row:hover {
+  background-color: var(--axxa-hover);
+}
+
+.axxa-root .axxa-mention-name {
+  flex: 0 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--font-ui-medium);
+}
+
+/* O caminho é desempate visual: ele encolhe primeiro. */
+.axxa-root .axxa-mention-path {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+/* A mensagem que está na fila. Uma linha só, com o texto cortado: ela é um
+   lembrete do que vai sair, não uma segunda caixa de texto. */
+.axxa-root .axxa-queued {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  padding: 3px 4px 3px 8px;
+  border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-root .axxa-queued-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Chips do que vai junto da mensagem (nota, imagem, texto colado). Uma linha
+   que rola na horizontal: três anexos não podem empurrar o campo pra cima. */
+.axxa-root .axxa-attachments {
+  display: flex;
+  gap: var(--axxa-2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.axxa-root .axxa-attachments::-webkit-scrollbar {
+  display: none;
+}
+
+.axxa-root .axxa-attachment {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  max-width: 60%;
+  padding: 3px 4px 3px 8px;
+  border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-root .axxa-attachment-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* O X tem alvo de toque de 24px — remover anexo não pode exigir mira. */
+.axxa-root button.axxa-attachment-x {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--axxa-r-pill);
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+.axxa-root button.axxa-attachment-x:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* Busca dentro da folha (lista de notas). */
+.axxa-root .axxa-sheet-search {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  margin-bottom: var(--axxa-3);
+  padding: 0 var(--axxa-3);
+  border: 1px solid var(--axxa-line);
+  border-radius: var(--axxa-r-md);
+  background-color: var(--axxa-raised);
+  color: var(--text-faint);
+}
+
+.axxa-root .axxa-sheet-search input,
+.axxa-root .axxa-sheet-search input:hover,
+.axxa-root .axxa-sheet-search input:focus,
+.axxa-root .axxa-sheet-search input:active {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: var(--font-ui-medium);
+}
+
 .axxa-root .axxa-input-bar {
   display: flex;
   align-items: center;
@@ -949,7 +1111,9 @@ body.theme-dark {
   min-width: 0;
   box-sizing: border-box;
   min-height: 26px;
-  max-height: 40vh;
+  /* O teto é escrito pelo JS (composerSize) porque só ele sabe quanto da tela
+     o teclado está cobrindo. O 40vh é só o valor até a primeira medida. */
+  max-height: var(--axxa-composer-max, 40vh);
   padding: 0;
   border: 0;
   border-radius: 0;

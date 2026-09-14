@@ -26,7 +26,20 @@ const chats = [
 
 const plugin = {
   manifest: { version: PREVIEW_VERSION, id: "axxa-os-ai-agent" },
-  app: {},
+  // VAULT de mentira, com forma de verdade: é dele que sai a lista de notas do
+  // "+" e do `[[`. Com `app: {}` o buscador não tinha o que buscar — e um
+  // buscador vazio "passa" em qualquer teste.
+  app: {
+    vault: {
+      getMarkdownFiles: () => FAKE_NOTES,
+      getAbstractFileByPath: (p: string) =>
+        FAKE_NOTES.find((f) => f.path === p) ?? null,
+      cachedRead: async (f: { path: string }) =>
+        `# ${f.path.split("/").pop()}
+
+Conteúdo de mentira da nota, o bastante pra virar contexto.`,
+    },
+  },
   skills: [
     // `body` preenchido de propósito: é ele que cai no composer. Com body
     // vazio (como estava) o atalho "funcionava" sem escrever nada, e o preview
@@ -80,8 +93,12 @@ const plugin = {
   loadChatSummaries: async () => chats,
   onChatsChange: () => () => {},
   onSettingsChange: () => () => {},
+  // ?nokey=1 simula a PRIMEIRA vez: nenhum provider configurado. É o cenário
+  // em que o envio desiste antes de criar a mensagem do usuário.
   providerCredential: (id: string) =>
-    ({ openai: "sk-test", anthropic: "sk-ant", gemini: "gm-test" })[id] ?? "",
+    params.get("nokey")
+      ? ""
+      : ({ openai: "sk-test", anthropic: "sk-ant", gemini: "gm-test" })[id] ?? "",
   // Catálogo falso: o preview não fala com a rede. Grande e bagunçado DE
   // PROPÓSITO — é assim que o catálogo real chega, e é o que o agrupamento
   // por papel/família tem que domar.
@@ -122,6 +139,9 @@ let model = "gpt-5";
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
+/** Rodada em curso foi interrompida pelo botão de parar. */
+let abortado = false;
+
 const session = {
   get config() {
     const st = useChatStore.getState();
@@ -159,8 +179,82 @@ const session = {
     return cur && !shown.includes(cur) ? [cur, ...shown] : shown;
   },
   apiKeyFor: () => "sk-test",
-  send: async () => {},
-  stop: () => {},
+  // RODADA DE MENTIRA, contrato DE VERDADE. `send: async () => {}` escondia
+  // duas coisas que só aparecem no fluxo: o campo limpar (ou não) conforme o
+  // envio engata, e tudo que acontece ENQUANTO a resposta chega (o "pensando",
+  // a fila, o botão de parar). O contrato copiado do motor:
+  //   - sem key na 1ª mensagem → bolha de erro, NENHUMA mensagem do usuário,
+  //     devolve false (a rodada nem começou)
+  //   - caso contrário → mensagem do usuário, narração, resposta em pedaços,
+  //     devolve true
+  send: async (text: string) => {
+    const st = useChatStore.getState();
+    if (!plugin.providerCredential(provider)) {
+      st.addMessage({
+        type: "ai-response",
+        content: "AXXA: no API key configured for this provider.",
+        isError: true,
+        errorCode: "no-key",
+      });
+      return false;
+    }
+    // Espelha o motor: os anexos pendentes são CONSUMIDOS pelo envio.
+    if (st.attachments.length > 0) st.setAttachments([]);
+    st.addMessage({ type: "user", content: text });
+    if (!st.currentChatId) {
+      st.setCurrentChatId("preview-" + Date.now());
+      st.setCurrentChatTitle(text.slice(0, 40));
+      st.lockSession(provider, model, mode);
+    }
+    st.setLoading(true);
+    emit();
+    // ?turn=ms controla a duração da rodada (padrão 1.4s).
+    const total = Number(params.get("turn") ?? 1400);
+    abortado = false;
+    const dorme = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const narracao = st.addMessage({
+      type: "ai-comment",
+      content: "",
+      activity: {
+        phase: "pending",
+        iconPending: "eye",
+        pendingText: "Reading PROJECTS/FRAMEWORKS.md",
+      },
+    });
+    await dorme(total * 0.35);
+    if (!abortado) {
+      useChatStore
+        .getState()
+        .updateActivity(narracao, { phase: "done", doneText: "Read PROJECTS/FRAMEWORKS.md" });
+      const pedacos = ("Resposta de mentira, em pedaços, pra dar pra ver o " +
+        "texto chegando enquanto a tela continua respondendo ao toque.").split(" ");
+      const id = useChatStore.getState().addMessage({ type: "ai-response", content: "" });
+      useChatStore.getState().setStreamingMessageId(id);
+      for (const p of pedacos) {
+        if (abortado) break;
+        useChatStore.getState().appendToMessage(id, p + " ");
+        await dorme((total * 0.65) / pedacos.length);
+      }
+      useChatStore.getState().setStreamingMessageId(null);
+    }
+    useChatStore.getState().setLoading(false);
+    emit();
+    // Mesmo contrato do motor: quem entrou na fila durante a rodada sai agora.
+    const fila = useChatStore.getState().queued;
+    if (fila.length > 0) {
+      const [proxima, ...resto] = fila;
+      useChatStore.setState({ queued: resto });
+      await session.send(proxima);
+    }
+    return true;
+  },
+  stop: () => {
+    abortado = true;
+    useChatStore.getState().setLoading(false);
+    useChatStore.getState().setStreamingMessageId(null);
+    useChatStore.getState().clearQueued();
+    emit();
+  },
   newChat: () => {
     useChatStore.getState().newChat();
     emit();
@@ -210,6 +304,18 @@ if (scenario === "thread") {
 // um STREAM de verdade (token a token) e conferir se o markdown formata
 // enquanto chega, em vez de só no fim.
 (window as unknown as { __chat: unknown }).__chat = useChatStore;
+
+/** Notas do vault falso — nomes parecidos de propósito, que é onde o ranking
+ *  do buscador mostra serviço. */
+const FAKE_NOTES = [
+  { path: "PROJECTS/FRAMEWORKS.md", basename: "FRAMEWORKS", stat: { mtime: 5 } },
+  { path: "PROJECTS/CREATIVE SYSTEMS.md", basename: "CREATIVE SYSTEMS", stat: { mtime: 8 } },
+  { path: "DAILY/2026-09-14.md", basename: "2026-09-14", stat: { mtime: 99 } },
+  { path: "TASKS/Inbox.md", basename: "Inbox", stat: { mtime: 40 } },
+  { path: "Learning/Spaced repetition.md", basename: "Spaced repetition", stat: { mtime: 30 } },
+  { path: "Notas/2024/framing-de-produto/rascunho.md", basename: "rascunho", stat: { mtime: 10 } },
+  { path: "NUTRITION 1.0/Plano semanal.md", basename: "Plano semanal", stat: { mtime: 20 } },
+];
 
 /** Conteúdo de exemplo do modal de aprovação (?s=confirm). */
 const MD_DEMO = "# CREATIVE SYSTEMS\n\n## Purpose\nA broad, **practical** view of how creative systems work day to day, with enough text to prove that long lines wrap instead of running off the screen.\n\n## Core Principles\n- Treat the work as a *system*, not a mood\n- Capture first, judge later\n- Review on a schedule, not on a feeling\n\nSee [[PROJECTS/FRAMEWORKS]] for the longer version.\n\n```ts\nexport function review(deck: Card[], hoje = Date.now()) {\n  return deck.filter((c) => c.due <= hoje).sort((a, b) => a.due - b.due);\n}\n```\n";

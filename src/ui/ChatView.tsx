@@ -6,10 +6,19 @@
 //
 // O histórico de conversas NÃO mora aqui: é o menu lateral (Drawer.tsx).
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Notice } from "obsidian";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Notice, Platform } from "obsidian";
 import type AxxaPlugin from "../main";
 import {
+  NEW_CHAT_DRAFT,
   useChatStore,
   type ActivityMeta,
   type ChatMessage,
@@ -38,6 +47,8 @@ import { Icon } from "./Icon";
 import { useVoice } from "./useVoice";
 import { speak, stopSpeaking } from "./readAloud";
 import { commit, screen, warn } from "./haptics";
+import { composerMaxHeight, readKeyboardHeight } from "./composerSize";
+import { pasteIsBig, pastedNote } from "./pasteAttachment";
 import { VoiceDock } from "./VoiceBar";
 import {
   Sheet,
@@ -45,8 +56,17 @@ import {
   SheetNavRow,
   SheetNote,
   SheetRow,
+  SheetSearch,
   SheetSeg,
 } from "./Sheet";
+import {
+  rankNotes,
+  readNote,
+  vaultNotes,
+  wikilinkQuery,
+  type NoteLike,
+} from "./notePicker";
+import type { MessageAttachment } from "../providers/base";
 import { StarterScreen } from "./StarterScreen";
 import type { ComposerInject } from "./App";
 
@@ -87,12 +107,36 @@ export function ChatView({
   const loadingChat = useChatStore((s) => s.loadingChat);
   const streamingId = useChatStore((s) => s.streamingMessageId);
   const currentChatId = useChatStore((s) => s.currentChatId);
+
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
+  // Anexos pendentes (nota, imagem, texto colado) — chips acima do campo.
+  const attachments = useChatStore((s) => s.attachments);
+  const addAttachment = useChatStore((s) => s.addAttachment);
+  const removeAttachment = useChatStore((s) => s.removeAttachment);
+  // Mensagem escrita durante a resposta, esperando a vez.
+  const queued = useChatStore((s) => s.queued);
+  const pushQueued = useChatStore((s) => s.pushQueued);
+  const removeQueued = useChatStore((s) => s.removeQueued);
   // Lido do store pra re-renderizar quando a sessão trava/destrava.
   const locked = useChatStore((s) => s.sessionProvider) !== null;
   const cfg = session.config;
 
-  const [draft, setDraft] = useState("");
+  // O rascunho é do CHAT, não da tela: ele mora no store (ver drafts lá) pra
+  // sobreviver a sair pra Projects/Skills e pra não vazar de uma conversa pra
+  // outra.
+  const draftKey = currentChatId ?? NEW_CHAT_DRAFT;
+  const draft = useChatStore((s) => s.drafts[draftKey] ?? "");
+  const writeDraft = useChatStore((s) => s.setDraft);
+  const setDraft = useCallback(
+    (next: string | ((prev: string) => string)) =>
+      writeDraft(
+        draftKey,
+        typeof next === "function"
+          ? next(useChatStore.getState().drafts[draftKey] ?? "")
+          : next
+      ),
+    [draftKey, writeDraft]
+  );
   /** Qual bottom sheet do composer está aberta. */
   const [sheet, setSheet] = useState<"model" | "effort" | "plus" | null>(
     null
@@ -107,11 +151,25 @@ export function ChatView({
   );
   /** O que já foi reconhecido nesta gravação (parcial ou final). */
   const [liveText, setLiveText] = useState("");
+  /** `[[` aberto no rascunho: onde começou e o que já foi digitado. */
+  const [mention, setMention] = useState<{ start: number; query: string } | null>(
+    null
+  );
+  /** Nível da folha do "+": a raiz ou o buscador de notas. */
+  const [plusView, setPlusView] = useState<"root" | "notes">("root");
+  const [noteQuery, setNoteQuery] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   /** Ações do agente abertas na folha (null = fechada) e qual delas está
    *  aberta no segundo nível. */
   const [tools, setTools] = useState<TurnAction[] | null>(null);
   const [toolAt, setToolAt] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  /** O campo estava em foco quando a folha abriu? Só aí faz sentido devolver
+   *  o foco quando ela fecha (quem abriu a folha sem estar escrevendo não quer
+   *  o teclado subindo do nada). */
+  const focoAntesDaFolha = useRef(false);
+  /** rAF da medida de altura em voo (0 = nenhuma agendada). */
+  const medindoRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Skill "Use" / sugestão: entra no rascunho, abaixo do que já estava escrito.
@@ -124,17 +182,57 @@ export function ChatView({
   // Composer cresce com o texto. Mede com height:0 (altura definida) — com
   // `auto` o textarea é um flex item e pode ser medido esticado, o que fazia
   // o composer abrir tomando meia tela.
-  useEffect(() => {
+  //
+  // O TETO vem de composerSize: 40% do que dá pra ver, não da tela inteira. E
+  // o cálculo refaz quando a tela muda (teclado abrindo, aparelho girando) —
+  // antes ele só dependia do texto, então uma altura calculada pra outra
+  // largura ficava congelada depois de girar.
+  // useLayoutEffect, não useEffect + rAF: a medida acontece ANTES da pintura,
+  // então não existe o frame em que o campo aparece com a altura antiga. (E o
+  // rAF simplesmente não roda quando a janela está oculta, o que deixava a
+  // altura congelada ao voltar pro app.)
+  useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     const fit = () => {
+      const max = composerMaxHeight(
+        window.innerHeight,
+        readKeyboardHeight(document),
+        window.visualViewport?.height
+      );
+      // UMA fonte de verdade: o CSS lê esta var no max-height, então JS e CSS
+      // não podem mais discordar sobre o teto.
+      el.style.setProperty("--axxa-composer-max", `${max}px`);
       el.style.height = "0px";
-      const max = Math.round(window.innerHeight * 0.4);
       el.style.height = `${Math.min(el.scrollHeight, max)}px`;
     };
-    const raf = window.requestAnimationFrame(fit);
-    return () => window.cancelAnimationFrame(raf);
+    // Medir custa um layout do documento INTEIRO. Por tecla, numa conversa de
+    // 120 mensagens, isso media 46ms — digitar travava. Por FRAME, o layout é
+    // o que ia acontecer de qualquer jeito, e teclas seguidas se juntam numa
+    // medida só. A primeira medida (e as de resize, que são raras) continuam
+    // síncronas, pra altura nunca aparecer errada num quadro.
+    if (!el.style.height) fit();
+    else if (!medindoRef.current) {
+      medindoRef.current = window.requestAnimationFrame(() => {
+        medindoRef.current = 0;
+        fit();
+      });
+    }
+    const vv = window.visualViewport;
+    window.addEventListener("resize", fit);
+    vv?.addEventListener("resize", fit);
+    return () => {
+      window.removeEventListener("resize", fit);
+      vv?.removeEventListener("resize", fit);
+    };
   }, [draft]);
+
+  useEffect(
+    () => () => {
+      if (medindoRef.current) window.cancelAnimationFrame(medindoRef.current);
+    },
+    []
+  );
 
   // As narrações ("Listed root — 7 items") de uma rodada JÁ TERMINADA saem da
   // conversa e vão pra folha, junto das tool calls: elas são o passo a passo,
@@ -216,25 +314,163 @@ export function ChatView({
     window.setTimeout(stickToBottom, 350);
   };
 
+  /** Reavalia se o cursor está dentro de um `[[` aberto. Roda a cada digitada
+   *  e a cada movimento do cursor — sair de dentro do link fecha a lista. */
+  const conferirMencao = (el: HTMLTextAreaElement) => {
+    const achou = wikilinkQuery(el.value, el.selectionStart ?? el.value.length);
+    setMention(achou);
+  };
+
+  /** Escolher na lista do `[[`: troca o que foi digitado pelo wikilink E
+   *  anexa a nota — citar sem mandar o conteúdo junto seria só um texto. */
+  const escolherMencao = (n: NoteLike) => {
+    const el = textareaRef.current;
+    if (!el || !mention) return;
+    const cursor = el.selectionStart ?? draft.length;
+    const link = `[[${n.path.replace(/\.md$/, "")}]]`;
+    const antes = draft.slice(0, mention.start);
+    const novo = antes + link + draft.slice(cursor);
+    setDraft(novo);
+    setMention(null);
+    void anexarNota(n.path);
+    // O cursor vai pra DEPOIS do link, senão a pessoa continua digitando
+    // dentro do que acabou de inserir. Depois do commit do React.
+    const fim = antes.length + link.length;
+    window.setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(fim, fim);
+    }, 0);
+  };
+
+  /** Colar. Duas coisas que o campo não fazia:
+   *   - imagem da área de transferência (print) vira anexo
+   *   - bloco grande vira anexo em vez de virar parede de texto */
+  const aoColar = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const dados = e.clipboardData;
+    if (!dados) return;
+
+    const imagens = Array.from(dados.files ?? []).filter((f) =>
+      f.type.startsWith("image/")
+    );
+    if (imagens.length > 0) {
+      e.preventDefault();
+      if (!modeloVeImagem) {
+        new Notice("This model can't read images.");
+        return;
+      }
+      for (const img of imagens) anexarImagem(img);
+      return;
+    }
+
+    const texto = dados.getData("text");
+    if (pasteIsBig(texto)) {
+      e.preventDefault();
+      addAttachment(pastedNote(texto));
+    }
+  };
+
+  /** Anexa uma nota do vault (lida agora — é o conteúdo que vai no prompt). */
+  const anexarNota = async (path: string) => {
+    const nota = await readNote(plugin.app, path);
+    if (!nota) {
+      new Notice(`Note not found: ${path}`);
+      return;
+    }
+    addAttachment({ type: "note", path: nota.path, content: nota.content });
+  };
+
+  /** Imagem do aparelho: vira data URL, que é o formato que os providers
+   *  multimodais aceitam. */
+  const anexarImagem = (file: File) => {
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      const dataUrl = String(leitor.result ?? "");
+      if (!dataUrl.startsWith("data:")) return;
+      addAttachment({
+        type: "image",
+        dataUrl,
+        mimeType: file.type || undefined,
+        name: file.name,
+      });
+    };
+    leitor.onerror = () => new Notice("Could not read that image.");
+    leitor.readAsDataURL(file);
+  };
+
+  // Identidade ESTÁVEL: uma arrow nova a cada render derrubaria o memo da
+  // MessageRow, que é o ponto todo do item.
+  const abrirAcoes = useCallback((acoes: TurnAction[]) => {
+    setTools(acoes);
+    // Lista de UM item é uma parada a mais sem informação: abre direto no
+    // detalhe.
+    setToolAt(acoes.length === 1 ? 0 : null);
+  }, []);
+
   const submit = async () => {
     const text = draft.trim();
-    if (!text || isLoading) return;
+    if (!text) return;
+    // Escrever durante a resposta não pode ser um clique no vazio: a mensagem
+    // entra na FILA e sai sozinha quando a rodada terminar.
+    if (isLoading) {
+      commit();
+      pushQueued(text);
+      writeDraft(draftKey, "");
+      return;
+    }
     commit();
-    setDraft("");
-    await session.send(text);
+    // A chave é lida AGORA: o 1º envio de uma conversa nova ganha um id no meio
+    // do send, e limpar depois apagaria o rascunho da conversa errada.
+    const chave = draftKey;
+    const foi = await session.send(text);
+    // Só limpa o que de fato virou mensagem. Sem key na 1ª mensagem o send
+    // desiste antes de criar a bolha do usuário — aí o texto tem que voltar
+    // pro campo, não sumir das duas pontas.
+    if (foi) writeDraft(chave, "");
   };
 
   // Abrir uma sheet tira o foco do campo — senão o teclado sobe por cima dela.
   const openSheet = (which: "model" | "effort" | "plus") => {
+    focoAntesDaFolha.current =
+      document.activeElement === textareaRef.current;
     textareaRef.current?.blur();
     // A folha de modelos abre sempre no provider da sessão, e no primeiro nível.
     if (which === "model") {
       setPickProvider(cfg.provider);
       setModelView("root");
     }
+    if (which === "plus") {
+      setPlusView("root");
+      setNoteQuery("");
+    }
     setSheet(which);
   };
-  const closeSheet = () => setSheet(null);
+  const closeSheet = () => {
+    setSheet(null);
+    // Volta pra onde a pessoa estava: escolher um modelo no meio de uma frase
+    // não pode custar um toque a mais pra continuar escrevendo.
+    if (focoAntesDaFolha.current) {
+      focoAntesDaFolha.current = false;
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
+    }
+  };
+
+  // A lista de notas do "+" (e, mais pra frente, do `[[`). Só calcula quando a
+  // folha está aberta nesse nível — varrer o vault a cada render seria caro
+  // num vault grande.
+  const notasAchadas = useMemo(() => {
+    if (sheet !== "plus" || plusView !== "notes") return [];
+    return rankNotes(vaultNotes(plugin.app), noteQuery);
+  }, [sheet, plusView, noteQuery, plugin.app]);
+
+  /** Sugestões do `[[` — poucas, porque elas cobrem a conversa. */
+  const mentionHits = useMemo(
+    () => (mention ? rankNotes(vaultNotes(plugin.app), mention.query, 6) : []),
+    [mention, plugin.app]
+  );
+
+  /** O modelo da sessão enxerga imagem? */
+  const modeloVeImagem =
+    getModelCard(cfg.provider, cfg.model).category === "chat-vision";
 
   // Os dois blocos do cartão de modelos. Favoritar já implica Show, então o
   // segundo bloco tira os favoritos pra ninguém aparecer duas vezes.
@@ -351,12 +587,7 @@ export function ChatView({
               plugin={plugin}
               streaming={m.id === streamingId}
               actions={actionsByResponse.get(m.id)}
-              onOpenTools={(acoes) => {
-                setTools(acoes);
-                // Lista de UM item é uma parada a mais sem informação: abre
-                // direto no detalhe.
-                setToolAt(acoes.length === 1 ? 0 : null);
-              }}
+              onOpenTools={abrirAcoes}
             />
           ))
         )}
@@ -385,6 +616,30 @@ export function ChatView({
       {/* Composer: UM bloco só — campo em cima, barra de controles embaixo,
           sem régua horizontal separando nada. */}
       <section className="axxa-composer">
+          {/* `[[` — as notas aparecem ACIMA do campo, como no editor do
+              Obsidian. Escolher insere o link e anexa a nota. Fica dentro do
+              composer pra subir junto com ele quando o teclado abre. */}
+          {mention && mentionHits.length > 0 && (
+            <div className="axxa-mention">
+              {mentionHits.map((n) => (
+                <button
+                  key={n.path}
+                  type="button"
+                  className="axxa-mention-row"
+                  // mousedown antes do blur: o blur fecharia a lista antes do
+                  // clique chegar.
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    escolherMencao(n);
+                  }}
+                >
+                  <Icon name="file-text" size={15} />
+                  <span className="axxa-mention-name">{n.basename}</span>
+                  <span className="axxa-mention-path">{n.path}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {/* A TROCA: o composer de texto desce e o dock de áudio sobe no
               lugar. As duas linhas do grid (1fr/0fr) animam a altura — é o que
               faz um encolher enquanto o outro cresce, em vez de um sumir e o
@@ -395,15 +650,91 @@ export function ChatView({
           >
             <div className="axxa-swap-row">
             <div className="axxa-input">
+              {/* O que vai junto da mensagem. Fica ACIMA do texto porque é
+                  contexto do que está sendo escrito — e cada um sai com um
+                  toque, senão anexar vira armadilha. */}
+              {/* O que está na fila fica VISÍVEL: uma mensagem que sai sozinha
+                  daqui a um minuto, sem aviso, é uma surpresa ruim. */}
+              {queued.map((q, i) => (
+                <div className="axxa-queued" key={i}>
+                  <Icon name="clock" size={14} />
+                  <span className="axxa-queued-label">{q}</span>
+                  <button
+                    type="button"
+                    className="axxa-attachment-x"
+                    aria-label="Cancel queued message"
+                    onClick={() => {
+                      removeQueued(i);
+                      // Cancelar devolve o texto pro campo (se ele estiver
+                      // livre) — a pessoa escreveu aquilo.
+                      setDraft((d) => (d.trim() ? d : q));
+                    }}
+                  >
+                    <Icon name="x" size={13} />
+                  </button>
+                </div>
+              ))}
+              {attachments.length > 0 && (
+                <div className="axxa-attachments">
+                  {attachments.map((a, i) => (
+                    <span key={i} className="axxa-attachment">
+                      <Icon name={attachmentIcon(a)} size={14} />
+                      <span className="axxa-attachment-label">
+                        {attachmentLabel(a)}
+                      </span>
+                      <button
+                        type="button"
+                        className="axxa-attachment-x"
+                        aria-label="Remove attachment"
+                        onClick={() => removeAttachment(i)}
+                      >
+                        <Icon name="x" size={13} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <textarea
                 ref={textareaRef}
                 rows={1}
                 value={draft}
                 placeholder={MODE_PLACEHOLDER[cfg.mode] ?? ""}
                 onFocus={onComposerFocus}
-                onChange={(e) => setDraft(e.currentTarget.value)}
+                onChange={(e) => {
+                  setDraft(e.currentTarget.value);
+                  conferirMencao(e.currentTarget);
+                }}
+                onSelect={(e) => conferirMencao(e.currentTarget)}
+                onPaste={aoColar}
+                onBlur={() => setMention(null)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  // Com a lista do `[[` aberta, Esc fecha ela — não o teclado.
+                  if (e.key === "Escape" && mention) {
+                    e.preventDefault();
+                    setMention(null);
+                    return;
+                  }
+                  if (e.key !== "Enter") return;
+                  // Enter com a lista aberta ESCOLHE (é o que o editor do
+                  // Obsidian faz) — mandar a mensagem no meio de um `[[` seria
+                  // mandar o link pela metade.
+                  if (mention && mentionHits.length > 0) {
+                    e.preventDefault();
+                    escolherMencao(mentionHits[0]);
+                    return;
+                  }
+                  if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    void submit();
+                    return;
+                  }
+                  // Acento/IME/teclado de swipe compõem texto e mandam Enter no
+                  // meio: enviar aí cortaria a palavra. `isComposing` é o sinal
+                  // padrão pra isso.
+                  if (e.nativeEvent.isComposing) return;
+                  // No celular Enter é quebra de linha e quem envia é o botão;
+                  // no desktop é o contrário, com Shift+Enter pra quebrar.
+                  if (!Platform.isMobile && !e.shiftKey) {
                     e.preventDefault();
                     void submit();
                   }
@@ -420,6 +751,18 @@ export function ChatView({
                 >
                   <Icon name="plus" size={22} />
                 </button>
+                {/* Seletor nativo: no celular é ele que abre galeria/câmera. */}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.currentTarget.files?.[0];
+                    if (f) anexarImagem(f);
+                    e.currentTarget.value = "";
+                  }}
+                />
 
                 <div className="axxa-pills">
                   <Pill
@@ -440,20 +783,40 @@ export function ChatView({
                 )}
 
                 {isLoading ? (
-                  <button
-                    type="button"
-                    className="axxa-send is-stop"
-                    aria-label="Stop"
-                    onClick={() => session.stop()}
-                  >
-                    <Icon name="square" size={18} />
-                  </button>
+                  <>
+                    {/* Com texto escrito durante a resposta, aparece um segundo
+                        botão: enfileirar. Sem ele o celular não teria como —
+                        o lugar do enviar está ocupado pelo parar. */}
+                    {draft.trim() && (
+                      <button
+                        type="button"
+                        className="axxa-round-btn"
+                        aria-label="Send when this finishes"
+                        onPointerDown={(e) => e.preventDefault()}
+                        onClick={() => void submit()}
+                      >
+                        <Icon name="arrow-up" size={20} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="axxa-send is-stop"
+                      aria-label="Stop"
+                      onPointerDown={(e) => e.preventDefault()}
+                      onClick={() => session.stop()}
+                    >
+                      <Icon name="square" size={18} />
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="button"
                     className="axxa-send"
                     aria-label="Send"
                     disabled={!draft.trim()}
+                    // Sem isto o toque tira o foco do campo e o Android fecha o
+                    // teclado a cada mensagem enviada.
+                    onPointerDown={(e) => e.preventDefault()}
                     onClick={() => void submit()}
                   >
                     <Icon name="arrow-up" size={20} />
@@ -578,7 +941,62 @@ export function ChatView({
 
       {/* O "+" abre o que dá pra ACRESCENTAR à conversa. Hoje são as skills —
           o mesmo atalho da tela inicial, alcançável no meio do papo. */}
-      <Sheet title="Add to chat" open={sheet === "plus"} onClose={closeSheet}>
+      <Sheet
+        title={plusView === "notes" ? "Attach note" : "Add to chat"}
+        open={sheet === "plus"}
+        onClose={closeSheet}
+        onBack={plusView === "notes" ? () => setPlusView("root") : undefined}
+      >
+        {plusView === "notes" ? (
+          <>
+            <SheetSearch
+              value={noteQuery}
+              placeholder="Search notes…"
+              onChange={setNoteQuery}
+            />
+            <SheetGroup>
+              {notasAchadas.map((n) => (
+                <SheetRow
+                  key={n.path}
+                  dense
+                  icon="file-text"
+                  title={n.basename}
+                  note={n.path}
+                  onClick={() => {
+                    void anexarNota(n.path);
+                    closeSheet();
+                  }}
+                />
+              ))}
+              {notasAchadas.length === 0 && (
+                <SheetNote>No note matches that.</SheetNote>
+              )}
+            </SheetGroup>
+          </>
+        ) : (
+        <>
+        <SheetGroup>
+          <SheetNavRow
+            title="Attach note"
+            note="From your vault"
+            onClick={() => {
+              setNoteQuery("");
+              setPlusView("notes");
+            }}
+          />
+          {/* Imagem só onde ela serve: modelo sem visão ignoraria o anexo. */}
+          {modeloVeImagem && (
+            <SheetRow
+              title="Attach image"
+              note="Photo or screenshot"
+              icon="image"
+              onClick={() => {
+                closeSheet();
+                fileRef.current?.click();
+              }}
+            />
+          )}
+        </SheetGroup>
         <SheetGroup>
           {plugin.skills.map((sk) => (
             <SheetRow
@@ -598,6 +1016,8 @@ export function ChatView({
             </SheetNote>
           )}
         </SheetGroup>
+        </>
+        )}
       </Sheet>
 
       {/* O que o agente fez: lista numa folha, e cada ação abre a sua com
@@ -692,6 +1112,22 @@ function Pill({ label, onClick }: { label: string; onClick: () => void }) {
       <Icon name="chevron-down" size={14} />
     </button>
   );
+}
+
+/** Ícone do chip de anexo — o mesmo vocabulário da folha de ações. */
+function attachmentIcon(a: MessageAttachment): string {
+  if (a.type === "image") return "image";
+  if (a.type === "pdf") return "file-text";
+  if (a.type === "audio") return "mic";
+  return "file-text";
+}
+
+/** Rótulo curto: o nome do arquivo, não o caminho inteiro. */
+function attachmentLabel(a: MessageAttachment): string {
+  if (a.type === "note") return a.path.split("/").pop() ?? a.path;
+  if (a.type === "image") return a.name ?? "Image";
+  if (a.type === "pdf") return a.name;
+  return a.path.split("/").pop() ?? "Audio";
 }
 
 function activityText(a: ActivityMeta): string {
@@ -819,7 +1255,11 @@ function ReadAloudButton({
   );
 }
 
-function MessageRow({
+/** Uma linha da conversa. `memo` de propósito: sem ele, cada TECLA do
+ *  composer re-renderizava a conversa inteira — medido em 2,33ms com 5
+ *  mensagens contra 8,23ms com 120. O que muda numa mensagem já pronta é
+ *  só o que vem por prop, então comparar props basta. */
+const MessageRow = memo(function MessageRow({
   msg,
   plugin,
   streaming,
@@ -947,4 +1387,4 @@ function MessageRow({
     default:
       return null;
   }
-}
+});

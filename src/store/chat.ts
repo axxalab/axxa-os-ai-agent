@@ -6,6 +6,7 @@
 
 import { create } from "zustand";
 import type { AIToolStep } from "../agent/types";
+import type { MessageAttachment } from "../providers/base";
 
 export type MessageType = "user" | "ai-response" | "ai-comment" | "ai-options";
 
@@ -147,6 +148,28 @@ interface ChatState {
   currentChatId: string | null;
   /** Título do chat atual (auto-gerado da primeira msg do user). */
   currentChatTitle: string;
+  /**
+   * Rascunho por conversa, indexado por chat id (a que ainda não tem id usa
+   * NEW_CHAT_DRAFT). Mora AQUI, e não no componente, por dois motivos que são
+   * bugs de verdade: a tela do chat é desmontada ao ir pra Projects/Skills (e
+   * ao fechar a gaveta), o que matava o texto digitado; e um rascunho guardado
+   * no componente seguia o usuário pra dentro de outra conversa.
+   */
+  drafts: Record<string, string>;
+  /**
+   * Anexos escolhidos e ainda não enviados (nota do vault, imagem, texto
+   * colado). Ficam no store, e não na sessão, porque quem mostra os chips é a
+   * tela — e a tela precisa re-renderizar quando eles mudam. O envio consome e
+   * limpa.
+   */
+  attachments: MessageAttachment[];
+  /**
+   * Mensagens escritas DURANTE uma resposta, esperando a vez. Mora no store (e
+   * quem dispara é a sessão) pra sobreviver a sair da tela — uma fila que só
+   * existe enquanto o componente está montado é uma fila que às vezes some.
+   * É LISTA: enfileirar de novo não pode apagar o que já estava esperando.
+   */
+  queued: string[];
   /** Chat atual favoritado (item "Star" do menu ⋮). Faz parte da identidade do
    *  chat — o auto-save reescreve o .md inteiro, então precisa vir daqui pra
    *  não apagar a marca a cada mensagem nova. */
@@ -203,6 +226,14 @@ interface ChatState {
   setMessages: (msgs: ChatMessage[]) => void;
   /** Reset completo pra "Nova conversa" — limpa msgs, lock, IDs, tokens. */
   newChat: () => void;
+  /** Escreve o rascunho de UMA conversa (texto vazio apaga a entrada). */
+  setDraft: (key: string, text: string) => void;
+  pushQueued: (text: string) => void;
+  removeQueued: (index: number) => void;
+  clearQueued: () => void;
+  addAttachment: (att: MessageAttachment) => void;
+  removeAttachment: (index: number) => void;
+  setAttachments: (atts: MessageAttachment[]) => void;
 }
 
 function makeId(): string {
@@ -219,6 +250,8 @@ function makeId(): string {
 // a identidade do chat (currentChatId/Title); newChat sobrescreve pra zerar. v0.1.228
 const BASE_RESET = {
   messages: [] as ChatMessage[],
+  attachments: [] as MessageAttachment[],
+  queued: [] as string[],
   isLoading: false,
   tokensIn: 0,
   tokensOut: 0,
@@ -230,8 +263,14 @@ const BASE_RESET = {
   sessionPersona: "",
 } as const;
 
+/** Chave do rascunho da conversa que ainda não foi salva. */
+export const NEW_CHAT_DRAFT = "__new__";
+
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
+  drafts: {},
+  attachments: [],
+  queued: [],
   isLoading: false,
   loadingChat: false,
   tokensIn: 0,
@@ -441,6 +480,28 @@ export const useChatStore = create<ChatState>((set) => ({
   setCurrentChatTitle: (title) => set({ currentChatTitle: title }),
   setCurrentChatStarred: (starred) => set({ currentChatStarred: starred }),
   setMessages: (msgs) => set({ messages: msgs }),
+  pushQueued: (text) =>
+    set((state) => ({ queued: [...state.queued, text] })),
+  removeQueued: (index) =>
+    set((state) => ({ queued: state.queued.filter((_, i) => i !== index) })),
+  clearQueued: () => set({ queued: [] }),
+  addAttachment: (att) =>
+    set((state) => ({ attachments: [...state.attachments, att] })),
+  removeAttachment: (index) =>
+    set((state) => ({
+      attachments: state.attachments.filter((_, i) => i !== index),
+    })),
+  setAttachments: (atts) => set({ attachments: atts }),
+  setDraft: (key, text) =>
+    set((state) => {
+      if ((state.drafts[key] ?? "") === text) return state;
+      const drafts = { ...state.drafts };
+      // Vazio APAGA a entrada: o mapa não pode crescer sem fim com conversa
+      // antiga que ficou só com string vazia.
+      if (text) drafts[key] = text;
+      else delete drafts[key];
+      return { drafts };
+    }),
   newChat: () =>
     // Reset completo: BASE_RESET + zera a identidade do chat. v0.1.228
     set({

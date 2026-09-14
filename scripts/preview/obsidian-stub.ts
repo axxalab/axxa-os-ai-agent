@@ -342,7 +342,12 @@ export function setIcon(el: HTMLElement, name: string): void {
   (window as unknown as { lucide?: { createIcons: (o: unknown) => void } })
     .lucide?.createIcons({ nameAttr: "data-lucide" });
 }
-export const Platform = { isMobile: true };
+/** ?platform=desktop troca o aparelho. O stub fixo em `isMobile: true` não
+ *  deixava nem testar o caminho do desktop (Enter envia, Shift+Enter quebra). */
+export const Platform = {
+  isMobile:
+    new URLSearchParams(location.search).get("platform") !== "desktop",
+};
 
 export class MenuItem {
   title = "";
