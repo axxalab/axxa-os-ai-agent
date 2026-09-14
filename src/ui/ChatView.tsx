@@ -204,6 +204,10 @@ export function ChatView({
   const [tools, setTools] = useState<TurnAction[] | null>(null);
   const [toolAt, setToolAt] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLElement>(null);
+  /** A função que publica a altura do composer — chamada pelo observer e por
+   *  todo render. */
+  const publicarRef = useRef<(() => void) | null>(null);
   /** O campo estava em foco quando a folha abriu? Só aí faz sentido devolver
    *  o foco quando ela fecha (quem abriu a folha sem estar escrevendo não quer
    *  o teclado subindo do nada). */
@@ -468,6 +472,41 @@ export function ChatView({
   }, []);
 
   useEffect(reavaliar, [messages, streamingId]);
+
+  // O composer flutua sobre a conversa, então a área de mensagens precisa
+  // saber a altura dele pra reservar espaço embaixo. Ela MUDA o tempo todo
+  // (anexo, fila, campo crescendo, modo de voz), então é medida, não chutada.
+  useEffect(() => {
+    const el = composerRef.current;
+    const raiz = el?.closest(".axxa-root") as HTMLElement | null;
+    if (!el || !raiz) return;
+    const publicar = () => {
+      // Mede da BASE da raiz até o topo do composer, não só a altura dele: no
+      // modo cheio ele sobe 18px (regra da 0.2.37), e a altura sozinha deixava
+      // a última mensagem passar por trás justamente por esses 18px.
+      const base = raiz.getBoundingClientRect().bottom;
+      const topo = el.getBoundingClientRect().top;
+      raiz.style.setProperty(
+        "--axxa-composer-h",
+        `${Math.max(0, Math.round(base - topo))}px`
+      );
+      // Cresceu embaixo de quem estava no fim: desce junto.
+      reavaliar();
+    };
+    publicarRef.current = publicar;
+    publicar();
+    const obs = new ResizeObserver(publicar);
+    obs.observe(el);
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // O observer só entrega no ciclo de pintura — com a janela oculta ele não
+  // roda, e a reserva ficava velha. Medir também a CADA render cobre o que
+  // muda por estado (anexo, fila, modo de voz) sem depender disso.
+  useLayoutEffect(() => {
+    publicarRef.current?.();
+  });
 
   // Trocar de conversa (ou abrir uma nova) começa no fim, acompanhando: o
   // estado de leitura era da conversa anterior. Sem isto, abrir outro chat
@@ -903,7 +942,7 @@ export function ChatView({
 
       {/* Composer: UM bloco só — campo em cima, barra de controles embaixo,
           sem régua horizontal separando nada. */}
-      <section className="axxa-composer">
+      <section className="axxa-composer" ref={composerRef}>
           {/* Quem subiu pra ler precisa de um caminho de volta — e de saber que
               a resposta ficou pronta lá embaixo. Ancorado no composer (que é
               position: relative), flutuando logo acima dele. */}

@@ -288,17 +288,12 @@ body.is-mobile
   padding-bottom: 0 !important;
 }
 
-/* Mesma raiz: o bloco acima traz `bottom: 18px` pro composer no fullscreen,
-   porque lá ele era `position: absolute`. Aqui ele é item em FLUXO (só
-   `position: relative`, pra ancorar o fade), e `bottom` num elemento relativo
-   DESLOCA — era um vão de 18px embaixo dele no modo cheio. O seletor repete o
-   de lá pra ter a mesma especificidade e vencer por ordem. */
-body.is-mobile
-  .workspace-drawer.axxa-fullscreen
-  .axxa-root
-  .axxa-composer:not([data-mode="vault-qa"]) {
-  bottom: auto;
-}
+/* A regra acima (`bottom: 18px` no fullscreen) é da 0.2.37, e existe porque lá
+   o composer era `position: absolute`. Ele voltou a ser — flutuando sobre a
+   conversa, com o texto passando por trás — então ela vale de novo e a nossa
+   neutralização (`bottom: auto`, de quando ele era item em fluxo) saiu daqui.
+   O respiro da base no modo normal continua vindo do padding do próprio
+   composer. */
 
 /* Teclado no modo NORMAL. O modelo da 0.2.37 conta com o Obsidian encolhendo a
    gaveta sozinho quando o teclado abre — é o que mantinha o composer subindo
@@ -499,7 +494,12 @@ body.theme-dark {
   /* Mais ar entre mensagens: na referência cada turno respira, e é isso que
      faz a conversa parecer conversa em vez de log. */
   gap: var(--axxa-5);
-  padding: var(--axxa-4) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2);
+  padding: var(--axxa-4) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2) 0;
+  /* O composer flutua por cima: sem esta reserva, a última mensagem nasceria
+     debaixo dele. A altura é publicada pelo JS (ela muda com anexo, fila e o
+     campo crescendo); o valor fixo é só o que vale até a primeira medida.
+     DEPOIS do shorthand de propósito — o shorthand zeraria isto. */
+  padding-bottom: calc(var(--axxa-composer-h, 104px) + var(--axxa-3));
 }
 
 .axxa-root .axxa-page {
@@ -1014,14 +1014,26 @@ body.theme-dark {
 
 /* Um bloco só: campo em cima, barra de controles embaixo, sem borda de topo
    cortando o painel — o contorno é o próprio .axxa-input. */
+/* O composer FLUTUA sobre a conversa: o texto passa por trás dele, desfocado,
+   em vez de parar numa faixa opaca. É o que a referência faz, e é o que
+   devolve à conversa os ~100px que a faixa comia.
+   `position: absolute` também é o modelo da 0.2.37 (ver o bloco do teclado lá
+   em cima, que conta com isso). O espaço pra última mensagem não sumir embaixo
+   dele vem do padding da área de mensagens, com a altura publicada em
+   `--axxa-composer-h`. */
 .axxa-root .axxa-composer {
-  position: relative;
-  flex: 0 0 auto;
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   padding: var(--axxa-2) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2)
     var(--axxa-3);
-  background-color: var(--axxa-canvas);
+  /* Vidro: a cor da faixa em 72% + desfoque do que passa atrás. O saturate
+     compensa o cinza que o blur traz. */
+  background-color: color-mix(in srgb, var(--axxa-canvas) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
 }
 
 /* O tamanho aqui é calibrado contra o composer do app da Claude (o Rafael
@@ -1372,14 +1384,21 @@ body.theme-dark {
 
 /* Fade curto acima do composer: as mensagens dissolvem no canvas antes da
    faixa sólida, em vez de cortarem secas na borda (0.2.37). */
+/* Fade acima do vidro: a borda de cima do composer não pode ser um corte
+   seco no meio de uma frase. Como o composer agora é translúcido, o degradê
+   também é — ele só adianta a transição. */
 .axxa-root .axxa-composer::before {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: -22px;
-  height: 22px;
-  background: linear-gradient(to top, var(--axxa-canvas), transparent);
+  top: -28px;
+  height: 28px;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--axxa-canvas) 72%, transparent),
+    transparent
+  );
   pointer-events: none;
 }
 
