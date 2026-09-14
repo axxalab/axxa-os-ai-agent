@@ -748,6 +748,9 @@ body.theme-dark {
 
 /* Link em acento, sublinhado com folga — dá pra ver que é link sem gritar. */
 .axxa-root .axxa-markdown a {
+  /* URL sem espaço é o caso clássico de linha que estoura a largura. */
+  word-break: break-word;
+  overflow-wrap: anywhere;
   color: var(--text-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -829,11 +832,10 @@ body.theme-dark {
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-lg);
   background-color: var(--code-background, var(--axxa-raised));
-  /* Quem rola é o <code>, não o <pre>: um filho absoluto dentro de um
-     scroller ANDA junto com o conteúdo, e o botão de copiar ia passear pro
-     lado ao rolar o código. Com o scroll um nível abaixo, ele fica firme no
-     canto. */
-  overflow: visible;
+  /* NADA de rolagem lateral dentro da resposta: numa tela de celular, rolar
+     pro lado pra ler uma linha é pior que ler a linha quebrada. O conteúdo se
+     ajusta à largura — sempre. */
+  overflow: hidden;
 }
 
 .axxa-root .axxa-markdown pre > code {
@@ -844,9 +846,11 @@ body.theme-dark {
   font-family: var(--font-monospace);
   font-size: 0.82em;
   line-height: 1.5;
-  white-space: pre;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
+  /* `pre-wrap` mantém a indentação e as quebras do código, mas deixa a linha
+     longa dobrar em vez de sumir pro lado. */
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* O botão de copiar do Obsidian. As regras dele são todas escopadas em
@@ -883,14 +887,16 @@ body.theme-dark {
 /* TABELA com grade de verdade. Sem isto ela saía como texto solto: as colunas
    não existiam, e comparar duas linhas era impossível. `display: block` é o
    que dá rolagem horizontal própria numa tabela larga. */
+/* A tabela CABE na largura em vez de rolar: no celular, uma tabela que rola
+   pro lado esconde justamente a coluna que se quer comparar. As células
+   quebram, a tabela não foge. */
 .axxa-root .axxa-markdown table {
-  display: block;
-  width: max-content;
+  display: table;
+  width: 100%;
   max-width: 100%;
   margin-block: 0.9em;
   border-collapse: collapse;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
+  table-layout: auto;
   font-size: 0.94em;
 }
 
@@ -900,12 +906,15 @@ body.theme-dark {
   border: 1px solid var(--axxa-line);
   text-align: left;
   vertical-align: top;
+  /* Palavra comprida (um caminho, uma URL) quebra dentro da célula em vez de
+     esticar a coluna e empurrar a tabela pra fora. */
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .axxa-root .axxa-markdown th {
   background-color: var(--axxa-hover);
   font-weight: 700;
-  white-space: nowrap;
 }
 
 .axxa-root .axxa-markdown blockquote {
@@ -1069,20 +1078,14 @@ body.theme-dark {
 }
 
 /* Os pills do que vai junto da mensagem — ACIMA do cartão de escrever, não
-   dentro dele: o cartão é a caixa de texto, e o anexo é outra coisa. Rolam na
-   horizontal, porque três anexos não podem empurrar o composer pra cima. */
+   dentro dele: o cartão é a caixa de texto, e o anexo é outra coisa.
+   QUEBRAM LINHA, não rolam: rolagem lateral no composer esconde anexo (e
+   esconder o que vai junto da mensagem é pior que gastar uma linha a mais). */
 .axxa-root .axxa-pills-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--axxa-2);
   margin-bottom: var(--axxa-2);
-  padding-bottom: 2px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-}
-
-.axxa-root .axxa-pills-row::-webkit-scrollbar {
-  display: none;
 }
 
 .axxa-root .axxa-pill-chip {
@@ -1090,7 +1093,7 @@ body.theme-dark {
   display: inline-flex;
   align-items: center;
   gap: var(--axxa-2);
-  max-width: 62%;
+  max-width: 100%;
   padding: 4px 4px 4px 6px;
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-pill);
@@ -2258,8 +2261,8 @@ body.is-mobile .axxa-root .axxa-history-more {
   padding-left: var(--size-4-4);
 }
 
-/* O código rola SOZINHO na horizontal — a linha longa não pode empurrar o
-   modal inteiro pra fora da tela. */
+/* O código QUEBRA em vez de rolar: mesma regra do chat — rolagem lateral
+   esconde o que a pessoa está aprovando. */
 .axxa-confirm-modal .axxa-diff-block.is-rich pre {
   margin: 0;
   padding: var(--size-4-2);
@@ -2267,9 +2270,9 @@ body.is-mobile .axxa-root .axxa-history-more {
   background-color: var(--code-background, var(--background-primary-alt));
   font-size: var(--font-ui-smaller);
   line-height: 1.45;
-  white-space: pre;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .axxa-confirm-modal .axxa-diff-block.is-rich :not(pre) > code {
