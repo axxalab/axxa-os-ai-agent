@@ -363,6 +363,11 @@ body.theme-dark {
 }
 
 .axxa-root {
+  /* Fonte de LEITURA da resposta. Serifa, como na referência: texto corrido em
+     sans lê como interface; em serifa lê como texto. Trocar por
+     `var(--font-text)` devolve a fonte do vault. */
+  --axxa-read-font: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia,
+    "Noto Serif", "Times New Roman", serif;
   --axxa-1: 4px;
   --axxa-2: 8px;
   --axxa-3: 12px;
@@ -717,14 +722,45 @@ body.theme-dark {
 
 .axxa-root .axxa-markdown {
   white-space: normal;
-  /* Tipografia de LEITURA, não de interface: a resposta é texto pra ler, e no
-     Obsidian quem manda nisso é `--font-text` (a mesma das notas). Corpo maior
-     e entrelinha larga — a referência que o Rafael mandou é visivelmente mais
-     legível que a nossa por causa disso, não por causa de cor. */
-  font-family: var(--font-text);
+  /* Tipografia de LEITURA, não de interface.
+     SERIFA no corpo: é a diferença mais visível entre a referência e o que
+     tínhamos — texto corrido em sans lê como interface, em serifa lê como
+     texto. Código e tabela continuam com a fonte que lhes cabe. */
+  font-family: var(--axxa-read-font);
   font-size: 17px;
-  line-height: 1.6;
+  line-height: 1.62;
   color: var(--text-normal);
+  /* Ligaduras e números proporcionais: detalhe barato que separa "texto" de
+     "saída de terminal". */
+  font-variant-numeric: proportional-nums;
+}
+
+/* Negrito PESA: na referência ele é claramente mais branco que o corpo, e é
+   isso que deixa a leitura escaneável. */
+.axxa-root .axxa-markdown strong {
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.axxa-root .axxa-markdown em {
+  font-style: italic;
+}
+
+/* Link em acento, sublinhado com folga — dá pra ver que é link sem gritar. */
+.axxa-root .axxa-markdown a {
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--text-accent) 45%,
+    transparent
+  );
+}
+
+.axxa-root .axxa-markdown a:hover {
+  text-decoration-color: var(--text-accent);
 }
 
 .axxa-root .axxa-markdown > * {
@@ -771,19 +807,103 @@ body.theme-dark {
   margin: 0;
 }
 
-/* Código no meio do texto: pílula discreta, como na referência. */
+/* Código no meio do texto: pílula em monoespaçada e COR — no meio de um
+   parágrafo em serifa, `assim` tem que se destacar sem virar botão. */
 .axxa-root .axxa-markdown :not(pre) > code {
-  padding: 0.1em 0.35em;
+  padding: 0.12em 0.4em;
   border-radius: var(--axxa-r-sm);
   background-color: var(--axxa-hover);
-  font-size: 0.88em;
+  color: var(--text-accent);
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  word-break: break-word;
+}
+
+/* Bloco de código: cartão com rolagem PRÓPRIA. A linha longa não pode
+   empurrar a conversa — e as cores dos tokens são do Prism do Obsidian, então
+   aqui não se define `color` em descendente nenhum. */
+.axxa-root .axxa-markdown pre {
+  margin-block: 0.9em;
+  padding: var(--axxa-3);
+  border: 1px solid var(--axxa-line);
+  border-radius: var(--axxa-r-md);
+  background-color: var(--code-background, var(--axxa-raised));
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.axxa-root .axxa-markdown pre > code {
+  display: block;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font-family: var(--font-monospace);
+  font-size: 0.82em;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* TABELA com grade de verdade. Sem isto ela saía como texto solto: as colunas
+   não existiam, e comparar duas linhas era impossível. `display: block` é o
+   que dá rolagem horizontal própria numa tabela larga. */
+.axxa-root .axxa-markdown table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin-block: 0.9em;
+  border-collapse: collapse;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  font-size: 0.94em;
+}
+
+.axxa-root .axxa-markdown th,
+.axxa-root .axxa-markdown td {
+  padding: var(--axxa-2) var(--axxa-3);
+  border: 1px solid var(--axxa-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.axxa-root .axxa-markdown th {
+  background-color: var(--axxa-hover);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .axxa-root .axxa-markdown blockquote {
   margin-left: 0;
-  padding-left: var(--axxa-3);
-  border-left: 2px solid var(--axxa-line);
+  padding: 0.1em 0 0.1em var(--axxa-3);
+  border-left: 2px solid
+    color-mix(in srgb, var(--text-accent) 55%, transparent);
   color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Marcador da lista em tom de apoio: o conteúdo é que importa. */
+.axxa-root .axxa-markdown li::marker {
+  color: var(--text-faint);
+}
+
+.axxa-root .axxa-markdown hr {
+  margin-block: 1.2em;
+  border: none;
+  border-top: 1px solid var(--axxa-line);
+}
+
+.axxa-root .axxa-markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--axxa-r-sm);
+}
+
+/* Título dentro da resposta continua em serifa, mas com peso — hierarquia sem
+   mudar de família no meio do texto. */
+.axxa-root .axxa-markdown h1,
+.axxa-root .axxa-markdown h2,
+.axxa-root .axxa-markdown h3,
+.axxa-root .axxa-markdown h4 {
+  font-weight: 700;
 }
 
 .axxa-root .axxa-msg-user {

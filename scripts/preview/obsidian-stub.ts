@@ -286,12 +286,34 @@ export const MarkdownRenderer = {
       esc(t)
         .replace(/`([^`]+)`/g, "<code>$1</code>")
         .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-        .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+        .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
+        // Link: sem isso o preview não tinha como mostrar a cor de acento.
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
     const out: string[] = [];
     let lista: string[] = [];
     const fechaLista = () => {
       if (lista.length) out.push("<ul>" + lista.join("") + "</ul>");
       lista = [];
+    };
+    let tabela: string[] = [];
+    const celulas = (l: string) =>
+      l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+    const fechaTabela = () => {
+      if (tabela.length === 0) return;
+      const linhas = tabela.filter((l) => !/^\s*\|[\s:|-]+\|\s*$/.test(l));
+      const [cab, ...corpo] = linhas;
+      const th = celulas(cab ?? "").map((c) => "<th>" + inline(c) + "</th>");
+      const tr = corpo.map(
+        (l) =>
+          "<tr>" +
+          celulas(l).map((c) => "<td>" + inline(c) + "</td>").join("") +
+          "</tr>"
+      );
+      out.push(
+        "<table><thead><tr>" + th.join("") + "</tr></thead><tbody>" +
+          tr.join("") + "</tbody></table>"
+      );
+      tabela = [];
     };
     // Cerca de código: <pre><code class="language-x">, que é o que o Obsidian
     // produz (e onde o Prism dele pinta os tokens). Sem isto o preview não
@@ -319,6 +341,26 @@ export const MarkdownRenderer = {
       }
       const h = linha.match(/^(#{1,4})\s+(.*)$/);
       const li = linha.match(/^[-*]\s+(.*)$/);
+      // TABELA: acumula as linhas que começam e terminam com "|". Sem isto o
+      // preview não renderizava tabela nenhuma — e tabela é justamente o que
+      // mais aparece diferente entre um markdown cru e um formatado.
+      if (/^\s*\|.*\|\s*$/.test(linha)) {
+        fechaLista();
+        tabela.push(linha);
+        continue;
+      }
+      if (tabela.length > 0) fechaTabela();
+      // Citação e régua.
+      if (/^>\s?/.test(linha)) {
+        fechaLista();
+        out.push("<blockquote><p>" + inline(linha.replace(/^>\s?/, "")) + "</p></blockquote>");
+        continue;
+      }
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(linha.trim())) {
+        fechaLista();
+        out.push("<hr>");
+        continue;
+      }
       if (h) {
         fechaLista();
         out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`);
@@ -332,6 +374,7 @@ export const MarkdownRenderer = {
       }
     }
     fechaLista();
+    fechaTabela();
     if (cerca) {
       out.push(
         '<pre><code class="language-' + cerca.lang + '">' +
