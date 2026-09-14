@@ -948,26 +948,30 @@ body.theme-dark {
   color: var(--text-muted);
 }
 
-/* MINIATURA de verdade: é ela que faz o anexo ser reconhecido de relance. */
+/* MINIATURA de verdade: é ela que faz o anexo ser reconhecido de relance.
+   A imagem tem forma própria (canto arredondado); o que ela NÃO tem é moldura:
+   fundo atrás do ícone virava uma caixinha dentro da caixinha. */
 .axxa-root .axxa-pill-chip-thumb {
   flex: 0 0 auto;
   width: 24px;
   height: 24px;
+  border: none;
   border-radius: 6px;
   object-fit: cover;
-  background-color: var(--axxa-hover);
+  background: none;
 }
 
+/* Emoji SOLTO, sem fundo e sem contorno: dentro de um pill que já tem borda,
+   qualquer moldura no ícone lê como duas bordas empilhadas. */
 .axxa-root .axxa-pill-chip-emoji {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  background-color: var(--axxa-hover);
-  font-size: 13px;
+  width: 20px;
+  border: none;
+  background: none;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -2734,23 +2738,23 @@ body.is-mobile .axxa-root .axxa-history-more {
   pointer-events: auto;
 }
 
-/* "Pensando": UMA linha enquanto a rodada acontece, com o texto varrido por um
-   brilho — é o que a referência faz, e o que diz "está vivo" sem ocupar
-   espaço. Tocável quando já há o que mostrar. */
+/* "Pensando": UMA linha enquanto a rodada acontece — o asterisco que respira,
+   o tempo decorrido e o verbo da vez. Tudo em ACENTO: é a cor que diz "sou
+   eu trabalhando", e ela não compete com o texto da conversa porque a linha
+   é pequena e some assim que a resposta começa. */
 .axxa-root button.axxa-thinking {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: var(--axxa-1);
+  gap: var(--axxa-2);
   padding: 0;
   border: none;
   background: none;
   box-shadow: none;
-  color: var(--text-muted);
+  color: var(--text-accent);
   font-family: var(--font-text);
   font-size: 15px;
   cursor: pointer;
-  /* UMA linha, sempre: um caminho longo virava duas e empurrava a conversa. */
   max-width: 100%;
 }
 
@@ -2766,40 +2770,99 @@ body.is-mobile .axxa-root .axxa-history-more {
   background: none;
 }
 
+/* UMA linha, sempre: caminho longo trunca com reticências. */
 .axxa-root .axxa-thinking-label {
-  background: linear-gradient(
-    90deg,
-    var(--text-faint) 20%,
-    var(--text-normal) 45%,
-    var(--text-normal) 55%,
-    var(--text-faint) 80%
-  );
-  background-size: 220% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: axxa-shimmer 1.8s linear infinite;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  color: var(--text-accent);
+  /* Respiração DISCRETA no texto — quem pulsa de verdade é o glifo. */
+  animation: axxa-thinking-breathe 2.4s ease-in-out infinite;
 }
 
-@keyframes axxa-shimmer {
-  from {
-    background-position: 180% 0;
+/* O tempo é informação de apoio: mesma cor, um passo atrás. */
+.axxa-root .axxa-thinking-time,
+.axxa-root .axxa-thinking-dot {
+  opacity: 0.7;
+}
+
+@keyframes axxa-thinking-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
   }
-  to {
-    background-position: -80% 0;
+  50% {
+    opacity: 1;
   }
 }
 
-/* Quem pediu menos movimento não perde a informação — só o brilho. */
+/* O GLIFO: três desenhos empilhados que se revezam. Cada um entra crescendo,
+   fica, e sai encolhendo enquanto gira — é o "cresce, diminui e volta com
+   outra forma" da referência. O ciclo é 3,6s (1,2s por forma). */
+.axxa-root .axxa-thinking-glyph {
+  position: relative;
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  color: var(--text-accent);
+}
+
+.axxa-root .axxa-thinking-glyph svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transform-origin: 50% 50%;
+  animation: axxa-glyph-turn 3.6s ease-in-out infinite;
+}
+
+.axxa-root .axxa-thinking-glyph .axxa-glyph-b {
+  animation-delay: 1.2s;
+}
+
+.axxa-root .axxa-thinking-glyph .axxa-glyph-c {
+  animation-delay: 2.4s;
+}
+
+@keyframes axxa-glyph-turn {
+  0% {
+    opacity: 0;
+    transform: scale(0.55) rotate(-60deg);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  22% {
+    transform: scale(0.88) rotate(10deg);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1) rotate(20deg);
+  }
+  40% {
+    opacity: 0;
+    transform: scale(0.5) rotate(60deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5) rotate(60deg);
+  }
+}
+
+/* Quem pediu menos movimento não perde a informação — só o movimento. */
 @media (prefers-reduced-motion: reduce) {
   .axxa-root .axxa-thinking-label {
     animation: none;
-    background: none;
-    color: var(--text-muted);
+  }
+  .axxa-root .axxa-thinking-glyph svg {
+    animation: none;
+    opacity: 0;
+  }
+  .axxa-root .axxa-thinking-glyph .axxa-glyph-a {
+    opacity: 1;
   }
 }
 

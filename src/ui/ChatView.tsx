@@ -91,6 +91,7 @@ import {
 } from "./notePicker";
 import type { MessageAttachment } from "../providers/base";
 import { StarterScreen } from "./StarterScreen";
+import { ThinkingLine } from "./Thinking";
 import type { ComposerInject } from "./App";
 
 const MODE_PLACEHOLDER: Record<string, string> = {
@@ -332,12 +333,14 @@ export function ChatView({
     ultima.id === streamingId &&
     ultima.content.length > 0;
   const pensandoAgora = (isLoading || liveTurn.length > 0) && !jaEscrevendo;
-  // O rótulo é a ação MAIS RECENTE — é ela que está acontecendo agora.
-  const pensandoTexto =
-    liveTurn.length > 0
-      ? actionTitle(liveTurn[liveTurn.length - 1])
-      : "Thinking…";
 
+  // Quando esta espera começou — é daqui que sai o relógio da linha. Em ref
+  // pra não reiniciar a cada render; zera quando a espera acaba.
+  const desdeRef = useRef(0);
+  if (pensandoAgora && desdeRef.current === 0) desdeRef.current = Date.now();
+  if (!pensandoAgora && desdeRef.current !== 0) desdeRef.current = 0;
+  const pensandoDesde = desdeRef.current || Date.now();
+  // O rótulo é a ação MAIS RECENTE — é ela que está acontecendo agora.
   // Timeline colada no fim enquanto chega texto novo.
   const stickToBottom = () => {
     const el = scrollRef.current;
@@ -721,24 +724,20 @@ export function ChatView({
           ))
         )}
 
-        {/* O "pensando": UMA linha, com o texto em shimmer e um toque que abre
-            o que já foi feito. Enquanto a rodada corre é essa linha que diz que
-            tem coisa acontecendo; quando a resposta chega ela sai e o chip da
-            mensagem assume. */}
+        {/* O "pensando": UMA linha — o asterisco que respira, o tempo e o
+            verbo da vez. Enquanto a rodada corre é ela que diz que tem coisa
+            acontecendo; quando a resposta chega ela sai e o chip da mensagem
+            assume. O que rodou fica a um toque, na folha. */}
         {pensandoAgora && (
-          <button
-            type="button"
-            className="axxa-thinking"
-            disabled={liveTurn.length === 0}
-            onClick={() => {
+          <ThinkingLine
+            count={liveTurn.length}
+            since={pensandoDesde}
+            onOpen={() => {
               if (liveTurn.length === 0) return;
               setTools(liveTurn);
               setToolAt(liveTurn.length === 1 ? 0 : null);
             }}
-          >
-            <span className="axxa-thinking-label">{pensandoTexto}</span>
-            {liveTurn.length > 0 && <Icon name="chevron-right" size={15} />}
-          </button>
+          />
         )}
       </div>
 
@@ -1267,6 +1266,47 @@ export function ChatView({
               />
             </SheetGroup>
           </>
+        )}
+      </Sheet>
+
+      {/* O que o agente fez: lista numa folha, e cada ação abre a sua com
+          argumentos e resultado — o mesmo vai-e-volta da folha de modelos. */}
+      <Sheet
+        title={
+          toolAt !== null && tools
+            ? actionTitle(tools[toolAt])
+            : `Ran ${tools?.length ?? 0} ${
+                (tools?.length ?? 0) === 1 ? "action" : "actions"
+              }`
+        }
+        open={tools !== null}
+        onClose={() => {
+          setTools(null);
+          setToolAt(null);
+        }}
+        onBack={
+          toolAt !== null && (tools?.length ?? 0) > 1
+            ? () => setToolAt(null)
+            : undefined
+        }
+      >
+        {toolAt !== null && tools ? (
+          <ToolDetail action={tools[toolAt]} />
+        ) : (
+          <SheetGroup>
+            {(tools ?? []).map((a, i) => (
+              <SheetRow
+                key={i}
+                dense
+                icon={actionIcon(a)}
+                iconTone={actionFailed(a) ? "danger" : undefined}
+                title={actionTitle(a)}
+                note={actionNote(a)}
+                tag={actionFailed(a) ? "failed" : undefined}
+                onClick={() => setToolAt(i)}
+              />
+            ))}
+          </SheetGroup>
         )}
       </Sheet>
 
