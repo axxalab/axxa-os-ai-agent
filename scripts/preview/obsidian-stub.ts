@@ -323,7 +323,7 @@ export const MarkdownRenderer = {
     // ele aqui, o preview mostrava um bloco que não existe no aparelho — e foi
     // justamente o botão que apareceu fora do lugar.
     const bloco = (lang: string, linhas: string[]) =>
-      '<pre><button class="copy-code-button">Copy</button><code class="language-' +
+      '<pre><button class="copy-code-button"><i data-lucide="copy"></i></button><code class="language-' +
       lang +
       '">' +
       esc(linhas.join(String.fromCharCode(10))) +

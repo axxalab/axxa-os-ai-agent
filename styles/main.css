@@ -853,6 +853,17 @@ body.theme-dark {
   overflow-wrap: anywhere;
 }
 
+/* Reserva o canto do botão SÓ nas primeiras linhas: um float faz o texto
+   contornar o botão e, passando dele, as linhas voltam a usar a largura
+   inteira. Empurrar todas as linhas com padding-right seria pagar o espaço no
+   bloco todo por causa de uma linha. */
+.axxa-root .axxa-markdown pre > code::before {
+  content: "";
+  float: right;
+  width: 34px;
+  height: 30px;
+}
+
 /* O botão de copiar do Obsidian. As regras dele são todas escopadas em
    `.markdown-rendered`, e o nosso container não é — por isso ele caía no
    fluxo, embaixo e à esquerda, empurrando a altura do bloco. Aqui ele volta
@@ -861,10 +872,16 @@ body.theme-dark {
   position: absolute;
   top: var(--axxa-2);
   inset-inline-end: var(--axxa-2);
-  width: auto;
-  height: auto;
+  /* Botão de ÍCONE (o Obsidian faz setIcon(btn, "lucide-copy")): quadrado com
+     alvo de toque de verdade, e `min-width` em vez de `width` pra não cortar
+     caso alguma versão ponha texto. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
   margin: 0;
-  padding: 5px 8px;
+  padding: 0 6px;
   border: none;
   border-radius: var(--axxa-r-sm);
   /* Fundo OPACO, igual ao do bloco: o texto que passa por baixo dele some
@@ -876,6 +893,12 @@ body.theme-dark {
   font-family: var(--font-interface);
   font-size: var(--font-ui-smaller);
   line-height: 1;
+}
+
+.axxa-root .axxa-markdown pre > button.copy-code-button svg,
+.axxa-root .axxa-markdown pre > button.copy-code-button .svg-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .axxa-root .axxa-markdown pre > button.copy-code-button:hover {
