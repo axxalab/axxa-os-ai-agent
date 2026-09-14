@@ -67,3 +67,28 @@ export function shouldShowJump(
   if (seguindo) return false;
   return respondendo || terminouLonge;
 }
+
+/**
+ * A decisão inteira, num lugar só.
+ *
+ * `gesto` é o que conserta o bug que dava "não dá pra subir": com o dedo na
+ * tela, a régua passa a ser a altura ATUAL e a tela nunca desce sozinha. Sem
+ * isso, o dedo anda uns 40px entre um pedaço de texto e outro — menos que a
+ * folga — e cada pedaço colava a tela no fim de novo, então o deslocamento
+ * nunca acumulava: a conversa parecia grudada.
+ */
+export function decideScroll(p: {
+  /** Tem dedo (ou roda) mexendo agora? */
+  gesto: boolean;
+  /** Altura antes do conteúdo que acabou de entrar. */
+  alturaAnterior: number;
+  /** Altura agora. */
+  alturaAtual: number;
+  scrollTop: number;
+  clientHeight: number;
+  slack?: number;
+}): { pin: boolean; seguindo: boolean } {
+  const base = p.gesto ? p.alturaAtual : p.alturaAnterior || p.alturaAtual;
+  const noFim = wasAtBottom(base, p.scrollTop, p.clientHeight, p.slack);
+  return { pin: noFim && !p.gesto, seguindo: noFim };
+}

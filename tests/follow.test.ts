@@ -10,6 +10,7 @@ import {
   shouldFollow,
   shouldShowJump,
   wasAtBottom,
+  decideScroll,
 } from "../src/ui/follow";
 
 const el = (scrollTop: number, scrollHeight = 2000, clientHeight = 600) => ({
@@ -112,5 +113,61 @@ describe("wasAtBottom", () => {
 
   it("conversa menor que a tela conta como fim", () => {
     expect(wasAtBottom(400, 0, 600)).toBe(true);
+  });
+});
+
+// O caso que quebrou no aparelho: com o dedo na tela, arrastos CURTOS (menores
+// que a folga) precisam acumular. Antes, cada pedaço de texto que chegava
+// colava a tela no fim de novo e o deslocamento voltava a zero — dava a
+// sensação de conversa grudada, impossível de subir.
+describe("decideScroll — o dedo manda", () => {
+  const CH = 600;
+
+  it("sem gesto, estava no fim: desce e segue", () => {
+    expect(
+      decideScroll({ gesto: false, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1400, clientHeight: CH })
+    ).toEqual({ pin: true, seguindo: true });
+  });
+
+  it("COM gesto, mesmo no fim: NÃO desce (o dedo está trabalhando)", () => {
+    expect(
+      decideScroll({ gesto: true, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1800, clientHeight: CH })
+    ).toEqual({ pin: false, seguindo: true });
+  });
+
+  it("arrasto curto durante o gesto solta assim que passa a folga", () => {
+    // altura atual 2400, visível 600 → fim em 1800
+    const perto = decideScroll({ gesto: true, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1760, clientHeight: CH });
+    const longe = decideScroll({ gesto: true, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1700, clientHeight: CH });
+    expect(perto.seguindo).toBe(true);
+    expect(longe.seguindo).toBe(false);
+    // e em NENHUM dos dois a tela desce sozinha
+    expect(perto.pin).toBe(false);
+    expect(longe.pin).toBe(false);
+  });
+
+  it("oito passos de 35px acumulam em vez de voltar pro fim", () => {
+    let scrollTop = 1400; // no fim, com altura 2000
+    let alturaAnterior = 2000;
+    let alturaAtual = 2000;
+    for (let i = 0; i < 8; i++) {
+      scrollTop -= 35;
+      alturaAtual += 60; // texto novo chegando no meio do arrasto
+      const { pin } = decideScroll({ gesto: true, alturaAnterior, alturaAtual, scrollTop, clientHeight: CH });
+      // a única coisa que importa: NUNCA desce durante o gesto
+      expect(pin).toBe(false);
+      alturaAnterior = alturaAtual;
+    }
+    expect(scrollTop).toBe(1400 - 280);
+  });
+
+  it("soltando o dedo perto do fim, volta a seguir", () => {
+    const r = decideScroll({ gesto: false, alturaAnterior: 2400, alturaAtual: 2400, scrollTop: 1760, clientHeight: CH });
+    expect(r).toEqual({ pin: true, seguindo: true });
+  });
+
+  it("soltando o dedo longe, fica onde está", () => {
+    const r = decideScroll({ gesto: false, alturaAnterior: 2400, alturaAtual: 2400, scrollTop: 900, clientHeight: CH });
+    expect(r).toEqual({ pin: false, seguindo: false });
   });
 });

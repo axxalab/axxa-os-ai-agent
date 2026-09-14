@@ -53,7 +53,7 @@ import { useVoice } from "./useVoice";
 import { speak, stopSpeaking } from "./readAloud";
 import { commit, screen, warn } from "./haptics";
 import { composerMaxHeight, readKeyboardHeight } from "./composerSize";
-import { shouldShowJump, wasAtBottom } from "./follow";
+import { decideScroll, shouldShowJump } from "./follow";
 import { pasteIsBig, pastedNote } from "./pasteAttachment";
 import {
   htmlTitle,
@@ -357,6 +357,9 @@ export function ChatView({
   /** Altura da conversa na última vez que olhamos — é ela que diz se o
    *  usuário estava no fim ANTES do texto novo entrar. */
   const alturaAnteriorRef = useRef(0);
+  /** Tem dedo (ou roda) mexendo na rolagem agora? Enquanto tem, a tela NÃO
+   *  desce sozinha. */
+  const gestoRef = useRef(false);
 
   const stickToBottom = () => {
     const el = scrollRef.current;
@@ -373,19 +376,25 @@ export function ChatView({
   const reavaliar = () => {
     const el = scrollRef.current;
     if (!el) return;
-    const anterior = alturaAnteriorRef.current || el.scrollHeight;
-    const estavaNoFim = wasAtBottom(anterior, el.scrollTop, el.clientHeight);
-    if (estavaNoFim) el.scrollTop = el.scrollHeight;
+    const { pin, seguindo: noFim } = decideScroll({
+      gesto: gestoRef.current,
+      alturaAnterior: alturaAnteriorRef.current,
+      alturaAtual: el.scrollHeight,
+      scrollTop: el.scrollTop,
+      clientHeight: el.clientHeight,
+    });
+    if (pin) el.scrollTop = el.scrollHeight;
     alturaAnteriorRef.current = el.scrollHeight;
-    if (estavaNoFim !== seguindoRef.current) {
-      seguindoRef.current = estavaNoFim;
-      setSeguindo(estavaNoFim);
+    if (noFim !== seguindoRef.current) {
+      seguindoRef.current = noFim;
+      setSeguindo(noFim);
     }
-    if (estavaNoFim) setAvisoId(null);
+    if (noFim) setAvisoId(null);
   };
 
   /** Volta pro fim e volta a acompanhar (o toque no aviso e o envio). */
   const voltarPraBaixo = () => {
+    gestoRef.current = false;
     seguindoRef.current = true;
     setSeguindo(true);
     setAvisoId(null);
@@ -403,10 +412,57 @@ export function ChatView({
     // sozinho chegaria cedo demais.
     const obs = new MutationObserver(reavaliar);
     obs.observe(el, { childList: true, subtree: true, characterData: true });
-    el.addEventListener("scroll", reavaliar, { passive: true });
+
+    // ── o gesto ────────────────────────────────────────────────────────────
+    // O dedo sai da tela mas a inércia continua: quem diz que o gesto acabou é
+    // a rolagem PARAR, não o touchend. Por isso o cronômetro reinicia a cada
+    // evento de rolagem enquanto ele está armado.
+    let assentar = 0;
+    const comecarGesto = () => {
+      gestoRef.current = true;
+      window.clearTimeout(assentar);
+      assentar = 0;
+    };
+    const terminarGesto = () => {
+      window.clearTimeout(assentar);
+      assentar = window.setTimeout(() => {
+        assentar = 0;
+        gestoRef.current = false;
+        reavaliar();
+      }, 320);
+    };
+    const aoRolar = () => {
+      // Rolando com o cronômetro armado = inércia viva: adia o veredito.
+      if (assentar) terminarGesto();
+      reavaliar();
+    };
+
+    el.addEventListener("scroll", aoRolar, { passive: true });
+    el.addEventListener("touchstart", comecarGesto, { passive: true });
+    el.addEventListener("touchend", terminarGesto, { passive: true });
+    el.addEventListener("touchcancel", terminarGesto, { passive: true });
+    el.addEventListener("wheel", comecarGesto, { passive: true });
+    el.addEventListener("wheel", terminarGesto, { passive: true });
+    const mouseDown = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") comecarGesto();
+    };
+    const mouseUp = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") terminarGesto();
+    };
+    el.addEventListener("pointerdown", mouseDown);
+    window.addEventListener("pointerup", mouseUp);
+
     return () => {
       obs.disconnect();
-      el.removeEventListener("scroll", reavaliar);
+      window.clearTimeout(assentar);
+      el.removeEventListener("scroll", aoRolar);
+      el.removeEventListener("touchstart", comecarGesto);
+      el.removeEventListener("touchend", terminarGesto);
+      el.removeEventListener("touchcancel", terminarGesto);
+      el.removeEventListener("wheel", comecarGesto);
+      el.removeEventListener("wheel", terminarGesto);
+      el.removeEventListener("pointerdown", mouseDown);
+      window.removeEventListener("pointerup", mouseUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
