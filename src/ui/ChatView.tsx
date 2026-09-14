@@ -31,6 +31,7 @@ import {
   type EffortLevel,
 } from "../core/effort";
 import type { AIToolStep } from "../agent/types";
+import { agentActivitySpec } from "../core/helpers";
 import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
@@ -628,6 +629,8 @@ export function ChatView({
               <SheetRow
                 key={i}
                 dense
+                icon={actionIcon(a)}
+                iconTone={actionFailed(a) ? "danger" : undefined}
                 title={actionTitle(a)}
                 note={actionNote(a)}
                 tag={actionFailed(a) ? "failed" : undefined}
@@ -725,6 +728,21 @@ function actionFailed(a: TurnAction): boolean {
   return false;
 }
 
+/** O ícone DIZ o que a ação foi — olho pra leitura, radar pra busca, lixeira
+ *  pra apagar. Um check repetido em toda linha não informava nada: o estado já
+ *  está na etiqueta "failed" e no detalhe. O mapa é o MESMO que o motor usa na
+ *  narração (agentActivitySpec), então a folha e a timeline não divergem. */
+function actionIcon(a: TurnAction): string {
+  if (a.kind === "reasoning") return "brain";
+  if (a.kind === "activity") {
+    return a.activity.phase === "failed"
+      ? a.activity.iconFailed ?? "circle-alert"
+      : a.activity.iconPending;
+  }
+  if (!a.step.ok) return "circle-alert";
+  return agentActivitySpec(a.step.name, a.step.arguments ?? {}).iconPending;
+}
+
 /** Resumo de uma linha dos argumentos — o suficiente pra reconhecer a ação. */
 function toolSummary(step: AIToolStep): string {
   const args = Object.entries(step.arguments ?? {});
@@ -741,7 +759,7 @@ function ToolDetail({ action }: { action: TurnAction }) {
     <div className="axxa-tool-detail">
       {action.kind !== "reasoning" && (
         <p className={ok ? "axxa-tool-state is-ok" : "axxa-tool-state"}>
-          <Icon name={ok ? "check" : "x"} size={14} />
+          <Icon name={ok ? "circle-check" : "circle-alert"} size={15} />
           {ok ? "Completed" : "Failed"}
         </p>
       )}

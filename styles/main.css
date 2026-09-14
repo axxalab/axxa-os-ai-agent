@@ -1255,6 +1255,21 @@ body.theme-dark {
   color: var(--text-faint);
 }
 
+/* Ícone da ação: discreto, largura FIXA pra todas as linhas alinharem — uma
+   coluna torta vale menos que nenhuma. Vermelho quando a ação falhou. */
+.axxa-root .axxa-sheet-row-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  color: var(--text-muted);
+}
+
+.axxa-root .axxa-sheet-row-icon.is-danger {
+  color: var(--color-red);
+}
+
 /* Linha de navegação (e a densa): uma linha só. O valor encosta na direita e o
    título fica à esquerda — duas alturas pra dizer "Effort · Med" era
    desperdício de tela, e numa lista de onze ações vira rolagem sem fim. */
@@ -1745,6 +1760,77 @@ body.is-mobile .axxa-root .axxa-history-more {
 .axxa-confirm-modal .axxa-diff-del {
   border-left: 2px solid var(--color-red);
   background-color: color-mix(in srgb, var(--color-red) 12%, transparent);
+}
+
+/* Conteúdo FORMATADO: nota vira markdown de verdade, arquivo de código vira
+   bloco colorido. O bloco cru servia pra qualquer coisa e por isso não servia
+   pra nada — quem aprova precisa reconhecer o que está aprovando.
+   A tinta verde/vermelha continua: ela é a semântica do diff. */
+.axxa-confirm-modal .axxa-diff-block.is-rich {
+  white-space: normal;
+  font-family: var(--font-text);
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+}
+
+.axxa-confirm-modal .axxa-diff-block.is-rich > :first-child {
+  margin-top: 0;
+}
+
+.axxa-confirm-modal .axxa-diff-block.is-rich > :last-child {
+  margin-bottom: 0;
+}
+
+/* Títulos de dentro da nota não podem ter o tamanho de título de tela: aqui
+   eles são estrutura do preview, não hierarquia da interface. */
+.axxa-confirm-modal .axxa-diff-block.is-rich :is(h1, h2, h3, h4, h5, h6) {
+  margin: var(--size-4-2) 0 var(--size-4-1);
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  line-height: 1.3;
+}
+
+.axxa-confirm-modal .axxa-diff-block.is-rich p,
+.axxa-confirm-modal .axxa-diff-block.is-rich ul,
+.axxa-confirm-modal .axxa-diff-block.is-rich ol {
+  margin: 0 0 var(--size-4-2);
+}
+
+.axxa-confirm-modal .axxa-diff-block.is-rich ul,
+.axxa-confirm-modal .axxa-diff-block.is-rich ol {
+  padding-left: var(--size-4-4);
+}
+
+/* O código rola SOZINHO na horizontal — a linha longa não pode empurrar o
+   modal inteiro pra fora da tela. */
+.axxa-confirm-modal .axxa-diff-block.is-rich pre {
+  margin: 0;
+  padding: var(--size-4-2);
+  border-radius: var(--radius-s);
+  background-color: var(--code-background, var(--background-primary-alt));
+  font-size: var(--font-ui-smaller);
+  line-height: 1.45;
+  white-space: pre;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.axxa-confirm-modal .axxa-diff-block.is-rich :not(pre) > code {
+  font-size: var(--font-ui-smaller);
+  word-break: break-word;
+}
+
+/* Imagem embedada não estoura a largura do modal. */
+.axxa-confirm-modal .axxa-diff-block.is-rich img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* O que foi cortado vira UMA linha discreta, fora do bloco: dentro do código
+   "[+803 chars]" parecia parte do arquivo. */
+.axxa-confirm-modal .axxa-diff-more {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
 }
 
 /* Botões: negar à esquerda, aprovar à direita, e o irreversível em vermelho —

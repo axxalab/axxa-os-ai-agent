@@ -82,6 +82,7 @@ export const EN_US = {
     confirmLabelFrom: "From",
     confirmLabelTo: "To",
     confirmLabelDelete: "Delete",
+    confirmTruncated: (n: number) => `+${n} chars not shown`,
     permissionLevel: "Agent permission level",
     permissionLevelDesc:
       "How much control the Agent has over the vault. Delete always asks for confirmation regardless of the level.",

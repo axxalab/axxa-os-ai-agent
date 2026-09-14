@@ -388,6 +388,8 @@ export function SheetRow({
   tag,
   selected,
   dense,
+  icon,
+  iconTone,
   onClick,
 }: {
   title: string;
@@ -399,6 +401,12 @@ export function SheetRow({
   /** Uma linha só (nome à esquerda, legenda à direita). Pra lista longa —
    *  onze ações em duas linhas cada viram rolagem sem fim. */
   dense?: boolean;
+  /** Ícone Lucide à esquerda. Só onde ele DIZ algo que o texto não diz (ler,
+   *  procurar, apagar); lista de modelos continua sem — lá o ícone era
+   *  decoração e por isso saiu. */
+  icon?: string;
+  /** "danger" pinta o ícone de vermelho (ação que falhou). */
+  iconTone?: "danger";
   onClick: () => void;
 }) {
   return (
@@ -412,6 +420,17 @@ export function SheetRow({
       aria-pressed={selected === true}
       onClick={onClick}
     >
+      {icon && (
+        <Icon
+          name={icon}
+          size={dense ? 16 : 18}
+          className={
+            iconTone === "danger"
+              ? "axxa-sheet-row-icon is-danger"
+              : "axxa-sheet-row-icon"
+          }
+        />
+      )}
       {dense ? (
         <>
           <span className="axxa-sheet-row-title">

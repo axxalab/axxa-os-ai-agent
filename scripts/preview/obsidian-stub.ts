@@ -90,10 +90,48 @@ export class PluginSettingTab {
   display(): void {}
 }
 export class ItemView {}
+/**
+ * Modal com a ÁRVORE de verdade do Obsidian — `.modal-container.mod-dim` →
+ * `.modal` → `.modal-content`. Um `open()` vazio (como era antes) escondia o
+ * desenho inteiro do modal de aprovação: o preview só conseguia mostrar um
+ * espelho de HTML escrito à mão, que mente por construção.
+ */
 export class Modal {
-  constructor(public app?: unknown) {}
-  open() {}
-  close() {}
+  containerEl: HTMLElement;
+  modalEl: HTMLElement;
+  titleEl: HTMLElement;
+  contentEl: HTMLElement;
+
+  constructor(public app?: unknown) {
+    this.containerEl = document.createElement("div");
+    this.containerEl.className = "modal-container mod-dim";
+    const bg = document.createElement("div");
+    bg.className = "modal-bg";
+    this.modalEl = document.createElement("div");
+    this.modalEl.className = "modal";
+    const fechar = document.createElement("div");
+    fechar.className = "modal-close-button";
+    fechar.addEventListener("click", () => this.close());
+    this.titleEl = document.createElement("div");
+    this.titleEl.className = "modal-title";
+    this.contentEl = document.createElement("div");
+    this.contentEl.className = "modal-content";
+    this.modalEl.append(fechar, this.titleEl, this.contentEl);
+    this.containerEl.append(bg, this.modalEl);
+  }
+
+  onOpen(): void {}
+  onClose(): void {}
+
+  open() {
+    document.body.appendChild(this.containerEl);
+    this.onOpen();
+  }
+
+  close() {
+    this.onClose();
+    this.containerEl.remove();
+  }
 }
 export class FuzzySuggestModal extends Modal {
   setPlaceholder() {}
@@ -231,7 +269,30 @@ export const MarkdownRenderer = {
       if (lista.length) out.push("<ul>" + lista.join("") + "</ul>");
       lista = [];
     };
+    // Cerca de código: <pre><code class="language-x">, que é o que o Obsidian
+    // produz (e onde o Prism dele pinta os tokens). Sem isto o preview não
+    // mostrava bloco de código NENHUM — a formatação sumia calada.
+    let cerca: { marca: string; lang: string; linhas: string[] } | null = null;
     for (const linha of text.split(String.fromCharCode(10))) {
+      const abre = linha.match(/^ {0,3}(`{3,}|~{3,})\s*([A-Za-z0-9_+-]*)\s*$/);
+      if (cerca) {
+        if (abre && abre[1][0] === cerca.marca[0] && abre[1].length >= cerca.marca.length) {
+          out.push(
+            '<pre><code class="language-' + cerca.lang + '">' +
+              esc(cerca.linhas.join(String.fromCharCode(10))) +
+              "</code></pre>"
+          );
+          cerca = null;
+        } else {
+          cerca.linhas.push(linha);
+        }
+        continue;
+      }
+      if (abre) {
+        fechaLista();
+        cerca = { marca: abre[1], lang: abre[2] || "none", linhas: [] };
+        continue;
+      }
       const h = linha.match(/^(#{1,4})\s+(.*)$/);
       const li = linha.match(/^[-*]\s+(.*)$/);
       if (h) {
@@ -247,6 +308,13 @@ export const MarkdownRenderer = {
       }
     }
     fechaLista();
+    if (cerca) {
+      out.push(
+        '<pre><code class="language-' + cerca.lang + '">' +
+          esc(cerca.linhas.join(String.fromCharCode(10))) +
+          "</code></pre>"
+      );
+    }
     el.innerHTML = out.join("");
   },
 };

@@ -11,7 +11,7 @@
 // edições desta rodada sem perguntar (NÃO aparece em ações irreversíveis —
 // delete sempre é por ação). O agent loop dá `await modal.openAndWait()`.
 
-import { App, Modal, Setting } from "obsidian";
+import { App, Component, MarkdownRenderer, Modal, Setting } from "obsidian";
 import type { ToolCall, ToolDefinition } from "./types";
 import type { Translations } from "../i18n";
 
@@ -37,6 +37,9 @@ export class ConfirmationModal extends Modal {
   private opts: ConfirmOpts;
   private resolver: (r: ConfirmResult) => void = () => {};
   private resolved = false;
+  /** Dono dos renders de markdown (o renderer do Obsidian precisa de um
+   *  Component vivo pra pendurar callouts, mermaid, embeds…). */
+  private md: Component | null = null;
 
   constructor(app: App, opts: ConfirmOpts) {
     super(app);
@@ -110,7 +113,8 @@ export class ConfirmationModal extends Modal {
     });
   }
 
-  /** Preview/diff conforme a tool. Conteúdo grande é truncado. */
+  /** Preview/diff conforme a tool. Conteúdo grande é truncado, e o que sobra
+   *  vira uma linha de aviso em vez de sujar o bloco. */
   private renderPreview(root: HTMLElement) {
     const { name, arguments: args } = this.opts.toolCall;
     const strings = this.opts.strings;
@@ -122,11 +126,43 @@ export class ConfirmationModal extends Modal {
       row.createSpan({ cls: "axxa-confirm-path-label", text: label });
       row.createSpan({ cls: "axxa-confirm-path-val", text: value });
     };
-    const block = (text: string, kind: "add" | "del" | "ctx") => {
-      const pre = box.createEl("pre", {
-        cls: "axxa-diff-block axxa-diff-" + kind,
-      });
-      pre.textContent = trunc(text);
+
+    // O conteúdo aparece DO JEITO QUE ELE É: nota vira markdown formatado,
+    // arquivo de código vira bloco colorido (Prism do próprio Obsidian), e o
+    // que não dá pra reconhecer continua texto cru. Quem aprova uma mudança
+    // precisa LER a mudança — markdown cru com ## e ** no meio é ruído.
+    const block = (
+      text: string,
+      kind: "add" | "del" | "ctx",
+      como: Preview = previewFor(path)
+    ) => {
+      const cls = "axxa-diff-block axxa-diff-" + kind;
+      const cortado =
+        text.length > MAX_PREVIEW ? text.slice(0, MAX_PREVIEW) : text;
+
+      if (como.kind === "plain") {
+        box.createEl("pre", { cls }).textContent = cortado;
+      } else {
+        const host = box.createDiv({ cls: cls + " is-rich" });
+        const md =
+          como.kind === "code"
+            ? fence(cortado, como.lang)
+            : closeOpenFence(cortado);
+        void MarkdownRenderer.render(this.app, md, host, path, this.mdOwner())
+          // Markdown quebrado não pode engolir a aprovação: cai pro texto cru.
+          .catch(() => {
+            host.empty();
+            host.removeClass("is-rich");
+            host.textContent = cortado;
+          });
+      }
+
+      if (cortado.length < text.length) {
+        box.createDiv({
+          cls: "axxa-diff-more",
+          text: strings.confirmTruncated(text.length - cortado.length),
+        });
+      }
     };
 
     switch (name) {
@@ -156,24 +192,39 @@ export class ConfirmationModal extends Modal {
       }
       default: {
         // Preview genérico dos argumentos (tools não-write em modo "ask").
+        // String é texto; objeto é JSON colorido.
         Object.entries(args).forEach(([key, value]) => {
-          const valStr =
+          const texto =
             typeof value === "string" ? value : JSON.stringify(value, null, 2);
           pathRow(key, "");
-          block(valStr, "ctx");
+          block(
+            texto,
+            "ctx",
+            typeof value === "string"
+              ? { kind: "plain" }
+              : { kind: "code", lang: "json" }
+          );
         });
       }
     }
   }
 
+  /** Component vivo enquanto o modal existe — criado na primeira vez que
+   *  alguém renderiza markdown, descarregado no onClose. */
+  private mdOwner(): Component {
+    if (!this.md) {
+      this.md = new Component();
+      this.md.load();
+    }
+    return this.md;
+  }
+
   onClose() {
+    this.md?.unload();
+    this.md = null;
     this.contentEl.empty();
     this.resolveOnce(false); // X / Escape = negação
   }
-}
-
-function trunc(s: string, max = 1200): string {
-  return s.length > max ? s.slice(0, max) + `\n\n[+${s.length - max} chars]` : s;
 }
 
 // v0.1.228: corta na 1ª frase real (ponto + espaço), sem quebrar em pontos
@@ -184,4 +235,93 @@ function firstSentence(desc: string, max = 140): string {
   const m = d.match(/^(.+?\.)(?:\s|$)/);
   const sentence = m ? m[1] : d;
   return sentence.length > max ? sentence.slice(0, max - 1) + "…" : sentence;
+}
+
+/** Teto do preview: o suficiente pra julgar a mudança sem virar a nota
+ *  inteira dentro de um modal. O que sobra vira uma linha de aviso. */
+const MAX_PREVIEW = 1200;
+
+type Preview =
+  | { kind: "markdown" }
+  | { kind: "code"; lang: string }
+  | { kind: "plain" };
+
+/** Extensão → linguagem do Prism (o mesmo highlighter que o Obsidian usa em
+ *  modo leitura). Sem entrada aqui o conteúdo fica texto cru: melhor que
+ *  colorir errado. */
+const CODE_LANGS: Record<string, string> = {
+  ts: "typescript",
+  tsx: "tsx",
+  js: "javascript",
+  jsx: "jsx",
+  mjs: "javascript",
+  cjs: "javascript",
+  json: "json",
+  css: "css",
+  scss: "scss",
+  html: "html",
+  xml: "xml",
+  svg: "xml",
+  yml: "yaml",
+  yaml: "yaml",
+  toml: "toml",
+  ini: "ini",
+  sh: "bash",
+  bash: "bash",
+  zsh: "bash",
+  ps1: "powershell",
+  py: "python",
+  rb: "ruby",
+  go: "go",
+  rs: "rust",
+  java: "java",
+  kt: "kotlin",
+  swift: "swift",
+  c: "c",
+  h: "c",
+  cpp: "cpp",
+  hpp: "cpp",
+  cs: "csharp",
+  php: "php",
+  sql: "sql",
+  lua: "lua",
+  dart: "dart",
+  diff: "diff",
+  patch: "diff",
+};
+
+const MARKDOWN_EXT = new Set(["md", "markdown", "mdx"]);
+
+function extOf(path: string): string {
+  const base = path.slice(path.lastIndexOf("/") + 1);
+  const dot = base.lastIndexOf(".");
+  return dot <= 0 ? "" : base.slice(dot + 1).toLowerCase();
+}
+
+/** Como mostrar o conteúdo de um caminho. Sem extensão é nota do vault —
+ *  markdown, que é o caso mais comum aqui. */
+export function previewFor(path: string): Preview {
+  const ext = extOf(path);
+  if (ext === "" || MARKDOWN_EXT.has(ext)) return { kind: "markdown" };
+  const lang = CODE_LANGS[ext];
+  return lang ? { kind: "code", lang } : { kind: "plain" };
+}
+
+/** Cerca de código maior que qualquer sequência de crases do conteúdo: senão
+ *  uma cerca no meio do arquivo fecha o bloco e o resto vaza como markdown. */
+export function fence(text: string, lang: string): string {
+  const maior = Math.max(
+    0,
+    ...Array.from(text.matchAll(/`+/g), (m) => m[0].length)
+  );
+  const crases = "`".repeat(Math.max(3, maior + 1));
+  return `${crases}${lang}\n${text}\n${crases}`;
+}
+
+/** Truncar markdown pode deixar uma cerca aberta — o resto do preview viraria
+ *  código. Fecha o que ficou aberto. */
+export function closeOpenFence(md: string): string {
+  const cercas = md.match(/^ {0,3}(`{3,}|~{3,})/gm);
+  if (!cercas || cercas.length % 2 === 0) return md;
+  return `${md}\n${cercas[cercas.length - 1].trim()}`;
 }

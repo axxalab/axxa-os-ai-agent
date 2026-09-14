@@ -211,47 +211,53 @@ if (scenario === "thread") {
 // enquanto chega, em vez de só no fim.
 (window as unknown as { __chat: unknown }).__chat = useChatStore;
 
+/** Conteúdo de exemplo do modal de aprovação (?s=confirm). */
+const MD_DEMO = "# CREATIVE SYSTEMS\n\n## Purpose\nA broad, **practical** view of how creative systems work day to day, with enough text to prove that long lines wrap instead of running off the screen.\n\n## Core Principles\n- Treat the work as a *system*, not a mood\n- Capture first, judge later\n- Review on a schedule, not on a feeling\n\nSee [[PROJECTS/FRAMEWORKS]] for the longer version.\n\n```ts\nexport function review(deck: Card[], hoje = Date.now()) {\n  return deck.filter((c) => c.due <= hoje).sort((a, b) => a.due - b.due);\n}\n```\n";
+const TS_DEMO = "import { readFile } from 'node:fs/promises';\n\n/** L\u00ea o deck e devolve o que vence hoje. */\nexport async function due(path: string): Promise<Card[]> {\n  const raw = await readFile(path, 'utf8');\n  const deck = JSON.parse(raw) as Card[];\n  return deck.filter((c) => c.due <= Date.now());\n}\n";
+
 const host = document.getElementById("app");
 
 if (scenario === "confirm") {
-  // Espelha o markup do ConfirmationModal (mesmas classes) dentro da árvore de
-  // modal do Obsidian — é o único jeito de OLHAR esse desenho sem rodar o
-  // agente de verdade.
-  const wrap = document.createElement("div");
-  wrap.className = "modal-container mod-dim";
-  const modal = document.createElement("div");
-  modal.className = "modal";
-  const content = document.createElement("div");
-  content.className = "modal-content axxa-confirm-modal";
-  content.innerHTML = [
-    "<h2>Review Agent change</h2>",
-    '<div class="axxa-confirm-summary">',
-    '<div class="axxa-confirm-tool-name">vault_create</div>',
-    '<div class="axxa-confirm-tool-desc">Creates a new vault file with the given content.</div>',
-    "</div>",
-    '<div class="axxa-confirm-preview">',
-    '<div class="axxa-confirm-path axxa-confirm-path-add">',
-    '<span class="axxa-confirm-path-label">Create</span>',
-    '<span class="axxa-confirm-path-val">PROJECTS/CREATIVE SYSTEMS.md</span>',
-    "</div>",
-    '<pre class="axxa-diff-block axxa-diff-add"># CREATIVE SYSTEMS',
-    "",
-    "## Purpose",
-    "This note was created to capture a broad, practical view of how creative systems work in day to day practice, with enough text to prove that long lines wrap instead of running off the screen.",
-    "",
-    "## Core Principles",
-    "Creative work improves when it is treated as a system instead of a mood.",
-    "[+803 chars]</pre>",
-    "</div>",
-    '<div class="setting-item"><div class="setting-item-info"></div><div class="setting-item-control">',
-    '<button class="axxa-confirm-deny">Deny</button>',
-    '<button class="axxa-confirm-approveall">Approve all</button>',
-    '<button class="mod-cta">Approve</button>',
-    "</div></div>",
-  ].join("\n");
-  modal.appendChild(content);
-  wrap.appendChild(modal);
-  document.body.appendChild(wrap);
+  // O modal DE VERDADE — a mesma classe que o agente abre no aparelho. Antes
+  // aqui havia um espelho de HTML escrito à mão: ele nunca ia mostrar um bug
+  // do modal, só os bugs do espelho.
+  void (async () => {
+    const { ConfirmationModal } = await import("./src/agent/ConfirmationModal");
+    const { getTranslations } = await import("./src/i18n");
+    const strings = getTranslations("en-us").agent;
+    // ?file=md|ts|txt — o preview precisa mostrar os TRÊS caminhos: nota
+    // formatada, código colorido e texto cru.
+    const tipo = params.get("file") ?? "md";
+    const caso =
+      tipo === "ts"
+        ? {
+            path: "axxa-ai/review.ts",
+            content: TS_DEMO,
+          }
+        : tipo === "txt"
+          ? { path: "Inbox/dump.txt", content: "linha 1\nlinha 2\nlinha 3" }
+          : { path: "PROJECTS/CREATIVE SYSTEMS.md", content: MD_DEMO };
+    // ?big=1 estoura o teto do preview: é o único jeito de VER a linha do
+    // truncamento (e de provar que ela fica fora do bloco).
+    const content = params.get("big")
+      ? caso.content.repeat(6)
+      : caso.content;
+    const modal = new ConfirmationModal({} as never, {
+      toolCall: {
+        id: "call_1",
+        name: "vault_create",
+        arguments: { path: caso.path, content },
+      },
+      definition: {
+        name: "vault_create",
+        description:
+          "Creates a new vault file with the given content. Fails if it already exists.",
+        parameters: { type: "object", properties: {}, required: [] },
+      } as never,
+      strings,
+    });
+    void modal.openAndWait();
+  })();
 }
 if (scenario === "settings") {
   // Renderiza a ABA DE SETTINGS (que é Setting API nativa, não React) dentro
