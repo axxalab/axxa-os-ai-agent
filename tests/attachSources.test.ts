@@ -11,6 +11,8 @@ import {
   linkNote,
   isImageExt,
   attachmentLabel,
+  attachmentThumb,
+  noteKind,
   artifactIcon,
   GENERATION_DIR,
   type ArtifactLike,
@@ -165,5 +167,56 @@ describe("artifactIcon", () => {
     expect(artifactIcon("png")).toBe("image");
     expect(artifactIcon("mp4")).toBe("file-video");
     expect(artifactIcon("mp3")).toBe("file-audio");
+  });
+});
+
+describe("attachmentThumb", () => {
+  it("imagem mostra a MINIATURA de verdade", () => {
+    expect(
+      attachmentThumb({ type: "image", dataUrl: "data:image/png;base64,AA" })
+    ).toEqual({ kind: "image", url: "data:image/png;base64,AA" });
+  });
+
+  it("link, texto colado e nota do vault têm emojis DIFERENTES", () => {
+    const link = attachmentThumb(linkNote("https://x.com", "T", "c"));
+    const colado = attachmentThumb({
+      type: "note",
+      path: "Pasted text (5.2k)",
+      content: "x",
+    });
+    const nota = attachmentThumb({
+      type: "note",
+      path: "PROJECTS/FRAMEWORKS.md",
+      content: "x",
+    });
+    expect([link, colado, nota].map((t) => t.kind)).toEqual([
+      "emoji",
+      "emoji",
+      "emoji",
+    ]);
+    const chars = [link, colado, nota].map((t) =>
+      t.kind === "emoji" ? t.char : ""
+    );
+    expect(new Set(chars).size).toBe(3);
+  });
+
+  it("PDF e áudio têm o seu", () => {
+    expect(attachmentThumb({ type: "pdf", name: "a.pdf" })).toEqual({
+      kind: "emoji",
+      char: "📕",
+    });
+    expect(attachmentThumb({ type: "audio", path: "a.webm" })).toEqual({
+      kind: "emoji",
+      char: "🎙️",
+    });
+  });
+});
+
+describe("noteKind", () => {
+  it("separa link, colado e nota", () => {
+    expect(noteKind("Título — https://x.com")).toBe("link");
+    expect(noteKind("https://x.com")).toBe("link");
+    expect(noteKind("Pasted text (5.2k)")).toBe("pasted");
+    expect(noteKind("PROJECTS/FRAMEWORKS.md")).toBe("vault");
   });
 });

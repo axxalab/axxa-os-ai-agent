@@ -67,7 +67,9 @@ export function Drawer({
       }
     };
     document.addEventListener("keydown", onKey);
-    panelRef.current?.focus();
+    // Sem preventScroll o foco rola o ancestral atrás da gaveta (ela também
+    // entra deslocada) — o mesmo pulo da folha.
+    panelRef.current?.focus({ preventScroll: true });
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 

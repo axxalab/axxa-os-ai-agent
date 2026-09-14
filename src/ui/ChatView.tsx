@@ -62,8 +62,8 @@ import {
   normalizeUrl,
   rankArtifacts,
   vaultArtifacts,
-  attachmentIcon,
   attachmentLabel,
+  attachmentThumb,
   artifactIcon,
   GENERATION_DIR,
   type ArtifactLike,
@@ -214,7 +214,7 @@ export function ChatView({
   useEffect(() => {
     if (!inject) return;
     setDraft((d) => (d.trim() ? `${d}\n\n${inject.text}` : inject.text));
-    textareaRef.current?.focus();
+    textareaRef.current?.focus({ preventScroll: true });
   }, [inject]);
 
   // Composer cresce com o texto. Mede com height:0 (altura definida) — com
@@ -375,7 +375,7 @@ export function ChatView({
     // dentro do que acabou de inserir. Depois do commit do React.
     const fim = antes.length + link.length;
     window.setTimeout(() => {
-      el.focus();
+      el.focus({ preventScroll: true });
       el.setSelectionRange(fim, fim);
     }, 0);
   };
@@ -565,7 +565,10 @@ export function ChatView({
     // não pode custar um toque a mais pra continuar escrevendo.
     if (focoAntesDaFolha.current) {
       focoAntesDaFolha.current = false;
-      window.setTimeout(() => textareaRef.current?.focus(), 0);
+      window.setTimeout(
+        () => textareaRef.current?.focus({ preventScroll: true }),
+        0
+      );
     }
   };
 
@@ -770,6 +773,61 @@ export function ChatView({
               lugar. As duas linhas do grid (1fr/0fr) animam a altura — é o que
               faz um encolher enquanto o outro cresce, em vez de um sumir e o
               outro aparecer. */}
+          {/* Os anexos e a fila ficam ACIMA do cartão, não dentro dele: o
+              cartão é onde se escreve, e o que vai junto da mensagem é outra
+              coisa. Cada um mostra a MINIATURA de verdade quando tem o que
+              mostrar; senão, o emoji do que ele é. */}
+          {(attachments.length > 0 || queued.length > 0) && (
+            <div className="axxa-pills-row">
+              {queued.map((q, i) => (
+                <span className="axxa-pill-chip is-queued" key={`q${i}`}>
+                  <Icon name="clock" size={14} />
+                  <span className="axxa-pill-chip-label">{q}</span>
+                  <button
+                    type="button"
+                    className="axxa-pill-chip-x"
+                    aria-label="Cancel queued message"
+                    onClick={() => {
+                      removeQueued(i);
+                      setDraft((d) => (d.trim() ? d : q));
+                    }}
+                  >
+                    <Icon name="x" size={13} />
+                  </button>
+                </span>
+              ))}
+              {attachments.map((a, i) => {
+                const thumb = attachmentThumb(a);
+                return (
+                  <span className="axxa-pill-chip" key={`a${i}`}>
+                    {thumb.kind === "image" ? (
+                      <img
+                        className="axxa-pill-chip-thumb"
+                        src={thumb.url}
+                        alt=""
+                      />
+                    ) : (
+                      <span className="axxa-pill-chip-emoji" aria-hidden="true">
+                        {thumb.char}
+                      </span>
+                    )}
+                    <span className="axxa-pill-chip-label">
+                      {attachmentLabel(a)}
+                    </span>
+                    <button
+                      type="button"
+                      className="axxa-pill-chip-x"
+                      aria-label="Remove attachment"
+                      onClick={() => removeAttachment(i)}
+                    >
+                      <Icon name="x" size={13} />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
           <div
             className="axxa-swap"
             data-mode={voice.state !== "idle" || arming ? "voice" : "text"}
@@ -779,47 +837,6 @@ export function ChatView({
               {/* O que vai junto da mensagem. Fica ACIMA do texto porque é
                   contexto do que está sendo escrito — e cada um sai com um
                   toque, senão anexar vira armadilha. */}
-              {/* O que está na fila fica VISÍVEL: uma mensagem que sai sozinha
-                  daqui a um minuto, sem aviso, é uma surpresa ruim. */}
-              {queued.map((q, i) => (
-                <div className="axxa-queued" key={i}>
-                  <Icon name="clock" size={14} />
-                  <span className="axxa-queued-label">{q}</span>
-                  <button
-                    type="button"
-                    className="axxa-attachment-x"
-                    aria-label="Cancel queued message"
-                    onClick={() => {
-                      removeQueued(i);
-                      // Cancelar devolve o texto pro campo (se ele estiver
-                      // livre) — a pessoa escreveu aquilo.
-                      setDraft((d) => (d.trim() ? d : q));
-                    }}
-                  >
-                    <Icon name="x" size={13} />
-                  </button>
-                </div>
-              ))}
-              {attachments.length > 0 && (
-                <div className="axxa-attachments">
-                  {attachments.map((a, i) => (
-                    <span key={i} className="axxa-attachment">
-                      <Icon name={attachmentIcon(a)} size={14} />
-                      <span className="axxa-attachment-label">
-                        {attachmentLabel(a)}
-                      </span>
-                      <button
-                        type="button"
-                        className="axxa-attachment-x"
-                        aria-label="Remove attachment"
-                        onClick={() => removeAttachment(i)}
-                      >
-                        <Icon name="x" size={13} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
               <textarea
                 ref={textareaRef}
                 rows={1}

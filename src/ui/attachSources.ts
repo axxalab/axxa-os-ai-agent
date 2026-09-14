@@ -131,6 +131,36 @@ export function artifactIcon(ext: string): string {
     : "file-audio";
 }
 
+/** Uma "nota" anexada pode ter três origens, e o chip precisa saber qual:
+ *  o texto colado, a página buscada e a nota do vault de verdade. */
+export function noteKind(path: string): "link" | "pasted" | "vault" {
+  if (path.includes(" — http") || /^https?:\/\//.test(path)) return "link";
+  if (path.startsWith("Pasted text")) return "pasted";
+  return "vault";
+}
+
+/**
+ * O que aparece no chip: a MINIATURA de verdade quando o conteúdo é visual
+ * (foto, print, imagem gerada), e um emoji correspondente quando não há o que
+ * mostrar. Um ícone genérico pra tudo fazia três anexos diferentes parecerem
+ * o mesmo anexo repetido.
+ */
+export function attachmentThumb(
+  a: MessageAttachment
+): { kind: "image"; url: string } | { kind: "emoji"; char: string } {
+  if (a.type === "image") {
+    return a.dataUrl
+      ? { kind: "image", url: a.dataUrl }
+      : { kind: "emoji", char: "🖼️" };
+  }
+  if (a.type === "pdf") return { kind: "emoji", char: "📕" };
+  if (a.type === "audio") return { kind: "emoji", char: "🎙️" };
+  const origem = noteKind(a.path);
+  if (origem === "link") return { kind: "emoji", char: "🔗" };
+  if (origem === "pasted") return { kind: "emoji", char: "📋" };
+  return { kind: "emoji", char: "📄" };
+}
+
 /** Ícone do chip de anexo — o mesmo vocabulário da folha de ações. */
 export function attachmentIcon(a: MessageAttachment): string {
   if (a.type === "image") return "image";

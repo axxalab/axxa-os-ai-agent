@@ -911,62 +911,74 @@ body.theme-dark {
   font-size: var(--font-ui-smaller);
 }
 
-/* A mensagem que está na fila. Uma linha só, com o texto cortado: ela é um
-   lembrete do que vai sair, não uma segunda caixa de texto. */
-.axxa-root .axxa-queued {
-  display: flex;
-  align-items: center;
-  gap: var(--axxa-1);
-  padding: 3px 4px 3px 8px;
-  border-radius: var(--axxa-r-pill);
-  background-color: var(--axxa-hover);
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-}
-
-.axxa-root .axxa-queued-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-/* Chips do que vai junto da mensagem (nota, imagem, texto colado). Uma linha
-   que rola na horizontal: três anexos não podem empurrar o campo pra cima. */
-.axxa-root .axxa-attachments {
+/* Os pills do que vai junto da mensagem — ACIMA do cartão de escrever, não
+   dentro dele: o cartão é a caixa de texto, e o anexo é outra coisa. Rolam na
+   horizontal, porque três anexos não podem empurrar o composer pra cima. */
+.axxa-root .axxa-pills-row {
   display: flex;
   gap: var(--axxa-2);
+  margin-bottom: var(--axxa-2);
+  padding-bottom: 2px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
-.axxa-root .axxa-attachments::-webkit-scrollbar {
+.axxa-root .axxa-pills-row::-webkit-scrollbar {
   display: none;
 }
 
-.axxa-root .axxa-attachment {
+.axxa-root .axxa-pill-chip {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: var(--axxa-1);
-  max-width: 60%;
-  padding: 3px 4px 3px 8px;
+  gap: var(--axxa-2);
+  max-width: 62%;
+  padding: 4px 4px 4px 6px;
+  border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-pill);
-  background-color: var(--axxa-hover);
-  color: var(--text-muted);
+  background-color: var(--axxa-raised);
+  color: var(--text-normal);
   font-size: var(--font-ui-smaller);
 }
 
-.axxa-root .axxa-attachment-label {
+/* A mensagem na fila é o mesmo pill, em tom de espera. */
+.axxa-root .axxa-pill-chip.is-queued {
+  padding-left: 10px;
+  color: var(--text-muted);
+}
+
+/* MINIATURA de verdade: é ela que faz o anexo ser reconhecido de relance. */
+.axxa-root .axxa-pill-chip-thumb {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: cover;
+  background-color: var(--axxa-hover);
+}
+
+.axxa-root .axxa-pill-chip-emoji {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background-color: var(--axxa-hover);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.axxa-root .axxa-pill-chip-label {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-/* O X tem alvo de toque de 24px — remover anexo não pode exigir mira. */
-.axxa-root button.axxa-attachment-x {
+/* Alvo de toque de 24px: tirar um anexo não pode exigir mira. */
+.axxa-root button.axxa-pill-chip-x {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -978,12 +990,69 @@ body.theme-dark {
   border-radius: var(--axxa-r-pill);
   background: none;
   box-shadow: none;
-  color: var(--text-muted);
+  color: var(--text-faint);
 }
 
-.axxa-root button.axxa-attachment-x:hover {
+.axxa-root button.axxa-pill-chip-x:hover {
   background-color: var(--background-modifier-hover);
   color: var(--text-normal);
+}
+
+/* Lista do `[[` — flutua logo acima do campo, com a nota mais provável em
+   cima. Altura limitada: ela sugere, não toma a tela. */
+.axxa-root .axxa-mention {
+  display: flex;
+  flex-direction: column;
+  max-height: 40vh;
+  margin-bottom: var(--axxa-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--axxa-line);
+  border-radius: var(--axxa-r-md);
+  background-color: var(--axxa-raised);
+  box-shadow: var(--shadow-s, 0 4px 16px rgba(0, 0, 0, 0.25));
+}
+
+.axxa-root button.axxa-mention-row {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  width: 100%;
+  padding: var(--axxa-2) var(--axxa-3);
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text-normal);
+  text-align: left;
+}
+
+.axxa-root button.axxa-mention-row + button.axxa-mention-row {
+  box-shadow: inset 0 1px 0 var(--axxa-line);
+}
+
+.axxa-root button.axxa-mention-row:hover {
+  background-color: var(--axxa-hover);
+}
+
+.axxa-root .axxa-mention-name {
+  flex: 0 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--font-ui-medium);
+}
+
+/* O caminho é desempate visual: ele encolhe primeiro. */
+.axxa-root .axxa-mention-path {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
 }
 
 /* Os três caminhos principais do "+": cartões VAZADOS lado a lado, ícone em
@@ -1260,6 +1329,10 @@ body.theme-dark {
   background-color: var(--axxa-canvas);
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.28);
   transform: translateY(100%);
+  /* Camada própria ANTES de começar: sem isto o WebView promove a folha no
+     meio do movimento, e o primeiro quadro sai torto (a sombra de 32px é
+     repintada quadro a quadro). */
+  will-change: transform;
   /* ease-in-out, e não a curva de saída de antes. Medido: com
      `cubic-bezier(0.32, 0.72, 0, 1)` a folha andava 73% do caminho nos
      primeiros 60ms e arrastava o resto por mais 165ms — na tela isso lê como
@@ -1645,6 +1718,7 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet {
   inset: 0;
   background-color: var(--background-modifier-cover, rgba(0, 0, 0, 0.45));
   opacity: 0;
+  will-change: opacity;
   /* Mesma curva e mesmo tempo da folha: o véu e a folha são um movimento só. */
   transition: opacity var(--axxa-sheet-ms) ease-in-out;
 }
@@ -1670,6 +1744,7 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet {
   border-right: 1px solid var(--axxa-line);
   box-shadow: 0 0 24px rgba(0, 0, 0, 0.18);
   transform: translateX(-100%);
+  will-change: transform;
   transition: transform var(--axxa-sheet-ms) ease-in-out;
   overflow: hidden;
 }

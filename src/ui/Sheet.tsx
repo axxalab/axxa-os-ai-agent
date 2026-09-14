@@ -61,9 +61,24 @@ export function Sheet({
       }
     };
     document.addEventListener("keydown", onKey);
-    panelRef.current?.focus();
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // O foco é da ABERTURA, e só dela. Junto do listener acima ele dependia de
+  // `onClose`, que muda de identidade a cada render do pai — então o painel
+  // roubava o foco de volta a cada tecla digitada na busca (o teclado fechava
+  // sozinho), e cada roubada era mais uma chance de rolar a tela.
+  //
+  // `preventScroll` é o que tira o PULO: sem ele o navegador rola o ancestral
+  // pra "revelar" o painel, que nesse instante ainda está em translateY(100%),
+  // fora da tela.
+  useEffect(() => {
+    if (!open) return;
+    panelRef.current?.focus({ preventScroll: true });
+    // A lista começa do começo: reabrir no meio de onde parou parece que a
+    // folha nasceu torta.
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [open]);
 
   // Fechou: volta pro tamanho pequeno, senão a próxima abre gigante.
   useEffect(() => {
@@ -71,7 +86,15 @@ export function Sheet({
   }, [open]);
 
   // Abrir e fechar são eventos de TELA, não toques: pulso um tico mais longo.
+  // Só na TROCA: o efeito também roda na montagem, e com quatro folhas
+  // montadas junto com o chat isso virava uma saraivada de pulsos na abertura
+  // do app — sem nada ter acontecido.
+  const montado = useRef(false);
   useEffect(() => {
+    if (!montado.current) {
+      montado.current = true;
+      return;
+    }
     screen();
   }, [open]);
 
@@ -323,14 +346,20 @@ export function SheetSearch({
   placeholder: string;
   onChange: (v: string) => void;
 }) {
+  const ref = useRef<HTMLInputElement>(null);
+  // `autoFocus` do React chama focus() sem preventScroll — o mesmo pulo da
+  // folha, agora ao entrar no nível da busca.
+  useEffect(() => {
+    ref.current?.focus({ preventScroll: true });
+  }, []);
   return (
     <div className="axxa-sheet-search">
       <Icon name="search" size={16} />
       <input
+        ref={ref}
         type="text"
         value={value}
         placeholder={placeholder}
-        autoFocus
         onChange={(e) => onChange(e.currentTarget.value)}
       />
     </div>
