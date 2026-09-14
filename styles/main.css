@@ -867,11 +867,11 @@ body.theme-dark {
   padding: 5px 8px;
   border: none;
   border-radius: var(--axxa-r-sm);
-  /* Fundo OPACO, igual ao do bloco: a linha longa passa por baixo dele ao
-     rolar, e com fundo translúcido os dois viravam um borrão. O contorno de
-     1px é o que separa o botão do código. */
+  /* Fundo OPACO, igual ao do bloco: o texto que passa por baixo dele some
+     limpo. Sem contorno — a mesma cor do bloco já o separa do código, e a
+     borda só somava uma caixa dentro da caixa. */
   background-color: var(--code-background, var(--axxa-raised));
-  box-shadow: 0 0 0 1px var(--axxa-line);
+  box-shadow: none;
   color: var(--text-muted);
   font-family: var(--font-interface);
   font-size: var(--font-ui-smaller);
@@ -880,7 +880,6 @@ body.theme-dark {
 
 .axxa-root .axxa-markdown pre > button.copy-code-button:hover {
   background-color: var(--background-modifier-hover);
-  box-shadow: 0 0 0 1px var(--axxa-line);
   color: var(--text-normal);
 }
 
