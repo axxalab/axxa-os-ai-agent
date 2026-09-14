@@ -53,6 +53,7 @@ import { useVoice } from "./useVoice";
 import { speak, stopSpeaking } from "./readAloud";
 import { commit, screen, warn } from "./haptics";
 import { composerMaxHeight, readKeyboardHeight } from "./composerSize";
+import { shouldShowJump, wasAtBottom } from "./follow";
 import { pasteIsBig, pastedNote } from "./pasteAttachment";
 import {
   htmlTitle,
@@ -341,16 +342,114 @@ export function ChatView({
   if (!pensandoAgora && desdeRef.current !== 0) desdeRef.current = 0;
   const pensandoDesde = desdeRef.current || Date.now();
   // O rótulo é a ação MAIS RECENTE — é ela que está acontecendo agora.
-  // Timeline colada no fim enquanto chega texto novo.
+  // ── acompanhar o fim, ou deixar a pessoa ler ────────────────────────────
+  // A tela só corre atrás do texto novo enquanto o usuário está no fim. Subiu
+  // pra reler? Fica parado onde ele deixou até ele voltar — antes, cada pedaço
+  // de resposta o arrancava de volta pro rodapé.
+  const [seguindo, setSeguindo] = useState(true);
+  /** Em ref também: os observers são registrados uma vez e não podem ler um
+   *  `seguindo` velho. */
+  const seguindoRef = useRef(true);
+  seguindoRef.current = seguindo;
+  /** Resposta que terminou LONGE dos olhos — é ela que acende. */
+  const [avisoId, setAvisoId] = useState<string | null>(null);
+
+  /** Altura da conversa na última vez que olhamos — é ela que diz se o
+   *  usuário estava no fim ANTES do texto novo entrar. */
+  const alturaAnteriorRef = useRef(0);
+
   const stickToBottom = () => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   };
-  useEffect(stickToBottom, [messages, streamingId]);
+
+  /**
+   * O coração disto: decide, a cada mudança, se a tela desce ou fica.
+   *
+   * Roda no observer de conteúdo, no effect das mensagens e na rolagem — as
+   * três levam à MESMA conta, feita sobre o DOM na hora. Não há estado
+   * paralelo pra dessincronizar, e não depende do evento de scroll chegar.
+   */
+  const reavaliar = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const anterior = alturaAnteriorRef.current || el.scrollHeight;
+    const estavaNoFim = wasAtBottom(anterior, el.scrollTop, el.clientHeight);
+    if (estavaNoFim) el.scrollTop = el.scrollHeight;
+    alturaAnteriorRef.current = el.scrollHeight;
+    if (estavaNoFim !== seguindoRef.current) {
+      seguindoRef.current = estavaNoFim;
+      setSeguindo(estavaNoFim);
+    }
+    if (estavaNoFim) setAvisoId(null);
+  };
+
+  /** Volta pro fim e volta a acompanhar (o toque no aviso e o envio). */
+  const voltarPraBaixo = () => {
+    seguindoRef.current = true;
+    setSeguindo(true);
+    setAvisoId(null);
+    stickToBottom();
+    const el = scrollRef.current;
+    if (el) alturaAnteriorRef.current = el.scrollHeight;
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    alturaAnteriorRef.current = el.scrollHeight;
+    // Conteúdo mudando: o markdown é renderizado com atraso (throttle), então
+    // a altura cresce DEPOIS do render do React — o effect de `messages`
+    // sozinho chegaria cedo demais.
+    const obs = new MutationObserver(reavaliar);
+    obs.observe(el, { childList: true, subtree: true, characterData: true });
+    el.addEventListener("scroll", reavaliar, { passive: true });
+    return () => {
+      obs.disconnect();
+      el.removeEventListener("scroll", reavaliar);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(reavaliar, [messages, streamingId]);
+
+  // Trocar de conversa (ou abrir uma nova) começa no fim, acompanhando: o
+  // estado de leitura era da conversa anterior. Sem isto, abrir outro chat
+  // depois de ter subido pra ler deixava a tela parada no meio dele.
+  useEffect(() => {
+    voltarPraBaixo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentChatId]);
+
+  // Terminou de responder enquanto a pessoa estava lendo lá em cima: a
+  // mensagem acende e o aviso aparece. Sem isso, a resposta fica pronta e
+  // ninguém avisa — o usuário volta do nada pra conferir.
+  const respondendoRef = useRef(false);
+  useEffect(() => {
+    const respondendoAgora = isLoading || streamingId !== null;
+    const terminou = respondendoRef.current && !respondendoAgora;
+    respondendoRef.current = respondendoAgora;
+    if (!terminou) return;
+    if (seguindoRef.current) return;
+    const ultima = [...messages]
+      .reverse()
+      .find((m) => m.type === "ai-response");
+    if (!ultima) return;
+    setAvisoId(ultima.id);
+    // O aviso é visual E tátil: quem está lendo não está olhando pro rodapé.
+    commit();
+  }, [isLoading, streamingId, messages]);
+
+  const mostrarAviso = shouldShowJump(
+    seguindo,
+    isLoading || streamingId !== null,
+    avisoId !== null
+  );
 
   // Teclado abrindo: a área da conversa encolhe, então reancora no fim
   // depois da animação (o inset em si é do useKeyboardInset).
   const onComposerFocus = () => {
+    if (!seguindoRef.current) return;
     stickToBottom();
     window.setTimeout(stickToBottom, 350);
   };
@@ -521,6 +620,10 @@ export function ChatView({
   const submit = async () => {
     const text = draft.trim();
     if (!text) return;
+    // Mandar (ou enfileirar) é dizer "acabei de ler, estou aqui embaixo": a
+    // tela volta pro fim, senão a mensagem recém-escrita — e o chip da fila —
+    // nascem fora do campo de visão.
+    voltarPraBaixo();
     // Escrever durante a resposta não pode ser um clique no vazio: a mensagem
     // entra na FILA e sai sozinha quando a rodada terminar.
     if (isLoading) {
@@ -718,6 +821,7 @@ export function ChatView({
               msg={m}
               plugin={plugin}
               streaming={m.id === streamingId}
+              glow={m.id === avisoId}
               actions={actionsByResponse.get(m.id)}
               onOpenTools={abrirAcoes}
             />
@@ -744,6 +848,19 @@ export function ChatView({
       {/* Composer: UM bloco só — campo em cima, barra de controles embaixo,
           sem régua horizontal separando nada. */}
       <section className="axxa-composer">
+          {/* Quem subiu pra ler precisa de um caminho de volta — e de saber que
+              a resposta ficou pronta lá embaixo. Ancorado no composer (que é
+              position: relative), flutuando logo acima dele. */}
+          {mostrarAviso && (
+            <button
+              type="button"
+              className={avisoId ? "axxa-jump is-done" : "axxa-jump"}
+              onClick={voltarPraBaixo}
+            >
+              <Icon name="arrow-down" size={15} />
+              {avisoId ? "Answer ready" : "Jump to latest"}
+            </button>
+          )}
           {/* `[[` — as notas aparecem ACIMA do campo, como no editor do
               Obsidian. Escolher insere o link e anexa a nota. Fica dentro do
               composer pra subir junto com ele quando o teclado abre. */}
@@ -1496,12 +1613,15 @@ const MessageRow = memo(function MessageRow({
   msg,
   plugin,
   streaming,
+  glow,
   actions,
   onOpenTools,
 }: {
   msg: ChatMessage;
   plugin: AxxaPlugin;
   streaming: boolean;
+  /** Terminou enquanto o usuário lia lá em cima: acende uma vez. */
+  glow?: boolean;
   /** Tudo que o agente fez nesta rodada — narrações + tool calls. */
   actions?: TurnAction[];
   onOpenTools?: (actions: TurnAction[]) => void;
@@ -1517,7 +1637,9 @@ const MessageRow = memo(function MessageRow({
       return (
         <div
           className={
-            "axxa-msg axxa-msg-ai" + (msg.isError ? " axxa-msg-error" : "")
+            "axxa-msg axxa-msg-ai" +
+            (msg.isError ? " axxa-msg-error" : "") +
+            (glow ? " is-done" : "")
           }
         >
           {msg.reasoning && (

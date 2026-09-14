@@ -2866,6 +2866,76 @@ body.is-mobile .axxa-root .axxa-history-more {
   }
 }
 
+/* A resposta que ficou pronta enquanto a pessoa lia lá em cima ACENDE uma vez.
+   Brilho, não piscada: duas respirações lentas em accent e acabou — é aviso,
+   não alarme. O contorno é `box-shadow`, que não mexe no layout (borda mexeria
+   e empurraria o texto). */
+.axxa-root .axxa-msg-ai.is-done {
+  border-radius: var(--axxa-r-md);
+  animation: axxa-done-glow 2.4s ease-in-out 2;
+}
+
+@keyframes axxa-done-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    background-color: transparent;
+  }
+  35% {
+    box-shadow: 0 0 0 2px
+      color-mix(in srgb, var(--text-accent) 45%, transparent);
+    background-color: color-mix(in srgb, var(--text-accent) 9%, transparent);
+  }
+}
+
+/* O caminho de volta pro fim. Fica sobre a conversa, logo acima do composer. */
+.axxa-root button.axxa-jump {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + var(--axxa-2));
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  padding: 6px 12px;
+  border: 1px solid var(--axxa-line);
+  border-radius: var(--axxa-r-pill);
+  background-color: var(--axxa-raised);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  transform: translateX(-50%);
+  animation: axxa-jump-in 220ms ease-out;
+}
+
+/* Pronta: o aviso vira accent, junto com o brilho da mensagem. */
+.axxa-root button.axxa-jump.is-done {
+  border-color: color-mix(in srgb, var(--text-accent) 50%, transparent);
+  color: var(--text-accent);
+}
+
+@keyframes axxa-jump-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .axxa-root .axxa-msg-ai.is-done {
+    animation: none;
+    box-shadow: 0 0 0 2px
+      color-mix(in srgb, var(--text-accent) 45%, transparent);
+  }
+  .axxa-root button.axxa-jump {
+    animation: none;
+  }
+}
+
 /* Chip das ações do agente: uma linha discreta que ABRE a folha. O que o
    agente fez é auditoria — importa poder ver, não ficar vendo. */
 .axxa-root button.axxa-tools-chip {
