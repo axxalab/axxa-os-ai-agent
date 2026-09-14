@@ -1029,11 +1029,17 @@ body.theme-dark {
   flex-direction: column;
   padding: var(--axxa-2) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2)
     var(--axxa-3);
-  /* Vidro: a cor da faixa em 72% + desfoque do que passa atrás. O saturate
-     compensa o cinza que o blur traz. */
-  background-color: color-mix(in srgb, var(--axxa-canvas) 72%, transparent);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  /* A FAIXA é transparente: quem é vidro é o cartão, e só ele. Pintar a faixa
+     inteira tingia a barra de baixo (a área dos gestos) e fazia o composer
+     PARECER muito mais alto do que é — o olho lê a mancha, não a caixa. */
+  background: none;
+  pointer-events: none;
+}
+
+/* A faixa não recebe toque (ela é só um lugar); quem recebe são as coisas
+   dentro dela. */
+.axxa-root .axxa-composer > * {
+  pointer-events: auto;
 }
 
 /* O tamanho aqui é calibrado contra o composer do app da Claude (o Rafael
@@ -1043,18 +1049,21 @@ body.theme-dark {
 .axxa-root .axxa-input {
   display: flex;
   flex-direction: column;
-  gap: var(--axxa-3);
-  padding: var(--axxa-3);
+  /* Enxuto: 10px de respiro e 8px entre o texto e os controles. Com 12+12 o
+     cartão ficava alto demais pro que carrega (uma linha e uma fileira de
+     botões). */
+  gap: var(--axxa-2);
+  padding: 10px;
   border: 1px solid var(--axxa-line);
   border-radius: var(--axxa-r-lg);
-  /* O cartão de escrever é a superfície ELEVADA aqui — mas translúcida, pra
-     não virar um bloco sólido colado na conversa. A faixa atrás é opaca
-     (canvas), então a mistura é estável e não depende do que está rolando
-     atrás; por isso também não há blur: não haveria o que borrar. */
-  background-color: color-mix(in srgb, var(--axxa-raised) 62%, transparent);
+  /* AQUI é o vidro: translúcido sobre a conversa, com desfoque do que passa
+     atrás. O saturate compensa o cinza que o blur traz. */
+  background-color: color-mix(in srgb, var(--axxa-raised) 72%, transparent);
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.12),
-    0 6px 18px rgba(0, 0, 0, 0.16);
+    0 1px 2px rgba(0, 0, 0, 0.14),
+    0 8px 24px rgba(0, 0, 0, 0.22);
 }
 
 .axxa-root .axxa-input:focus-within {
@@ -1384,23 +1393,9 @@ body.theme-dark {
 
 /* Fade curto acima do composer: as mensagens dissolvem no canvas antes da
    faixa sólida, em vez de cortarem secas na borda (0.2.37). */
-/* Fade acima do vidro: a borda de cima do composer não pode ser um corte
-   seco no meio de uma frase. Como o composer agora é translúcido, o degradê
-   também é — ele só adianta a transição. */
-.axxa-root .axxa-composer::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -28px;
-  height: 28px;
-  background: linear-gradient(
-    to top,
-    color-mix(in srgb, var(--axxa-canvas) 72%, transparent),
-    transparent
-  );
-  pointer-events: none;
-}
+/* Sem fade: com a faixa transparente, o degradê era uma mancha escura no meio
+   da conversa. O texto chega nítido até a borda do cartão — é o que a
+   referência faz. */
 
 /* Sobrou UM pill (modelo). A rolagem horizontal e o fade de borda eram de
    quando havia três aqui — com um só, o fade comia 24px e o nome virava "G…".
