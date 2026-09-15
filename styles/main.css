@@ -1746,11 +1746,21 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
 /* Bloqueado = sem credencial ou reprovado no último teste. Continua visível
    (é informação: o provider existe), mas não escolhível — no chat, escolher
    um provider que não responde só leva a um erro lá na frente. */
+/* Provider sem credencial: ícone MONO. Os logos coloridos trazem os próprios
+   fills, então opacidade sozinha deixava um logo colorido e pálido — que lê
+   como "disponível, só apagadinho". `grayscale` tira a cor de verdade: o que
+   está ligado tem cor, o que não está, não tem. */
 .axxa-root button.axxa-sheet-seg-item.is-blocked,
+.axxa-root button.axxa-sheet-seg-item[aria-disabled="true"],
 .axxa-root button.axxa-sheet-seg-item:disabled {
   color: var(--text-faint);
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+.axxa-root button.axxa-sheet-seg-item.is-blocked .axxa-icon,
+.axxa-root button.axxa-sheet-seg-item[aria-disabled="true"] .axxa-icon {
+  filter: grayscale(1);
 }
 
 

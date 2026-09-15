@@ -19,7 +19,7 @@ import {
   type ReactNode,
 } from "react";
 import { Icon } from "./Icon";
-import { screen, tap } from "./haptics";
+import { screen, tap, warn } from "./haptics";
 
 /** Quanto puxar além da borda pra o gesto valer. Menos que isso é solavanco
  *  de rolagem, não intenção. */
@@ -380,6 +380,7 @@ export function SheetSeg({
   items,
   activeId,
   onPick,
+  onBlocked,
   label,
 }: {
   items: {
@@ -393,12 +394,17 @@ export function SheetSeg({
   }[];
   activeId: string;
   onPick: (id: string) => void;
+  /** Tocou num bloqueado. `insistiu` = é o segundo toque seguido no MESMO
+   *  item — o momento de explicar em vez de só recusar. */
+  onBlocked?: (id: string, motivo: string, insistiu: boolean) => void;
   label: string;
 }) {
   const index = Math.max(
     items.findIndex((i) => i.id === activeId),
     0
   );
+  /** Último bloqueado tocado, pra saber quando o toque é insistência. */
+  const [insistindo, setInsistindo] = useState<string | null>(null);
   return (
     <div
       className="axxa-sheet-seg"
@@ -423,8 +429,21 @@ export function SheetSeg({
           aria-pressed={it.id === activeId}
           aria-label={it.label}
           title={it.blocked ? `${it.label} — ${it.blocked}` : it.label}
-          disabled={!!it.blocked && it.id !== activeId}
-          onClick={() => onPick(it.id)}
+          /* `aria-disabled` em vez de `disabled`: o botão continua RECEBENDO o
+             toque (senão não dá pra explicar por que ele não funciona), mas
+             não troca de provider. */
+          aria-disabled={!!it.blocked && it.id !== activeId}
+          onClick={() => {
+            const travado = !!it.blocked && it.id !== activeId;
+            if (!travado) {
+              setInsistindo(null);
+              onPick(it.id);
+              return;
+            }
+            warn();
+            onBlocked?.(it.id, it.blocked ?? "", insistindo === it.id);
+            setInsistindo(it.id);
+          }}
         >
           <span className="axxa-sheet-seg-mark">
             <Icon name={it.icon} size={20} />

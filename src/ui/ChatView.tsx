@@ -70,7 +70,7 @@ import {
   type ArtifactLike,
 } from "./attachSources";
 import { getModelCapabilities } from "../providers/modelCapabilities";
-import { PromptModal } from "./modals";
+import { ConfirmModal, PromptModal, openPluginSettings } from "./modals";
 import { VoiceDock } from "./VoiceBar";
 import {
   Sheet,
@@ -572,6 +572,32 @@ export function ChatView({
       el.focus({ preventScroll: true });
       el.setSelectionRange(fim, fim);
     }, 0);
+  };
+
+  /** Tocou num provider que ainda não está ligado. O primeiro toque explica
+   *  em uma linha; o segundo, já que a pessoa insistiu, abre o caminho — sem
+   *  transformar cada toque errado num modal. */
+  const aoTocarBloqueado = async (
+    id: string,
+    motivo: string,
+    insistiu: boolean
+  ) => {
+    const nome = PROVIDERS.find((p) => p.id === id)?.name ?? id;
+    if (!insistiu) {
+      new Notice(`${nome} — ${motivo}`);
+      return;
+    }
+    const ir = await new ConfirmModal(plugin.app, {
+      title: `${nome} is not set up`,
+      body: `${motivo}
+
+Open Settings › Providers to add it, then run the connection test.`,
+      confirmLabel: "Open settings",
+    }).openAndWait();
+    if (ir) {
+      closeSheet();
+      openPluginSettings(plugin);
+    }
   };
 
   /** PDF: vai como anexo mesmo quando o modelo não lê — nesse caso o motor
@@ -1228,6 +1254,7 @@ export function ChatView({
             label="Provider"
             activeId={pickProvider}
             onPick={setPickProvider}
+            onBlocked={aoTocarBloqueado}
             items={PROVIDERS.map((p) => ({
               id: p.id,
               icon: p.icon,
