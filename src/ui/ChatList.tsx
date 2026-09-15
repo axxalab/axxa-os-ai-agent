@@ -77,6 +77,10 @@ export function ChatList({
   onOpen?: (chat: ChatSummary) => void;
 }) {
   const currentChatId = useChatStore((s) => s.currentChatId);
+  // Quem está respondendo AGORA — inclusive se for uma conversa que não está
+  // na tela. É a única informação desta lista que não vem do disco.
+  const respondendo = useChatStore((s) => s.isLoading);
+  const turnChatId = useChatStore((s) => s.turnChatId);
 
   const abrir = (c: ChatSummary) => {
     void session.load(c);
@@ -107,6 +111,7 @@ export function ChatList({
     <div className="axxa-history">
       {chats.map((c) => {
         const st = acoes(c);
+        const rodando = respondendo && turnChatId === c.id;
         return (
           <div
             key={c.id}
@@ -132,6 +137,15 @@ export function ChatList({
                   {c.title || "Untitled"}
                 </span>
                 <span className="axxa-history-meta">
+                  {/* Respondendo agora: o ponto pulsa e a palavra diz o que
+                      ele significa — um ponto sozinho não se explica. */}
+                  {rodando && (
+                    <span className="axxa-card-live">
+                      <span className="axxa-card-pulse" aria-hidden="true" />
+                      Responding
+                    </span>
+                  )}
+                  {rodando && <span className="axxa-card-dot">·</span>}
                   {st && (
                     <span
                       className={

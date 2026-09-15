@@ -125,10 +125,20 @@ export function ChatView({
   onUseSkill: (skill: Skill) => void;
 }) {
   const messages = useChatStore((s) => s.messages);
-  const isLoading = useChatStore((s) => s.isLoading);
+  // `isLoading` diz que ALGUMA conversa está respondendo — pode não ser esta.
+  // Desde que dá pra sair do chat no meio da resposta, a tela precisa da
+  // pergunta certa: "quem responde é quem eu estou vendo?". Sem isso, abrir
+  // outra conversa mostrava nela o botão de parar e o indicador de pensando,
+  // como se ela é que estivesse trabalhando.
+  const respondendoAlguem = useChatStore((s) => s.isLoading);
+  const turnChatId = useChatStore((s) => s.turnChatId);
   const loadingChat = useChatStore((s) => s.loadingChat);
   const streamingId = useChatStore((s) => s.streamingMessageId);
   const currentChatId = useChatStore((s) => s.currentChatId);
+  /** É ESTA conversa que está respondendo agora. */
+  const isLoading = respondendoAlguem && turnChatId === currentChatId;
+  /** Outra conversa está respondendo — só uma de cada vez, por ora. */
+  const outraRespondendo = respondendoAlguem && !isLoading;
 
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
   // Anexos pendentes (nota, imagem, texto colado) — chips acima do campo.
@@ -733,6 +743,12 @@ Open Settings › Providers to add it, then run the connection test.`,
     voltarPraBaixo();
     // Escrever durante a resposta não pode ser um clique no vazio: a mensagem
     // entra na FILA e sai sozinha quando a rodada terminar.
+    if (outraRespondendo) {
+      // O motor roda um turno por vez. Enfileirar aqui mandaria o texto pra a
+      // fila da OUTRA conversa — some da tela e aparece onde ninguém pediu.
+      new Notice("Another chat is still answering — try again in a moment.");
+      return;
+    }
     if (isLoading) {
       commit();
       pushQueued(text);

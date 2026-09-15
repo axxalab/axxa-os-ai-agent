@@ -119,6 +119,35 @@ type DistributiveOmit<T, K extends keyof any> = T extends unknown
 
 export type NewMessageInput = DistributiveOmit<ChatMessage, "id" | "timestamp">;
 
+/**
+ * Um turno que continua rodando com a conversa dele FORA da tela.
+ *
+ * O store é um só e o motor escreve nele direto (ele pega as ações no topo,
+ * uma vez só). Então "responder em segundo plano" aqui não é rodar em outro
+ * lugar: é DESVIAR a escrita. Enquanto isto existe, tudo que o turno produz —
+ * mensagem, token, passo de tool — cai aqui dentro em vez de cair na conversa
+ * que a pessoa está olhando.
+ *
+ * Sem o desvio, sair do chat no meio de uma resposta fazia a mensagem de
+ * "Interrompido", os passos do agente e a contagem de tokens caírem NO ARQUIVO
+ * DA OUTRA CONVERSA: o turno morria DEPOIS da troca, e a essa altura o store
+ * já tinha outro dono.
+ *
+ * Carrega a identidade da conversa junto porque quem salva no fim é ela, e o
+ * `currentChatId` já pertence a outra pessoa quando isso acontece.
+ */
+export interface BackgroundRun {
+  chatId: string;
+  title: string;
+  mode: string;
+  provider: string;
+  model: string;
+  effort: string;
+  messages: ChatMessage[];
+  tokensIn: number;
+  tokensOut: number;
+}
+
 interface ChatState {
   messages: ChatMessage[];
   isLoading: boolean;
@@ -170,6 +199,10 @@ interface ChatState {
    * É LISTA: enfileirar de novo não pode apagar o que já estava esperando.
    */
   queued: string[];
+  /** Turno rodando com a conversa fora da tela (null = nada em segundo plano). */
+  background: BackgroundRun | null;
+  /** Conversa dona do turno em andamento (null = ninguém respondendo). */
+  turnChatId: string | null;
   /** Chat atual favoritado (item "Star" do menu ⋮). Faz parte da identidade do
    *  chat — o auto-save reescreve o .md inteiro, então precisa vir daqui pra
    *  não apagar a marca a cada mensagem nova. */
@@ -204,6 +237,14 @@ interface ChatState {
   selectOption: (messageId: string, optionIndex: number) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
+  /** Dono do turno em andamento. */
+  setTurnChatId: (id: string | null) => void;
+  /** Desvia a escrita do turno pra fora da tela (ver BackgroundRun). */
+  detachTurn: (run: BackgroundRun) => void;
+  /** Traz o turno de volta pra tela; devolve o que estava rodando. */
+  attachTurn: () => BackgroundRun | null;
+  /** Descarta o turno de fundo — já salvo, ou a conversa foi apagada. */
+  clearBackground: () => void;
   setLoadingChat: (loading: boolean) => void;
   addUsage: (input: number, output: number) => void;
   resetUsage: () => void;
@@ -248,6 +289,22 @@ function makeId(): string {
 // Campos comuns ao reset de "limpar mensagens" e "nova conversa" — single
 // source of truth pros dois (já tinham divergido antes). clearMessages preserva
 // a identidade do chat (currentChatId/Title); newChat sobrescreve pra zerar. v0.1.228
+/**
+ * Para onde vai uma escrita DO TURNO: a conversa da tela, ou a de fundo.
+ *
+ * Só as escritas do turno passam por aqui. O que a pessoa faz com a conversa
+ * que está vendo (reagir, apagar mensagem, regenerar) sempre mexe no que está
+ * na tela — senão um toque numa conversa mexeria em outra.
+ */
+function escritaDoTurno(
+  state: ChatState,
+  mudar: (msgs: ChatMessage[]) => ChatMessage[]
+): Partial<ChatState> {
+  const bg = state.background;
+  if (!bg) return { messages: mudar(state.messages) };
+  return { background: { ...bg, messages: mudar(bg.messages) } };
+}
+
 const BASE_RESET = {
   messages: [] as ChatMessage[],
   attachments: [] as MessageAttachment[],
@@ -266,7 +323,7 @@ const BASE_RESET = {
 /** Chave do rascunho da conversa que ainda não foi salva. */
 export const NEW_CHAT_DRAFT = "__new__";
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   drafts: {},
   attachments: [],
@@ -285,16 +342,18 @@ export const useChatStore = create<ChatState>((set) => ({
   sessionMode: null,
   sessionPersona: "",
   currentChatId: null,
+  background: null,
+  turnChatId: null,
   currentChatTitle: "",
   currentChatStarred: false,
   addMessage: (msg) => {
     const id = makeId();
-    set((state) => ({
-      messages: [
-        ...state.messages,
+    set((state) =>
+      escritaDoTurno(state, (ms) => [
+        ...ms,
         { ...msg, id, timestamp: Date.now() } as ChatMessage,
-      ],
-    }));
+      ])
+    );
     return id;
   },
   removeMessage: (id) =>
@@ -305,37 +364,43 @@ export const useChatStore = create<ChatState>((set) => ({
   // (user, ai-response, ai-comment). Usado no streaming pra mostrar tokens
   // chegando um a um. Não-op em ai-options (não tem content).
   appendToMessage: (id, text) =>
-    set((state) => ({
-      messages: state.messages.map((m) => {
-        if (m.id !== id) return m;
-        if (m.type === "ai-options") return m;
-        return { ...m, content: m.content + text };
-      }),
-    })),
+    set((state) =>
+      escritaDoTurno(state, (ms) =>
+        ms.map((m) => {
+          if (m.id !== id) return m;
+          if (m.type === "ai-options") return m;
+          return { ...m, content: m.content + text };
+        })
+      )
+    ),
   // Acumula raciocínio (reasoning/thinking) numa ai-response. v0.1.193
   appendReasoning: (id, text) =>
-    set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === id && m.type === "ai-response"
-          ? { ...m, reasoning: (m.reasoning ?? "") + text }
-          : m
-      ),
-    })),
+    set((state) =>
+      escritaDoTurno(state, (ms) =>
+        ms.map((m) =>
+          m.id === id && m.type === "ai-response"
+            ? { ...m, reasoning: (m.reasoning ?? "") + text }
+            : m
+        )
+      )
+    ),
   // Patch atômico de campos do activity meta. Usado pelo agent loop pra
   // mudar phase=pending → done/failed mantendo iconPending/pendingText.
   updateActivity: (id, patch, contentPatch) =>
-    set((state) => ({
-      messages: state.messages.map((m) => {
-        if (m.id !== id) return m;
-        if (m.type !== "ai-comment") return m;
-        if (!m.activity) return m;
-        return {
-          ...m,
-          activity: { ...m.activity, ...patch },
-          ...(contentPatch !== undefined ? { content: contentPatch } : {}),
-        };
-      }),
-    })),
+    set((state) =>
+      escritaDoTurno(state, (ms) =>
+        ms.map((m) => {
+          if (m.id !== id) return m;
+          if (m.type !== "ai-comment") return m;
+          if (!m.activity) return m;
+          return {
+            ...m,
+            activity: { ...m.activity, ...patch },
+            ...(contentPatch !== undefined ? { content: contentPatch } : {}),
+          };
+        })
+      )
+    ),
   setReaction: (id, reaction) =>
     set((state) => ({
       messages: state.messages.map((m) => {
@@ -345,17 +410,23 @@ export const useChatStore = create<ChatState>((set) => ({
       }),
     })),
   setAgentSteps: (id, steps) =>
-    set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === id && m.type === "ai-response" ? { ...m, agentSteps: steps } : m
-      ),
-    })),
+    set((state) =>
+      escritaDoTurno(state, (ms) =>
+        ms.map((m) =>
+          m.id === id && m.type === "ai-response"
+            ? { ...m, agentSteps: steps }
+            : m
+        )
+      )
+    ),
   setTruncated: (id, truncated) =>
-    set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === id && m.type === "ai-response" ? { ...m, truncated } : m
-      ),
-    })),
+    set((state) =>
+      escritaDoTurno(state, (ms) =>
+        ms.map((m) =>
+          m.id === id && m.type === "ai-response" ? { ...m, truncated } : m
+        )
+      )
+    ),
   beginVariant: (id) =>
     set((state) => ({
       messages: state.messages.map((m) => {
@@ -432,15 +503,50 @@ export const useChatStore = create<ChatState>((set) => ({
     })),
   clearMessages: () =>
     // Preserva currentChatId/currentChatTitle (limpa só o conteúdo). v0.1.228
-    set({ ...BASE_RESET }),
+    //
+    // Com um turno rodando em segundo plano, `isLoading` e o id do turno NÃO
+    // são zerados: eles descrevem aquele turno, não esta tela. Zerá-los aqui
+    // liberaria o guarda de envio e deixaria DOIS turnos vivos disputando o
+    // mesmo AbortController.
+    set((state) =>
+      state.background
+        ? {
+            ...BASE_RESET,
+            isLoading: state.isLoading,
+            streamingMessageId: state.streamingMessageId,
+          }
+        : { ...BASE_RESET }
+    ),
   setLoading: (loading) => set({ isLoading: loading }),
+  setTurnChatId: (id) => set({ turnChatId: id }),
+  detachTurn: (run) => set({ background: run }),
+  attachTurn: () => {
+    const bg: BackgroundRun | null = get().background;
+    if (bg) set({ background: null });
+    return bg;
+  },
+  clearBackground: () => set({ background: null }),
   setLoadingChat: (loading) => set({ loadingChat: loading }),
+  // Os tokens são do turno, então seguem o turno: com a conversa fora da tela
+  // eles iam parar na conta da conversa que estivesse aberta.
   addUsage: (input, output) =>
-    set((state) => ({
-      tokensIn: state.tokensIn + input,
-      tokensOut: state.tokensOut + output,
-      lastPromptTokens: input > 0 ? input : state.lastPromptTokens,
-    })),
+    set((state) => {
+      const bg = state.background;
+      if (bg) {
+        return {
+          background: {
+            ...bg,
+            tokensIn: bg.tokensIn + input,
+            tokensOut: bg.tokensOut + output,
+          },
+        };
+      }
+      return {
+        tokensIn: state.tokensIn + input,
+        tokensOut: state.tokensOut + output,
+        lastPromptTokens: input > 0 ? input : state.lastPromptTokens,
+      };
+    }),
   resetUsage: () => set({ tokensIn: 0, tokensOut: 0, lastPromptTokens: 0 }),
   setStreamingMessageId: (id) => set({ streamingMessageId: id }),
   startStreamTimer: () =>
@@ -504,10 +610,20 @@ export const useChatStore = create<ChatState>((set) => ({
     }),
   newChat: () =>
     // Reset completo: BASE_RESET + zera a identidade do chat. v0.1.228
-    set({
+    //
+    // Mesma ressalva do `clearMessages`: com um turno rodando em segundo plano
+    // os sinais DELE ficam de pé. Zerar `isLoading` aqui abriria o guarda de
+    // envio e deixaria dois turnos vivos no mesmo AbortController.
+    set((state) => ({
       ...BASE_RESET,
+      ...(state.background
+        ? {
+            isLoading: state.isLoading,
+            streamingMessageId: state.streamingMessageId,
+          }
+        : {}),
       currentChatId: null,
       currentChatTitle: "",
       currentChatStarred: false,
-    }),
+    })),
 }));

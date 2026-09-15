@@ -276,6 +276,10 @@ export class ChatSession {
     if (pendentes.length > 0) st.setAttachments([]);
 
     st.addMessage({ type: "user", content: trimmed });
+    // Carimba de quem é este turno ANTES de começar. É por este id que a tela
+    // sabe se quem está respondendo é a conversa que ela mostra, e é ele que
+    // vai junto se a conversa sair de cena no meio.
+    st.setTurnChatId(useChatStore.getState().currentChatId);
     this.emit();
 
     const ctx: EngineCtx = {
@@ -301,6 +305,10 @@ export class ChatSession {
         await streamReply(ctx, trimmed, attachments);
       }
     } finally {
+      // A conversa saiu da tela durante a resposta? Então é ela que grava o
+      // próprio arquivo — o store agora é de outra pessoa.
+      await this.gravarFundo();
+      useChatStore.getState().setTurnChatId(null);
       this.emit();
     }
 
@@ -318,6 +326,109 @@ export class ChatSession {
     return true;
   }
 
+  /**
+   * Tira o turno da tela sem matá-lo: a conversa que está respondendo vira um
+   * `BackgroundRun` e o motor passa a escrever LÁ.
+   *
+   * Chamado quando a pessoa abre outra conversa (ou uma nova) no meio de uma
+   * resposta. Antes disto, o caminho era `abort()` — e como o motor só morre
+   * um tique depois, a mensagem de "Interrompido", os passos do agente e os
+   * tokens caíam no arquivo da conversa recém-aberta.
+   *
+   * A fila NÃO vai junto: ela volta a ser rascunho da conversa de onde saiu.
+   * Mandar sozinha numa conversa que não está na tela seria escrever no nome
+   * de alguém que não está olhando.
+   */
+  private destacarTurno(): boolean {
+    const st = useChatStore.getState();
+    if (!st.isLoading || st.background) return false;
+    const dono = st.turnChatId ?? st.currentChatId;
+    if (!dono) return false;
+    const cfg = this.config;
+    if (st.queued.length > 0) {
+      const antes = st.drafts[dono] ?? "";
+      const texto = [antes, ...st.queued].filter((t) => t.trim()).join("\n\n");
+      st.setDraft(dono, texto);
+      st.clearQueued();
+    }
+    st.detachTurn({
+      chatId: dono,
+      title: st.currentChatTitle,
+      mode: cfg.mode,
+      provider: cfg.provider,
+      model: cfg.model,
+      effort: cfg.effort,
+      messages: st.messages,
+      tokensIn: st.tokensIn,
+      tokensOut: st.tokensOut,
+    });
+    return true;
+  }
+
+  /** Grava o arquivo da conversa que respondeu fora da tela e a esquece. */
+  private async gravarFundo(): Promise<void> {
+    const st = useChatStore.getState();
+    const run = st.background;
+    if (!run) return;
+    st.clearBackground();
+    // Mesmo filtro do save normal: só user e ai-response que não é erro. O
+    // `as` é o que diz ao compilador o que o filtro já garantiu — ai-options
+    // não tem `content` e não passa por aqui.
+    const guardadas = run.messages.filter(
+      (m) => m.type === "user" || (m.type === "ai-response" && !m.isError)
+    ) as Array<Extract<ChatMessage, { content: string }>>;
+    if (guardadas.length === 0) return;
+    const chat: ChatData = {
+      id: run.chatId,
+      title: run.title || generateTitle(guardadas[0].content),
+      date: new Date().toISOString(),
+      mode: run.mode,
+      provider: run.provider,
+      model: run.model,
+      effort: run.effort,
+      tokensIn: run.tokensIn,
+      tokensOut: run.tokensOut,
+      messages: guardadas.map((m) => ({
+        type: m.type as "user" | "ai-response",
+        content: m.content,
+        timestamp: m.timestamp,
+        ...(m.type === "ai-response" && m.reaction
+          ? { reaction: m.reaction }
+          : {}),
+        ...(m.type === "ai-response" && m.agentSteps
+          ? { agentSteps: m.agentSteps }
+          : {}),
+      })),
+    };
+    try {
+      const path = await saveChat(
+        this.plugin.app,
+        this.plugin.settings.chatsPath,
+        chat
+      );
+      this.plugin.upsertChatSummary({
+        id: chat.id,
+        title: chat.title,
+        date: chat.date,
+        mode: chat.mode,
+        provider: chat.provider,
+        model: chat.model,
+        effort: chat.effort,
+        tokensIn: chat.tokensIn,
+        tokensOut: chat.tokensOut,
+        messageCount: chat.messages.length,
+        toolCount: chat.messages.reduce(
+          (n, m) => n + (m.agentSteps?.length ?? 0),
+          0
+        ),
+        filePath: path,
+        starred: false,
+      });
+    } catch (err) {
+      console.error("[axxa] gravarFundo falhou:", err);
+    }
+  }
+
   /** Interrompe o stream / o turno do agente em andamento. */
   stop(): void {
     this.abortRef.current?.abort();
@@ -325,9 +436,27 @@ export class ChatSession {
     useChatStore.getState().clearQueued();
   }
 
+  /** Traz de volta pra tela a conversa que estava respondendo em segundo plano. */
+  private reanexarTurno(): void {
+    const st = useChatStore.getState();
+    const run = st.attachTurn();
+    if (!run) return;
+    this.skipNextSave = true;
+    st.setAttachments([]);
+    st.setMessages(run.messages);
+    st.setCurrentChatId(run.chatId);
+    st.setCurrentChatTitle(run.title);
+    st.lockSession(run.provider, run.model, run.mode);
+    st.resetUsage();
+    st.addUsage(run.tokensIn, run.tokensOut);
+    if (run.effort) this.effort = run.effort;
+    this.emit();
+  }
+
   /** Nova conversa (destrava a sessão). `mode` opcional já fixa o modo. */
   newChat(mode?: ChatMode): void {
-    this.abortRef.current?.abort();
+    // Mesmo trato do `load`: o turno em andamento sai de cena, não morre.
+    if (!this.destacarTurno()) this.abortRef.current?.abort();
     this.flushSave();
     this.pendingProjectId = null;
     useChatStore.getState().newChat();
@@ -369,7 +498,14 @@ export class ChatSession {
   async load(ref: ChatRef): Promise<void> {
     const store = useChatStore.getState();
     if (store.currentChatId === ref.id) return;
-    this.abortRef.current?.abort();
+    // Voltando pra conversa que está respondendo em segundo plano: ela não vem
+    // do disco — o que vale é o que o turno já escreveu, que está na memória.
+    if (store.background?.chatId === ref.id) {
+      this.reanexarTurno();
+      return;
+    }
+    // Turno em andamento continua rodando, agora escrevendo fora da tela.
+    if (!this.destacarTurno()) this.abortRef.current?.abort();
     this.flushSave();
     store.setLoadingChat(true);
     try {

@@ -77,10 +77,11 @@ export function App({
           session={session}
           modulo={modulo}
           onOpenMenu={() => setMenuOpen(true)}
-          onOpenChat={(c) => {
-            void session.load(c);
-            setView("chat");
-          }}
+          // Só troca de tela: quem manda carregar é a própria lista
+          // (ChatList.abrir). Carregar aqui de novo era pedir a mesma conversa
+          // duas vezes — inofensivo pelo guarda de identidade da sessão, mas
+          // ainda assim uma segunda ida ao disco por toque.
+          onOpenChat={() => setView("chat")}
           onNewChat={() => {
             if (isChatMode(modulo)) session.newChat(modulo);
             setView("chat");

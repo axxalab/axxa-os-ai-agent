@@ -841,6 +841,28 @@ body.theme-dark {
   white-space: nowrap;
 }
 
+/* "Responding": ponto que pulsa + a palavra. O ponto sozinho não se explica,
+   e a palavra sozinha não chama a atenção de quem passa o olho. */
+.axxa-root .axxa-card-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--interactive-accent);
+}
+
+.axxa-root .axxa-card-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: axxa-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes axxa-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.72); }
+}
+
 .axxa-root .axxa-card-state.is-on {
   color: var(--color-green, #4caf50);
 }

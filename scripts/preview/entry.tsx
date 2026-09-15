@@ -182,6 +182,25 @@ const emit = () => listeners.forEach((l) => l());
 /** Rodada em curso foi interrompida pelo botão de parar. */
 let abortado = false;
 
+/** Tira o turno em andamento da tela sem matá-lo (ver session.destacarTurno). */
+const destacarOuNada = () => {
+  const st = useChatStore.getState();
+  if (!st.isLoading || st.background) return;
+  const dono = st.turnChatId ?? st.currentChatId;
+  if (!dono) return;
+  st.detachTurn({
+    chatId: dono,
+    title: st.currentChatTitle,
+    mode: st.sessionMode ?? mode,
+    provider: st.sessionProvider ?? provider,
+    model: st.sessionModel ?? model,
+    effort,
+    messages: st.messages,
+    tokensIn: st.tokensIn,
+    tokensOut: st.tokensOut,
+  });
+};
+
 const session = {
   get config() {
     const st = useChatStore.getState();
@@ -246,6 +265,9 @@ const session = {
       st.setCurrentChatTitle(text.slice(0, 40));
       st.lockSession(provider, model, mode);
     }
+    // Carimba o dono do turno, como o motor faz: é por ele que a lista sabe
+    // qual conversa está respondendo.
+    st.setTurnChatId(useChatStore.getState().currentChatId);
     st.setLoading(true);
     emit();
     // ?turn=ms controla a duração da rodada (padrão 1.4s).
@@ -278,6 +300,10 @@ const session = {
       useChatStore.getState().setStreamingMessageId(null);
     }
     useChatStore.getState().setLoading(false);
+    // O turno acabou: se ele respondeu fora da tela, o de verdade grava o
+    // arquivo aqui. No preview basta soltar — o que importa é ver o estado.
+    useChatStore.getState().clearBackground();
+    useChatStore.getState().setTurnChatId(null);
     emit();
     // Mesmo contrato do motor: quem entrou na fila durante a rodada sai agora.
     const fila = useChatStore.getState().queued;
@@ -299,7 +325,12 @@ const session = {
   // nova. A versão que ignorava o argumento fazia o "New Agent chat" do menu
   // abrir uma conversa de Chat no preview — e o preview dizia que estava tudo
   // bem.
+  // Desvio do turno, igual ao da sessão de verdade (session.ts): sair do chat
+  // no meio da resposta NÃO mata o turno — ele passa a escrever fora da tela.
+  // Sem isto aqui, o preview mostrava a resposta pulando pra conversa errada e
+  // dizia que estava tudo bem.
   newChat: (m?: string) => {
+    destacarOuNada();
     useChatStore.getState().newChat();
     if (m) {
       mode = m;
@@ -315,6 +346,26 @@ const session = {
   // arquivo. Antes era um no-op, então tocar numa conversa do menu não fazia
   // nada e não dava pra ver se o menu tinha aberto a certa.
   load: async (c: { id: string; title: string; mode: string; provider: string; model: string }) => {
+    // Mesmo guarda do motor (session.load): pedir a conversa que já está
+    // aberta é no-op. Sem ele, o preview recarregava e desfazia o reanexo do
+    // turno — e mostrava como se sair e voltar perdesse a resposta.
+    if (useChatStore.getState().currentChatId === c.id) return;
+    const bg = useChatStore.getState().background;
+    if (bg?.chatId === c.id) {
+      // Voltando pra conversa que responde em segundo plano: o que vale é o
+      // que o turno já escreveu, não o disco.
+      const run = useChatStore.getState().attachTurn();
+      if (run) {
+        const s2 = useChatStore.getState();
+        s2.setMessages(run.messages);
+        s2.setCurrentChatId(run.chatId);
+        s2.setCurrentChatTitle(run.title);
+        s2.lockSession(run.provider, run.model, run.mode);
+        emit();
+      }
+      return;
+    }
+    destacarOuNada();
     const st = useChatStore.getState();
     st.newChat();
     st.setMessages([
