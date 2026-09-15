@@ -1040,12 +1040,11 @@ body.theme-dark {
   z-index: 4;
   display: flex;
   flex-direction: column;
-  /* Respiro FIXO embaixo. Somar `safe-area-inset-bottom` aqui era contar o
-     mesmo espaço duas vezes — a gaveta do Obsidian já termina acima da barra
-     de gestos (é a lição registrada no bloco da 0.2.37 lá em cima). Com o
-     teclado aberto isso virava um vão entre o cartão e o teclado. */
-  padding: var(--axxa-2) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2)
-    var(--axxa-2);
+  /* Medidos no print da referência, no mesmo aparelho (DPR 2,67): margem
+     lateral de 16px e 15px abaixo do cartão. Somar `safe-area-inset-bottom`
+     aqui seria contar duas vezes — a gaveta do Obsidian já termina acima da
+     barra de gestos (lição do bloco da 0.2.37 lá em cima). */
+  padding: var(--axxa-2) max(16px, (100% - var(--axxa-measure)) / 2) 15px;
   /* A FAIXA é transparente: quem é vidro é o cartão, e só ele. Pintar a faixa
      inteira tingia a barra de baixo (a área dos gestos) e fazia o composer
      PARECER muito mais alto do que é — o olho lê a mancha, não a caixa. */
@@ -1059,6 +1058,14 @@ body.theme-dark {
   pointer-events: auto;
 }
 
+/* Teclado aberto: o respiro da base não existe mais pra evitar nada (a barra
+   de gestos está coberta pelo teclado), e sobrar espaço ali vira um vão entre
+   o cartão e o teclado. */
+body.is-mobile .axxa-keyboard-open .axxa-composer,
+body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
+  padding-bottom: var(--axxa-2);
+}
+
 /* O tamanho aqui é calibrado contra o composer do app da Claude (o Rafael
    comparou os dois lado a lado): cartão mais alto, controles de 36px e texto
    maior. Antes eram 32px e 15px, e ficava visivelmente menor que a
@@ -1066,13 +1073,12 @@ body.theme-dark {
 .axxa-root .axxa-input {
   display: flex;
   flex-direction: column;
-  /* Enxuto: 10px de respiro e 8px entre o texto e os controles. Com 12+12 o
-     cartão ficava alto demais pro que carrega (uma linha e uma fileira de
-     botões). */
-  gap: var(--axxa-2);
-  /* Respiro maior nas laterais: o texto colado na borda do cartão deixava a
-     caixa apertada — é o campo de escrever, precisa de margem pra respirar. */
-  padding: 12px 14px;
+  /* 10px entre o texto e a fileira de controles (era 8). */
+  gap: 10px;
+  /* Distribuição medida na referência: o cartão tem a MESMA altura (95px lá,
+     94 aqui), mas lá sobra mais espaço pro texto porque os botões são
+     menores. Aqui: 14 em cima, 12 embaixo, 14 nas laterais. */
+  padding: 14px 14px 12px;
   border: 1px solid color-mix(in srgb, var(--axxa-line) 70%, transparent);
   border-radius: var(--axxa-r-lg);
   /* AQUI é o vidro. Mais VIDRO que painel: o fundo segura menos da metade e
@@ -1392,13 +1398,15 @@ body.theme-dark {
 
 /* Botões redondos do composer (+ e voz): mesmo diâmetro do enviar, mas
    superfície discreta — o acento é do enviar, que é a ação. */
+/* 32px, medido na referência (era 36). O que ganha com isso é o campo de
+   texto: a altura do cartão fica igual e sobra mais respiro em cima. */
 .axxa-root button.axxa-round-btn {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: none;
   border-radius: var(--axxa-r-pill);
@@ -1451,8 +1459,9 @@ body.theme-dark {
   gap: var(--axxa-1);
   flex: 0 1 auto;
   min-width: 0;
-  height: 36px;
-  padding: 0 var(--axxa-3);
+  /* Mesma altura dos botões redondos: a fileira é uma linha só. */
+  height: 32px;
+  padding: 0 10px;
   border-radius: var(--axxa-r-pill);
   background-color: var(--axxa-hover);
   color: var(--text-normal);
@@ -1502,8 +1511,8 @@ body.theme-dark {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--axxa-r-pill);
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
