@@ -13,6 +13,10 @@ export interface MenuAction {
   label: string;
   icon?: string;
   danger?: boolean;
+  /** Opção ATUAL de uma escolha (o filtro de período da home do Agent).
+   *  É `setChecked` do Obsidian — marcar isso com um ícone de "check" no slot
+   *  do ícone pareceria certo na tela e mentiria pra quem usa leitor. */
+  checked?: boolean;
   run: () => void;
 }
 
@@ -25,6 +29,7 @@ export function openActions(
     menu.addItem((item) => {
       item.setTitle(a.label).onClick(a.run);
       if (a.icon) item.setIcon(a.icon);
+      if (a.checked) item.setChecked(true);
       if (a.danger) item.setWarning(true);
     });
   }

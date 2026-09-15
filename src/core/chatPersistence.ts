@@ -68,6 +68,10 @@ export interface ChatSummary {
   tokensIn: number;
   tokensOut: number;
   messageCount: number;
+  /** Quantas ações de tool a conversa rodou (o `tools_used` do frontmatter).
+   *  É o que a home do Agent mostra em cada cartão — sem isto a lista de lá
+   *  não teria como dizer o que cada sessão FEZ. */
+  toolCount: number;
   filePath: string;
   /** Favoritada — sobe pro topo dos recentes e ganha estrela na lista. */
   starred: boolean;
@@ -413,6 +417,7 @@ export function summaryFromFrontmatter(
     tokensIn: Number(fm.tokens_in ?? 0),
     tokensOut: Number(fm.tokens_out ?? 0),
     messageCount: Number(fm.message_count ?? 0),
+    toolCount: Array.isArray(fm.tools_used) ? fm.tools_used.length : 0,
     filePath,
     starred: yamlBool(fm.starred),
   };

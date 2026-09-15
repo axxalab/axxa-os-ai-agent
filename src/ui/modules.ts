@@ -27,6 +27,9 @@ export interface ModuleMeta {
   placeholder: string;
   /** O que a home diz quando não há nenhuma conversa ainda. */
   emptyLine: string;
+  /** Rótulo do botão flutuante da home. O Agent chama de sessão porque é o
+   *  que ele roda: uma sessão de trabalho no vault, não um bate-papo. */
+  fabLabel: string;
 }
 
 export const MODULES: Record<ChatMode, ModuleMeta> = {
@@ -37,6 +40,7 @@ export const MODULES: Record<ChatMode, ModuleMeta> = {
     tagline: "Just you and the model. Your notes stay out of it.",
     placeholder: "Message the model…",
     emptyLine: "Ask anything. Your chats show up here.",
+    fabLabel: "New chat",
   },
   "vault-qa": {
     id: "vault-qa",
@@ -45,6 +49,7 @@ export const MODULES: Record<ChatMode, ModuleMeta> = {
     tagline: "Answers grounded in your notes, found by local search.",
     placeholder: "Ask something about your notes…",
     emptyLine: "Ask about your notes. The answers land here.",
+    fabLabel: "New question",
   },
   agent: {
     id: "agent",
@@ -53,6 +58,7 @@ export const MODULES: Record<ChatMode, ModuleMeta> = {
     tagline: "Reads and edits your vault — every change asks first.",
     placeholder: "Tell the agent what to do in your vault…",
     emptyLine: "Put the agent to work in your vault. Runs show up here.",
+    fabLabel: "New session",
   },
 };
 
@@ -79,6 +85,7 @@ export function modulesInUse(chats: readonly ChatSummary[]): ModuleMeta[] {
       tagline: "",
       placeholder: MODULES.chat.placeholder,
       emptyLine: MODULES.chat.emptyLine,
+      fabLabel: MODULES.chat.fabLabel,
     });
   }
   return [...MODULE_LIST, ...extras.values()];
@@ -101,6 +108,33 @@ export function moduleIcon(id: string | undefined | null): string {
 
 export function modulePlaceholder(id: string | undefined | null): string {
   return isChatMode(id) ? MODULES[id].placeholder : MODULES.chat.placeholder;
+}
+
+/** Rótulo do botão flutuante da home daquele módulo. */
+export function moduleFabLabel(id: string | undefined | null): string {
+  return isChatMode(id) ? MODULES[id].fabLabel : MODULES.chat.fabLabel;
+}
+
+/**
+ * Idade em uma palavra curta: "53m", "10h", "3d" — e a data quando passa de
+ * um mês. É o que vai na ponta direita de cada cartão.
+ *
+ * Diferente de `relativeDay`, que é frase ("Yesterday") pra a linha do menu:
+ * no cartão o espaço é de três caracteres e o que importa é a ordem de
+ * grandeza, não a data exata.
+ */
+export function relativeShort(iso: string, agora: number = Date.now()): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const s = Math.max(0, Math.round((agora - t) / 1000));
+  if (s < 60) return "now";
+  const min = Math.floor(s / 60);
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d}d`;
+  return iso.slice(0, 10);
 }
 
 /** Frase da home quando o módulo ainda não tem conversa nenhuma. */

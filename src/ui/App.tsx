@@ -85,6 +85,7 @@ export function App({
             if (isChatMode(modulo)) session.newChat(modulo);
             setView("chat");
           }}
+          onOpenSkills={() => setView("skills")}
         />
       ) : view === "chat" ? (
         <ChatView

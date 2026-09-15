@@ -715,6 +715,125 @@ body.theme-dark {
   font-size: var(--font-ui-medium);
 }
 
+/* Na home o rótulo de seção NÃO é versalete: na referência ele é uma palavra
+   normal, do tamanho do texto, em tom de apoio. Versalete miúdo é linguagem de
+   painel de configuração — aqui as seções são partes da página. */
+.axxa-root .axxa-home .axxa-section-label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-normal);
+  color: var(--text-muted);
+}
+
+/* Bloco de seção da home: rótulo + a ação daquela seção. */
+.axxa-root .axxa-home-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--axxa-2);
+}
+
+/* Linha de seção com uma ação na ponta ("Sessions" ... "All ⌄"). */
+.axxa-root .axxa-home-headrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--axxa-2);
+}
+
+/* Pílula de ação (o "+ Add skill"): contorno, não preenchimento — quem tem
+   peso na tela é o botão flutuante, e dois botões cheios brigariam. */
+.axxa-root button.axxa-home-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  height: 44px;
+  padding: 0 var(--axxa-4);
+  border-radius: 999px;
+  background-color: var(--axxa-raised);
+  color: var(--text-normal);
+  box-shadow: none;
+}
+
+.axxa-root button.axxa-home-pill:hover {
+  background-color: var(--axxa-hover);
+}
+
+.axxa-root button.axxa-home-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  padding: 0;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.axxa-root button.axxa-home-filter:hover {
+  color: var(--text-normal);
+  background-color: transparent;
+}
+
+/* ── o cartão de uma conversa ─────────────────────────────────────────── */
+
+/* Brasão quadrado à esquerda, como na referência: dá âncora visual à coluna
+   e diz de que módulo é a conversa sem escrever o nome dele. */
+.axxa-root .axxa-card-mark {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background-color: color-mix(in srgb, var(--text-normal) 8%, transparent);
+  color: var(--text-muted);
+}
+
+.axxa-root .axxa-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* A idade na ponta: alinhada ao topo porque o título é a âncora da linha, e
+   ela não pode empurrar nada — por isso `flex: 0 0 auto` e nada de quebra. */
+.axxa-root .axxa-card-age {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+
+.axxa-root .axxa-card-state.is-on {
+  color: var(--color-green, #4caf50);
+}
+
+.axxa-root .axxa-card-dot {
+  opacity: 0.6;
+}
+
+.axxa-root .axxa-home .axxa-history-open {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--axxa-3);
+}
+
+.axxa-root .axxa-home .axxa-history-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .axxa-root .axxa-home-empty {
   display: flex;
   flex-direction: column;

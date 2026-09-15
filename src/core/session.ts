@@ -557,6 +557,10 @@ export class ChatSession {
         tokensIn: chat.tokensIn,
         tokensOut: chat.tokensOut,
         messageCount: chat.messages.length,
+        toolCount: chat.messages.reduce(
+          (n, m) => n + (m.agentSteps?.length ?? 0),
+          0
+        ),
         filePath: path,
         starred: chat.starred === true,
       });

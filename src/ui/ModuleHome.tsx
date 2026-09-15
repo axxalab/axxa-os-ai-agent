@@ -2,10 +2,14 @@
 // A HOME de um módulo — a porta de entrada de Chat, Vault Q&A ou Agent.
 //
 // É uma página inteira e independente, não um painel dentro do menu nem a
-// tela de uma conversa vazia: nome grande, busca, as conversas daquele módulo
-// e um botão flutuante pra começar outra. Quem escreve é a tela de conversa,
-// que só abre quando se escolhe uma ou se cria uma nova — aqui não há campo de
-// texto de propósito, porque esta tela é sobre ESCOLHER, não sobre escrever.
+// tela de uma conversa vazia: nome grande, as conversas daquele módulo em
+// cartões e um botão flutuante pra começar outra. Não há campo de texto de
+// propósito — esta tela é sobre ESCOLHER, não sobre escrever.
+//
+// E cada uma tem a SUA mobília, como na referência (lá Chats, Code e Cowork
+// não se parecem): o Agent abre com as skills à mão e a lista de sessões
+// filtrável por período, porque uma sessão de agente é trabalho datado; Chat
+// e Vault Q&A abrem com busca, porque ali o que se procura é assunto.
 
 import { useMemo, useState } from "react";
 import type AxxaPlugin from "../main";
@@ -14,11 +18,26 @@ import { isChatMode } from "../core/session";
 import type { ChatSummary } from "../core/chatPersistence";
 import { ChatList, useChatSummaries } from "./ChatList";
 import { Icon } from "./Icon";
-import { chatsOfModule, moduleEmptyLine, moduleIcon, moduleLabel } from "./modules";
+import { openActions } from "./menu";
+import {
+  chatsOfModule,
+  moduleEmptyLine,
+  moduleFabLabel,
+  moduleIcon,
+  moduleLabel,
+} from "./modules";
 
 /** A partir de quantas conversas a busca aparece. Abaixo disso ela é um
  *  campo pedindo pra filtrar cinco linhas que já cabem na tela. */
 const SEARCH_FROM = 6;
+
+/** Janelas do filtro de período do Agent, em dias (0 = tudo). */
+const PERIODOS: Array<{ id: string; label: string; dias: number }> = [
+  { id: "all", label: "All", dias: 0 },
+  { id: "today", label: "Today", dias: 1 },
+  { id: "week", label: "This week", dias: 7 },
+  { id: "month", label: "This month", dias: 30 },
+];
 
 export function ModuleHome({
   plugin,
@@ -27,6 +46,7 @@ export function ModuleHome({
   onOpenMenu,
   onOpenChat,
   onNewChat,
+  onOpenSkills,
 }: {
   plugin: AxxaPlugin;
   session: ChatSession;
@@ -34,17 +54,27 @@ export function ModuleHome({
   onOpenMenu: () => void;
   onOpenChat: (chat: ChatSummary) => void;
   onNewChat: () => void;
+  onOpenSkills: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [periodo, setPeriodo] = useState(PERIODOS[0]);
   const todas = useChatSummaries(plugin);
   const minhas = useMemo(() => chatsOfModule(todas, modulo), [todas, modulo]);
-  const filtradas = useMemo(() => {
+
+  const ehAgent = modulo === "agent";
+
+  const visiveis = useMemo(() => {
+    if (ehAgent) {
+      if (periodo.dias === 0) return minhas;
+      const corte = Date.now() - periodo.dias * 86400000;
+      return minhas.filter((c) => new Date(c.date).getTime() >= corte);
+    }
     const q = query.trim().toLowerCase();
     if (!q) return minhas;
     return minhas.filter((c) =>
       (c.title || "Untitled").toLowerCase().includes(q)
     );
-  }, [minhas, query]);
+  }, [ehAgent, minhas, periodo, query]);
 
   // Módulo que este código não conhece (pasta criada por outra versão): dá pra
   // ler o que está lá, não dá pra criar — o motor não sabe rodar nesse modo.
@@ -66,35 +96,78 @@ export function ModuleHome({
       <div className="axxa-messages axxa-home">
         <h1 className="axxa-home-title">{moduleLabel(modulo)}</h1>
 
-        {minhas.length >= SEARCH_FROM && (
-          <label className="axxa-home-search">
-            <Icon name="search" size={18} />
-            <input
-              type="search"
-              value={query}
-              placeholder="Search"
-              aria-label={`Search ${moduleLabel(modulo)}`}
-              onChange={(e) => setQuery(e.currentTarget.value)}
-            />
-          </label>
+        {ehAgent && (
+          <section className="axxa-home-block">
+            <span className="axxa-section-label">Skills</span>
+            {/* O que o agente sabe fazer é o que ele TEM à mão — por isso as
+                skills abrem a home dele, do mesmo jeito que os aparelhos
+                abrem a tela de Code na referência. */}
+            <button
+              type="button"
+              className="axxa-home-pill"
+              onClick={onOpenSkills}
+            >
+              <Icon name="plus" size={18} />
+              <span>Add skill</span>
+            </button>
+          </section>
         )}
 
-        {filtradas.length > 0 && (
+        {ehAgent ? (
+          <div className="axxa-home-headrow">
+            <span className="axxa-section-label">Sessions</span>
+            <button
+              type="button"
+              className="axxa-home-filter"
+              aria-label="Filter sessions by period"
+              onClick={(e) =>
+                openActions(
+                  e as unknown as MouseEvent,
+                  PERIODOS.map((p) => ({
+                    label: p.label,
+                    checked: p.id === periodo.id,
+                    run: () => setPeriodo(p),
+                  }))
+                )
+              }
+            >
+              <span>{periodo.label}</span>
+              <Icon name="chevron-down" size={16} />
+            </button>
+          </div>
+        ) : (
+          minhas.length >= SEARCH_FROM && (
+            <label className="axxa-home-search">
+              <Icon name="search" size={18} />
+              <input
+                type="search"
+                value={query}
+                placeholder="Search"
+                aria-label={`Search ${moduleLabel(modulo)}`}
+                onChange={(e) => setQuery(e.currentTarget.value)}
+              />
+            </label>
+          )
+        )}
+
+        {visiveis.length > 0 && (
           <ChatList
             plugin={plugin}
             session={session}
-            chats={filtradas}
+            chats={visiveis}
             onOpen={onOpenChat}
           />
         )}
 
-        {filtradas.length === 0 && (
+        {visiveis.length === 0 && (
           <div className="axxa-home-empty">
             <Icon name={moduleIcon(modulo)} size={42} />
             <p>
               {minhas.length === 0
                 ? moduleEmptyLine(modulo)
-                : "No chats match that search."}
+                : ehAgent
+                  ? `Nothing in ${periodo.label.toLowerCase()}.`
+                  : "No chats match that search."}
             </p>
           </div>
         )}
@@ -106,9 +179,7 @@ export function ModuleHome({
         {podeCriar && (
           <button type="button" className="axxa-fab" onClick={onNewChat}>
             <Icon name="plus" size={20} />
-            {/* "New chat" e não "New Agent chat": o nome do módulo está em
-                letra garrafal no topo da mesma tela. */}
-            <span>New chat</span>
+            <span>{moduleFabLabel(modulo)}</span>
           </button>
         )}
       </div>

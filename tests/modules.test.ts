@@ -6,11 +6,13 @@ import {
   moduleHint,
   moduleIcon,
   moduleEmptyLine,
+  moduleFabLabel,
   moduleLabel,
   modulePlaceholder,
   modulesInUse,
   moduleStats,
   relativeDay,
+  relativeShort,
 } from "../src/ui/modules";
 import { CHAT_MODES } from "../src/core/session";
 import type { ChatSummary } from "../src/core/chatPersistence";
@@ -27,6 +29,7 @@ const chat = (over: Partial<ChatSummary>): ChatSummary =>
     tokensIn: 0,
     tokensOut: 0,
     messageCount: 2,
+    toolCount: 0,
     filePath: "axxa-ai/chats/chat/x.md",
     starred: false,
     ...over,
@@ -176,6 +179,49 @@ describe("relativeDay", () => {
 
   it("data quebrada devolve vazio em vez de 'Invalid Date'", () => {
     expect(relativeDay("nem data é", agora)).toBe("");
+  });
+});
+
+describe("relativeShort", () => {
+  const agora = new Date(2026, 8, 15, 12, 0).getTime();
+  const atras = (ms: number) => new Date(agora - ms).toISOString();
+
+  it("minutos, horas e dias — a coluna da direita do cartão", () => {
+    expect(relativeShort(atras(53 * 60000), agora)).toBe("53m");
+    expect(relativeShort(atras(10 * 3600000), agora)).toBe("10h");
+    expect(relativeShort(atras(3 * 86400000), agora)).toBe("3d");
+  });
+
+  it("acabou de acontecer não é '0m'", () => {
+    expect(relativeShort(atras(5000), agora)).toBe("now");
+  });
+
+  it("as fronteiras não pulam uma unidade", () => {
+    expect(relativeShort(atras(59 * 60000), agora)).toBe("59m");
+    expect(relativeShort(atras(60 * 60000), agora)).toBe("1h");
+    expect(relativeShort(atras(23 * 3600000), agora)).toBe("23h");
+    expect(relativeShort(atras(24 * 3600000), agora)).toBe("1d");
+  });
+
+  it("passou de um mês vira data — '47d' não diz nada a ninguém", () => {
+    const velho = atras(60 * 86400000);
+    expect(relativeShort(velho, agora)).toBe(velho.slice(0, 10));
+  });
+
+  it("data no futuro (relógio do aparelho atrasado) não vira negativo", () => {
+    expect(relativeShort(atras(-90 * 60000), agora)).toBe("now");
+  });
+
+  it("data quebrada devolve vazio", () => {
+    expect(relativeShort("nem data é", agora)).toBe("");
+  });
+});
+
+describe("moduleFabLabel", () => {
+  it("o Agent roda SESSÃO, os outros abrem conversa", () => {
+    expect(moduleFabLabel("agent")).toBe("New session");
+    expect(moduleFabLabel("chat")).toBe("New chat");
+    expect(moduleFabLabel("vault-qa")).toBe("New question");
   });
 });
 
