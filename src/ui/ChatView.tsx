@@ -1307,6 +1307,7 @@ export function ChatView({
                 />
               )}
               <SheetNavRow
+                icon="timer"
                 title="Effort"
                 note={EFFORT_LABELS[effort] ?? cfg.effort}
                 onClick={() => setModelView("effort")}

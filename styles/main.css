@@ -1488,6 +1488,7 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
   flex: 1 1 auto;
   min-width: 0;
   box-sizing: border-box;
+  /* Uma linha a 18px/1.4 = 25.2px; 26 deixa a margem do arredondamento. */
   min-height: 26px;
   /* O teto é escrito pelo JS (composerSize) porque só ele sabe quanto da tela
      o teclado está cobrindo. O 40vh é só o valor até a primeira medida. */
@@ -1501,7 +1502,10 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
   outline: none;
   color: var(--text-normal);
   font-family: inherit;
-  font-size: 17px;
+  /* 18px. Medido nos prints: a altura-x é a mesma nos dois (19px device), mas
+     as maiúsculas da referência são 12% mais altas — diferença de família, não
+     de corpo. 1px fecha a maior parte da distância sem estourar a linha. */
+  font-size: 18px;
   line-height: 1.4;
   resize: none;
 }
@@ -1792,8 +1796,11 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
    sozinho se perde. `--axxa-hover` é translúcido, então repetido sobre o
    cartão ele CLAREIA — a linha sobe um degrau, como na referência, em vez de
    virar um buraco escuro (que é o que `--axxa-raised` faz no tema escuro). */
+/* A selecionada NÃO ganha fundo: quem marca é a COR do texto e o check, como
+   na referência. O fundo criava um segundo destaque disputando com o accent —
+   e numa lista de quatro linhas a cor já é suficiente. */
 .axxa-root .axxa-sheet-row.is-active {
-  background-color: var(--axxa-hover);
+  background-color: transparent;
 }
 
 .axxa-root .axxa-sheet-chev {
@@ -1908,6 +1915,14 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
 .axxa-root .axxa-sheet-row.is-active .axxa-sheet-row-title,
 .axxa-root .axxa-sheet-row.is-active .axxa-sheet-row-note,
 .axxa-root .axxa-sheet-check {
+  color: var(--text-accent);
+}
+
+/* O VALOR de uma linha de navegação ("Effort · High") também é accent: ele é
+   uma escolha atual, igual à linha selecionada — e é assim na referência. A
+   legenda das linhas densas (o argumento de uma tool) continua em tom de
+   apoio. */
+.axxa-root .axxa-sheet-row.is-nav .axxa-sheet-row-value {
   color: var(--text-accent);
 }
 

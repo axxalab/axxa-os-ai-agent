@@ -448,16 +448,26 @@ export function SheetSeg({
 export function SheetNavRow({
   title,
   note,
+  icon,
   onClick,
 }: {
   title: string;
   note?: string;
+  /** Ícone Lucide num brasão redondo à esquerda (como na referência). */
+  icon?: string;
   onClick: () => void;
 }) {
   // O valor vai ao LADO do chevron, não numa segunda linha: a linha de
   // navegação não precisa de duas alturas pra dizer "Effort · Med".
   return (
     <button type="button" className="axxa-sheet-row is-nav" onClick={onClick}>
+      {icon && (
+        <Icon
+          name={icon}
+          size={20}
+          className="axxa-sheet-row-icon is-badge"
+        />
+      )}
       <span className="axxa-sheet-row-title">{title}</span>
       {note && <span className="axxa-sheet-row-value">{note}</span>}
       <Icon name="chevron-right" size={18} className="axxa-sheet-chev" />
