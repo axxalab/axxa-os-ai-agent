@@ -25,9 +25,8 @@ export interface ModuleMeta {
   tagline: string;
   /** Placeholder do campo de texto naquele módulo. */
   placeholder: string;
-  /** Texto do botão de criar. Escrito à mão, e não montado com
-   *  `New ${label} chat`: o módulo Chat viraria "New Chat chat". */
-  newLabel: string;
+  /** O que a home diz quando não há nenhuma conversa ainda. */
+  emptyLine: string;
 }
 
 export const MODULES: Record<ChatMode, ModuleMeta> = {
@@ -37,7 +36,7 @@ export const MODULES: Record<ChatMode, ModuleMeta> = {
     icon: "message-circle",
     tagline: "Just you and the model. Your notes stay out of it.",
     placeholder: "Message the model…",
-    newLabel: "New chat",
+    emptyLine: "Ask anything. Your chats show up here.",
   },
   "vault-qa": {
     id: "vault-qa",
@@ -45,7 +44,7 @@ export const MODULES: Record<ChatMode, ModuleMeta> = {
     icon: "library",
     tagline: "Answers grounded in your notes, found by local search.",
     placeholder: "Ask something about your notes…",
-    newLabel: "New Vault Q&A chat",
+    emptyLine: "Ask about your notes. The answers land here.",
   },
   agent: {
     id: "agent",
@@ -53,7 +52,7 @@ export const MODULES: Record<ChatMode, ModuleMeta> = {
     icon: "bot",
     tagline: "Reads and edits your vault — every change asks first.",
     placeholder: "Tell the agent what to do in your vault…",
-    newLabel: "New Agent chat",
+    emptyLine: "Put the agent to work in your vault. Runs show up here.",
   },
 };
 
@@ -79,7 +78,7 @@ export function modulesInUse(chats: readonly ChatSummary[]): ModuleMeta[] {
       icon: moduleIcon(c.mode),
       tagline: "",
       placeholder: MODULES.chat.placeholder,
-      newLabel: MODULES.chat.newLabel,
+      emptyLine: MODULES.chat.emptyLine,
     });
   }
   return [...MODULE_LIST, ...extras.values()];
@@ -104,9 +103,11 @@ export function modulePlaceholder(id: string | undefined | null): string {
   return isChatMode(id) ? MODULES[id].placeholder : MODULES.chat.placeholder;
 }
 
-/** Texto do botão de criar conversa naquele módulo. */
-export function moduleNewLabel(id: string | undefined | null): string {
-  return isChatMode(id) ? MODULES[id].newLabel : MODULES.chat.newLabel;
+/** Frase da home quando o módulo ainda não tem conversa nenhuma. */
+export function moduleEmptyLine(id: string | undefined | null): string {
+  if (isChatMode(id)) return MODULES[id].emptyLine;
+  // Módulo que só existe no disco: o texto explica por que não há botão.
+  return "Chats saved here by another version. This one can't start new ones.";
 }
 
 /**

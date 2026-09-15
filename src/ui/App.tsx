@@ -1,6 +1,9 @@
 // src/ui/App.tsx
-// A casca. Uma tela por vez (Chats / Projects / Skills) + o menu lateral, que
-// é onde vivem as opções: nova conversa, histórico, navegação e Settings.
+// A casca. Uma tela por vez + o menu lateral.
+//
+// As telas são: a HOME de um módulo (Chat, Vault Q&A, Agent — cada um com a
+// sua, ver ModuleHome.tsx), a conversa em si, e as páginas de Projects e
+// Skills. O menu é só navegação: leva a uma delas e sai da frente.
 // Tudo que a UI faz passa pela ChatSession (src/core/session.ts) ou pelo plugin.
 
 import { useCallback, useEffect, useReducer, useState } from "react";
@@ -8,6 +11,7 @@ import type AxxaPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
 import type { Skill } from "../skills/skills";
 import { ChatView } from "./ChatView";
+import { ModuleHome } from "./ModuleHome";
 import { ProjectsView } from "./ProjectsView";
 import { SkillsView } from "./SkillsView";
 import { Drawer, type ViewId } from "./Drawer";
@@ -18,8 +22,8 @@ export interface ComposerInject {
   nonce: number;
 }
 
-const PAGE_TITLE: Record<ViewId, string> = {
-  chat: "Chats",
+/** Só as páginas que usam a topbar comum — a home do módulo tem a sua. */
+const PAGE_TITLE: Partial<Record<ViewId, string>> = {
   projects: "Projects",
   skills: "Skills",
 };
@@ -33,17 +37,10 @@ export function App({
 }) {
   const [view, setView] = useState<ViewId>("chat");
   const [menuOpen, setMenuOpen] = useState(false);
-  /**
-   * Módulo que está sendo VISTO mas que este código não conhece — conversas
-   * numa pasta de `axxa-ai/chats/` criada por outra versão, ou na mão.
-   *
-   * Pros três módulos do motor isto fica null: quem manda na tela é o modo da
-   * sessão, que o seletor da tela inicial muda. Um modo estranho não pode
-   * virar sessão (o motor não sabe rodar), mas as conversas dele existem e
-   * precisam de um lugar onde apareçam — senão o menu teria uma porta que não
-   * leva a nada, e os arquivos ficariam invisíveis.
-   */
-  const [moduloExterno, setModuloExterno] = useState<string | null>(null);
+  /** De qual módulo é a home que está aberta (ou foi a última). */
+  const [modulo, setModulo] = useState<string>(
+    () => plugin.settings.defaultMode || "chat"
+  );
   const [inject, setInject] = useState<ComposerInject | null>(null);
   const [, force] = useReducer((n: number) => n + 1, 0);
   // Re-render em mudanças de sessão (seleção/lock) e de settings.
@@ -58,20 +55,12 @@ export function App({
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
-  /** Entrar num módulo pelo menu: abre a TELA dele. */
-  const entrarNoModulo = useCallback(
-    (mode: string) => {
-      if (isChatMode(mode)) {
-        session.newChat(mode);
-        setModuloExterno(null);
-      } else {
-        setModuloExterno(mode);
-      }
-      setView("chat");
-      setMenuOpen(false);
-    },
-    [session]
-  );
+  /** Entrar num módulo pelo menu: abre a HOME dele. */
+  const entrarNoModulo = useCallback((mode: string) => {
+    setModulo(mode);
+    setView("module");
+    setMenuOpen(false);
+  }, []);
 
   const useSkill = (skill: Skill) => {
     // Skill com modo preferido troca o modo (no-op se a sessão já travou).
@@ -82,13 +71,26 @@ export function App({
 
   return (
     <div className="axxa-root">
-      {view === "chat" ? (
+      {view === "module" ? (
+        <ModuleHome
+          plugin={plugin}
+          session={session}
+          modulo={modulo}
+          onOpenMenu={() => setMenuOpen(true)}
+          onOpenChat={(c) => {
+            void session.load(c);
+            setView("chat");
+          }}
+          onNewChat={() => {
+            if (isChatMode(modulo)) session.newChat(modulo);
+            setView("chat");
+          }}
+        />
+      ) : view === "chat" ? (
         <ChatView
           plugin={plugin}
           session={session}
           inject={inject}
-          moduloExterno={moduloExterno}
-          onSairDoExterno={() => setModuloExterno(null)}
           onOpenMenu={() => setMenuOpen(true)}
           onUseSkill={useSkill}
         />
@@ -135,7 +137,7 @@ export function App({
         session={session}
         open={menuOpen}
         view={view}
-        moduloExterno={moduloExterno}
+        modulo={modulo}
         onEnterModule={entrarNoModulo}
         onNavigate={setView}
         onClose={closeMenu}

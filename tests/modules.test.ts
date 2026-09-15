@@ -5,8 +5,8 @@ import {
   chatsOfModule,
   moduleHint,
   moduleIcon,
+  moduleEmptyLine,
   moduleLabel,
-  moduleNewLabel,
   modulePlaceholder,
   modulesInUse,
   moduleStats,
@@ -41,7 +41,7 @@ describe("MODULES", () => {
       expect(MODULES[m].label.length).toBeGreaterThan(0);
       expect(MODULES[m].icon.length).toBeGreaterThan(0);
       expect(MODULES[m].placeholder.length).toBeGreaterThan(0);
-      expect(MODULES[m].newLabel.length).toBeGreaterThan(0);
+      expect(MODULES[m].emptyLine.length).toBeGreaterThan(0);
     }
     expect(MODULE_LIST.map((m) => m.id)).toEqual(CHAT_MODES);
   });
@@ -58,14 +58,18 @@ describe("MODULES", () => {
     expect(modulePlaceholder("pesquisa")).toBe(MODULES.chat.placeholder);
   });
 
-  it("o botão de criar tem texto ESCRITO, não concatenado", () => {
-    // `New ${label} chat` fazia o módulo Chat virar "New Chat chat".
-    expect(moduleNewLabel("chat")).toBe("New chat");
-    expect(moduleNewLabel("vault-qa")).toBe("New Vault Q&A chat");
-    expect(moduleNewLabel("agent")).toBe("New Agent chat");
-    for (const m of CHAT_MODES) {
-      expect(MODULES[m].newLabel).not.toMatch(/chat chat/i);
-    }
+  it("a home vazia de cada módulo convida com as palavras dele", () => {
+    // Uma frase genérica em três lugares diferentes faria as três homes
+    // parecerem a mesma tela sem conteúdo.
+    const frases = CHAT_MODES.map((m) => MODULES[m].emptyLine);
+    expect(new Set(frases).size).toBe(CHAT_MODES.length);
+    expect(moduleEmptyLine("agent")).toBe(MODULES.agent.emptyLine);
+  });
+
+  it("módulo estranho explica por que não dá pra criar nada nele", () => {
+    const frase = moduleEmptyLine("research");
+    expect(frase).not.toBe(MODULES.chat.emptyLine);
+    expect(frase).toMatch(/can't start new ones/i);
   });
 
   it("modulesInUse põe no menu o módulo que só existe no disco", () => {

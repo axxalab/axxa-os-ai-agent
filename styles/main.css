@@ -608,25 +608,156 @@ body.theme-dark {
   text-align: center;
 }
 
-/* ── as conversas do módulo, na tela dele ──────────────────────────────
-   Elas moravam na gaveta. Aqui ficam logo acima do campo de texto: o menu
-   leva ao lugar, e é no lugar que estão as suas conversas. */
-.axxa-root .axxa-starter-recents {
-  display: flex;
-  flex-direction: column;
-  gap: var(--axxa-2);
-  /* O hero usa `margin: auto 0` pra centralizar no espaço livre; sem isto a
-     lista era empurrada pra fora do alcance por essa mesma centralização. */
-  margin-top: 0;
+/* ══ HOME DE UM MÓDULO ═════════════════════════════════════════════════
+   Página inteira: nome garrafal, busca, as conversas em cartões e um botão
+   flutuante. Nada de campo de texto — aqui se ESCOLHE, não se escreve. */
+
+/* Topbar sem título: o nome do módulo vem embaixo, grande. O botão sozinho
+   precisa de `justify-content` próprio, senão a regra de três colunas da
+   topbar comum joga ele pro meio. */
+.axxa-root .axxa-topbar.is-bare {
+  justify-content: flex-start;
+  border-bottom: none;
 }
 
-/* Na gaveta a lista é o scroller (flex:1 + overflow). Aqui quem rola é a
-   timeline inteira — um scroller dentro do outro faria a lista prender o
-   dedo num retângulo no meio da tela. */
-.axxa-root .axxa-starter-recents .axxa-history {
+.axxa-root .axxa-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-4);
+  padding-bottom: var(--axxa-3);
+}
+
+/* Serifa e corpo grande: é o nome do lugar onde se está, não um cabeçalho de
+   seção. A mesma fonte da leitura — o app já tem uma serifa, e inventar outra
+   aqui seria uma terceira voz. */
+.axxa-root .axxa-home-title {
+  margin: var(--axxa-3) 0 0;
+  font-family: var(--axxa-read-font);
+  font-size: 2.1em;
+  font-weight: var(--font-normal);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--text-normal);
+}
+
+.axxa-root .axxa-home-search {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  padding: 0 var(--axxa-3);
+  height: 46px;
+  border: 1px solid var(--axxa-line);
+  border-radius: 999px;
+  color: var(--text-muted);
+}
+
+.axxa-root .axxa-home-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+}
+
+.axxa-root .axxa-home-search input:focus {
+  box-shadow: none;
+}
+
+/* A lista aqui não é o scroller (quem rola é a página), e cada conversa é um
+   CARTÃO — na gaveta eram linhas apertadas porque o espaço era de menu. */
+.axxa-root .axxa-home .axxa-history {
   flex: 0 0 auto;
   overflow: visible;
   min-height: 0;
+  gap: var(--axxa-2);
+}
+
+.axxa-root .axxa-home .axxa-history-row {
+  padding: var(--axxa-3);
+  border-radius: var(--axxa-r);
+  /* Um passo ACIMA do fundo da página, seja ele qual for. `--axxa-raised`
+     não serve aqui: em tema onde o canvas já é o `--background-primary` ele
+     resolve pra mesma cor e o cartão some. */
+  background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
+}
+
+/* O `button` do Obsidian vem com fundo e canto arredondado próprios (é o que
+   fazia aparecer uma pílula clara DENTRO do cartão, com o ⋯ do lado de fora
+   dela). Dentro da lista quem tem forma é o cartão.
+   A home também NÃO usa `.axxa-page`: aquela classe veste todo `button` como
+   botão de formulário — certo em Projects e Skills, errado numa lista onde o
+   botão é a linha inteira. */
+.axxa-root .axxa-history-open,
+.axxa-root button.axxa-history-more {
+  background-color: transparent;
+  border-radius: inherit;
+  box-shadow: none;
+}
+
+.axxa-root .axxa-home .axxa-history-open {
+  padding: 0;
+}
+
+.axxa-root button.axxa-history-more:hover {
+  background-color: var(--axxa-hover);
+  border-radius: var(--axxa-r-sm);
+}
+
+.axxa-root .axxa-home .axxa-history-row.is-current {
+  box-shadow: inset 0 0 0 1px var(--interactive-accent);
+}
+
+.axxa-root .axxa-home .axxa-history-title {
+  font-size: var(--font-ui-medium);
+}
+
+.axxa-root .axxa-home-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--axxa-3);
+  margin: auto 0;
+  padding: var(--axxa-5) var(--axxa-4);
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.axxa-root .axxa-home-empty p {
+  margin: 0;
+  max-width: 28ch;
+  color: var(--text-muted);
+}
+
+/* Botão flutuante: sobre a lista, no canto, ao alcance do polegar.
+   `sticky` DENTRO do scroller, não `absolute`: absolute procuraria um
+   ancestral posicionado, e `.axxa-chat` não é um — foi assim que o composer
+   `absolute` foi parar colado no header do aparelho. Sticky não depende de
+   ancestral nenhum, e `margin-top: auto` mantém o botão embaixo mesmo quando
+   a lista é curta demais pra rolar. */
+.axxa-root .axxa-fab {
+  position: sticky;
+  bottom: 0;
+  align-self: flex-end;
+  margin-top: auto;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  height: 48px;
+  padding: 0 var(--axxa-4);
+  border-radius: 999px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: var(--font-semibold);
+  box-shadow: var(--axxa-shadow, 0 6px 24px rgba(0, 0, 0, 0.35));
+}
+
+.axxa-root .axxa-fab:hover {
+  background-color: var(--interactive-accent-hover);
 }
 
 .axxa-root .axxa-starter-mark {

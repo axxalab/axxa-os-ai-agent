@@ -24,7 +24,7 @@ import { Icon } from "./Icon";
 import { openPluginSettings } from "./modals";
 import { moduleHint, moduleStats, modulesInUse } from "./modules";
 
-export type ViewId = "chat" | "projects" | "skills";
+export type ViewId = "chat" | "module" | "projects" | "skills";
 
 /** O resto do menu — o que não é módulo. */
 const NAV: Array<{ id: ViewId; label: string; icon: string }> = [
@@ -37,7 +37,7 @@ export function Drawer({
   session,
   open,
   view,
-  moduloExterno,
+  modulo,
   onEnterModule,
   onNavigate,
   onClose,
@@ -46,8 +46,8 @@ export function Drawer({
   session: ChatSession;
   open: boolean;
   view: ViewId;
-  /** Módulo estranho que está sendo visto, se houver (ver App). */
-  moduloExterno: string | null;
+  /** De qual módulo é a home aberta (ou a última). */
+  modulo: string;
   onEnterModule: (mode: string) => void;
   onNavigate: (view: ViewId) => void;
   onClose: () => void;
@@ -58,13 +58,16 @@ export function Drawer({
 
   // Qual módulo está em uso agora — a conversa aberta manda; sem conversa
   // aberta, o padrão das Settings. Marca a linha na raiz.
+  // Qual linha de módulo aparece marcada: na home é a dela; dentro de uma
+  // conversa é o modo daquela conversa.
   const moduloAtual =
-    moduloExterno ??
-    (isChatMode(sessionMode)
-      ? sessionMode
-      : isChatMode(plugin.settings.defaultMode)
-        ? plugin.settings.defaultMode
-        : "chat");
+    view === "module"
+      ? modulo
+      : isChatMode(sessionMode)
+        ? sessionMode
+        : isChatMode(plugin.settings.defaultMode)
+          ? plugin.settings.defaultMode
+          : "chat";
 
   // Esc fecha; o foco vai pra gaveta quando ela abre.
   useEffect(() => {
@@ -144,7 +147,8 @@ export function Drawer({
                   key={m.id}
                   type="button"
                   className={
-                    view === "chat" && moduloAtual === m.id
+                    (view === "chat" || view === "module") &&
+                    moduloAtual === m.id
                       ? "axxa-nav-item axxa-module-item is-active"
                       : "axxa-nav-item axxa-module-item"
                   }
