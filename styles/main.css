@@ -1040,8 +1040,12 @@ body.theme-dark {
   z-index: 4;
   display: flex;
   flex-direction: column;
+  /* Respiro FIXO embaixo. Somar `safe-area-inset-bottom` aqui era contar o
+     mesmo espaço duas vezes — a gaveta do Obsidian já termina acima da barra
+     de gestos (é a lição registrada no bloco da 0.2.37 lá em cima). Com o
+     teclado aberto isso virava um vão entre o cartão e o teclado. */
   padding: var(--axxa-2) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2)
-    max(var(--safe-area-inset-bottom, 0px), var(--axxa-2));
+    var(--axxa-2);
   /* A FAIXA é transparente: quem é vidro é o cartão, e só ele. Pintar a faixa
      inteira tingia a barra de baixo (a área dos gestos) e fazia o composer
      PARECER muito mais alto do que é — o olho lê a mancha, não a caixa. */

@@ -49,6 +49,17 @@ function bg(el: Element | null | undefined, win: Window | null): string {
   return win.getComputedStyle(el).backgroundColor;
 }
 
+/** Caixa com o que decide a COLUNA: posição, altura e as folgas de baixo.
+ *  A geometria sozinha não diz por que um item foi parar onde foi. */
+function caixa(el: Element | null | undefined, win: Window | null): string {
+  if (!el || !win) return "ausente";
+  const cs = win.getComputedStyle(el);
+  return (
+    `${rect(el)}  pos=${cs.position} flex=${cs.flex} ` +
+    `mb=${cs.marginBottom} pb=${cs.paddingBottom} h=${cs.height}`
+  );
+}
+
 /**
  * Monta o relatório a partir do container da view. `containerEl` é o da
  * ItemView — daí se alcança a gaveta, o body e o documento.
@@ -114,9 +125,26 @@ export function buildLayoutReport(containerEl: HTMLElement): string {
     `  .axxa-root .............. ${rect(
       containerEl.querySelector(".axxa-root")
     )}  bg=${bg(containerEl.querySelector(".axxa-root"), win)}`,
-    `  .axxa-composer .......... ${rect(
-      containerEl.querySelector(".axxa-composer")
+    `  .axxa-chat .............. ${caixa(
+      containerEl.querySelector(".axxa-chat"),
+      win
     )}`,
+    `  .axxa-messages .......... ${caixa(
+      containerEl.querySelector(".axxa-messages"),
+      win
+    )}`,
+    `  .axxa-composer .......... ${caixa(
+      containerEl.querySelector(".axxa-composer"),
+      win
+    )}`,
+    `  .axxa-input (cartão) .... ${rect(
+      containerEl.querySelector(".axxa-input")
+    )}`,
+    `  --axxa-composer-h ....... ${
+      (containerEl.querySelector(".axxa-root") as HTMLElement | null)?.style.getPropertyValue(
+        "--axxa-composer-h"
+      ) || "não setada"
+    }`,
     `  .mobile-navbar .......... ${rect(
       doc.querySelector(".mobile-navbar")
     )}  display=${
