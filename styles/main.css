@@ -251,6 +251,45 @@ body.is-mobile
   height: 100%;
   width: 100%;
 }
+
+/* ── nenhuma barra de rolagem cinza na borda ──────────────────────────────
+   No Android o Obsidian pinta barra ESTILIZADA e persistente: `.is-android`
+   define `--scrollbar-width: 5px` e o thumb é `rgba(255,255,255,.1)` — que
+   sobre o nosso fundo #1e1e1e dá exatamente o rgb(52,52,53) que aparecia
+   colado na direita. Eram DUAS, empilhadas:
+
+   1. a da própria `.view-content`, de altura inteira (thumb ocupando o
+      track todo = ela transborda por um fio), passando por cima do header;
+   2. a das mensagens, 5px mais à esquerda — justamente a largura que a
+      primeira roubava da view.
+
+   A (1) não deveria existir: quem rola aqui é `.axxa-messages`, a view é só
+   o continente. `overflow: hidden` mata a barra E devolve os 5px de largura.
+   A (2) some junto com as outras do nosso subtree: no celular o polegar já
+   diz onde está o scroll, e a referência não mostra barra nenhuma. */
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content {
+  overflow: hidden;
+}
+
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content,
+.axxa-root,
+.axxa-root *,
+.axxa-confirm-modal,
+.axxa-confirm-modal * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.workspace-leaf-content[data-type="axxa-os-ai-agent"] .view-content::-webkit-scrollbar,
+.axxa-root::-webkit-scrollbar,
+.axxa-root *::-webkit-scrollbar,
+.axxa-confirm-modal::-webkit-scrollbar,
+.axxa-confirm-modal *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 @supports selector(:has(*)) {
   .workspace-drawer-active-tab-container:has(.workspace-leaf-content[data-type="axxa-os-ai-agent"])
     .workspace-tab-container,
