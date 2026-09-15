@@ -94,12 +94,7 @@ import type { MessageAttachment } from "../providers/base";
 import { StarterScreen } from "./StarterScreen";
 import { ThinkingLine } from "./Thinking";
 import type { ComposerInject } from "./App";
-
-const MODE_PLACEHOLDER: Record<string, string> = {
-  chat: "Message the model…",
-  "vault-qa": "Ask something about your notes…",
-  agent: "Tell the agent what to do in your vault…",
-};
+import { moduleLabel, modulePlaceholder } from "./modules";
 
 /** Título da folha do "+" em cada nível. */
 const PLUS_SHEET_TITLE: Record<string, string> = {
@@ -114,12 +109,6 @@ const MODEL_SHEET_TITLE: Record<string, string> = {
   root: "Select model",
   list: "Show list",
   effort: "Effort",
-};
-
-const MODE_LABEL: Record<string, string> = {
-  chat: "Chat",
-  "vault-qa": "Vault Q&A",
-  agent: "Agent",
 };
 
 export function ChatView({
@@ -910,7 +899,7 @@ Open Settings › Providers to add it, then run the connection test.`,
           </span>
           {locked && (
             <span className="axxa-topbar-meta">
-              {MODE_LABEL[cfg.mode] ?? cfg.mode} · {cfg.model}
+              {moduleLabel(cfg.mode)} · {cfg.model}
             </span>
           )}
         </div>
@@ -1074,7 +1063,7 @@ Open Settings › Providers to add it, then run the connection test.`,
                 ref={textareaRef}
                 rows={1}
                 value={draft}
-                placeholder={MODE_PLACEHOLDER[cfg.mode] ?? ""}
+                placeholder={modulePlaceholder(cfg.mode)}
                 onFocus={onComposerFocus}
                 onChange={(e) => {
                   setDraft(e.currentTarget.value);

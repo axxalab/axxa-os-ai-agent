@@ -17,12 +17,46 @@ registerBrandLogos(); // igual ao onload do plugin
 const params = new URLSearchParams(location.search);
 const scenario = params.get("s") ?? "empty";
 
+// Conversas falsas. Precisam ser MUITAS e espalhadas pelos três módulos:
+// com quatro no total, a tela de cada módulo tinha uma linha e a busca (que
+// só aparece a partir de oito) nunca nascia — ou seja, metade do menu não
+// dava pra ver. As datas são relativas a hoje pra "Today/Yesterday" valerem
+// alguma coisa.
+const dias = (n: number, h = 10) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  d.setHours(h, 0, 0, 0);
+  return d.toISOString();
+};
+
 const chats = [
   { id: "1", title: "Weekly review plan", date: "2026-09-11T09:12:00", mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 14, filePath: "", tokensIn: 0, tokensOut: 0 },
   { id: "2", title: "What did I write about spaced repetition?", date: "2026-09-10T21:03:00", mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 6, filePath: "", tokensIn: 0, tokensOut: 0 },
   { id: "3", title: "Outline for the Axxa landing page", date: "2026-09-09T14:44:00", mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 22, filePath: "", tokensIn: 0, tokensOut: 0 },
   { id: "4", title: "Clean up the inbox folder", date: "2026-09-08T08:20:00", mode: "agent", provider: "gemini", model: "gemini-2.5-flash", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 },
-];
+  { id: "5", title: "Rewrite the plugin README", date: dias(0, 8), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 11, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "6", title: "Which notes mention the Anki backlog?", date: dias(1, 19), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 4, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "7", title: "Move last month's meeting notes", date: dias(2, 11), mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 18, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "8", title: "Names for the voice feature", date: dias(3, 15), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 7, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "9", title: "What did I decide about pricing?", date: dias(4, 9), mode: "vault-qa", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "10", title: "Tag every note from the São Paulo trip", date: dias(5, 20), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 26, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "11", title: "Explain event loops like I'm tired", date: dias(6, 23), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "12", title: "Summarise the reading list", date: dias(9, 12), mode: "vault-qa", provider: "openai", model: "gpt-4o", messageCount: 8, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "13", title: "Draft the changelog for 0.5", date: dias(12, 16), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 13, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "14", title: "Split the daily notes by quarter", date: dias(15, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 31, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "15", title: "Where did I write about sleep debt?", date: dias(21, 7), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 3, filePath: "", tokensIn: 0, tokensOut: 0 },
+  // O módulo Chat passa de OITO conversas de propósito: é a partir daí que a
+  // busca da tela nasce, e sem um módulo gordo esse caminho não existiria no
+  // preview.
+  { id: "17", title: "Regex for the daily note template", date: dias(7, 11), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 6, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "18", title: "Ideas for the onboarding screen", date: dias(10, 17), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 15, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "19", title: "Why is my build 300KB?", date: dias(14, 21), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 10, filePath: "", tokensIn: 0, tokensOut: 0 },
+  { id: "20", title: "Translate the README to Portuguese", date: dias(18, 9), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 4, filePath: "", tokensIn: 0, tokensOut: 0 },
+  // Modo DESCONHECIDO: uma conversa gravada por uma versão que ainda não
+  // existe. Não pode sumir nem quebrar a tela — tem que aparecer com o nome
+  // que tem.
+  { id: "16", title: "Deep research on spaced repetition", date: dias(8, 13), mode: "research", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 },
+].sort((a, b) => b.date.localeCompare(a.date));
 
 const plugin = {
   manifest: { version: PREVIEW_VERSION, id: "axxa-os-ai-agent" },
@@ -261,12 +295,45 @@ const session = {
     useChatStore.getState().clearQueued();
     emit();
   },
-  newChat: () => {
+  // Igual ao motor (session.ts): o `mode` opcional FIXA o modo da conversa
+  // nova. A versão que ignorava o argumento fazia o "New Agent chat" do menu
+  // abrir uma conversa de Chat no preview — e o preview dizia que estava tudo
+  // bem.
+  newChat: (m?: string) => {
     useChatStore.getState().newChat();
+    if (m) {
+      mode = m;
+      // O motor grava o modo escolhido como padrão (session.ts). É o que faz
+      // o menu marcar o módulo certo quando não há conversa travada.
+      plugin.settings.defaultMode = m;
+    }
     emit();
   },
   newChatInProject: async () => {},
-  load: async () => {},
+  // Abrir uma conversa da lista: põe mensagens de mentira na tela e TRAVA a
+  // sessão no modo/modelo daquela conversa, que é o que o motor faz ao ler o
+  // arquivo. Antes era um no-op, então tocar numa conversa do menu não fazia
+  // nada e não dava pra ver se o menu tinha aberto a certa.
+  load: async (c: { id: string; title: string; mode: string; provider: string; model: string }) => {
+    const st = useChatStore.getState();
+    st.newChat();
+    st.setMessages([
+      { id: `${c.id}-u`, type: "user", content: c.title, timestamp: Date.now() - 60000 },
+      {
+        id: `${c.id}-a`,
+        type: "ai-response",
+        content: `Conversa de mentira do preview, carregada de **${c.mode}**. O que importa aqui é que o menu abriu ESTA e não outra.`,
+        timestamp: Date.now() - 50000,
+      },
+    ]);
+    st.setCurrentChatId(c.id);
+    st.setCurrentChatTitle(c.title);
+    st.lockSession(c.provider, c.model, c.mode);
+    mode = c.mode;
+    provider = c.provider;
+    model = c.model;
+    emit();
+  },
   delete: async () => {},
   rename: async () => {},
   updateProjects: async () => {},

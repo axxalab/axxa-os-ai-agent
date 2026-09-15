@@ -8,33 +8,10 @@ import type { CSSProperties } from "react";
 import type AxxaPlugin from "../main";
 import type { ChatMode, ChatSession } from "../core/session";
 import { CHAT_MODES } from "../core/session";
+import { MODULES } from "./modules";
 import { providerConfigured, PROVIDERS } from "../core/providersMeta";
 import { Icon } from "./Icon";
 import { openPluginSettings } from "./modals";
-
-interface ModeMeta {
-  label: string;
-  icon: string;
-  tagline: string;
-}
-
-const MODES: Record<ChatMode, ModeMeta> = {
-  chat: {
-    label: "Chat",
-    icon: "message-circle",
-    tagline: "Just you and the model. Your notes stay out of it.",
-  },
-  "vault-qa": {
-    label: "Vault Q&A",
-    icon: "library",
-    tagline: "Answers grounded in your notes, found by local search.",
-  },
-  agent: {
-    label: "Agent",
-    icon: "bot",
-    tagline: "Reads and edits your vault — every change asks first.",
-  },
-};
 
 /** Saudação pela hora local — o chat abre falando com você, não com o void. */
 function greeting(): string {
@@ -53,7 +30,7 @@ export function StarterScreen({
   session: ChatSession;
 }) {
   const cfg = session.config;
-  const mode = MODES[cfg.mode];
+  const mode = MODULES[cfg.mode];
   const hasKey = providerConfigured(plugin, cfg.provider);
   const providerName =
     PROVIDERS.find((p) => p.id === cfg.provider)?.name ?? cfg.provider;
@@ -76,7 +53,7 @@ export function StarterScreen({
             aria-pressed={m === cfg.mode}
             onClick={() => session.setMode(m)}
           >
-            {MODES[m].label}
+            {MODULES[m].label}
           </button>
         ))}
       </div>

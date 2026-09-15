@@ -2132,6 +2132,58 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet {
   font-weight: var(--font-semibold);
 }
 
+/* ── linha de MÓDULO ───────────────────────────────────────────────────
+   Mais alta que uma linha de navegação comum porque carrega duas
+   informações: o lugar e o que tem lá dentro. É a porta de entrada do menu,
+   e o chevron avisa que ela ABRE uma tela em vez de trocar de aba. */
+.axxa-root .axxa-nav-item.axxa-module-item {
+  align-items: center;
+  padding: 10px var(--axxa-3);
+  color: var(--text-normal);
+}
+
+.axxa-root .axxa-module-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.axxa-root .axxa-module-label {
+  font-weight: var(--font-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.axxa-root .axxa-module-hint {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O chevron é indicação, não alvo: fica apagado e não disputa o toque. */
+.axxa-root .axxa-module-chev {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+}
+
+.axxa-root .axxa-module-item.is-active .axxa-module-label {
+  color: var(--text-accent);
+}
+
+/* Traço entre os módulos e o resto: lugares de um lado, ferramentas do
+   outro. Um `span` vazio, então precisa de altura própria. */
+.axxa-root .axxa-nav-sep {
+  display: block;
+  height: 1px;
+  margin: var(--axxa-2) var(--axxa-3);
+  background-color: var(--background-modifier-border);
+}
+
 .axxa-root .axxa-drawer-section {
   display: flex;
   flex-direction: column;
@@ -2215,6 +2267,10 @@ body.is-mobile .axxa-root .axxa-history-more {
 
 .axxa-root .axxa-drawer-foot {
   flex: 0 0 auto;
+  /* Colado na base. Enquanto a raiz do menu tinha a lista de conversas, ela
+     empurrava o rodapé pra baixo sozinha; agora a raiz é curta e sem isto a
+     versão ficava boiando logo abaixo de Settings. */
+  margin-top: auto;
   padding-top: var(--axxa-1);
   border-top: 1px solid var(--axxa-line);
   font-size: var(--font-ui-smaller);
