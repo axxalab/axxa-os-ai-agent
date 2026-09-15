@@ -19,10 +19,11 @@ import { useEffect, useMemo, useRef } from "react";
 import type AxxaPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
 import { useChatStore } from "../store/chat";
-import { useChatSummaries } from "./ChatList";
+import { useChatSummaries, useUnreadChats } from "./ChatList";
 import { Icon } from "./Icon";
 import { openPluginSettings } from "./modals";
 import { moduleHint, moduleStats, modulesInUse } from "./modules";
+import { alertCount } from "./chatAlert";
 
 export type ViewId = "chat" | "module" | "projects" | "skills";
 
@@ -53,7 +54,9 @@ export function Drawer({
   onClose: () => void;
 }) {
   const sessionMode = useChatStore((s) => s.sessionMode);
+  const esperandoId = useChatStore((s) => s.waitingChatId);
   const chats = useChatSummaries(plugin);
+  const naoLidas = useUnreadChats(plugin);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Qual módulo está em uso agora — a conversa aberta manda; sem conversa
@@ -142,6 +145,10 @@ export function Drawer({
                 um traço, porque é ferramenta, não lugar. */}
             {modulosVisiveis.map((m) => {
               const stats = moduleStats(chats, m.id);
+              const pedindo = alertCount(chats, m.id, {
+                esperando: esperandoId,
+                naoLidas,
+              });
               return (
                 <button
                   key={m.id}
@@ -161,6 +168,11 @@ export function Drawer({
                       {moduleHint(stats)}
                     </span>
                   </span>
+                  {/* Quantas conversas daqui pedem alguma coisa. Fica ANTES
+                      do chevron porque é informação, e o chevron é gesto. */}
+                  {pedindo > 0 && (
+                    <span className="axxa-module-badge">{pedindo}</span>
+                  )}
                   <Icon
                     name="chevron-right"
                     size={18}

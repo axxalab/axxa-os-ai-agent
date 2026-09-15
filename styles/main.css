@@ -751,6 +751,13 @@ body.theme-dark {
   box-shadow: inset 0 0 0 1px var(--interactive-accent);
 }
 
+/* "Precisa de você" vence o anel de "conversa aberta": a conversa aberta você
+   já sabe qual é — a que parou esperando, não. Vem DEPOIS de propósito, com a
+   mesma força de seletor, pra ganhar por ordem. */
+.axxa-root .axxa-home .axxa-history-row.is-waiting {
+  box-shadow: inset 0 0 0 1px var(--text-warning, #e0a030);
+}
+
 .axxa-root .axxa-home .axxa-history-title {
   font-size: var(--font-ui-medium);
 }
@@ -857,6 +864,42 @@ body.theme-dark {
   align-items: center;
   gap: 5px;
   color: var(--interactive-accent);
+}
+
+/* Cada estado tem a sua cor, e ela quer dizer uma coisa: accent = está
+   trabalhando; amarelo = parou e é com você; cinza-claro = já terminou e você
+   ainda não viu. */
+.axxa-root .axxa-card-live.is-waiting {
+  color: var(--text-warning, #e0a030);
+}
+
+.axxa-root .axxa-card-live.is-unread {
+  color: var(--text-normal);
+}
+
+/* Só a que PAROU esperando ganha contorno: ela não anda sem você. As outras
+   duas andam sozinhas e não precisam gritar. */
+.axxa-root .axxa-history-row.is-waiting {
+  box-shadow: inset 0 0 0 1px var(--text-warning, #e0a030);
+}
+
+/* O "New reply" não pulsa: nada está acontecendo ali agora. */
+.axxa-root .axxa-card-live.is-unread .axxa-card-pulse {
+  animation: none;
+}
+
+.axxa-root .axxa-module-badge {
+  flex: 0 0 auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  line-height: 20px;
+  text-align: center;
 }
 
 .axxa-root .axxa-card-pulse {

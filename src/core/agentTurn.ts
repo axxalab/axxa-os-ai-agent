@@ -313,7 +313,20 @@ export async function runAgentTurn(
             showDiff: diffApproval,
             strings: t.agent,
           });
-          const res = await modal.openAndWait();
+          // A conversa fica marcada como "precisa de você" enquanto a
+          // pergunta estiver de pé. Desde que dá pra navegar durante a
+          // resposta, o modal pode abrir com a pessoa em OUTRA tela — e aí a
+          // lista é o único lugar que pode dizer de quem é aquele pedido.
+          const dona =
+            useChatStore.getState().background?.chatId ??
+            useChatStore.getState().currentChatId;
+          useChatStore.getState().setWaitingChatId(dona);
+          let res;
+          try {
+            res = await modal.openAndWait();
+          } finally {
+            useChatStore.getState().setWaitingChatId(null);
+          }
           approved = res.approved;
           if (res.approveAll) agentApproveAllRef.current = true;
         }

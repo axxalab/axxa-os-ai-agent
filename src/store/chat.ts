@@ -203,6 +203,13 @@ interface ChatState {
   background: BackgroundRun | null;
   /** Conversa dona do turno em andamento (null = ninguém respondendo). */
   turnChatId: string | null;
+  /**
+   * Conversa cujo turno PAROU esperando uma aprovação sua (o gate do agente).
+   *
+   * Ao vivo e não gravado: se o app fechar, não há mais modal nenhum esperando
+   * — guardar isso no disco seria ressuscitar uma pergunta que já morreu.
+   */
+  waitingChatId: string | null;
   /** Chat atual favoritado (item "Star" do menu ⋮). Faz parte da identidade do
    *  chat — o auto-save reescreve o .md inteiro, então precisa vir daqui pra
    *  não apagar a marca a cada mensagem nova. */
@@ -239,6 +246,8 @@ interface ChatState {
   setLoading: (loading: boolean) => void;
   /** Dono do turno em andamento. */
   setTurnChatId: (id: string | null) => void;
+  /** Conversa parada esperando aprovação (null = nenhuma). */
+  setWaitingChatId: (id: string | null) => void;
   /** Desvia a escrita do turno pra fora da tela (ver BackgroundRun). */
   detachTurn: (run: BackgroundRun) => void;
   /** Traz o turno de volta pra tela; devolve o que estava rodando. */
@@ -344,6 +353,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   currentChatId: null,
   background: null,
   turnChatId: null,
+  waitingChatId: null,
   currentChatTitle: "",
   currentChatStarred: false,
   addMessage: (msg) => {
@@ -519,6 +529,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     ),
   setLoading: (loading) => set({ isLoading: loading }),
   setTurnChatId: (id) => set({ turnChatId: id }),
+  setWaitingChatId: (id) => set({ waitingChatId: id }),
   detachTurn: (run) => set({ background: run }),
   attachTurn: () => {
     const bg: BackgroundRun | null = get().background;

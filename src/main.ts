@@ -105,6 +105,16 @@ export interface AxxaSettings {
   /** Modelos de embedding descobertos via API, por provider (RAG). */
   discoveredEmbeddings: Record<string, string[]>;
   // ---- Sessão
+  /**
+   * Conversas que responderam SEM você ver — o ponto de "não lida".
+   *
+   * Mora aqui, e não no frontmatter nem no chatIndex.json, por dois motivos:
+   * o índice é reconstruído do disco a cada varredura e apagaria a marca, e
+   * "eu já li" é uma verdade DESTE aparelho — a mesma conversa sincronizada
+   * pra outro celular não foi lida lá. É o mesmo lugar onde os projetos já
+   * guardam a associação chat↔projeto, pela mesma razão.
+   */
+  unreadChats: string[];
   /** chat | vault-qa | agent */
   defaultMode: string;
   /** low | med | high | xhigh | max */
@@ -203,6 +213,7 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   roleModels: {},
   modelProvider: {},
   discoveredEmbeddings: {},
+  unreadChats: [],
   defaultMode: "chat",
   defaultEffort: "med",
   effortConfigs: {},
@@ -253,6 +264,58 @@ export default class AxxaPlugin extends Plugin {
   private chatsListeners = new Set<() => void>();
   private reconcilingChats = false;
   private chatIndexWriteTimer: number | null = null;
+
+  /**
+   * Marca uma conversa como não lida — a resposta chegou sem ninguém olhando.
+   *
+   * Passa pelo mesmo aviso do cache de conversas (`notifyChats`) porque quem
+   * desenha a marca é a mesma lista: um aviso só, uma re-renderização só.
+   */
+  markChatUnread(id: string): void {
+    if (!id || this.settings.unreadChats.includes(id)) return;
+    this.settings.unreadChats = [...this.settings.unreadChats, id];
+    void this.saveSettings();
+    this.notifyUnread();
+  }
+
+  /** Abriu a conversa: a marca sai. */
+  clearChatUnread(id: string): void {
+    if (!id || !this.settings.unreadChats.includes(id)) return;
+    this.settings.unreadChats = this.settings.unreadChats.filter(
+      (x) => x !== id
+    );
+    void this.saveSettings();
+    this.notifyUnread();
+  }
+
+  /** As não lidas, prontas pra consulta rápida na lista. */
+  unreadSet(): Set<string> {
+    return new Set(this.settings.unreadChats);
+  }
+
+  private unreadListeners = new Set<() => void>();
+
+  /**
+   * Canal PRÓPRIO — não dá pra pegar carona no aviso do cache de conversas.
+   *
+   * Aquele aviso reentrega o MESMO array de summaries (nada mudou nele), o
+   * React compara a identidade, não vê diferença e não redesenha: a marca
+   * saía do disco e continuava na tela.
+   */
+  onUnreadChange(cb: () => void): () => void {
+    this.unreadListeners.add(cb);
+    return () => this.unreadListeners.delete(cb);
+  }
+
+  private notifyUnread(): void {
+    this.unreadListeners.forEach((cb) => {
+      try {
+        cb();
+      } catch (err) {
+        console.error("[axxa] listener de não lidas falhou:", err);
+      }
+    });
+  }
 
   /** Inscreve um callback chamado quando o cache de conversas muda. */
   onChatsChange(cb: () => void): () => void {
@@ -442,6 +505,9 @@ export default class AxxaPlugin extends Plugin {
 
   /** Remove um chat do cache (após delete). */
   removeChatSummary(id: string): void {
+    // A marca de não lida sai junto: conversa apagada não pode continuar
+    // pedindo atenção do fundo do data.json pelo resto da vida.
+    this.clearChatUnread(id);
     if (!this.chatSummaries) return;
     this.chatSummaries = this.chatSummaries.filter((c) => c.id !== id);
     this.notifyChats();

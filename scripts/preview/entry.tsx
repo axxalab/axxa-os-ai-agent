@@ -58,6 +58,9 @@ const chats = [
   { id: "16", title: "Deep research on spaced repetition", date: dias(8, 13), mode: "research", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
 ].sort((a, b) => b.date.localeCompare(a.date));
 
+const chatsListeners = new Set<() => void>();
+const unreadListeners = new Set<() => void>();
+
 const plugin = {
   manifest: { version: PREVIEW_VERSION, id: "axxa-os-ai-agent" },
   // VAULT de mentira, com forma de verdade: é dele que sai a lista de notas do
@@ -88,7 +91,35 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     { id: "s2", name: "Summarize", description: "Summarize a note", icon: "align-left", body: "Summarize the note I'm looking at in five bullets.", path: "" },
   ],
   chatSummaries: chats,
+  // Mesmo contrato do plugin: marcar/desmarcar avisa a lista pelo MESMO canal
+  // do cache de conversas, senão a marca só aparecia na próxima re-renderização
+  // por acaso.
+  markChatUnread(id: string) {
+    if (!id || plugin.settings.unreadChats.includes(id)) return;
+    plugin.settings.unreadChats = [...plugin.settings.unreadChats, id];
+    plugin.notifyUnread();
+  },
+  clearChatUnread(id: string) {
+    if (!id || !plugin.settings.unreadChats.includes(id)) return;
+    plugin.settings.unreadChats = plugin.settings.unreadChats.filter(
+      (x: string) => x !== id
+    );
+    plugin.notifyUnread();
+  },
+  unreadSet() {
+    return new Set(plugin.settings.unreadChats);
+  },
+  onUnreadChange: (cb: () => void) => {
+    unreadListeners.add(cb);
+    return () => unreadListeners.delete(cb);
+  },
+  notifyUnread() {
+    unreadListeners.forEach((cb) => cb());
+  },
   settings: {
+    // Uma já nasce não lida: sem isso o ponto de "New reply" só apareceria
+    // depois de esperar um turno inteiro terminar fora da tela.
+    unreadChats: ["9"],
     openaiApiKey: "sk-test",
     anthropicApiKey: "sk-ant",
     activeModels: {
@@ -131,7 +162,17 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
   // TypeError e o preview mente dizendo que o botão não faz nada.
   saveSettings: async () => {},
   loadChatSummaries: async () => chats,
-  onChatsChange: () => () => {},
+  // Inscrição DE VERDADE: é por ela que a lista redesenha quando uma conversa
+  // é marcada como não lida. A versão no-op de antes fazia a marca só aparecer
+  // se algo outro re-renderizasse a tela por acaso — o preview escondendo
+  // justamente o que a gente queria ver.
+  onChatsChange: (cb: () => void) => {
+    chatsListeners.add(cb);
+    return () => chatsListeners.delete(cb);
+  },
+  notifyChats() {
+    chatsListeners.forEach((cb) => cb());
+  },
   onSettingsChange: () => () => {},
   // ?nokey=1 simula a PRIMEIRA vez: nenhum provider configurado. É o cenário
   // em que o envio desiste antes de criar a mensagem do usuário.
@@ -301,7 +342,10 @@ const session = {
     }
     useChatStore.getState().setLoading(false);
     // O turno acabou: se ele respondeu fora da tela, o de verdade grava o
-    // arquivo aqui. No preview basta soltar — o que importa é ver o estado.
+    // arquivo e marca a conversa como não lida. O preview faz a marca (é o
+    // que dá pra ver) e pula a gravação.
+    const bgFinal = useChatStore.getState().background;
+    if (bgFinal) plugin.markChatUnread(bgFinal.chatId);
     useChatStore.getState().clearBackground();
     useChatStore.getState().setTurnChatId(null);
     emit();
@@ -350,6 +394,8 @@ const session = {
     // aberta é no-op. Sem ele, o preview recarregava e desfazia o reanexo do
     // turno — e mostrava como se sair e voltar perdesse a resposta.
     if (useChatStore.getState().currentChatId === c.id) return;
+    // Abrir É ler — igual à sessão de verdade (session.load).
+    plugin.clearChatUnread(c.id);
     const bg = useChatStore.getState().background;
     if (bg?.chatId === c.id) {
       // Voltando pra conversa que responde em segundo plano: o que vale é o

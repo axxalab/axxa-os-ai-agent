@@ -17,6 +17,7 @@ import { Icon } from "./Icon";
 import { openActions } from "./menu";
 import { PromptModal, ConfirmModal } from "./modals";
 import { relativeShort } from "./modules";
+import { ALERT_LABEL, chatAlert } from "./chatAlert";
 
 /** Logo do provider da conversa. Desconhecido cai num ícone neutro em vez de
  *  quebrar o setIcon com um nome que não existe. */
@@ -44,6 +45,24 @@ export function useChatSummaries(plugin: AxxaPlugin): ChatSummary[] {
     };
   }, [plugin]);
   return chats;
+}
+
+/**
+ * As conversas que responderam sem ninguém ver.
+ *
+ * Guarda um Set NOVO a cada aviso de propósito: é a identidade diferente que
+ * faz o React redesenhar. Ler `plugin.settings.unreadChats` direto no render
+ * lia o valor certo e não redesenhava nunca.
+ */
+export function useUnreadChats(plugin: AxxaPlugin): Set<string> {
+  const [naoLidas, setNaoLidas] = useState<Set<string>>(() =>
+    plugin.unreadSet()
+  );
+  useEffect(() => {
+    setNaoLidas(plugin.unreadSet());
+    return plugin.onUnreadChange(() => setNaoLidas(plugin.unreadSet()));
+  }, [plugin]);
+  return naoLidas;
 }
 
 /**
@@ -81,6 +100,8 @@ export function ChatList({
   // na tela. É a única informação desta lista que não vem do disco.
   const respondendo = useChatStore((s) => s.isLoading);
   const turnChatId = useChatStore((s) => s.turnChatId);
+  const esperandoId = useChatStore((s) => s.waitingChatId);
+  const naoLidas = useUnreadChats(plugin);
 
   const abrir = (c: ChatSummary) => {
     void session.load(c);
@@ -111,14 +132,22 @@ export function ChatList({
     <div className="axxa-history">
       {chats.map((c) => {
         const st = acoes(c);
-        const rodando = respondendo && turnChatId === c.id;
+        const alerta = chatAlert({
+          esperando: esperandoId === c.id,
+          rodando: respondendo && turnChatId === c.id,
+          naoLida: naoLidas.has(c.id),
+        });
         return (
           <div
             key={c.id}
             className={
-              c.id === currentChatId
-                ? "axxa-history-row is-current"
-                : "axxa-history-row"
+              [
+                "axxa-history-row",
+                c.id === currentChatId ? "is-current" : "",
+                alerta ? `has-alert is-${alerta}` : "",
+              ]
+                .filter(Boolean)
+                .join(" ")
             }
           >
             <button
@@ -137,15 +166,15 @@ export function ChatList({
                   {c.title || "Untitled"}
                 </span>
                 <span className="axxa-history-meta">
-                  {/* Respondendo agora: o ponto pulsa e a palavra diz o que
-                      ele significa — um ponto sozinho não se explica. */}
-                  {rodando && (
-                    <span className="axxa-card-live">
+                  {/* O ponto pulsa e a palavra diz o que ele significa — um
+                      ponto sozinho não se explica. */}
+                  {alerta && (
+                    <span className={`axxa-card-live is-${alerta}`}>
                       <span className="axxa-card-pulse" aria-hidden="true" />
-                      Responding
+                      {ALERT_LABEL[alerta]}
                     </span>
                   )}
-                  {rodando && <span className="axxa-card-dot">·</span>}
+                  {alerta && <span className="axxa-card-dot">·</span>}
                   {st && (
                     <span
                       className={

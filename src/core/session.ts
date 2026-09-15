@@ -424,6 +424,8 @@ export class ChatSession {
         filePath: path,
         starred: false,
       });
+      // Respondeu com você em outro lugar: fica marcada até você abrir.
+      this.plugin.markChatUnread(chat.id);
     } catch (err) {
       console.error("[axxa] gravarFundo falhou:", err);
     }
@@ -502,6 +504,7 @@ export class ChatSession {
     // do disco — o que vale é o que o turno já escreveu, que está na memória.
     if (store.background?.chatId === ref.id) {
       this.reanexarTurno();
+      this.plugin.clearChatUnread(ref.id);
       return;
     }
     // Turno em andamento continua rodando, agora escrevendo fora da tela.
@@ -541,6 +544,8 @@ export class ChatSession {
       st.addUsage(chat.tokensIn, chat.tokensOut);
       st.setSessionPersona(chat.persona ?? "");
       st.setCurrentChatStarred(chat.starred === true);
+      // Abrir É ler.
+      this.plugin.clearChatUnread(chat.id);
       if (chat.effort) this.effort = chat.effort;
     } catch (err) {
       console.error("[axxa] loadChat falhou:", err);
