@@ -25,11 +25,8 @@ import {
   moduleFabLabel,
   moduleIcon,
   moduleLabel,
+  searchChats,
 } from "./modules";
-
-/** A partir de quantas conversas a busca aparece. Abaixo disso ela é um
- *  campo pedindo pra filtrar cinco linhas que já cabem na tela. */
-const SEARCH_FROM = 6;
 
 /** Janelas do filtro de período do Agent, em dias (0 = tudo). */
 const PERIODOS: Array<{ id: string; label: string; dias: number }> = [
@@ -63,18 +60,20 @@ export function ModuleHome({
 
   const ehAgent = modulo === "agent";
 
-  const visiveis = useMemo(() => {
-    if (ehAgent) {
-      if (periodo.dias === 0) return minhas;
-      const corte = Date.now() - periodo.dias * 86400000;
-      return minhas.filter((c) => new Date(c.date).getTime() >= corte);
-    }
-    const q = query.trim().toLowerCase();
-    if (!q) return minhas;
-    return minhas.filter((c) =>
-      (c.title || "Untitled").toLowerCase().includes(q)
-    );
-  }, [ehAgent, minhas, periodo, query]);
+  // Período primeiro (só o Agent tem), busca depois: a busca procura DENTRO
+  // do que está sendo mostrado, senão o filtro viraria mentira na tela.
+  const noPeriodo = useMemo(() => {
+    if (!ehAgent || periodo.dias === 0) return minhas;
+    const corte = Date.now() - periodo.dias * 86400000;
+    return minhas.filter((c) => new Date(c.date).getTime() >= corte);
+  }, [ehAgent, minhas, periodo]);
+
+  const busca = useMemo(
+    () => searchChats(noPeriodo, query),
+    [noPeriodo, query]
+  );
+  const visiveis = busca.hits;
+  const procurando = query.trim().length > 0;
 
   // Módulo que este código não conhece (pasta criada por outra versão): dá pra
   // ler o que está lá, não dá pra criar — o motor não sabe rodar nesse modo.
@@ -113,7 +112,34 @@ export function ModuleHome({
           </section>
         )}
 
-        {ehAgent ? (
+        {/* Busca em TODAS as homes, e com regex: `^draft`, `readme|changelog`,
+            `gpt-5$`. Termo comum também é regex válida, então quem só quer
+            procurar palavra não precisa saber disso. */}
+        <label
+          className={
+            busca.invalida ? "axxa-home-search is-bad" : "axxa-home-search"
+          }
+        >
+          <Icon name="search" size={18} />
+          <input
+            type="search"
+            value={query}
+            placeholder="Search — regex allowed"
+            aria-label={`Search ${moduleLabel(modulo)}`}
+            onChange={(e) => setQuery(e.currentTarget.value)}
+          />
+          {procurando && (
+            <span className="axxa-home-found">
+              {/* A contagem aparece SEMPRE — na expressão quebrada também, com
+                  o aviso de que ali virou busca literal. Trocar o número pelo
+                  aviso deixava a pessoa sem saber se achou algo. */}
+              {busca.invalida ? "literal · " : ""}
+              {visiveis.length === 1 ? "1 found" : `${visiveis.length} found`}
+            </span>
+          )}
+        </label>
+
+        {ehAgent && (
           <div className="axxa-home-headrow">
             <span className="axxa-section-label">Sessions</span>
             <button
@@ -135,19 +161,6 @@ export function ModuleHome({
               <Icon name="chevron-down" size={16} />
             </button>
           </div>
-        ) : (
-          minhas.length >= SEARCH_FROM && (
-            <label className="axxa-home-search">
-              <Icon name="search" size={18} />
-              <input
-                type="search"
-                value={query}
-                placeholder="Search"
-                aria-label={`Search ${moduleLabel(modulo)}`}
-                onChange={(e) => setQuery(e.currentTarget.value)}
-              />
-            </label>
-          )
         )}
 
         {visiveis.length > 0 && (
@@ -165,9 +178,9 @@ export function ModuleHome({
             <p>
               {minhas.length === 0
                 ? moduleEmptyLine(modulo)
-                : ehAgent
-                  ? `Nothing in ${periodo.label.toLowerCase()}.`
-                  : "No chats match that search."}
+                : procurando
+                  ? "Nothing matches that search."
+                  : `Nothing in ${periodo.label.toLowerCase()}.`}
             </p>
           </div>
         )}

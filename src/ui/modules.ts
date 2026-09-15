@@ -110,6 +110,52 @@ export function modulePlaceholder(id: string | undefined | null): string {
   return isChatMode(id) ? MODULES[id].placeholder : MODULES.chat.placeholder;
 }
 
+/** O que uma busca devolveu, e COMO devolveu. */
+export interface Busca {
+  hits: ChatSummary[];
+  /** A expressão foi lida como regex (o caso normal). */
+  regex: boolean;
+  /** A expressão não compila como regex — caiu em busca literal. */
+  invalida: boolean;
+}
+
+/**
+ * Busca nas conversas por título e modelo, com REGEX.
+ *
+ * A expressão é sempre tentada como regex primeiro: um termo comum como
+ * "readme" também é uma regex válida e casa consigo mesmo, então quem só quer
+ * procurar palavra não perde nada, e quem quer `^draft|changelog$` ganha tudo.
+ *
+ * Quando a expressão não compila — e ela não compila O TEMPO TODO enquanto
+ * está sendo digitada, em cada `(` solto — a busca NÃO fica sem resposta: cai
+ * em busca literal e avisa. Um campo que zera a lista no meio da digitação
+ * parece quebrado.
+ */
+export function searchChats(
+  chats: readonly ChatSummary[],
+  query: string
+): Busca {
+  const q = query.trim();
+  if (!q) return { hits: [...chats], regex: false, invalida: false };
+  const alvo = (c: ChatSummary) => `${c.title || "Untitled"} ${c.model}`;
+  let re: RegExp | null = null;
+  try {
+    re = new RegExp(q, "i");
+  } catch {
+    re = null;
+  }
+  if (re) {
+    const exp = re;
+    return { hits: chats.filter((c) => exp.test(alvo(c))), regex: true, invalida: false };
+  }
+  const literal = q.toLowerCase();
+  return {
+    hits: chats.filter((c) => alvo(c).toLowerCase().includes(literal)),
+    regex: false,
+    invalida: true,
+  };
+}
+
 /** Rótulo do botão flutuante da home daquele módulo. */
 export function moduleFabLabel(id: string | undefined | null): string {
   return isChatMode(id) ? MODULES[id].fabLabel : MODULES.chat.fabLabel;

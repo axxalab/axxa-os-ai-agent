@@ -553,6 +553,20 @@ body.theme-dark {
   padding-bottom: calc(var(--axxa-composer-h, 104px) + var(--axxa-3));
 }
 
+/* Telas SEM composer não herdam o vão dele.
+
+   `.axxa-messages` termina com `margin-bottom: -104px` pra a conversa correr
+   por baixo do campo de texto. Numa tela que não tem campo de texto isso
+   empurra a base do scroller pra FORA da tela — e leva junto o que estiver
+   grudado nela. Foi assim que o botão flutuante da home do Agent sumiu no
+   aparelho: ele é `sticky` na base, e a base estava 104px abaixo do visível.
+   Projects e Skills tinham o mesmo vão morto, só que sem nada colado nele. */
+.axxa-root .axxa-page,
+.axxa-root .axxa-home {
+  margin-bottom: 0;
+  padding-bottom: calc(var(--axxa-3) + var(--safe-area-inset-bottom, 0px));
+}
+
 .axxa-root .axxa-page {
   gap: var(--axxa-3);
 }
@@ -624,7 +638,6 @@ body.theme-dark {
   display: flex;
   flex-direction: column;
   gap: var(--axxa-4);
-  padding-bottom: var(--axxa-3);
 }
 
 /* Serifa e corpo grande: é o nome do lugar onde se está, não um cabeçalho de
@@ -665,6 +678,24 @@ body.theme-dark {
 
 .axxa-root .axxa-home-search input:focus {
   box-shadow: none;
+}
+
+/* Expressão que não compila: o contorno avisa, mas a busca CONTINUA (cai em
+   literal). Zerar a lista enquanto se digita um `(` parece defeito. */
+.axxa-root .axxa-home-search.is-bad {
+  border-color: var(--text-warning, #e0a030);
+}
+
+.axxa-root .axxa-home-found {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+
+/* O logo do provider vem colorido do próprio SVG; o brasão não pode tingir. */
+.axxa-root .axxa-card-mark .axxa-icon {
+  color: inherit;
 }
 
 /* A lista aqui não é o scroller (quem rola é a página), e cada conversa é um
@@ -862,6 +893,12 @@ body.theme-dark {
   bottom: 0;
   align-self: flex-end;
   margin-top: auto;
+  /* NÃO encolher. A home é uma coluna flex; quando a lista passa da altura da
+     tela, o flex espreme os itens — e o botão, que tem altura fixa e nada
+     dentro pra segurá-lo, era achatado até ZERO. Aparecia no Agent (5
+     cartões, sem transbordo) e sumia no Chat (9). */
+  flex: 0 0 auto;
+  min-height: 48px;
   z-index: 5;
   display: inline-flex;
   align-items: center;

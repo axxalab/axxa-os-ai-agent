@@ -13,6 +13,7 @@ import {
   moduleStats,
   relativeDay,
   relativeShort,
+  searchChats,
 } from "../src/ui/modules";
 import { CHAT_MODES } from "../src/core/session";
 import type { ChatSummary } from "../src/core/chatPersistence";
@@ -179,6 +180,63 @@ describe("relativeDay", () => {
 
   it("data quebrada devolve vazio em vez de 'Invalid Date'", () => {
     expect(relativeDay("nem data é", agora)).toBe("");
+  });
+});
+
+describe("searchChats", () => {
+  const lista = [
+    chat({ id: "a", title: "Rewrite the plugin README", model: "gpt-5" }),
+    chat({ id: "b", title: "Draft the changelog", model: "claude-sonnet-4-6" }),
+    chat({ id: "c", title: "Clean up the inbox", model: "gemini-2.5-flash" }),
+    chat({ id: "d", title: "", model: "gpt-4o" }),
+  ];
+  const ids = (q: string) => searchChats(lista, q).hits.map((c) => c.id);
+
+  it("expressão vazia devolve tudo, sem se dizer regex", () => {
+    const r = searchChats(lista, "   ");
+    expect(r.hits).toHaveLength(4);
+    expect(r.regex).toBe(false);
+    expect(r.invalida).toBe(false);
+  });
+
+  it("palavra comum funciona como sempre — ela também é regex válida", () => {
+    expect(ids("readme")).toEqual(["a"]);
+    expect(ids("INBOX")).toEqual(["c"]);
+  });
+
+  it("regex de verdade: âncora, alternativa e classe", () => {
+    expect(ids("^Draft")).toEqual(["b"]);
+    expect(ids("readme|inbox")).toEqual(["a", "c"]);
+    expect(ids("chang[e]log")).toEqual(["b"]);
+  });
+
+  it("procura também no MODELO — é o que está escrito no cartão", () => {
+    expect(ids("gemini")).toEqual(["c"]);
+    expect(ids("^gpt-5$")).toEqual([]);
+    expect(ids("gpt-")).toEqual(["a", "d"]);
+  });
+
+  it("conversa sem título é achável pelo 'Untitled' que a lista mostra", () => {
+    expect(ids("untitled")).toEqual(["d"]);
+  });
+
+  it("expressão quebrada NÃO zera a lista: cai em literal e avisa", () => {
+    // Acontece o tempo todo enquanto se digita — cada `(` solto passa por
+    // aqui. Um campo que apaga tudo no meio da digitação parece defeito.
+    const r = searchChats(lista, "Draft (");
+    expect(r.invalida).toBe(true);
+    expect(r.regex).toBe(false);
+    expect(r.hits).toEqual([]);
+    const r2 = searchChats(lista, "README (");
+    expect(r2.invalida).toBe(true);
+    expect(r2.hits).toEqual([]);
+  });
+
+  it("literal casa o texto cru quando a regex não compila", () => {
+    const comParenteses = [chat({ id: "z", title: "Fix the (weird) title" })];
+    const r = searchChats(comParenteses, "(weird");
+    expect(r.invalida).toBe(true);
+    expect(r.hits.map((c) => c.id)).toEqual(["z"]);
   });
 });
 

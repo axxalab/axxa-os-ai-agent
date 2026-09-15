@@ -12,10 +12,17 @@ import type AxxaPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import type { ChatSummary } from "../core/chatPersistence";
 import { useChatStore } from "../store/chat";
+import { PROVIDERS } from "../core/providersMeta";
 import { Icon } from "./Icon";
 import { openActions } from "./menu";
 import { PromptModal, ConfirmModal } from "./modals";
-import { moduleIcon, relativeShort } from "./modules";
+import { relativeShort } from "./modules";
+
+/** Logo do provider da conversa. Desconhecido cai num ícone neutro em vez de
+ *  quebrar o setIcon com um nome que não existe. */
+function providerIcon(id: string): string {
+  return PROVIDERS.find((p) => p.id === id)?.icon ?? "message-square";
+}
 
 /**
  * As conversas gravadas, sempre frescas. O cache mora no plugin (índice em
@@ -40,24 +47,21 @@ export function useChatSummaries(plugin: AxxaPlugin): ChatSummary[] {
 }
 
 /**
- * A linha de estado do cartão. No Agent ela conta o TRABALHO — quantas ações
- * rodaram —, porque é isso que diferencia uma sessão da outra ali. Nos outros
- * módulos o que distingue é o modelo.
+ * O que a sessão do Agent FEZ. Só o Agent tem essa linha: numa lista de
+ * sessões o que distingue uma da outra é o trabalho que rodou. Nos outros
+ * módulos o cartão diz só o modelo, que é o que a pessoa pediu.
  *
  * Nada aqui é decorativo: o verde só aparece quando houve ação de verdade.
  */
-function estado(c: ChatSummary): { texto: string; ativo: boolean } {
-  if (c.mode === "agent") {
-    if (c.toolCount > 0) {
-      return {
-        texto: c.toolCount === 1 ? "1 action" : `${c.toolCount} actions`,
-        ativo: true,
-      };
-    }
-    return { texto: "No actions", ativo: false };
+function acoes(c: ChatSummary): { texto: string; ativo: boolean } | null {
+  if (c.mode !== "agent") return null;
+  if (c.toolCount > 0) {
+    return {
+      texto: c.toolCount === 1 ? "1 action" : `${c.toolCount} actions`,
+      ativo: true,
+    };
   }
-  const n = c.messageCount;
-  return { texto: n === 1 ? "1 message" : `${n} messages`, ativo: false };
+  return { texto: "No actions", ativo: false };
 }
 
 export function ChatList({
@@ -102,7 +106,7 @@ export function ChatList({
   return (
     <div className="axxa-history">
       {chats.map((c) => {
-        const st = estado(c);
+        const st = acoes(c);
         return (
           <div
             key={c.id}
@@ -117,8 +121,10 @@ export function ChatList({
               className="axxa-history-open"
               onClick={() => abrir(c)}
             >
+              {/* O brasão é o LOGO DO PROVIDER, colorido: é o que diz de
+                  relance com quem a conversa foi, sem gastar uma palavra. */}
               <span className="axxa-card-mark" aria-hidden="true">
-                <Icon name={moduleIcon(c.mode)} size={20} />
+                <Icon name={providerIcon(c.provider)} size={20} />
               </span>
 
               <span className="axxa-card-text">
@@ -126,20 +132,23 @@ export function ChatList({
                   {c.title || "Untitled"}
                 </span>
                 <span className="axxa-history-meta">
-                  <span
-                    className={
-                      st.ativo ? "axxa-card-state is-on" : "axxa-card-state"
-                    }
-                  >
-                    {st.texto}
-                  </span>
-                  {c.model && <span className="axxa-card-dot">·</span>}
+                  {st && (
+                    <span
+                      className={
+                        st.ativo ? "axxa-card-state is-on" : "axxa-card-state"
+                      }
+                    >
+                      {st.texto}
+                    </span>
+                  )}
+                  {st && c.model && <span className="axxa-card-dot">·</span>}
                   {c.model && <span>{c.model}</span>}
                 </span>
               </span>
 
-              {/* A idade fica na ponta, como na referência: é a coluna que se
-                  lê de cima a baixo pra achar "a de hoje de manhã". */}
+              {/* Tempo desde a ÚLTIMA interação: `date` é reescrito a cada
+                  gravação da conversa, não é a data de criação. Fica na ponta,
+                  a coluna que se lê de cima a baixo pra achar "a de hoje". */}
               <span className="axxa-card-age">{relativeShort(c.date)}</span>
             </button>
 
