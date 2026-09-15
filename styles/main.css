@@ -640,6 +640,15 @@ body.theme-dark {
   gap: var(--axxa-4);
 }
 
+/* NADA aqui encolhe. Esta coluna ROLA: quando ela fica mais baixa que o
+   conteúdo — o teclado abrindo é o caso normal — o flex começa a espremer os
+   itens em vez de deixar rolar. A busca de 46px virava uma fita de 23px e o
+   botão flutuante ia parar lá em cima, no meio das seções. Quem dá conta da
+   falta de espaço é o scroll, não a régua dos itens. */
+.axxa-root .axxa-home > * {
+  flex: 0 0 auto;
+}
+
 /* Serifa e corpo grande: é o nome do lugar onde se está, não um cabeçalho de
    seção. A mesma fonte da leitura — o app já tem uma serifa, e inventar outra
    aqui seria uma terceira voz. */

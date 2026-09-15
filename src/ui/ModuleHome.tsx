@@ -113,8 +113,10 @@ export function ModuleHome({
         )}
 
         {/* Busca em TODAS as homes, e com regex: `^draft`, `readme|changelog`,
-            `gpt-5$`. Termo comum também é regex válida, então quem só quer
-            procurar palavra não precisa saber disso. */}
+            `gpt-5$`. O campo NÃO anuncia isso: termo comum também é regex
+            válida, então pra quem só quer procurar palavra a palavra "regex"
+            no placeholder é uma instrução a mais pra ler e ignorar. Quem
+            precisa, digita e funciona. */}
         <label
           className={
             busca.invalida ? "axxa-home-search is-bad" : "axxa-home-search"
@@ -124,7 +126,7 @@ export function ModuleHome({
           <input
             type="search"
             value={query}
-            placeholder="Search — regex allowed"
+            placeholder="Search"
             aria-label={`Search ${moduleLabel(modulo)}`}
             onChange={(e) => setQuery(e.currentTarget.value)}
           />
