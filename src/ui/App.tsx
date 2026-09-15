@@ -33,6 +33,17 @@ export function App({
 }) {
   const [view, setView] = useState<ViewId>("chat");
   const [menuOpen, setMenuOpen] = useState(false);
+  /**
+   * Módulo que está sendo VISTO mas que este código não conhece — conversas
+   * numa pasta de `axxa-ai/chats/` criada por outra versão, ou na mão.
+   *
+   * Pros três módulos do motor isto fica null: quem manda na tela é o modo da
+   * sessão, que o seletor da tela inicial muda. Um modo estranho não pode
+   * virar sessão (o motor não sabe rodar), mas as conversas dele existem e
+   * precisam de um lugar onde apareçam — senão o menu teria uma porta que não
+   * leva a nada, e os arquivos ficariam invisíveis.
+   */
+  const [moduloExterno, setModuloExterno] = useState<string | null>(null);
   const [inject, setInject] = useState<ComposerInject | null>(null);
   const [, force] = useReducer((n: number) => n + 1, 0);
   // Re-render em mudanças de sessão (seleção/lock) e de settings.
@@ -46,6 +57,21 @@ export function App({
   }, [session, plugin]);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  /** Entrar num módulo pelo menu: abre a TELA dele. */
+  const entrarNoModulo = useCallback(
+    (mode: string) => {
+      if (isChatMode(mode)) {
+        session.newChat(mode);
+        setModuloExterno(null);
+      } else {
+        setModuloExterno(mode);
+      }
+      setView("chat");
+      setMenuOpen(false);
+    },
+    [session]
+  );
 
   const useSkill = (skill: Skill) => {
     // Skill com modo preferido troca o modo (no-op se a sessão já travou).
@@ -61,6 +87,8 @@ export function App({
           plugin={plugin}
           session={session}
           inject={inject}
+          moduloExterno={moduloExterno}
+          onSairDoExterno={() => setModuloExterno(null)}
           onOpenMenu={() => setMenuOpen(true)}
           onUseSkill={useSkill}
         />
@@ -107,6 +135,8 @@ export function App({
         session={session}
         open={menuOpen}
         view={view}
+        moduloExterno={moduloExterno}
+        onEnterModule={entrarNoModulo}
         onNavigate={setView}
         onClose={closeMenu}
       />

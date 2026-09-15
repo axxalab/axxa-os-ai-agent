@@ -115,12 +115,18 @@ export function ChatView({
   plugin,
   session,
   inject,
+  moduloExterno,
+  onSairDoExterno,
   onOpenMenu,
   onUseSkill,
 }: {
   plugin: AxxaPlugin;
   session: ChatSession;
   inject: ComposerInject | null;
+  /** Módulo estranho que está sendo visto, se houver (ver App). */
+  moduloExterno: string | null;
+  /** Sair dele — o seletor de modo leva de volta pros módulos de casa. */
+  onSairDoExterno: () => void;
   onOpenMenu: () => void;
   onUseSkill: (skill: Skill) => void;
 }) {
@@ -369,6 +375,14 @@ export function ChatView({
   const reavaliar = () => {
     const el = scrollRef.current;
     if (!el) return;
+    // Conversa VAZIA é a tela do módulo, não um fio pra acompanhar: ela cresce
+    // pra baixo com as conversas gravadas, e a lógica de seguir o fim entendia
+    // esse crescimento como mensagem nova — a tela abria rolada até o último
+    // item, com a saudação e o seletor de modo fora de vista.
+    if (useChatStore.getState().messages.length === 0) {
+      alturaAnteriorRef.current = el.scrollHeight;
+      return;
+    }
     const { pin, seguindo: noFim } = decideScroll({
       gesto: gestoRef.current,
       alturaAnterior: alturaAnteriorRef.current,
@@ -497,7 +511,23 @@ export function ChatView({
   // Trocar de conversa (ou abrir uma nova) começa no fim, acompanhando: o
   // estado de leitura era da conversa anterior. Sem isto, abrir outro chat
   // depois de ter subido pra ler deixava a tela parada no meio dele.
+  //
+  // Conversa VAZIA é o contrário: é a tela do módulo, e ela começa EM CIMA —
+  // na saudação e no seletor, com as conversas gravadas logo abaixo. Ir pro
+  // fim ali é abrir na última linha da lista.
   useEffect(() => {
+    if (useChatStore.getState().messages.length === 0) {
+      gestoRef.current = false;
+      seguindoRef.current = true;
+      setSeguindo(true);
+      setAvisoId(null);
+      const el = scrollRef.current;
+      if (el) {
+        el.scrollTop = 0;
+        alturaAnteriorRef.current = el.scrollHeight;
+      }
+      return;
+    }
     voltarPraBaixo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChatId]);
@@ -917,7 +947,12 @@ Open Settings › Providers to add it, then run the connection test.`,
       <div className="axxa-messages" ref={scrollRef}>
         {loadingChat && <p className="axxa-empty-line">Loading…</p>}
         {empty ? (
-          <StarterScreen plugin={plugin} session={session} />
+          <StarterScreen
+            plugin={plugin}
+            session={session}
+            moduloExterno={moduloExterno}
+            onSairDoExterno={onSairDoExterno}
+          />
         ) : (
           messages
             .filter((m) => !hiddenIds.has(m.id))

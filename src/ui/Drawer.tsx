@@ -4,32 +4,25 @@
 // Abre por cima do painel (scrim + slide), fecha no scrim, no Esc e sempre que
 // leva o usuário pra algum lugar.
 //
-// DOIS NÍVEIS. A raiz lista os módulos (Chat, Vault Q&A, Agent) com quantas
-// conversas cada um tem e quando foi a última; tocar num deles ABRE A TELA
-// daquele módulo, com seta pra voltar, busca e "New chat" próprios.
+// O menu LEVA, não guarda. A raiz lista os módulos (Chat, Vault Q&A, Agent)
+// com quantas conversas cada um tem e quando foi a última; tocar num deles
+// abre a TELA daquele módulo — a tela de verdade, com o campo de texto e as
+// conversas dele (ver StarterScreen).
 //
-// Por que não uma lista só com etiqueta de modo, como era: as conversas dos
-// três se misturavam numa pilha ordenada por data, então achar "aquela
-// conversa do Agent" era caçar entre chats e perguntas do vault. Eles não
-// competem pela mesma atenção — cada um é um lugar.
+// A lista de conversas já morou aqui dentro, misturando os três módulos numa
+// pilha só. Saiu por dois motivos: achar "aquela conversa do Agent" era caçar
+// entre chats e perguntas do vault, e mesmo separada por módulo ela ficava a
+// dois toques, longe de onde se escreve.
 
 import { Platform } from "obsidian";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type AxxaPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
-import type { ChatSummary } from "../core/chatPersistence";
 import { useChatStore } from "../store/chat";
+import { useChatSummaries } from "./ChatList";
 import { Icon } from "./Icon";
-import { openActions } from "./menu";
-import { PromptModal, ConfirmModal, openPluginSettings } from "./modals";
-import {
-  chatsOfModule,
-  moduleHint,
-  moduleLabel,
-  moduleNewLabel,
-  moduleStats,
-  modulesInUse,
-} from "./modules";
+import { openPluginSettings } from "./modals";
+import { moduleHint, moduleStats, modulesInUse } from "./modules";
 
 export type ViewId = "chat" | "projects" | "skills";
 
@@ -39,14 +32,13 @@ const NAV: Array<{ id: ViewId; label: string; icon: string }> = [
   { id: "skills", label: "Skills", icon: "sparkles" },
 ];
 
-/** Acima disto o histórico ganha campo de busca. */
-const SEARCH_FROM = 8;
-
 export function Drawer({
   plugin,
   session,
   open,
   view,
+  moduloExterno,
+  onEnterModule,
   onNavigate,
   onClose,
 }: {
@@ -54,38 +46,25 @@ export function Drawer({
   session: ChatSession;
   open: boolean;
   view: ViewId;
+  /** Módulo estranho que está sendo visto, se houver (ver App). */
+  moduloExterno: string | null;
+  onEnterModule: (mode: string) => void;
   onNavigate: (view: ViewId) => void;
   onClose: () => void;
 }) {
-  const currentChatId = useChatStore((s) => s.currentChatId);
   const sessionMode = useChatStore((s) => s.sessionMode);
-  const [chats, setChats] = useState<ChatSummary[]>(plugin.chatSummaries ?? []);
-  const [query, setQuery] = useState("");
-  /** null = raiz do menu; um modo = a tela daquele módulo. String solta, e
-   *  não `ChatMode`, porque o menu também abre módulos que só existem no
-   *  disco (ver `modulesInUse`). */
-  const [modulo, setModulo] = useState<string | null>(null);
+  const chats = useChatSummaries(plugin);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Qual módulo está em uso agora — a conversa aberta manda; sem conversa
   // aberta, o padrão das Settings. Marca a linha na raiz.
-  const moduloAtual = isChatMode(sessionMode)
-    ? sessionMode
-    : isChatMode(plugin.settings.defaultMode)
-      ? plugin.settings.defaultMode
-      : "chat";
-
-  useEffect(() => {
-    let alive = true;
-    void plugin.loadChatSummaries().then((all) => {
-      if (alive) setChats(all);
-    });
-    const unsub = plugin.onChatsChange(() => setChats(plugin.chatSummaries ?? []));
-    return () => {
-      alive = false;
-      unsub();
-    };
-  }, [plugin]);
+  const moduloAtual =
+    moduloExterno ??
+    (isChatMode(sessionMode)
+      ? sessionMode
+      : isChatMode(plugin.settings.defaultMode)
+        ? plugin.settings.defaultMode
+        : "chat");
 
   // Esc fecha; o foco vai pra gaveta quando ela abre.
   useEffect(() => {
@@ -103,36 +82,8 @@ export function Drawer({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Fechar a gaveta zera a busca E volta pra raiz: abrir de novo começa
-  // limpo, no lugar de reabrir dentro de um módulo que já foi.
-  useEffect(() => {
-    if (open) return;
-    setQuery("");
-    setModulo(null);
-  }, [open]);
-
-  // Trocar de tela zera a busca — o que foi digitado era pergunta pra a lista
-  // anterior, e uma busca invisível que some com as conversas é uma armadilha.
-  useEffect(() => {
-    setQuery("");
-  }, [modulo]);
-
   /** Os três do motor + qualquer outro que apareça nas conversas gravadas. */
   const modulosVisiveis = useMemo(() => modulesInUse(chats), [chats]);
-
-  /** As conversas do módulo aberto, já passadas pela busca. */
-  const doModulo = useMemo(
-    () => (modulo ? chatsOfModule(chats, modulo) : []),
-    [chats, modulo]
-  );
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return doModulo;
-    return doModulo.filter((c) =>
-      (c.title || "Untitled").toLowerCase().includes(q)
-    );
-  }, [doModulo, query]);
 
   // Fullscreen mobile: a AxxaView reage ao saveSettings e alterna as classes
   // nos ancestrais (ver AxxaView.applyFullscreen). A saída fica sempre aqui,
@@ -148,37 +99,9 @@ export function Drawer({
     onClose();
   };
 
-  // O "New chat" da tela de um módulo cria NAQUELE módulo — é o que a tela
-  // promete. Na raiz não há módulo escolhido, então vale o padrão das
-  // Settings, como sempre foi.
-  const onNewChat = (mode?: string) => {
-    session.newChat(isChatMode(mode) ? mode : undefined);
+  const onNewChat = () => {
+    session.newChat();
     go("chat");
-  };
-
-  const onOpenChat = (c: ChatSummary) => {
-    void session.load(c);
-    go("chat");
-  };
-
-  const onRename = async (c: ChatSummary) => {
-    const title = await new PromptModal(plugin.app, {
-      title: "Rename chat",
-      label: "Title",
-      initial: c.title,
-      submitLabel: "Rename",
-    }).openAndWait();
-    if (title && title !== c.title) await session.rename(c, title);
-  };
-
-  const onDelete = async (c: ChatSummary) => {
-    const ok = await new ConfirmModal(plugin.app, {
-      title: `Delete "${c.title || "Untitled"}"?`,
-      body: "The chat file goes to the system trash (recoverable).",
-      confirmLabel: "Delete",
-      danger: true,
-    }).openAndWait();
-    if (ok) await session.delete(c);
   };
 
   return (
@@ -195,19 +118,7 @@ export function Drawer({
         tabIndex={-1}
       >
         <header className="axxa-drawer-head">
-          {modulo && (
-            <button
-              type="button"
-              className="axxa-icon-btn"
-              aria-label="Back to menu"
-              onClick={() => setModulo(null)}
-            >
-              <Icon name="arrow-left" />
-            </button>
-          )}
-          <span className="axxa-brand">
-            {modulo ? moduleLabel(modulo) : "AXXA OS"}
-          </span>
+          <span className="axxa-brand">AXXA OS</span>
           <button
             type="button"
             className="axxa-icon-btn"
@@ -218,22 +129,12 @@ export function Drawer({
           </button>
         </header>
 
-        {/* Módulo que o motor não conhece não ganha "New chat": não há como
-            criar conversa num modo que não existe no código. A tela dele
-            serve pra achar e abrir o que já está gravado. */}
-        {(!modulo || isChatMode(modulo)) && (
-          <button
-            type="button"
-            className="axxa-new-chat"
-            onClick={() => onNewChat(modulo ?? undefined)}
-          >
-            <Icon name="plus" />
-            <span>{moduleNewLabel(modulo)}</span>
-          </button>
-        )}
+        <button type="button" className="axxa-new-chat" onClick={onNewChat}>
+          <Icon name="plus" />
+          <span>New chat</span>
+        </button>
 
-        {!modulo && (
-          <nav className="axxa-drawer-nav">
+        <nav className="axxa-drawer-nav">
             {/* Os módulos primeiro: é o que o menu É. O resto vem depois de
                 um traço, porque é ferramenta, não lugar. */}
             {modulosVisiveis.map((m) => {
@@ -247,7 +148,7 @@ export function Drawer({
                       ? "axxa-nav-item axxa-module-item is-active"
                       : "axxa-nav-item axxa-module-item"
                   }
-                  onClick={() => setModulo(m.id)}
+                  onClick={() => onEnterModule(m.id)}
                 >
                   <Icon name={m.icon} />
                   <span className="axxa-module-text">
@@ -313,78 +214,6 @@ export function Drawer({
               <span>Settings</span>
             </button>
           </nav>
-        )}
-
-        {modulo && doModulo.length >= SEARCH_FROM && (
-          <div className="axxa-drawer-section">
-            <input
-              type="search"
-              className="axxa-search"
-              value={query}
-              placeholder={`Search ${moduleLabel(modulo)}…`}
-              onChange={(e) => setQuery(e.currentTarget.value)}
-            />
-          </div>
-        )}
-
-        {modulo && (
-        <div className="axxa-history">
-          {filtered.map((c) => (
-            <div
-              key={c.id}
-              className={
-                c.id === currentChatId
-                  ? "axxa-history-row is-current"
-                  : "axxa-history-row"
-              }
-            >
-              <button
-                type="button"
-                className="axxa-history-open"
-                onClick={() => onOpenChat(c)}
-              >
-                <span className="axxa-history-title">
-                  {c.title || "Untitled"}
-                </span>
-                {/* Sem a etiqueta de modo: a tela inteira já é daquele
-                    módulo, repetir "agent" em cada linha é ruído. */}
-                <span className="axxa-history-meta">
-                  {c.model} · {c.date.slice(0, 10)}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="axxa-icon-btn axxa-history-more"
-                aria-label={`Actions for ${c.title || "Untitled"}`}
-                onClick={(e) =>
-                  openActions(e as unknown as MouseEvent, [
-                    {
-                      label: "Rename",
-                      icon: "pencil",
-                      run: () => void onRename(c),
-                    },
-                    {
-                      label: "Delete",
-                      icon: "trash-2",
-                      danger: true,
-                      run: () => void onDelete(c),
-                    },
-                  ])
-                }
-              >
-                <Icon name="more-horizontal" />
-              </button>
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <p className="axxa-empty-line">
-              {doModulo.length === 0
-                ? `No ${moduleLabel(modulo)} chats yet.`
-                : "No chats match."}
-            </p>
-          )}
-        </div>
-        )}
 
         <footer className="axxa-drawer-foot">v{plugin.manifest.version}</footer>
       </aside>

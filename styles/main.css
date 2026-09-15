@@ -608,6 +608,27 @@ body.theme-dark {
   text-align: center;
 }
 
+/* ── as conversas do módulo, na tela dele ──────────────────────────────
+   Elas moravam na gaveta. Aqui ficam logo acima do campo de texto: o menu
+   leva ao lugar, e é no lugar que estão as suas conversas. */
+.axxa-root .axxa-starter-recents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-2);
+  /* O hero usa `margin: auto 0` pra centralizar no espaço livre; sem isto a
+     lista era empurrada pra fora do alcance por essa mesma centralização. */
+  margin-top: 0;
+}
+
+/* Na gaveta a lista é o scroller (flex:1 + overflow). Aqui quem rola é a
+   timeline inteira — um scroller dentro do outro faria a lista prender o
+   dedo num retângulo no meio da tela. */
+.axxa-root .axxa-starter-recents .axxa-history {
+  flex: 0 0 auto;
+  overflow: visible;
+  min-height: 0;
+}
+
 .axxa-root .axxa-starter-mark {
   color: var(--interactive-accent);
   opacity: 0.9;
