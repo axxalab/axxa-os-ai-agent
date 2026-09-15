@@ -199,10 +199,29 @@
           const dest = fakeCtx.createMediaStreamDestination();
           const osc = fakeCtx.createOscillator();
           const gain = fakeCtx.createGain();
-          gain.gain.value = 0.3;
           osc.frequency.value = 220;
           osc.connect(gain).connect(dest);
           osc.start();
+          // Fala TEM pausa. Um tom contínuo escondia metade do modo de voz —
+          // é no silêncio que a gravação é cortada em segmentos. Aqui o ganho
+          // alterna 3s de fala e 0,7s de pausa, agendado no relógio do áudio
+          // (o setInterval do JS derrapa e a pausa saía torta).
+          // ?falamos=4000&pausa=900 mexe nos dois; ?tom=continuo volta ao
+          // oscilador parado de antes.
+          const falaMs = Number(q.get("falamos") ?? 3000);
+          const pausaMs = Number(q.get("pausa") ?? 700);
+          if (q.get("tom") === "continuo") {
+            gain.gain.value = 0.3;
+          } else {
+            const t0 = fakeCtx.currentTime;
+            const ciclo = (falaMs + pausaMs) / 1000;
+            gain.gain.setValueAtTime(0.3, t0);
+            for (let k = 0; k < 120; k++) {
+              const inicio = t0 + k * ciclo;
+              gain.gain.setValueAtTime(0.3, inicio);
+              gain.gain.setValueAtTime(0.0001, inicio + falaMs / 1000);
+            }
+          }
           window.__fakeTracks.push(...dest.stream.getTracks());
           return dest.stream;
         };

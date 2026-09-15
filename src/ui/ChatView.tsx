@@ -846,19 +846,18 @@ Open Settings › Providers to add it, then run the connection test.`,
     model: () => plugin.settings.voiceModel,
     language: () => plugin.settings.voiceLanguage,
     onTranscript: setLiveText,
+    // Acabou a gravação: o texto entra no rascunho, depois do que já estava
+    // escrito. Quem avisa é o hook, num aviso só — ver `onFinal`.
+    onFinal: (texto) => {
+      setLiveText("");
+      if (!texto) return;
+      setDraft((d) => (d.trim() ? `${d.trim()} ${texto}` : texto));
+    },
     onNotice: (m) => {
       new Notice(m);
     },
     onCancel: () => setLiveText(""),
   });
-
-  // Acabou a gravação com texto na mão: agora sim ele entra no rascunho,
-  // depois do que já estava escrito.
-  useEffect(() => {
-    if (voice.state !== "idle" || !liveText) return;
-    setDraft((d) => (d.trim() ? `${d.trim()} ${liveText}` : liveText));
-    setLiveText("");
-  }, [voice.state, liveText]);
 
   // Um CLIQUE começa a gravar; o dock cuida do resto (✕ joga fora, ✓ usa o
   // texto). O gesto de segurar/arrastar saiu: dependia de o microfone abrir

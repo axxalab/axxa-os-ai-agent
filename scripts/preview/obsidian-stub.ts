@@ -16,15 +16,22 @@ export class Notice {
   setMessage() {}
   hide() {}
 }
-/** Frase falsa da transcrição — cresce a cada chamada, que é como o parcial
- *  se comporta de verdade (o texto vai aparecendo enquanto se fala). */
+/** Palavras da fala falsa — a transcrição devolve fatias daqui. */
 const FAKE_WORDS =
   ("perfeito chat só que assim a transcrição ela tem que aparecer desse mesmo " +
     "jeito que eu vou falando aqui olha que eu vou tirar o print pra você e " +
     "entendeu como é que funciona").split(" ");
-let fakeCalls = 0;
+/** Segmento que o stub acha que está ouvindo. A casca corta a gravação em
+ *  pedaços independentes: dentro de um segmento os envios CRESCEM (parcial,
+ *  parcial maior, fechamento), e o primeiro envio do segmento seguinte é
+ *  menor que o anterior. É esse degrau pra baixo que marca o corte aqui. */
+let fakeSeg = -1;
+let fakeUltimoTamanho = Infinity;
 
-export async function requestUrl(opts: { url?: string }): Promise<unknown> {
+export async function requestUrl(opts: {
+  url?: string;
+  body?: ArrayBuffer | string;
+}): Promise<unknown> {
   // Página web de mentira — é o que o "Link" do "+" busca. Sem isso não dava
   // pra ver o anexo de link nascer.
   if (opts?.url && /^https?:/.test(opts.url) && !/\/v1\//.test(opts.url)) {
@@ -43,15 +50,52 @@ export async function requestUrl(opts: { url?: string }): Promise<unknown> {
   // O preview NÃO fala com a rede. A transcrição é a exceção MODELADA: sem ela
   // não dá pra ver o texto crescendo, que é o coração do modo de voz.
   if (opts?.url && /audio\/transcriptions/.test(opts.url)) {
-    fakeCalls += 1;
-    // Latência de verdade (?lag=ms, padrão 2.5s). O celular não responde em
-    // 200ms, e foi com a resposta INSTANTÂNEA que o preview escondeu o
-    // problema do Pause.
-    const lag = Number(new URLSearchParams(location.search).get("lag") ?? 2500);
-    await new Promise((r) => setTimeout(r, lag));
+    const bytes =
+      typeof opts.body === "string"
+        ? opts.body.length
+        : (opts.body?.byteLength ?? 0);
+    if (bytes <= fakeUltimoTamanho) fakeSeg += 1;
+    fakeUltimoTamanho = bytes;
+    const seg = fakeSeg;
+    // O registro é o que deixa MEDIR o que antes só dava pra intuir: quantos
+    // envios, de que tamanho, e quanto tempo o último demorou.
+    const log = ((window as unknown as Record<string, unknown>).__transcribeLog ??=
+      []) as { bytes: number; at: number; seg: number }[];
+    log.push({ bytes, at: Date.now(), seg });
+    // ?falhar=3,4 derruba a 3a e a 4a chamadas. A rede do celular cai no meio
+    // da fala o tempo todo, e o que a casca faz com isso (guardar o áudio e
+    // tentar de novo no fim) não dá pra ver sem poder derrubar de propósito.
+    const derrubar = (new URLSearchParams(location.search).get("falhar") ?? "")
+      .split(",")
+      .filter(Boolean)
+      .map(Number);
+    if (derrubar.includes(log.length)) {
+      await new Promise((r) => setTimeout(r, 200));
+      return { status: 500, json: { error: { message: "preview: queda de propósito" } } };
+    }
+    // Latência MODELADA em três parcelas, porque foi com a resposta
+    // INSTANTÂNEA que o preview escondeu o problema do Pause — e porque uma
+    // latência FIXA esconde justamente o que estamos consertando agora (o
+    // custo de reenviar áudio):
+    //   fixa   — TLS + fila do servidor (?lag=ms, padrão 700)
+    //   rede   — subir os bytes a ~1,5 Mbps de uplink de celular
+    //   modelo — transcrever roda a ~0,12x o tempo do áudio
+    // Áudio a 32kbps => 4000 bytes por segundo de fala. CUIDADO ao comparar
+    // com uma versão que grave em outro bitrate: a parcela do modelo é
+    // estimada A PARTIR DOS BYTES, então um áudio mais gordo parece mais
+    // LONGO do que é e leva uma punição que não é dele.
+    const base = Number(new URLSearchParams(location.search).get("lag") ?? 700);
+    const segundosDeAudio = bytes / 4000;
+    await new Promise((r) =>
+      setTimeout(r, base + bytes / 190 + segundosDeAudio * 120)
+    );
+    // Mesmo áudio, mesmo texto; mais áudio, mais palavras — é o que um
+    // transcritor faz. Cada segmento pega uma fatia diferente da frase.
+    const palavras = Math.max(1, Math.min(6, Math.round(bytes / 6000)));
+    const inicio = (seg * 6) % FAKE_WORDS.length;
     return {
       status: 200,
-      json: { text: FAKE_WORDS.slice(0, Math.min(fakeCalls * 4, FAKE_WORDS.length)).join(" ") },
+      json: { text: FAKE_WORDS.slice(inicio, inicio + palavras).join(" ") },
     };
   }
   // TTS: devolve um WAV mudo de verdade, pra dar pra exercitar o caminho
