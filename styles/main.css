@@ -1070,7 +1070,9 @@ body.theme-dark {
      cartão ficava alto demais pro que carrega (uma linha e uma fileira de
      botões). */
   gap: var(--axxa-2);
-  padding: 10px;
+  /* Respiro maior nas laterais: o texto colado na borda do cartão deixava a
+     caixa apertada — é o campo de escrever, precisa de margem pra respirar. */
+  padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--axxa-line) 70%, transparent);
   border-radius: var(--axxa-r-lg);
   /* AQUI é o vidro. Mais VIDRO que painel: o fundo segura menos da metade e
@@ -1429,6 +1431,18 @@ body.theme-dark {
 
 .axxa-root .axxa-pills::-webkit-scrollbar {
   display: none;
+}
+
+/* Logo do provider dentro do pill. Os coloridos trazem a própria cor; os
+   monocromáticos (OpenAI, OpenRouter, Ollama são preto/branco de fato) seguem
+   o texto. */
+.axxa-root .axxa-pill-logo {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
 }
 
 .axxa-root .axxa-pill {

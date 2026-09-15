@@ -13,20 +13,28 @@ const OUT = "src/ui/brandLogos.ts";
 const r = (n) => Math.round(n * 1e4) / 1e4;
 
 // Só o que a UI usa: os ids batem com PROVIDERS[].icon (core/providersMeta).
+//
+// Onde existe versão COLORIDA no acervo, é ela que entra: o logo do provider
+// no composer é identidade, e identidade é cor. Onde a marca é mono de
+// verdade (OpenAI, OpenRouter, Ollama são preto/branco), fica o currentColor —
+// pintar de verde ou roxo seria inventar uma marca que não existe.
 const WANTED = [
-  "openai.svg",
-  "anthropic.svg",
-  "gemini.svg",
-  "openrouter.svg",
-  "nvidia.svg",
-  "ollama.svg",
+  { file: "openai.svg", id: "logo-openai" },
+  { file: "claude-color.svg", id: "logo-anthropic" },
+  { file: "gemini-color.svg", id: "logo-gemini" },
+  { file: "openrouter.svg", id: "logo-openrouter" },
+  { file: "nvidia-color.svg", id: "logo-nvidia" },
+  { file: "ollama.svg", id: "logo-ollama" },
 ];
-const files = readdirSync(SRC)
-  .filter((f) => WANTED.includes(f.toLowerCase()))
-  .sort();
+const disponiveis = new Set(readdirSync(SRC).map((f) => f.toLowerCase()));
+const files = WANTED.filter((w) => {
+  const tem = disponiveis.has(w.file.toLowerCase());
+  if (!tem) console.warn(`[logos] faltando: ${w.file}`);
+  return tem;
+});
 
 const entries = [];
-for (const f of files) {
+for (const { file: f, id } of files) {
   const raw = readFileSync(join(SRC, f), "utf8");
 
   const vbMatch = raw.match(/viewBox\s*=\s*"([^"]+)"/i);
@@ -53,14 +61,6 @@ for (const f of files) {
     .replace(/\\/g, "\\\\")
     .replace(/`/g, "\\`")
     .replace(/\$\{/g, "\\${");
-
-  const id =
-    "logo-" +
-    f
-      .replace(/\.svg$/i, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
 
   // Mono (svgl exporta fill="currentColor" no <svg>) → propaga currentColor pro
   // <g> pra seguir o tema do Obsidian (sem isso, paths sem fill viram preto).

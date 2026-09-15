@@ -1141,6 +1141,9 @@ export function ChatView({
                 <div className="axxa-pills">
                   <Pill
                     label={prettyModelName(cfg.model) || "no model"}
+                    logo={
+                      PROVIDERS.find((p) => p.id === cfg.provider)?.icon
+                    }
                     onClick={() => openSheet("model")}
                   />
                 </div>
@@ -1563,11 +1566,22 @@ function ModelRow({
   );
 }
 
-function Pill({ label, onClick }: { label: string; onClick: () => void }) {
+/** O pill do modelo. O LOGO do provider no lugar do chevron: a seta dizia
+ *  "isto abre" (que o toque já ensina na primeira vez), enquanto o logo diz
+ *  QUEM está respondendo — que é a informação que muda. */
+function Pill({
+  label,
+  logo,
+  onClick,
+}: {
+  label: string;
+  logo?: string;
+  onClick: () => void;
+}) {
   return (
     <button type="button" className="axxa-pill" onClick={onClick}>
+      {logo && <Icon name={logo} size={16} className="axxa-pill-logo" />}
       <span className="axxa-pill-label">{label}</span>
-      <Icon name="chevron-down" size={14} />
     </button>
   );
 }
