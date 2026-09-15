@@ -1071,16 +1071,19 @@ body.theme-dark {
      botões). */
   gap: var(--axxa-2);
   padding: 10px;
-  border: 1px solid var(--axxa-line);
+  border: 1px solid color-mix(in srgb, var(--axxa-line) 70%, transparent);
   border-radius: var(--axxa-r-lg);
-  /* AQUI é o vidro: translúcido sobre a conversa, com desfoque do que passa
-     atrás. O saturate compensa o cinza que o blur traz. */
-  background-color: color-mix(in srgb, var(--axxa-raised) 72%, transparent);
-  backdrop-filter: blur(22px) saturate(1.5);
-  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  /* AQUI é o vidro. Mais VIDRO que painel: o fundo segura menos da metade e
+     quem faz a legibilidade é o desfoque — com muita opacidade o cartão vira
+     um bloco sólido flutuando, que é o oposto de "o texto passa por trás".
+     O saturate compensa o cinza que o blur traz. */
+  background-color: color-mix(in srgb, var(--axxa-raised) 46%, transparent);
+  backdrop-filter: blur(28px) saturate(1.7);
+  -webkit-backdrop-filter: blur(28px) saturate(1.7);
+  /* Borda e sombra também recuam: são elas que davam o peso de "caixa". */
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.14),
-    0 8px 24px rgba(0, 0, 0, 0.22);
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 6px 20px rgba(0, 0, 0, 0.16);
 }
 
 .axxa-root .axxa-input:focus-within {
