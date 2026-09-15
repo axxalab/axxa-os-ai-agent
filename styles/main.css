@@ -288,17 +288,17 @@ body.is-mobile
   padding-bottom: 0 !important;
 }
 
-/* A regra acima (`bottom: 18px` no fullscreen) é da 0.2.37 e foi escrita pra um
-   composer com FAIXA OPACA: os 18px eram o respiro da base, e a faixa pintava
-   tudo até embaixo, então não dava pra ver que ele estava levantado.
-   Com o composer de vidro isso vira um degrau visível — o cartão flutuando
-   acima de uma faixa que não é dele. O respiro agora é o padding do próprio
-   composer, então ele volta a encostar na base. */
+/* A regra acima (`bottom: 18px` no fullscreen) é da 0.2.37 e vale pra um
+   composer `position: absolute`, que é o que ele era lá. Aqui ele é item em
+   FLUXO (`position: relative`, pra ancorar o que flutua dentro dele), e
+   `bottom` num elemento relativo DESLOCA: dava um vão de 18px embaixo dele no
+   modo cheio. O seletor repete o de lá pra ter a mesma especificidade e vencer
+   por ordem. O respiro da base vem do padding do próprio composer. */
 body.is-mobile
   .workspace-drawer.axxa-fullscreen
   .axxa-root
   .axxa-composer:not([data-mode="vault-qa"]) {
-  bottom: 0;
+  bottom: auto;
 }
 
 /* Teclado no modo NORMAL. O modelo da 0.2.37 conta com o Obsidian encolhendo a
@@ -501,10 +501,16 @@ body.theme-dark {
      faz a conversa parecer conversa em vez de log. */
   gap: var(--axxa-5);
   padding: var(--axxa-4) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2) 0;
-  /* O composer flutua por cima: sem esta reserva, a última mensagem nasceria
-     debaixo dele. A altura é publicada pelo JS (ela muda com anexo, fila e o
-     campo crescendo); o valor fixo é só o que vale até a primeira medida.
-     DEPOIS do shorthand de propósito — o shorthand zeraria isto. */
+  /* DEPOIS do shorthand de propósito — o shorthand zeraria estes dois.
+
+     A margem NEGATIVA é o que faz a conversa continuar por baixo do composer
+     (ele está no fluxo, logo abaixo): a caixa das mensagens avança sobre a
+     área dele. E o padding devolve esse espaço por dentro, pra a última
+     mensagem poder rolar até acima do composer em vez de ficar escondida.
+
+     A altura vem do JS (`--axxa-composer-h`), porque muda com anexo, fila e o
+     campo crescendo; o valor fixo é só o que vale até a primeira medida. */
+  margin-bottom: calc(-1 * var(--axxa-composer-h, 104px));
   padding-bottom: calc(var(--axxa-composer-h, 104px) + var(--axxa-3));
 }
 
@@ -1020,16 +1026,17 @@ body.theme-dark {
 
 /* Um bloco só: campo em cima, barra de controles embaixo, sem borda de topo
    cortando o painel — o contorno é o próprio .axxa-input. */
-/* O composer FLUTUA sobre a conversa: o texto passa por trás dele, desfocado,
-   em vez de parar numa faixa opaca. É o que a referência faz, e é o que
-   devolve à conversa os ~100px que a faixa comia.
-   `position: absolute` também é o modelo da 0.2.37 (ver o bloco do teclado lá
-   em cima, que conta com isso). O espaço pra última mensagem não sumir embaixo
-   dele vem do padding da área de mensagens, com a altura publicada em
-   `--axxa-composer-h`. */
+/* O composer flutua sobre a conversa — o texto passa por trás dele — mas
+   CONTINUA NO FLUXO.
+   Tirá-lo do fluxo (`position: absolute`) quebrou no aparelho: lá o
+   `.view-content` nem sempre tem altura definida, então o `height: 100%` da
+   raiz não resolve, e sem a altura do composer a coluna inteira encolhia — o
+   composer aparecia colado no header, com a tela inicial derramando por baixo.
+   No fluxo a altura da coluna continua a mesma de sempre; quem passa por baixo
+   é a CONVERSA, via margem negativa (ver .axxa-messages). */
 .axxa-root .axxa-composer {
-  position: absolute;
-  inset: auto 0 0 0;
+  position: relative;
+  flex: 0 0 auto;
   z-index: 4;
   display: flex;
   flex-direction: column;

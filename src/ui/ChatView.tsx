@@ -481,14 +481,11 @@ export function ChatView({
     const raiz = el?.closest(".axxa-root") as HTMLElement | null;
     if (!el || !raiz) return;
     const publicar = () => {
-      // Mede da BASE da raiz até o topo do composer, não só a altura dele: no
-      // modo cheio ele sobe 18px (regra da 0.2.37), e a altura sozinha deixava
-      // a última mensagem passar por trás justamente por esses 18px.
-      const base = raiz.getBoundingClientRect().bottom;
-      const topo = el.getBoundingClientRect().top;
+      // A ALTURA dele: é o quanto a conversa precisa avançar por baixo (margem
+      // negativa) e devolver por dentro (padding).
       raiz.style.setProperty(
         "--axxa-composer-h",
-        `${Math.max(0, Math.round(base - topo))}px`
+        `${Math.max(0, Math.round(el.getBoundingClientRect().height))}px`
       );
       // Cresceu embaixo de quem estava no fim: desce junto.
       reavaliar();
