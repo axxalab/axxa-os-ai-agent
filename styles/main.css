@@ -288,12 +288,18 @@ body.is-mobile
   padding-bottom: 0 !important;
 }
 
-/* A regra acima (`bottom: 18px` no fullscreen) é da 0.2.37, e existe porque lá
-   o composer era `position: absolute`. Ele voltou a ser — flutuando sobre a
-   conversa, com o texto passando por trás — então ela vale de novo e a nossa
-   neutralização (`bottom: auto`, de quando ele era item em fluxo) saiu daqui.
-   O respiro da base no modo normal continua vindo do padding do próprio
-   composer. */
+/* A regra acima (`bottom: 18px` no fullscreen) é da 0.2.37 e foi escrita pra um
+   composer com FAIXA OPACA: os 18px eram o respiro da base, e a faixa pintava
+   tudo até embaixo, então não dava pra ver que ele estava levantado.
+   Com o composer de vidro isso vira um degrau visível — o cartão flutuando
+   acima de uma faixa que não é dele. O respiro agora é o padding do próprio
+   composer, então ele volta a encostar na base. */
+body.is-mobile
+  .workspace-drawer.axxa-fullscreen
+  .axxa-root
+  .axxa-composer:not([data-mode="vault-qa"]) {
+  bottom: 0;
+}
 
 /* Teclado no modo NORMAL. O modelo da 0.2.37 conta com o Obsidian encolhendo a
    gaveta sozinho quando o teclado abre — é o que mantinha o composer subindo
@@ -1028,7 +1034,7 @@ body.theme-dark {
   display: flex;
   flex-direction: column;
   padding: var(--axxa-2) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2)
-    var(--axxa-3);
+    max(var(--safe-area-inset-bottom, 0px), var(--axxa-2));
   /* A FAIXA é transparente: quem é vidro é o cartão, e só ele. Pintar a faixa
      inteira tingia a barra de baixo (a área dos gestos) e fazia o composer
      PARECER muito mais alto do que é — o olho lê a mancha, não a caixa. */
