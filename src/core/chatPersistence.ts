@@ -508,9 +508,24 @@ export async function deleteChat(
     await app.vault.trash(file, true);
     return;
   }
-  if (await app.vault.adapter.exists(path)) {
-    await app.vault.adapter.remove(path);
+  if (!(await app.vault.adapter.exists(path))) return;
+  // Numa pasta OCULTA o arquivo não está no índice, então `getAbstractFileByPath`
+  // devolve null e o caminho acima nem roda. Antes daí ia direto pro `remove`,
+  // que apaga de vez — enquanto a tela promete "vai pra lixeira (recuperável)".
+  // O adapter tem lixeira; a promessa passa a ser verdade nos dois casos.
+  const ad = app.vault.adapter;
+  try {
+    if (await ad.trashSystem(path)) return;
+  } catch {
+    // Sem lixeira do sistema (alguns Android): cai na do vault, logo abaixo.
   }
+  try {
+    await ad.trashLocal(path);
+    return;
+  } catch {
+    // Nem uma nem outra: aí sim, apagar é o que sobrou.
+  }
+  await ad.remove(path);
 }
 
 export async function renameChat(

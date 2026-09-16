@@ -4,6 +4,7 @@
 
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { settingsReadLooksBroken } from "./core/settingsGuard";
+import { AXXA_HIDDEN, HIDDEN_MOVES, shouldMigrate } from "./core/vaultPaths";
 import { getProvider } from "./providers";
 import { AxxaView, VIEW_TYPE_AXXA } from "./ui/AxxaView";
 import { registerBrandLogos } from "./ui/brandLogos";
@@ -219,10 +220,14 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   defaultEffort: "med",
   effortConfigs: {},
   language: "en-us",
-  chatsPath: "axxa-ai/chats",
+  // Dado do app vai pra pasta OCULTA (ver core/vaultPaths.ts): o Obsidian
+  // ignora pasta com ponto, então conversa some da busca, do explorador e do
+  // grafo. Skills NÃO vão: skill é nota que a pessoa escreve, e escondida ela
+  // não abre pra ser editada.
+  chatsPath: `${AXXA_HIDDEN}/chats`,
   skillsPath: "axxa-ai/skills",
   projects: [],
-  ragIndexPath: "axxa-ai/index",
+  ragIndexPath: `${AXXA_HIDDEN}/index`,
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",
   ragQuantProfile: "balanced",
@@ -658,6 +663,11 @@ export default class AxxaPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
 
+    // Antes de QUALQUER coisa ler conversa: se os arquivos ainda estão na
+    // pasta antiga, é aqui que eles mudam de lugar. Depois disso o resto do
+    // app já encontra tudo no caminho novo.
+    await this.migrarParaPastaOculta();
+
     // Cache de specs dos modelos (Fetch info / OpenRouter) — hidrata o store.
     await this.loadModelInfoCache();
 
@@ -1018,6 +1028,87 @@ export default class AxxaPlugin extends Plugin {
     // Chaves de API: carrega do SecretStorage do SO (keychain), não do
     // data.json. Migra chaves legadas que ainda estejam em plaintext.
     this.loadSecrets(saved);
+  }
+
+  /**
+   * Leva o que o app criou pra dentro da pasta oculta, UMA vez.
+   *
+   * Move de verdade — copia, confere e só então apaga a origem. O contrário
+   * (apagar antes) transforma qualquer falha de escrita em conversa perdida,
+   * e conversa é a única coisa aqui que não se refaz.
+   *
+   * Roda em silêncio quando não há nada a fazer, que é o caso de toda
+   * instalação nova.
+   */
+  private async migrarParaPastaOculta(): Promise<void> {
+    if (this.settingsUnsafe) return;
+    const ad = this.app.vault.adapter;
+    let mudou = false;
+    for (const mv of HIDDEN_MOVES) {
+      const atual =
+        mv.legado === "axxa-ai/chats"
+          ? this.settings.chatsPath
+          : this.settings.ragIndexPath;
+      const podeIr = shouldMigrate({
+        caminhoAtual: atual,
+        legado: mv.legado,
+        novo: mv.novo,
+        origemExiste: await ad.exists(mv.legado),
+        destinoExiste: await ad.exists(mv.novo),
+      });
+      // O caminho pode já ser o novo (instalação nova) — nada a fazer, e
+      // também nada a avisar.
+      if (!podeIr) continue;
+      try {
+        const levados = await this.moverPasta(mv.legado, mv.novo);
+        if (mv.legado === "axxa-ai/chats") this.settings.chatsPath = mv.novo;
+        else this.settings.ragIndexPath = mv.novo;
+        mudou = true;
+        console.log(`[axxa] ${levados} arquivo(s) movidos pra ${mv.novo}`);
+      } catch (err) {
+        // Falhou? A origem continua lá, intacta, e o caminho não muda: o app
+        // segue lendo de onde sempre leu.
+        console.error(`[axxa] migração de ${mv.legado} falhou:`, err);
+      }
+    }
+    if (mudou) {
+      await this.saveSettings();
+      new Notice(
+        "AXXA moved its files into a hidden .axxa folder — your chats are out of the vault's search and file list now.",
+        10000
+      );
+    }
+  }
+
+  /** Copia recursivamente de → para, conferindo cada arquivo antes de apagar
+   *  o original. Devolve quantos arquivos foram. */
+  private async moverPasta(de: string, para: string): Promise<number> {
+    const ad = this.app.vault.adapter;
+    if (!(await ad.exists(para))) await ad.mkdir(para);
+    const listing = await ad.list(de);
+    let n = 0;
+    for (const sub of listing.folders) {
+      n += await this.moverPasta(sub, `${para}/${sub.split("/").pop()}`);
+    }
+    for (const arq of listing.files) {
+      const nome = arq.split("/").pop() as string;
+      const destino = `${para}/${nome}`;
+      // Binário serve pra tudo: o .md passa intacto e o shard do índice
+      // também, sem depender de encoding.
+      const dados = await ad.readBinary(arq);
+      await ad.writeBinary(destino, dados);
+      if (!(await ad.exists(destino))) {
+        throw new Error(`não consegui escrever ${destino}`);
+      }
+      await ad.remove(arq);
+      n += 1;
+    }
+    // A pasta vazia sai por último, e só se esvaziou mesmo.
+    const sobrou = await ad.list(de);
+    if (sobrou.files.length === 0 && sobrou.folders.length === 0) {
+      await ad.rmdir(de, false);
+    }
+    return n;
   }
 
   /** Semeia roleModels a partir dos defaults legados (migração única): o default

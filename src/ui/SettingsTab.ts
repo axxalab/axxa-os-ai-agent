@@ -23,6 +23,7 @@ import {
   type ProviderHealth,
 } from "../core/providersMeta";
 import { EFFORT_LEVELS, EFFORT_LABELS } from "../core/effort";
+import { AXXA_HIDDEN } from "../core/vaultPaths";
 import { CHAT_MODES } from "../core/session";
 import { getAllEmbeddingModels } from "../rag/types";
 import { indexVault } from "../rag/indexer";
@@ -1109,10 +1110,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const s = this.s;
     new Setting(el)
       .setName("Chats folder")
-      .setDesc("Each chat is a .md file under <folder>/<mode>/.")
+      .setDesc(
+        "Each chat is a .md file under <folder>/<mode>/. A folder starting " +
+          "with a dot is hidden from the file explorer, search and graph — " +
+          "which is why the default is .axxa/chats."
+      )
       .addText((t) =>
         t.setValue(s.chatsPath).onChange(async (v) => {
-          s.chatsPath = v.trim() || "axxa-ai/chats";
+          s.chatsPath = v.trim() || `${AXXA_HIDDEN}/chats`;
           await this.save();
           void this.plugin.loadChatSummaries(true);
         })
