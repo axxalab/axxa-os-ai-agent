@@ -379,9 +379,67 @@ export function ChatView({
    * três levam à MESMA conta, feita sobre o DOM na hora. Não há estado
    * paralelo pra dessincronizar, e não depende do evento de scroll chegar.
    */
+  /**
+   * Ponto onde a timeline deve abrir, enquanto ele ainda não foi alcançado.
+   *
+   * Não dá pra posicionar de primeira: no instante em que as mensagens entram
+   * no DOM o markdown ainda não foi renderizado (ele é atrasado de propósito),
+   * então a caixa tem quase nenhuma altura e qualquer alvo vira zero. O alvo
+   * fica guardado aqui e é reaplicado a cada mutação até caber — aí se apaga.
+   */
+  const retomarRef = useRef<
+    | { scroll: number; desde: number }
+    | { messageId: string; desde: number }
+    | null
+  >(null);
+
+  /** Depois disto, desiste do alvo. Uma conversa curta NUNCA alcança o ponto
+   *  (não há o que rolar), e sem prazo o alvo ficaria pendurado pra sempre —
+   *  bloqueando a timeline de voltar a acompanhar o fim. */
+  const RETOMAR_MS = 1500;
+
+  /** Tenta pousar no alvo. Devolve true quando conseguiu (e limpa o alvo). */
+  const aplicarRetomada = () => {
+    const alvo = retomarRef.current;
+    const el = scrollRef.current;
+    if (!alvo || !el) return false;
+    const desistiu = Date.now() - alvo.desde > RETOMAR_MS;
+    if ("messageId" in alvo) {
+      const msg = el.querySelector<HTMLElement>(`[data-msg="${alvo.messageId}"]`);
+      if (!msg) {
+        if (!desistiu) return false;
+        retomarRef.current = null;
+        return false;
+      }
+      // 12px de folga: mensagem colada no topo parece cortada.
+      const destino = Math.max(0, msg.offsetTop - 12);
+      el.scrollTop = destino;
+      // Só aceita quando o conteúdo já é alto o bastante pra realmente pousar
+      // ali — senão o navegador limita e a gente "acerta" no lugar errado.
+      // Passado o prazo, aceita o que deu: é o mais perto que dá.
+      if (!desistiu && Math.abs(el.scrollTop - destino) > 2) return false;
+    } else {
+      const destino = alvo.scroll;
+      el.scrollTop = destino;
+      if (!desistiu && Math.abs(el.scrollTop - destino) > 2) return false;
+    }
+    retomarRef.current = null;
+    alturaAnteriorRef.current = el.scrollHeight;
+    seguindoRef.current = false;
+    setSeguindo(false);
+    return true;
+  };
+
   const reavaliar = () => {
     const el = scrollRef.current;
     if (!el) return;
+    // Com um alvo pendente, a timeline NÃO segue o fim: ela está tentando
+    // pousar onde a leitura parou, e grudar embaixo desfaria isso.
+    if (retomarRef.current) {
+      aplicarRetomada();
+      alturaAnteriorRef.current = el.scrollHeight;
+      return;
+    }
     const { pin, seguindo: noFim } = decideScroll({
       gesto: gestoRef.current,
       alturaAnterior: alturaAnteriorRef.current,
@@ -400,6 +458,9 @@ export function ChatView({
 
   /** Volta pro fim e volta a acompanhar (o toque no aviso e o envio). */
   const voltarPraBaixo = () => {
+    // Ir pro fim de propósito desiste de qualquer alvo pendente — quem mandou
+    // agora foi a pessoa.
+    retomarRef.current = null;
     gestoRef.current = false;
     seguindoRef.current = true;
     setSeguindo(true);
@@ -438,6 +499,10 @@ export function ChatView({
       }, 320);
     };
     const aoRolar = () => {
+      // Onde a leitura está, pra a sessão poder guardar isso se a conversa
+      // sair da tela no meio de uma resposta. Escrito com `setState` direto:
+      // ninguém assina este campo, então não redesenha nada.
+      useChatStore.setState({ viewScrollTop: el.scrollTop });
       // Rolando com o cronômetro armado = inércia viva: adia o veredito.
       if (assentar) terminarGesto();
       reavaliar();
@@ -511,6 +576,27 @@ export function ChatView({
   // estado de leitura era da conversa anterior. Sem isto, abrir outro chat
   // depois de ter subido pra ler deixava a tela parada no meio dele.
   useEffect(() => {
+    // A sessão pode ter pedido pra abrir num ponto — voltando de uma resposta
+    // que rodou fora da tela, ou entrando numa conversa que respondeu sem
+    // você ver. Aí o fim é o lugar errado: a resposta nova começa ACIMA dele,
+    // e cair no fim obriga a subir procurando onde ela começou.
+    const { resumeScroll, resumeMessageId } = useChatStore.getState();
+    if (resumeScroll !== null || resumeMessageId !== null) {
+      useChatStore.getState().setResume({});
+      gestoRef.current = false;
+      setAvisoId(null);
+      seguindoRef.current = false;
+      setSeguindo(false);
+      retomarRef.current =
+        resumeMessageId !== null
+          ? { messageId: resumeMessageId, desde: Date.now() }
+          : { scroll: resumeScroll as number, desde: Date.now() };
+      // Tenta agora e continua tentando a cada mutação, conforme o markdown
+      // vai ganhando altura (ver `aplicarRetomada`).
+      requestAnimationFrame(() => aplicarRetomada());
+      return;
+    }
+    retomarRef.current = null;
     voltarPraBaixo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChatId]);
@@ -1781,13 +1867,14 @@ const MessageRow = memo(function MessageRow({
   switch (msg.type) {
     case "user":
       return (
-        <div className="axxa-msg axxa-msg-user">
+        <div className="axxa-msg axxa-msg-user" data-msg={msg.id}>
           <div className="axxa-msg-text">{msg.content}</div>
         </div>
       );
     case "ai-response":
       return (
         <div
+          data-msg={msg.id}
           className={
             "axxa-msg axxa-msg-ai" +
             (msg.isError ? " axxa-msg-error" : "") +
@@ -1838,7 +1925,7 @@ const MessageRow = memo(function MessageRow({
       );
     case "ai-comment":
       return (
-        <div className="axxa-msg axxa-msg-comment">
+        <div className="axxa-msg axxa-msg-comment" data-msg={msg.id}>
           <Icon
             name={
               msg.activity?.phase === "failed"
@@ -1872,7 +1959,7 @@ const MessageRow = memo(function MessageRow({
       );
     case "ai-options":
       return (
-        <div className="axxa-msg axxa-msg-options">
+        <div className="axxa-msg axxa-msg-options" data-msg={msg.id}>
           <div>{msg.prompt}</div>
           <div className="axxa-suggestions">
             {msg.options.map((o, i) => (

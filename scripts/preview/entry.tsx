@@ -231,6 +231,8 @@ const destacarOuNada = () => {
   if (!dono) return;
   st.detachTurn({
     chatId: dono,
+    // Onde a leitura parou — é o que faz a conversa reabrir no ponto certo.
+    scrollTop: st.viewScrollTop,
     title: st.currentChatTitle,
     mode: st.sessionMode ?? mode,
     provider: st.sessionProvider ?? provider,
@@ -394,6 +396,9 @@ const session = {
     // aberta é no-op. Sem ele, o preview recarregava e desfazia o reanexo do
     // turno — e mostrava como se sair e voltar perdesse a resposta.
     if (useChatStore.getState().currentChatId === c.id) return;
+    // Conversa que respondeu sem você ver abre NA RESPOSTA (session.load faz o
+    // mesmo, com a mensagem lida do disco).
+    const eraNaoLida = plugin.settings.unreadChats.includes(c.id);
     // Abrir É ler — igual à sessão de verdade (session.load).
     plugin.clearChatUnread(c.id);
     const bg = useChatStore.getState().background;
@@ -407,6 +412,8 @@ const session = {
         s2.setCurrentChatId(run.chatId);
         s2.setCurrentChatTitle(run.title);
         s2.lockSession(run.provider, run.model, run.mode);
+        // Igual ao motor: reabre onde a leitura tinha parado.
+        s2.setResume({ scroll: run.scrollTop });
         emit();
       }
       return;
@@ -426,6 +433,12 @@ const session = {
     st.setCurrentChatId(c.id);
     st.setCurrentChatTitle(c.title);
     st.lockSession(c.provider, c.model, c.mode);
+    if (eraNaoLida) {
+      const nova = [...useChatStore.getState().messages]
+        .reverse()
+        .find((m) => m.type === "ai-response");
+      if (nova) st.setResume({ messageId: nova.id });
+    }
     mode = c.mode;
     provider = c.provider;
     model = c.model;

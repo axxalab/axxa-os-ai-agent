@@ -138,6 +138,15 @@ export type NewMessageInput = DistributiveOmit<ChatMessage, "id" | "timestamp">;
  */
 export interface BackgroundRun {
   chatId: string;
+  /**
+   * Onde a leitura parou quando a conversa saiu da tela (scrollTop em px).
+   *
+   * Funciona porque o texto novo é sempre ACRESCENTADO embaixo: o que está
+   * acima não se mexe, então o mesmo scrollTop mostra exatamente a mesma
+   * coisa quando ela volta — e tudo que chegou enquanto você não estava
+   * olhando fica logo abaixo.
+   */
+  scrollTop: number;
   title: string;
   mode: string;
   provider: string;
@@ -203,6 +212,19 @@ interface ChatState {
   background: BackgroundRun | null;
   /** Conversa dona do turno em andamento (null = ninguém respondendo). */
   turnChatId: string | null;
+  /** Última posição de leitura da timeline (px). A tela publica; a sessão lê
+   *  quando precisa guardar onde você parou. Ninguém assina isso — escrever
+   *  aqui não redesenha nada. */
+  viewScrollTop: number;
+  /**
+   * Onde a timeline deve ABRIR quando esta conversa entrar na tela:
+   *  • `resumeScroll` — px guardados (voltando de um turno em segundo plano);
+   *  • `resumeMessageId` — a mensagem que chegou sem você ver (conversa não
+   *    lida, relida do disco, onde não há px nenhum pra lembrar).
+   * Os dois são de uso ÚNICO: quem usa, limpa.
+   */
+  resumeScroll: number | null;
+  resumeMessageId: string | null;
   /**
    * Conversa cujo turno PAROU esperando uma aprovação sua (o gate do agente).
    *
@@ -248,6 +270,8 @@ interface ChatState {
   setTurnChatId: (id: string | null) => void;
   /** Conversa parada esperando aprovação (null = nenhuma). */
   setWaitingChatId: (id: string | null) => void;
+  /** Manda a timeline abrir naquele ponto (px) ou naquela mensagem. */
+  setResume: (p: { scroll?: number | null; messageId?: string | null }) => void;
   /** Desvia a escrita do turno pra fora da tela (ver BackgroundRun). */
   detachTurn: (run: BackgroundRun) => void;
   /** Traz o turno de volta pra tela; devolve o que estava rodando. */
@@ -353,6 +377,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   currentChatId: null,
   background: null,
   turnChatId: null,
+  viewScrollTop: 0,
+  resumeScroll: null,
+  resumeMessageId: null,
   waitingChatId: null,
   currentChatTitle: "",
   currentChatStarred: false,
@@ -530,6 +557,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   setTurnChatId: (id) => set({ turnChatId: id }),
   setWaitingChatId: (id) => set({ waitingChatId: id }),
+  setResume: (p) =>
+    set({
+      resumeScroll: p.scroll ?? null,
+      resumeMessageId: p.messageId ?? null,
+    }),
   detachTurn: (run) => set({ background: run }),
   attachTurn: () => {
     const bg: BackgroundRun | null = get().background;

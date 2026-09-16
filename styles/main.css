@@ -922,6 +922,44 @@ body.theme-dark {
   50% { opacity: 0.35; transform: scale(0.72); }
 }
 
+/* O CARTÃO respira enquanto a conversa responde.
+
+   É de propósito que quase não se veja parado: 4% de luz e um halo que abre
+   3px, num ciclo de 2,6s — mais perto de respiração do que de piscada. Numa
+   lista, o que chama o olho é o MOVIMENTO, não o contraste; uma pulsação
+   forte aqui competiria com a leitura dos outros cartões.
+
+   `box-shadow` e `background-color` animam fora do layout — nada de `scale`,
+   que faria a lista inteira tremer a cada quadro. */
+.axxa-root .axxa-history-row.is-running {
+  animation: axxa-respira 2.6s ease-in-out infinite;
+}
+
+@keyframes axxa-respira {
+  0%,
+  100% {
+    background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    background-color: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+  }
+}
+
+/* Quem pediu pra não ter animação não tem: fica a cor de "acordado", parada. */
+@media (prefers-reduced-motion: reduce) {
+  .axxa-root .axxa-history-row.is-running {
+    animation: none;
+    background-color: color-mix(
+      in srgb,
+      var(--interactive-accent) 10%,
+      transparent
+    );
+  }
+}
+
 .axxa-root .axxa-card-state.is-on {
   color: var(--color-green, #4caf50);
 }

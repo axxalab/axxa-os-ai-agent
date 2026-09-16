@@ -370,6 +370,7 @@ export class ChatSession {
     }
     st.detachTurn({
       chatId: dono,
+      scrollTop: st.viewScrollTop,
       title: st.currentChatTitle,
       mode: cfg.mode,
       provider: cfg.provider,
@@ -469,6 +470,10 @@ export class ChatSession {
     st.resetUsage();
     st.addUsage(run.tokensIn, run.tokensOut);
     if (run.effort) this.effort = run.effort;
+    // Volta exatamente onde a leitura parou: o que chegou enquanto você não
+    // estava olhando fica logo abaixo, em vez de você cair no fim e ter que
+    // subir pra procurar onde a resposta começou.
+    st.setResume({ scroll: run.scrollTop });
     this.emit();
   }
 
@@ -524,6 +529,8 @@ export class ChatSession {
       this.plugin.clearChatUnread(ref.id);
       return;
     }
+    // Saber ANTES de limpar: `clearChatUnread` roda no fim deste método.
+    const naoLida = this.plugin.unreadSet().has(ref.id);
     // Turno em andamento continua rodando, agora escrevendo fora da tela.
     if (!this.destacarTurno()) this.abortRef.current?.abort();
     this.flushSave();
@@ -561,6 +568,15 @@ export class ChatSession {
       st.addUsage(chat.tokensIn, chat.tokensOut);
       st.setSessionPersona(chat.persona ?? "");
       st.setCurrentChatStarred(chat.starred === true);
+      // Conversa que respondeu sem você ver abre NA RESPOSTA, não no fim dela:
+      // aqui não há px guardados (a conversa veio do disco), então o ponto é a
+      // última fala do modelo — que é justamente o que chegou sem você.
+      if (naoLida) {
+        const nova = [...restored]
+          .reverse()
+          .find((m) => m.type === "ai-response");
+        if (nova) st.setResume({ messageId: nova.id });
+      }
       // Abrir É ler.
       this.plugin.clearChatUnread(chat.id);
       if (chat.effort) this.effort = chat.effort;
