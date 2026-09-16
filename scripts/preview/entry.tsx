@@ -132,10 +132,16 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
       ],
       anthropic: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
     },
-    favoriteModels: {
-      openai: ["gpt-5", "gpt-4o"],
-      anthropic: ["claude-opus-5"],
-    },
+    // ?favoritos=0 zera os favoritos: é o estado em que a folha de modelo já
+    // lista TUDO no primeiro nível e a linha "Show list" some — e foi esse o
+    // estado que fez parecer que ela tinha sumido do app.
+    favoriteModels:
+      new URLSearchParams(location.search).get("favoritos") === "0"
+        ? {}
+        : {
+            openai: ["gpt-5", "gpt-4o"],
+            anthropic: ["claude-opus-5"],
+          },
     // Um de cada estado, pra ver as quatro bolinhas de uma vez:
     // openai testado OK · gemini reprovado · anthropic com chave sem teste ·
     // o resto sem credencial.

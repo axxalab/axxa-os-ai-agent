@@ -3,6 +3,7 @@
 // É como o "componente raiz" no Figma — todo o resto é montado a partir daqui.
 
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
+import { settingsReadLooksBroken } from "./core/settingsGuard";
 import { getProvider } from "./providers";
 import { AxxaView, VIEW_TYPE_AXXA } from "./ui/AxxaView";
 import { registerBrandLogos } from "./ui/brandLogos";
@@ -921,9 +922,78 @@ export default class AxxaPlugin extends Plugin {
     return `axxa-${field.replace(/ApiKey$/, "")}-key`;
   }
 
+  /**
+   * True quando o `data.json` EXISTE mas veio ilegível. Enquanto isso valer,
+   * `saveSettings` se recusa a gravar: o que está na memória são os PADRÕES, e
+   * gravá-los por cima transforma uma leitura falha numa perda permanente.
+   */
+  private settingsUnsafe = false;
+
+  /** Caminho do arquivo de settings do plugin. */
+  private dataPath(nome = "data.json"): string {
+    const dir = this.manifest.dir ?? ".obsidian/plugins/axxa-os-ai-agent";
+    return `${dir}/${nome}`;
+  }
+
+  /**
+   * Cópia de segurança das settings, reescrita a cada carga bem-sucedida.
+   *
+   * É uma linha de código contra um estrago que não tem volta: quem perde o
+   * `data.json` perde chaves, modelos, providers e projetos, e não há de onde
+   * tirar isso de novo — as conversas sobrevivem (são .md no vault), as
+   * configurações não.
+   */
+  private async backupSettings(bruto: string): Promise<void> {
+    try {
+      if (bruto.trim().length > 2) {
+        await this.app.vault.adapter.write(this.dataPath("data.backup.json"), bruto);
+      }
+    } catch (err) {
+      console.error("[axxa] backup das settings falhou:", err);
+    }
+  }
+
   async loadSettings() {
     // loadData() lê do arquivo do plugin no vault — substitui localStorage.
     const saved = (await this.loadData()) ?? {};
+
+    // `loadData` devolve null tanto pra "primeira instalação" quanto pra
+    // "o arquivo está lá e não deu pra ler" (JSON quebrado, escrita
+    // interrompida). São coisas MUITO diferentes: no primeiro caso os padrões
+    // são a resposta certa; no segundo, gravar os padrões apaga tudo que a
+    // pessoa configurou. Então a diferença é checada, não presumida.
+    if (Object.keys(saved).length === 0) {
+      try {
+        const caminho = this.dataPath();
+        const existe = await this.app.vault.adapter.exists(caminho);
+        const bruto = existe
+          ? (await this.app.vault.adapter.read(caminho)).trim()
+          : "";
+        {
+          if (
+            settingsReadLooksBroken({
+              chavesLidas: 0,
+              arquivoExiste: existe,
+              tamanhoBruto: bruto.length,
+            })
+          ) {
+            this.settingsUnsafe = true;
+            console.error(
+              "[axxa] data.json existe mas não foi lido — settings NÃO serão gravadas até reiniciar."
+            );
+            new Notice(
+              "AXXA: couldn't read your settings file. Nothing will be overwritten — restart Obsidian, and check data.backup.json next to it if needed.",
+              15000
+            );
+          }
+        }
+      } catch (err) {
+        console.error("[axxa] checagem do data.json falhou:", err);
+      }
+    } else {
+      void this.backupSettings(JSON.stringify(saved, null, 2));
+    }
+
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved);
     // PT-BR removido (base 1.0) — força en-us e migra quem estava salvo em pt-br.
     this.settings.language = "en-us";
@@ -1013,7 +1083,9 @@ export default class AxxaPlugin extends Plugin {
     // Reescreve o data.json já sem as chaves em plaintext. Fire-and-forget
     // (não dá pra await aqui — loadSecrets é chamado no fim do loadSettings),
     // mas encadeia um .catch pra não engolir falha de IO em silêncio. v0.1.228
-    if (migrated) {
+    // Mesma trava do saveSettings: a migração também grava o arquivo inteiro,
+    // e com a leitura falha o "arquivo inteiro" é o padrão de fábrica.
+    if (migrated && !this.settingsUnsafe) {
       void this.saveData(this.persistableSettings()).catch((err) =>
         console.error("[axxa] migração de secrets (saveData) falhou:", err)
       );
@@ -1029,6 +1101,12 @@ export default class AxxaPlugin extends Plugin {
   }
 
   async saveSettings() {
+    // Leitura falhou: o que está na memória é o padrão de fábrica, não o que a
+    // pessoa configurou. Gravar aqui é apagar de verdade.
+    if (this.settingsUnsafe) {
+      console.error("[axxa] saveSettings bloqueado: as settings não foram lidas.");
+      return;
+    }
     const ss = this.app.secretStorage;
     if (ss) {
       // Chaves vão pro SecretStorage; data.json é salvo sem elas.
