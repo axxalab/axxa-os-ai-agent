@@ -1480,7 +1480,8 @@ Open Settings › Providers to add it, then run the connection test.`,
           <>
             <SheetSearch
               value={noteQuery}
-              placeholder="Search notes…"
+              placeholder="Search notes"
+              found={notasAchadas.length}
               onChange={setNoteQuery}
             />
             <SheetGroup>

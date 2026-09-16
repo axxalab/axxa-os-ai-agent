@@ -18,6 +18,7 @@ import { isChatMode } from "../core/session";
 import type { ChatSummary } from "../core/chatPersistence";
 import { ChatList, useChatSummaries } from "./ChatList";
 import { Icon } from "./Icon";
+import { SearchField } from "./SearchField";
 import { openActions } from "./menu";
 import {
   chatsOfModule,
@@ -117,29 +118,14 @@ export function ModuleHome({
             válida, então pra quem só quer procurar palavra a palavra "regex"
             no placeholder é uma instrução a mais pra ler e ignorar. Quem
             precisa, digita e funciona. */}
-        <label
-          className={
-            busca.invalida ? "axxa-home-search is-bad" : "axxa-home-search"
-          }
-        >
-          <Icon name="search" size={18} />
-          <input
-            type="search"
-            value={query}
-            placeholder="Search"
-            aria-label={`Search ${moduleLabel(modulo)}`}
-            onChange={(e) => setQuery(e.currentTarget.value)}
-          />
-          {procurando && (
-            <span className="axxa-home-found">
-              {/* A contagem aparece SEMPRE — na expressão quebrada também, com
-                  o aviso de que ali virou busca literal. Trocar o número pelo
-                  aviso deixava a pessoa sem saber se achou algo. */}
-              {busca.invalida ? "literal · " : ""}
-              {visiveis.length === 1 ? "1 found" : `${visiveis.length} found`}
-            </span>
-          )}
-        </label>
+        <SearchField
+          value={query}
+          placeholder="Search"
+          label={`Search ${moduleLabel(modulo)}`}
+          found={visiveis.length}
+          invalid={busca.invalida}
+          onChange={setQuery}
+        />
 
         {ehAgent && (
           <div className="axxa-home-headrow">

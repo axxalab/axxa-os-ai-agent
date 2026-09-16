@@ -19,6 +19,7 @@ import {
   type ReactNode,
 } from "react";
 import { Icon } from "./Icon";
+import { SearchField } from "./SearchField";
 import { screen, tap, warn } from "./haptics";
 
 /** Quanto puxar além da borda pra o gesto valer. Menos que isso é solavanco
@@ -337,30 +338,31 @@ export function SheetTile({
 
 /** Campo de busca no topo de uma folha (lista de notas). Fica ACIMA da lista
  *  de propósito: com o teclado aberto, o que sobra de tela é o topo. */
+/**
+ * A busca da folha É a busca do app (SearchField) — mesmo componente, mesma
+ * pílula, mesma contagem de achados. O que a folha acrescenta é o respiro
+ * embaixo e o teclado abrindo sozinho: aqui a pessoa entrou NESTE nível
+ * justamente pra buscar, então esperar um toque a mais é fazer perder tempo.
+ */
 export function SheetSearch({
   value,
   placeholder,
   onChange,
+  found,
 }: {
   value: string;
   placeholder: string;
   onChange: (v: string) => void;
+  found?: number;
 }) {
-  const ref = useRef<HTMLInputElement>(null);
-  // `autoFocus` do React chama focus() sem preventScroll — o mesmo pulo da
-  // folha, agora ao entrar no nível da busca.
-  useEffect(() => {
-    ref.current?.focus({ preventScroll: true });
-  }, []);
   return (
     <div className="axxa-sheet-search">
-      <Icon name="search" size={16} />
-      <input
-        ref={ref}
-        type="text"
+      <SearchField
         value={value}
         placeholder={placeholder}
-        onChange={(e) => onChange(e.currentTarget.value)}
+        found={found}
+        autoFocus
+        onChange={onChange}
       />
     </div>
   );
