@@ -406,6 +406,12 @@ body.theme-dark {
   /* Fonte de LEITURA da resposta. Serifa, como na referência: texto corrido em
      sans lê como interface; em serifa lê como texto. Trocar por
      `var(--font-text)` devolve a fonte do vault. */
+  /* Margem lateral do conteúdo — mensagens, composer e as homes usam ESTA.
+     Eram dois números diferentes (12 no texto, 16 no composer) e a conta de
+     4px sobrava como um degrau: o texto passava por fora do cartão do
+     composer e ele parecia ter uma borda que não existia. O 16 é o valor
+     medido no print da referência. */
+  --axxa-gutter: 16px;
   --axxa-read-font: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia,
     "Noto Serif", "Times New Roman", serif;
   --axxa-1: 4px;
@@ -539,7 +545,8 @@ body.theme-dark {
   /* Mais ar entre mensagens: na referência cada turno respira, e é isso que
      faz a conversa parecer conversa em vez de log. */
   gap: var(--axxa-5);
-  padding: var(--axxa-4) max(var(--axxa-3), (100% - var(--axxa-measure)) / 2) 0;
+  padding: var(--axxa-4) max(var(--axxa-gutter), (100% - var(--axxa-measure)) / 2)
+    0;
   /* DEPOIS do shorthand de propósito — o shorthand zeraria estes dois.
 
      A margem NEGATIVA é o que faz a conversa continuar por baixo do composer
@@ -1470,7 +1477,8 @@ body.theme-dark {
      lateral de 16px e 15px abaixo do cartão. Somar `safe-area-inset-bottom`
      aqui seria contar duas vezes — a gaveta do Obsidian já termina acima da
      barra de gestos (lição do bloco da 0.2.37 lá em cima). */
-  padding: var(--axxa-2) max(16px, (100% - var(--axxa-measure)) / 2) 15px;
+  padding: var(--axxa-2) max(var(--axxa-gutter), (100% - var(--axxa-measure)) / 2)
+    15px;
   /* A FAIXA é transparente: quem é vidro é o cartão, e só ele. Pintar a faixa
      inteira tingia a barra de baixo (a área dos gestos) e fazia o composer
      PARECER muito mais alto do que é — o olho lê a mancha, não a caixa. */
