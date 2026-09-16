@@ -93,9 +93,26 @@ export class ChatSession {
   }
 
   /** Chamar ao fechar a view: flusha o save pendente e cancela o stream. */
+  /**
+   * Grava agora a conversa que está respondendo FORA da tela.
+   *
+   * `flushSave` não serve pra isso: ele grava a conversa VISÍVEL, e a de
+   * segundo plano não está no store de ninguém — ela vive no `background`.
+   * Sem esta chamada, fechar a view com um turno rodando fora da tela jogava
+   * a resposta fora: o arquivo nunca tinha sido escrito, porque a gravação do
+   * segundo plano só acontecia no fim do turno.
+   */
+  async flushBackground(): Promise<void> {
+    await this.gravarFundo();
+  }
+
   dispose(): void {
     this.unsubStore();
     this.flushSave();
+    // Rede de segurança pra quem chama `dispose` sem poder esperar (o await
+    // de verdade está no onClose da view). Dispara antes do abort: depois
+    // dele o `background` é limpo pelo `finally` do turno.
+    void this.gravarFundo();
     this.abortRef.current?.abort();
     this.listeners.clear();
   }

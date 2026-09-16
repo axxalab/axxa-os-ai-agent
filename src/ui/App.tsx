@@ -93,6 +93,14 @@ export function App({
           plugin={plugin}
           session={session}
           inject={inject}
+          // Volta pra home do módulo DESTA conversa — não pra última home
+          // visitada. Se você abriu um chat de Agent vindo do Chat, voltar
+          // tem que levar ao Agent, que é onde ele mora.
+          onBackHome={() => {
+            const m = session.config.mode;
+            setModulo(m);
+            setView("module");
+          }}
           onOpenMenu={() => setMenuOpen(true)}
           onUseSkill={useSkill}
         />

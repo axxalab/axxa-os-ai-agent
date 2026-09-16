@@ -1160,7 +1160,12 @@ body.theme-dark {
      tínhamos — texto corrido em sans lê como interface, em serifa lê como
      texto. Código e tabela continuam com a fonte que lhes cabe. */
   font-family: var(--axxa-read-font);
-  font-size: 17px;
+  /* 16, não 17. Serifa a 17 LÊ maior que a sem-serifa de 18 do composer — a
+     altura-de-x é maior e o traço é mais pesado —, e o resultado era o texto
+     da resposta parecendo maior que o que você acabou de digitar. Medido:
+     resposta 17px serif vs composer 18px sans. Com 16 os dois empatam no
+     olho, que é o que importa aqui. */
+  font-size: 16px;
   line-height: 1.62;
   color: var(--text-normal);
   /* Ligaduras e números proporcionais: detalhe barato que separa "texto" de

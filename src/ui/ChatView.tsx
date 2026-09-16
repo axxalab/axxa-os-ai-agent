@@ -115,12 +115,15 @@ export function ChatView({
   plugin,
   session,
   inject,
+  onBackHome,
   onOpenMenu,
   onUseSkill,
 }: {
   plugin: AxxaPlugin;
   session: ChatSession;
   inject: ComposerInject | null;
+  /** Volta pra home do módulo desta conversa. */
+  onBackHome: () => void;
   onOpenMenu: () => void;
   onUseSkill: (skill: Skill) => void;
 }) {
@@ -901,6 +904,17 @@ Open Settings › Providers to add it, then run the connection test.`,
   return (
     <div className="axxa-chat">
       <header className="axxa-topbar">
+        {/* Voltar vem PRIMEIRO: a conversa mora dentro da home do módulo, e
+            é pra lá que se volta. O menu fica ao lado em vez de dar lugar —
+            tirá-lo daqui poria Settings a três toques de dentro de um chat. */}
+        <button
+          type="button"
+          className="axxa-icon-btn"
+          aria-label="Back to module"
+          onClick={onBackHome}
+        >
+          <Icon name="arrow-left" />
+        </button>
         <button
           type="button"
           className="axxa-icon-btn"

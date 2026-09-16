@@ -101,6 +101,10 @@ export class AxxaView extends ItemView {
     this.clearFullscreen();
     this.root?.unmount();
     this.root = null;
+    // ANTES do dispose e com await: se alguma conversa está respondendo fora
+    // da tela, o arquivo dela ainda não existe — quem grava é o fim do turno,
+    // e o turno vai morrer aqui.
+    await this.session?.flushBackground();
     this.session?.dispose();
     this.session = null;
   }
