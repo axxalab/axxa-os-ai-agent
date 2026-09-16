@@ -111,7 +111,7 @@ const PLUS_SHEET_TITLE: Record<string, string> = {
 /** Título da folha de modelos em cada nível. */
 const MODEL_SHEET_TITLE: Record<string, string> = {
   root: "Select model",
-  list: "Show list",
+  list: "All models",
   effort: "Effort",
 };
 
@@ -948,9 +948,9 @@ Open Settings › Providers to add it, then run the connection test.`,
   const favorites = (
     plugin.settings.favoriteModels?.[pickProvider] ?? []
   ).slice(0, 5);
-  const rest = session
-    .modelOptions(pickProvider)
-    .filter((m) => !favorites.includes(m));
+  /** O catálogo inteiro do provider — é o que o nível "All models" mostra. */
+  const todosOsModelos = session.modelOptions(pickProvider);
+  const rest = todosOsModelos.filter((m) => !favorites.includes(m));
 
   // ── modo de voz ─────────────────────────────────────────────────────────
   // O gravador mora em useVoice; aqui fica só o GESTO do botão (segurar pra
@@ -1008,6 +1008,35 @@ Open Settings › Providers to add it, then run the connection test.`,
     setModelQuery("");
     setModelTab("");
   }, [pickProvider, modelView]);
+
+  /**
+   * Marca/desmarca um favorito SEM sair da folha.
+   *
+   * Antes isso só existia em Settings, e o caminho era: sair do chat, achar a
+   * aba, achar o provider, achar o modelo. Quem descobre que usa um modelo
+   * toda hora descobre isso AQUI, na hora de escolher — que é onde a marca
+   * deve poder ser feita.
+   *
+   * O limite é o mesmo das Settings, e o aviso também: cinco por provider,
+   * porque cinco é o que cabe no atalho sem ele virar lista.
+   */
+  const alternarFavorito = async (model: string) => {
+    const atuais = plugin.settings.favoriteModels?.[pickProvider] ?? [];
+    const tem = atuais.includes(model);
+    if (!tem && atuais.length >= FAVORITE_LIMIT) {
+      new Notice(
+        `${FAVORITE_LIMIT} favorites per provider is the limit — unstar one first.`
+      );
+      return;
+    }
+    plugin.settings.favoriteModels = {
+      ...(plugin.settings.favoriteModels ?? {}),
+      [pickProvider]: tem
+        ? atuais.filter((x) => x !== model)
+        : [...atuais, model],
+    };
+    await plugin.saveSettings();
+  };
 
   /** Tocar num modelo comita as DUAS coisas: o provider da folha e o modelo. */
   const chooseModel = (model: string) => {
@@ -1420,12 +1449,17 @@ Open Settings › Providers to add it, then run the connection test.`,
         ) : modelView === "list" ? (
           <ListaDeModelos
             provider={pickProvider}
-            models={rest}
+            /* TUDO, favoritos inclusive. Com `rest` (o que não é favorito), a
+               linha SUMIA sob o dedo ao ser favoritada — ela passava a
+               pertencer ao outro nível. "All models" promete todos. */
+            models={todosOsModelos}
             atual={pickProvider === cfg.provider ? cfg.model : ""}
             query={modelQuery}
             onQuery={setModelQuery}
             aba={modelTab}
             onAba={setModelTab}
+            favoritos={favorites}
+            onFavorito={(m) => void alternarFavorito(m)}
             onPick={chooseModel}
           />
         ) : (
@@ -1448,6 +1482,8 @@ Open Settings › Providers to add it, then run the connection test.`,
                     provider={pickProvider}
                     model={m}
                     selected={m === cfg.model && pickProvider === cfg.provider}
+                    favorito
+                    onFavorito={() => void alternarFavorito(m)}
                     onClick={() => chooseModel(m)}
                   />
                 ))}
@@ -1470,7 +1506,7 @@ Open Settings › Providers to add it, then run the connection test.`,
                 <SheetNavRow
                   icon="list"
                   title="All models"
-                  note={`${rest.length}`}
+                  note={`${todosOsModelos.length}`}
                   onClick={() => setModelView("list")}
                 />
               )}
@@ -1719,11 +1755,17 @@ function ModelRow({
   provider,
   model,
   selected,
+  favorito,
+  onFavorito,
   onClick,
 }: {
   provider: string;
   model: string;
   selected: boolean;
+  /** Está entre os favoritos deste provider. */
+  favorito?: boolean;
+  /** Marcar/desmarcar. Ausente = a linha não mostra estrela. */
+  onFavorito?: () => void;
   onClick: () => void;
 }) {
   const card = getModelCard(provider, model);
@@ -1732,6 +1774,16 @@ function ModelRow({
       title={prettyModelName(model)}
       note={card.goodFor ?? card.description}
       selected={selected}
+      action={
+        onFavorito
+          ? {
+              icon: favorito ? "star" : "star-off",
+              label: favorito ? "Remove from favorites" : "Add to favorites",
+              on: favorito,
+              onClick: onFavorito,
+            }
+          : undefined
+      }
       onClick={onClick}
     />
   );
@@ -1754,6 +1806,8 @@ function ListaDeModelos({
   onQuery,
   aba,
   onAba,
+  favoritos,
+  onFavorito,
   onPick,
 }: {
   provider: string;
@@ -1763,6 +1817,8 @@ function ListaDeModelos({
   onQuery: (v: string) => void;
   aba: string;
   onAba: (id: string) => void;
+  favoritos: string[];
+  onFavorito: (m: string) => void;
   onPick: (m: string) => void;
 }) {
   const filtrados = useMemo(
@@ -1809,6 +1865,8 @@ function ListaDeModelos({
               provider={provider}
               model={m}
               selected={m === atual}
+              favorito={favoritos.includes(m)}
+              onFavorito={() => onFavorito(m)}
               onClick={() => onPick(m)}
             />
           ))}

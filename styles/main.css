@@ -1897,11 +1897,13 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
    "Reasoning" até sobrar "Reas…". */
 .axxa-root .axxa-sheet-tabs {
   display: flex;
-  gap: var(--axxa-1);
+  gap: var(--axxa-4);
   overflow-x: auto;
   scrollbar-width: none;
   margin-bottom: var(--axxa-3);
-  padding-bottom: 2px;
+  /* O fio corre por baixo de TODAS: é ele que faz a fileira ler como aba em
+     vez de botão solto, e é sobre ele que a marca da ativa se apoia. */
+  border-bottom: 1px solid var(--axxa-line);
 }
 
 .axxa-root .axxa-sheet-tabs::-webkit-scrollbar {
@@ -1913,9 +1915,12 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
-  height: 34px;
-  padding: 0 var(--axxa-3);
-  border-radius: 999px;
+  height: 38px;
+  padding: 0;
+  border-radius: 0;
+  /* O sublinhado da ativa nasce aqui, transparente: assim a linha não muda de
+     altura quando a aba muda. */
+  border-bottom: 2px solid transparent;
   background-color: transparent;
   box-shadow: none;
   color: var(--text-muted);
@@ -1924,8 +1929,9 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
 }
 
 .axxa-root button.axxa-sheet-tab.is-active {
-  background-color: color-mix(in srgb, var(--text-normal) 10%, transparent);
+  border-bottom-color: var(--interactive-accent);
   color: var(--text-normal);
+  font-weight: var(--font-medium);
 }
 
 /* A contagem diz quanto tem lá dentro ANTES do toque. */
@@ -2444,6 +2450,52 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
   text-overflow: ellipsis;
   color: var(--text-muted);
   font-size: var(--font-ui-small);
+}
+
+/* Linha com ação na ponta: o botão da linha e o da estrela são IRMÃOS —
+   botão dentro de botão não existe, e são duas ações diferentes (uma escolhe,
+   a outra marca). */
+.axxa-root .axxa-sheet-row-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.axxa-root .axxa-sheet-row-wrap > .axxa-sheet-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* O separador entre linhas passa a valer também entre os invólucros, senão
+   uma lista com estrela perde todos os fios. */
+.axxa-root .axxa-sheet-row-wrap + .axxa-sheet-row-wrap,
+.axxa-root .axxa-sheet-row-wrap + .axxa-sheet-row,
+.axxa-root .axxa-sheet-row + .axxa-sheet-row-wrap {
+  border-top: 1px solid var(--axxa-line);
+}
+
+.axxa-root button.axxa-sheet-row-action {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  align-self: stretch;
+  padding: 0;
+  background-color: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  color: var(--text-faint);
+}
+
+.axxa-root button.axxa-sheet-row-action:hover {
+  color: var(--text-normal);
+  background-color: transparent;
+}
+
+/* Favorito marcado: a estrela acende. É a mesma cor do que está escolhido —
+   as duas coisas são "isto é seu". */
+.axxa-root button.axxa-sheet-row-action.is-on {
+  color: var(--text-accent);
 }
 
 .axxa-root .axxa-sheet-row + .axxa-sheet-row {

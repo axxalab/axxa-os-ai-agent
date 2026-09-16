@@ -571,6 +571,7 @@ export function SheetRow({
   iconTone,
   badge,
   chevron,
+  action,
   onClick,
 }: {
   title: string;
@@ -592,9 +593,18 @@ export function SheetRow({
   badge?: boolean;
   /** Seta à direita — a linha leva pra outro lugar. */
   chevron?: boolean;
+  /** Botão SEPARADO na ponta direita (a estrela de favorito). Fica fora do
+   *  botão da linha porque botão dentro de botão não existe — e porque são
+   *  duas ações diferentes: uma escolhe, a outra marca. */
+  action?: {
+    icon: string;
+    label: string;
+    on?: boolean;
+    onClick: () => void;
+  };
   onClick: () => void;
 }) {
-  return (
+  const linha = (
     <button
       type="button"
       className={
@@ -637,5 +647,25 @@ export function SheetRow({
         <Icon name="chevron-right" size={18} className="axxa-sheet-chev" />
       )}
     </button>
+  );
+  if (!action) return linha;
+  return (
+    <div className="axxa-sheet-row-wrap">
+      {linha}
+      <button
+        type="button"
+        className={
+          action.on
+            ? "axxa-sheet-row-action is-on"
+            : "axxa-sheet-row-action"
+        }
+        aria-label={action.label}
+        aria-pressed={action.on === true}
+        title={action.label}
+        onClick={action.onClick}
+      >
+        <Icon name={action.icon} size={18} />
+      </button>
+    </div>
   );
 }

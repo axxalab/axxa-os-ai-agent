@@ -60,6 +60,7 @@ const chats = [
 
 const chatsListeners = new Set<() => void>();
 const unreadListeners = new Set<() => void>();
+const settingsListeners = new Set<() => void>();
 
 const plugin = {
   manifest: { version: PREVIEW_VERSION, id: "axxa-os-ai-agent" },
@@ -166,7 +167,13 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
   },
   // A casca grava em quase toda interação; sem isto o clique morre num
   // TypeError e o preview mente dizendo que o botão não faz nada.
-  saveSettings: async () => {},
+  // Gravar avisa quem escuta, como no plugin de verdade (main.saveSettings).
+  // Com o no-op de antes, mexer numa configuração pela folha (favoritar um
+  // modelo) mudava o objeto e a tela não redesenhava — o preview dizendo que
+  // a marca não tinha pegado.
+  saveSettings: async () => {
+    settingsListeners.forEach((cb) => cb());
+  },
   loadChatSummaries: async () => chats,
   // Inscrição DE VERDADE: é por ela que a lista redesenha quando uma conversa
   // é marcada como não lida. A versão no-op de antes fazia a marca só aparecer
@@ -179,7 +186,10 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
   notifyChats() {
     chatsListeners.forEach((cb) => cb());
   },
-  onSettingsChange: () => () => {},
+  onSettingsChange: (cb: () => void) => {
+    settingsListeners.add(cb);
+    return () => settingsListeners.delete(cb);
+  },
   // ?nokey=1 simula a PRIMEIRA vez: nenhum provider configurado. É o cenário
   // em que o envio desiste antes de criar a mensagem do usuário.
   providerCredential: (id: string) =>
