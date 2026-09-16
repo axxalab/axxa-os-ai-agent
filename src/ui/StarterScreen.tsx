@@ -7,13 +7,13 @@
 // As conversas gravadas NÃO moram aqui: cada módulo tem a sua home (ver
 // ModuleHome.tsx), que é onde se escolhe qual abrir. Esta tela é pra escrever.
 
-import type { CSSProperties } from "react";
 import type AxxaPlugin from "../main";
 import type { ChatMode, ChatSession } from "../core/session";
 import { CHAT_MODES } from "../core/session";
 import { MODULES } from "./modules";
 import { providerConfigured, PROVIDERS } from "../core/providersMeta";
 import { Icon } from "./Icon";
+import { Segmented } from "./Segmented";
 import { openPluginSettings } from "./modals";
 
 /** Saudação pela hora local — o chat abre falando com você, não com o void. */
@@ -37,29 +37,17 @@ export function StarterScreen({
   const hasKey = providerConfigured(plugin, cfg.provider);
   const providerName =
     PROVIDERS.find((p) => p.id === cfg.provider)?.name ?? cfg.provider;
-  // Índice do modo ativo — move o thumb do segmented control via CSS.
-  const activeIndex = Math.max(CHAT_MODES.indexOf(cfg.mode), 0);
 
   return (
     <div className="axxa-starter">
-      <div
-        className="axxa-modes"
-        role="group"
-        aria-label="Chat mode"
-        style={{ "--axxa-seg": activeIndex } as CSSProperties}
-      >
-        {CHAT_MODES.map((m) => (
-          <button
-            key={m}
-            type="button"
-            className={m === cfg.mode ? "axxa-mode is-active" : "axxa-mode"}
-            aria-pressed={m === cfg.mode}
-            onClick={() => session.setMode(m)}
-          >
-            {MODULES[m].label}
-          </button>
-        ))}
-      </div>
+      {/* O MESMO controle que filtra a lista na home (ver Segmented.tsx) —
+          aqui com o nome inteiro, que cabe em três colunas. */}
+      <Segmented
+        options={CHAT_MODES.map((m) => ({ id: m, label: MODULES[m].label }))}
+        value={cfg.mode}
+        label="Chat mode"
+        onChange={(id) => session.setMode(id as ChatMode)}
+      />
 
       <div className="axxa-starter-hero">
         <Icon name={mode.icon} size={26} className="axxa-starter-mark" />

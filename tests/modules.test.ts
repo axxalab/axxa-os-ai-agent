@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   MODULES,
   MODULE_LIST,
+  SEGMENT_ALL,
   chatsOfModule,
+  filterSegment,
+  moduleSegments,
   moduleHint,
   moduleIcon,
   moduleEmptyLine,
@@ -303,5 +306,68 @@ describe("moduleHint", () => {
 
   it("sem data utilizável mostra só a contagem", () => {
     expect(moduleHint({ count: 2, last: "quebrado" }, agora)).toBe("2 chats");
+  });
+});
+
+describe("moduleSegments", () => {
+  const usadas = [
+    chat({ id: "a", mode: "chat" }),
+    chat({ id: "b", mode: "chat" }),
+    chat({ id: "c", mode: "agent" }),
+  ];
+
+  it("a primeira aba é a que não filtra nada, e conta tudo", () => {
+    const segs = moduleSegments(usadas);
+    expect(segs[0]).toEqual({ id: SEGMENT_ALL, label: "All", count: 3 });
+  });
+
+  it("módulo SEM conversa não vira aba", () => {
+    // Uma aba que só leva a uma lista vazia não é filtro, é porta pra lugar
+    // nenhum: quem quer começar naquele modo usa os cartões de baixo.
+    const ids = moduleSegments(usadas).map((s) => s.id);
+    expect(ids).toEqual([SEGMENT_ALL, "chat", "agent"]);
+    expect(ids).not.toContain("vault-qa");
+  });
+
+  it("a aba usa o nome CURTO — 'Vault Q&A' não cabe em quatro colunas", () => {
+    const segs = moduleSegments([chat({ mode: "vault-qa" })]);
+    expect(segs.map((s) => s.label)).toEqual(["All", "Vault"]);
+  });
+
+  it("modo que só existe no disco também ganha aba", () => {
+    // Mesma razão de `modulesInUse`: sem a aba, as conversas gravadas por
+    // outra versão ficariam sem recorte próprio na lista.
+    const segs = moduleSegments([...usadas, chat({ id: "d", mode: "research" })]);
+    expect(segs.map((s) => s.id)).toContain("research");
+  });
+
+  it("nenhuma conversa, nenhuma aba de módulo", () => {
+    expect(moduleSegments([])).toEqual([
+      { id: SEGMENT_ALL, label: "All", count: 0 },
+    ]);
+  });
+});
+
+describe("filterSegment", () => {
+  const usadas = [
+    chat({ id: "a", mode: "chat" }),
+    chat({ id: "c", mode: "agent" }),
+  ];
+
+  it("'All' devolve tudo, na ordem em que veio", () => {
+    expect(filterSegment(usadas, SEGMENT_ALL).map((c) => c.id)).toEqual([
+      "a",
+      "c",
+    ]);
+  });
+
+  it("uma aba devolve só o módulo dela", () => {
+    expect(filterSegment(usadas, "agent").map((c) => c.id)).toEqual(["c"]);
+  });
+
+  it("não devolve a mesma lista por referência", () => {
+    // A tela filtra a cada render; devolver o array original convidaria a
+    // ordenar/cortar por cima do que o plugin mantém.
+    expect(filterSegment(usadas, SEGMENT_ALL)).not.toBe(usadas);
   });
 });

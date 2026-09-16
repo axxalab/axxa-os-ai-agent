@@ -45,6 +45,11 @@ export function App({
     () => plugin.settings.defaultMode || "chat"
   );
   const [inject, setInject] = useState<ComposerInject | null>(null);
+  /** De onde se entrou na conversa — é pra lá que a seta de voltar leva.
+   *  A seta tem que desfazer o toque que trouxe você, não levar a um lugar
+   *  parecido: quem abriu do painel volta ao painel, quem abriu da tela do
+   *  módulo volta pra ela. */
+  const [voltarPara, setVoltarPara] = useState<"home" | "module">("module");
   const [, force] = useReducer((n: number) => n + 1, 0);
   // Re-render em mudanças de sessão (seleção/lock) e de settings.
   useEffect(() => {
@@ -79,8 +84,20 @@ export function App({
           plugin={plugin}
           session={session}
           onOpenMenu={() => setMenuOpen(true)}
-          onEnterModule={entrarNoModulo}
-          onOpenChat={() => setView("chat")}
+          // Cartão do painel: conversa nova naquele modo, JÁ ESCREVENDO. O
+          // `inject` sem texto é exatamente isso — "põe o cursor no campo" —
+          // e é o mesmo caminho que a skill usa pra chegar lá com texto.
+          onNewChat={(m) => {
+            session.newChat(m);
+            setModulo(m);
+            setInject({ text: "", nonce: Date.now() });
+            setVoltarPara("home");
+            setView("chat");
+          }}
+          onOpenChat={() => {
+            setVoltarPara("home");
+            setView("chat");
+          }}
         />
       ) : view === "module" ? (
         <ModuleHome
@@ -92,9 +109,13 @@ export function App({
           // (ChatList.abrir). Carregar aqui de novo era pedir a mesma conversa
           // duas vezes — inofensivo pelo guarda de identidade da sessão, mas
           // ainda assim uma segunda ida ao disco por toque.
-          onOpenChat={() => setView("chat")}
+          onOpenChat={() => {
+            setVoltarPara("module");
+            setView("chat");
+          }}
           onNewChat={() => {
             if (isChatMode(modulo)) session.newChat(modulo);
+            setVoltarPara("module");
             setView("chat");
           }}
           onOpenSkills={() => setView("skills")}
@@ -104,10 +125,15 @@ export function App({
           plugin={plugin}
           session={session}
           inject={inject}
-          // Volta pra home do módulo DESTA conversa — não pra última home
-          // visitada. Se você abriu um chat de Agent vindo do Chat, voltar
-          // tem que levar ao Agent, que é onde ele mora.
+          // Volta pra ONDE SE ENTROU. E, quando isso é a tela de um módulo,
+          // é a do módulo DESTA conversa — não a da última visitada: se você
+          // abriu um chat de Agent vindo do Chat, voltar leva ao Agent, que é
+          // onde ele mora.
           onBackHome={() => {
+            if (voltarPara === "home") {
+              setView("home");
+              return;
+            }
             const m = session.config.mode;
             setModulo(m);
             setView("module");

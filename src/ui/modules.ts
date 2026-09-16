@@ -20,6 +20,9 @@ export interface ModuleMeta {
   id: string;
   /** Nome humano. Nunca mostre o id pro usuário. */
   label: string;
+  /** O nome que cabe numa aba estreita: num segmented de quatro colunas de
+   *  telefone, "Vault Q&A" não cabe — e cortado no meio ele não diz nada. */
+  short: string;
   icon: string;
   /** Uma linha dizendo o que o módulo faz — usada na tela inicial. */
   tagline: string;
@@ -36,6 +39,7 @@ export const MODULES: Record<ChatMode, ModuleMeta> = {
   chat: {
     id: "chat",
     label: "Chat",
+    short: "Chat",
     icon: "message-circle",
     tagline: "Just you and the model. Your notes stay out of it.",
     placeholder: "Message the model…",
@@ -45,6 +49,7 @@ export const MODULES: Record<ChatMode, ModuleMeta> = {
   "vault-qa": {
     id: "vault-qa",
     label: "Vault Q&A",
+    short: "Vault",
     icon: "library",
     tagline: "Answers grounded in your notes, found by local search.",
     placeholder: "Ask something about your notes…",
@@ -54,6 +59,7 @@ export const MODULES: Record<ChatMode, ModuleMeta> = {
   agent: {
     id: "agent",
     label: "Agent",
+    short: "Agent",
     icon: "bot",
     tagline: "Reads and edits your vault — every change asks first.",
     placeholder: "Tell the agent what to do in your vault…",
@@ -81,6 +87,7 @@ export function modulesInUse(chats: readonly ChatSummary[]): ModuleMeta[] {
     extras.set(c.mode, {
       id: c.mode,
       label: moduleLabel(c.mode),
+      short: moduleLabel(c.mode),
       icon: moduleIcon(c.mode),
       tagline: "",
       placeholder: MODULES.chat.placeholder,
@@ -238,6 +245,41 @@ export function relativeDay(iso: string, agora: number = Date.now()): string {
   if (diff === 1) return "Yesterday";
   if (diff < 7) return `${diff} days ago`;
   return iso.slice(0, 10);
+}
+
+/** O id da aba que não filtra nada. */
+export const SEGMENT_ALL = "all";
+
+export interface ModuleSegment {
+  id: string;
+  label: string;
+  count: number;
+}
+
+/**
+ * As abas do filtro da lista: "All" mais os módulos QUE TÊM conversa.
+ *
+ * Módulo sem nenhuma conversa fica de fora de propósito. Uma aba que só leva
+ * a uma lista vazia não é filtro, é uma porta pra lugar nenhum — e quem quer
+ * COMEÇAR naquele modo não usa o filtro, usa os cartões de baixo.
+ */
+export function moduleSegments(chats: readonly ChatSummary[]): ModuleSegment[] {
+  const segs: ModuleSegment[] = [
+    { id: SEGMENT_ALL, label: "All", count: chats.length },
+  ];
+  for (const m of modulesInUse(chats)) {
+    const count = chatsOfModule(chats, m.id).length;
+    if (count > 0) segs.push({ id: m.id, label: m.short, count });
+  }
+  return segs;
+}
+
+/** A lista que aquela aba mostra. */
+export function filterSegment(
+  chats: readonly ChatSummary[],
+  seg: string
+): ChatSummary[] {
+  return seg === SEGMENT_ALL ? [...chats] : chatsOfModule(chats, seg);
 }
 
 /** Resumo de uma linha pra a linha do módulo no menu. */

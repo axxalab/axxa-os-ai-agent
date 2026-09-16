@@ -226,10 +226,19 @@ export function ChatView({
   const medindoRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Skill "Use" / sugestão: entra no rascunho, abaixo do que já estava escrito.
-  useEffect(() => {
+  // Skill "Use" / sugestão: entra no rascunho, abaixo do que já estava
+  // escrito. Sem texto, é só o pedido de foco — é como o painel abre uma
+  // conversa nova já pronta pra escrever.
+  //
+  // `useLayoutEffect`, não `useEffect`: no celular o teclado só sobe se o
+  // foco acontecer DENTRO do toque que o pediu. Efeito comum roda depois da
+  // pintura, ou seja, depois que o toque acabou — a tela abria com o campo
+  // aceso e o teclado fechado, que é o pior dos dois mundos.
+  useLayoutEffect(() => {
     if (!inject) return;
-    setDraft((d) => (d.trim() ? `${d}\n\n${inject.text}` : inject.text));
+    if (inject.text) {
+      setDraft((d) => (d.trim() ? `${d}\n\n${inject.text}` : inject.text));
+    }
     textareaRef.current?.focus({ preventScroll: true });
   }, [inject]);
 
@@ -1057,7 +1066,7 @@ Open Settings › Providers to add it, then run the connection test.`,
         <button
           type="button"
           className="axxa-icon-btn"
-          aria-label="Back to module"
+          aria-label="Back"
           onClick={onBackHome}
         >
           <Icon name="arrow-left" />

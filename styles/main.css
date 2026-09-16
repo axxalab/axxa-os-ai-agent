@@ -829,57 +829,76 @@ body.theme-dark {
   color: var(--text-muted);
 }
 
-/* ── o painel ──────────────────────────────────────────────────────────
-   Dois por linha: com três módulos, a terceira ocupa a linha inteira e vira
-   a mais destacada — e não há razão pra uma delas valer mais. `auto-fit` com
-   mínimo faz três virarem 2+1 só quando a largura não dá pra mais. */
-.axxa-root .axxa-dash-grid {
+/* ── começar algo, na base da home ─────────────────────────────────────
+   Os modos ficam EMBAIXO porque ali eles são ação, não navegação: o que já
+   existe fica onde o olho cai, e o que se cria fica onde o polegar alcança.
+   Gruda na base do scroller (`sticky`), como o botão flutuante da home de
+   módulo — a lista rola por baixo e a ação nunca sai da tela. */
+.axxa-root .axxa-start {
+  position: sticky;
+  /* NEGATIVO de propósito: `bottom: 0` gruda na borda de PADDING do scroller,
+     e a home reserva ali embaixo o respiro da área segura. Sobrava uma fresta
+     por onde a lista aparecia rolando debaixo da barra. A barra desce até a
+     borda de verdade e devolve o respiro por dentro (padding-bottom). */
+  bottom: calc(-1 * (var(--axxa-3) + var(--safe-area-inset-bottom, 0px)));
+  z-index: 5;
+  /* Não encolher: a home é uma coluna flex e, com a lista passando da tela,
+     o flex espremia itens de altura fixa até sumirem (foi o que aconteceu com
+     o FAB). */
+  flex: 0 0 auto;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-2);
+  padding-top: var(--axxa-3);
+  padding-bottom: calc(var(--axxa-3) + var(--safe-area-inset-bottom, 0px));
+  background-color: var(--axxa-canvas);
+}
+
+/* O texto não bate na barra: ele se dissolve ao chegar nela, como faz ao
+   passar por baixo do composer. */
+.axxa-root .axxa-start::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 24px;
+  pointer-events: none;
+  background: linear-gradient(to top, var(--axxa-canvas), transparent);
+}
+
+.axxa-root .axxa-start-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--axxa-2);
 }
 
-.axxa-root button.axxa-dash-card {
+.axxa-root button.axxa-start-card {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-height: 108px;
-  padding: var(--axxa-3);
+  align-items: center;
+  justify-content: center;
+  gap: var(--axxa-1);
+  min-height: 68px;
+  padding: var(--axxa-2);
   border-radius: var(--axxa-r);
   background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
   box-shadow: none;
   color: var(--text-normal);
-  text-align: left;
 }
 
-.axxa-root button.axxa-dash-card:hover {
+.axxa-root button.axxa-start-card:hover {
   background-color: color-mix(in srgb, var(--text-normal) 10%, transparent);
 }
 
-/* Respirando, igual ao cartão da lista: é a mesma informação ("está
-   trabalhando") e seria estranho ela se anunciar de dois jeitos. */
-.axxa-root button.axxa-dash-card.is-running {
-  animation: axxa-respira 2.6s ease-in-out infinite;
-}
-
-.axxa-root .axxa-dash-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  margin-bottom: var(--axxa-2);
+.axxa-root button.axxa-start-card .axxa-icon {
   color: var(--text-muted);
 }
 
-.axxa-root .axxa-dash-name {
-  font-size: var(--font-ui-medium);
-  font-weight: var(--font-medium);
-}
-
-.axxa-root .axxa-dash-hint {
-  color: var(--text-faint);
+.axxa-root .axxa-start-name {
   font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
 }
 
 /* Bloco de seção da home: rótulo + a ação daquela seção. */
@@ -1165,13 +1184,19 @@ body.theme-dark {
   line-height: 1.45;
 }
 
-/* Seletor de modo — segmented control. Trilho com thumb deslizante: o thumb
-   é um ::before posicionado por --axxa-seg (0/1/2), setado pela StarterScreen.
-   A decisão trava no 1º envio, então ele só existe na tela inicial. */
+/* Segmented control — um trilho, um thumb que desliza (ver Segmented.tsx).
+   Escolhe o modo na tela inicial de uma conversa e filtra a lista na home.
+   O componente escreve duas coisas: `--axxa-seg` (qual coluna está ativa) e
+   `--axxa-seg-n` (quantas existem) — o resto é conta. As três colunas estavam
+   escritas na mão aqui, e um segmented de quatro nascia como outro controle. */
 .axxa-root .axxa-modes {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* `minmax(0, 1fr)`, não `1fr`: `1fr` é `minmax(auto, 1fr)` e uma coluna
+     nunca fica menor que o rótulo dentro dela — as colunas viravam de
+     tamanhos diferentes num trilho apertado, e o thumb, que mede 1/N do
+     trilho, parava desalinhado do nome aceso. */
+  grid-template-columns: repeat(var(--axxa-seg-n, 3), minmax(0, 1fr));
   padding: var(--axxa-1);
   border-radius: var(--axxa-r-pill);
   background-color: var(--axxa-raised);
@@ -1188,9 +1213,10 @@ body.theme-dark {
      escrito pela StarterScreen e ninguém lia — o thumb ficava colado na
      primeira coluna enquanto o rótulo ativo mudava do lado. */
   left: calc(
-    var(--axxa-1) + var(--axxa-seg, 0) * (100% - var(--axxa-1) * 2) / 3
+    var(--axxa-1) + var(--axxa-seg, 0) * (100% - var(--axxa-1) * 2) /
+      var(--axxa-seg-n, 3)
   );
-  width: calc((100% - var(--axxa-1) * 2) / 3);
+  width: calc((100% - var(--axxa-1) * 2) / var(--axxa-seg-n, 3));
   border-radius: var(--axxa-r-pill);
   background-color: var(--axxa-canvas);
   box-shadow:
@@ -1220,6 +1246,33 @@ body.theme-dark {
 .axxa-root .axxa-mode.is-active {
   color: var(--text-normal);
   font-weight: var(--font-semibold);
+}
+
+/* A aba tem o nome CENTRADO e o ponto flutuando na ponta: se o ponto entrasse
+   na linha, o nome andaria de lado ao aparecer e sumir — e ele aparece
+   sozinho, quando uma resposta chega. */
+.axxa-root .axxa-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Nome comprido encurta com reticências em vez de vazar por cima do vizinho
+   (um módulo criado por outra versão pode se chamar qualquer coisa). */
+.axxa-root .axxa-mode > span:not(.axxa-seg-dot) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.axxa-root .axxa-seg-dot {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background-color: var(--interactive-accent);
 }
 
 /* Aviso de key faltando. */
