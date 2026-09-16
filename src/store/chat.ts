@@ -212,10 +212,15 @@ interface ChatState {
   background: BackgroundRun | null;
   /** Conversa dona do turno em andamento (null = ninguém respondendo). */
   turnChatId: string | null;
-  /** Última posição de leitura da timeline (px). A tela publica; a sessão lê
-   *  quando precisa guardar onde você parou. Ninguém assina isso — escrever
-   *  aqui não redesenha nada. */
+  /** Última posição de leitura da timeline (px) e de QUAL conversa ela é.
+   *
+   *  A tela publica; lê quem precisa saber onde você parou — a sessão, quando
+   *  a conversa sai de cena no meio de uma resposta, e a própria tela quando
+   *  ela REMONTA. Remontar acontece o tempo todo: ir na home e voltar desmonta
+   *  a timeline, e sem isto ela renascia no fim do fio, desfazendo a leitura.
+   *  Ninguém assina estes campos — escrever aqui não redesenha nada. */
   viewScrollTop: number;
+  viewChatId: string | null;
   /**
    * Onde a timeline deve ABRIR quando esta conversa entrar na tela:
    *  • `resumeScroll` — px guardados (voltando de um turno em segundo plano);
@@ -378,6 +383,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   background: null,
   turnChatId: null,
   viewScrollTop: 0,
+  viewChatId: null,
   resumeScroll: null,
   resumeMessageId: null,
   waitingChatId: null,

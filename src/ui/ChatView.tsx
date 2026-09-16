@@ -502,7 +502,10 @@ export function ChatView({
       // Onde a leitura está, pra a sessão poder guardar isso se a conversa
       // sair da tela no meio de uma resposta. Escrito com `setState` direto:
       // ninguém assina este campo, então não redesenha nada.
-      useChatStore.setState({ viewScrollTop: el.scrollTop });
+      useChatStore.setState({
+        viewScrollTop: el.scrollTop,
+        viewChatId: useChatStore.getState().currentChatId,
+      });
       // Rolando com o cronômetro armado = inércia viva: adia o veredito.
       if (assentar) terminarGesto();
       reavaliar();
@@ -593,6 +596,19 @@ export function ChatView({
           : { scroll: resumeScroll as number, desde: Date.now() };
       // Tenta agora e continua tentando a cada mutação, conforme o markdown
       // vai ganhando altura (ver `aplicarRetomada`).
+      requestAnimationFrame(() => aplicarRetomada());
+      return;
+    }
+    // Sem pedido explícito, mas é a MESMA conversa de antes: a timeline está
+    // remontando (você foi na home, ou em Projects, e voltou). Volta pro ponto
+    // em que a leitura estava — ir pro fim aqui é desfazer o que você leu.
+    const { viewChatId, viewScrollTop } = useChatStore.getState();
+    if (currentChatId && viewChatId === currentChatId && viewScrollTop > 0) {
+      gestoRef.current = false;
+      setAvisoId(null);
+      seguindoRef.current = false;
+      setSeguindo(false);
+      retomarRef.current = { scroll: viewScrollTop, desde: Date.now() };
       requestAnimationFrame(() => aplicarRetomada());
       return;
     }
