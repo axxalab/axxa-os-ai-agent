@@ -341,19 +341,24 @@ export function SheetTile({
 /**
  * A busca da folha É a busca do app (SearchField) — mesmo componente, mesma
  * pílula, mesma contagem de achados. O que a folha acrescenta é o respiro
- * embaixo e o teclado abrindo sozinho: aqui a pessoa entrou NESTE nível
- * justamente pra buscar, então esperar um toque a mais é fazer perder tempo.
+ * até a lista.
+ *
+ * O teclado NÃO abre sozinho por padrão: numa folha ele cobre metade da
+ * lista, e quem abriu a folha de modelos abriu pra ESCOLHER. Quem entrou num
+ * nível que só existe pra buscar (as notas) pede `autoFocus` e aí sim.
  */
 export function SheetSearch({
   value,
   placeholder,
   onChange,
   found,
+  autoFocus,
 }: {
   value: string;
   placeholder: string;
   onChange: (v: string) => void;
   found?: number;
+  autoFocus?: boolean;
 }) {
   return (
     <div className="axxa-sheet-search">
@@ -361,15 +366,29 @@ export function SheetSearch({
         value={value}
         placeholder={placeholder}
         found={found}
-        autoFocus
+        autoFocus={autoFocus}
         onChange={onChange}
       />
     </div>
   );
 }
 
-export function SheetGroup({ children }: { children: ReactNode }) {
-  return <div className="axxa-sheet-group">{children}</div>;
+export function SheetGroup({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  /** Título acima do cartão. Sem ele, o grupo não se apresenta — é o caso de
+   *  quando só existe um. */
+  label?: string;
+}) {
+  if (!label) return <div className="axxa-sheet-group">{children}</div>;
+  return (
+    <div className="axxa-sheet-block">
+      <span className="axxa-sheet-group-label">{label}</span>
+      <div className="axxa-sheet-group">{children}</div>
+    </div>
+  );
 }
 
 /**

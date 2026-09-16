@@ -1833,6 +1833,21 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
 }
 
 /* Busca dentro da folha (lista de notas). */
+/* Bloco de grupo da folha: rótulo + cartão. */
+.axxa-root .axxa-sheet-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-2);
+}
+
+/* Rótulo do grupo: tom de apoio, sem versalete. Ele separa naturezas
+   (Reasoning, Image, Voice), não abre uma seção de configuração. */
+.axxa-root .axxa-sheet-group-label {
+  padding-left: var(--axxa-2);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
 /* Na folha o campo é o MESMO — o que muda é só o respiro até a lista. */
 .axxa-root .axxa-sheet-search {
   margin-bottom: var(--axxa-3);

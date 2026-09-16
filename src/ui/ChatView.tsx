@@ -95,6 +95,7 @@ import { StarterScreen } from "./StarterScreen";
 import { ThinkingLine } from "./Thinking";
 import type { ComposerInject } from "./App";
 import { moduleLabel, modulePlaceholder } from "./modules";
+import { filterModels, groupModels } from "./modelGroups";
 
 /** Título da folha do "+" em cada nível. */
 const PLUS_SHEET_TITLE: Record<string, string> = {
@@ -181,6 +182,8 @@ export function ChatView({
    *  trocar nada por engano. */
   const [pickProvider, setPickProvider] = useState(cfg.provider);
   /** Nível da folha de modelos: os favoritos, ou a lista inteira. */
+  /** O que foi digitado na busca da folha de modelos. */
+  const [modelQuery, setModelQuery] = useState("");
   const [modelView, setModelView] = useState<"root" | "list" | "effort">(
     "root"
   );
@@ -993,6 +996,13 @@ Open Settings › Providers to add it, then run the connection test.`,
     if (voice.state === "idle") setArming(false);
   }, [voice.state]);
 
+  // Trocar de provider ou de nível zera a busca: o que foi digitado era
+  // pergunta pra a lista anterior, e uma busca invisível que esconde modelos
+  // é a mesma armadilha da busca das homes.
+  useEffect(() => {
+    setModelQuery("");
+  }, [pickProvider, modelView]);
+
   /** Tocar num modelo comita as DUAS coisas: o provider da folha e o modelo. */
   const chooseModel = (model: string) => {
     if (pickProvider !== cfg.provider) session.setProvider(pickProvider);
@@ -1402,17 +1412,14 @@ Open Settings › Providers to add it, then run the connection test.`,
             ))}
           </SheetGroup>
         ) : modelView === "list" ? (
-          <SheetGroup>
-            {rest.map((m) => (
-              <ModelRow
-                key={m}
-                provider={pickProvider}
-                model={m}
-                selected={m === cfg.model && pickProvider === cfg.provider}
-                onClick={() => chooseModel(m)}
-              />
-            ))}
-          </SheetGroup>
+          <ListaDeModelos
+            provider={pickProvider}
+            models={rest}
+            atual={pickProvider === cfg.provider ? cfg.model : ""}
+            query={modelQuery}
+            onQuery={setModelQuery}
+            onPick={chooseModel}
+          />
         ) : (
           <>
             {locked ? (
@@ -1422,24 +1429,22 @@ Open Settings › Providers to add it, then run the connection test.`,
                   new chat to pick another model. Effort still changes freely.
                 </SheetNote>
               </SheetGroup>
-            ) : (
-            <SheetGroup>
-              {(favorites.length > 0 ? favorites : rest).map((m) => (
-                <ModelRow
-                  key={m}
-                  provider={pickProvider}
-                  model={m}
-                  selected={m === cfg.model && pickProvider === cfg.provider}
-                  onClick={() => chooseModel(m)}
-                />
-              ))}
-              {favorites.length === 0 && rest.length === 0 && (
+            ) : favorites.length === 0 && rest.length === 0 ? (
+              <SheetGroup>
                 <SheetNote>
                   Nothing marked to show for this provider yet — pick what
                   appears here in Settings → Providers.
                 </SheetNote>
-              )}
-            </SheetGroup>
+              </SheetGroup>
+            ) : (
+              <ListaDeModelos
+                provider={pickProvider}
+                models={favorites.length > 0 ? favorites : rest}
+                atual={pickProvider === cfg.provider ? cfg.model : ""}
+                query={modelQuery}
+                onQuery={setModelQuery}
+                onPick={chooseModel}
+              />
             )}
             {/* Navegação num cartão só, abaixo dos modelos: a lista inteira e
                 o effort. Os dois abrem OUTRO nível desta mesma folha. */}
@@ -1482,6 +1487,7 @@ Open Settings › Providers to add it, then run the connection test.`,
               value={noteQuery}
               placeholder="Search notes"
               found={notasAchadas.length}
+              autoFocus
               onChange={setNoteQuery}
             />
             <SheetGroup>
@@ -1712,6 +1718,72 @@ function ModelRow({
       selected={selected}
       onClick={onClick}
     />
+  );
+}
+
+/**
+ * A lista de modelos da folha: busca em cima (quando a lista é grande) e os
+ * modelos separados por natureza.
+ *
+ * O agrupamento entra porque o catálogo de um provider traz, na mesma pilha,
+ * coisas que não conversam — geradores de imagem, vozes, embeddings. Elas
+ * continuam ali (o app usa modelo de imagem pra gerar imagem), só param de
+ * disputar espaço com o que se está escolhendo.
+ */
+function ListaDeModelos({
+  provider,
+  models,
+  atual,
+  query,
+  onQuery,
+  onPick,
+}: {
+  provider: string;
+  models: string[];
+  atual: string;
+  query: string;
+  onQuery: (v: string) => void;
+  onPick: (m: string) => void;
+}) {
+  const filtrados = useMemo(
+    () => filterModels(models, query, prettyModelName),
+    [models, query]
+  );
+  const grupos = useMemo(
+    () => groupModels(provider, filtrados),
+    [provider, filtrados]
+  );
+  // Abaixo disto a busca é um campo pedindo pra filtrar o que já cabe na tela.
+  const BUSCA_A_PARTIR_DE = 8;
+  return (
+    <>
+      {models.length >= BUSCA_A_PARTIR_DE && (
+        <SheetSearch
+          value={query}
+          placeholder="Search models"
+          found={filtrados.length}
+          onChange={onQuery}
+        />
+      )}
+      {grupos.map((g) => (
+        <SheetGroup key={g.label || "principal"} label={g.label}>
+          {g.models.map((m) => (
+            <ModelRow
+              key={m}
+              provider={provider}
+              model={m}
+              selected={m === atual}
+              onClick={() => onPick(m)}
+            />
+          ))}
+        </SheetGroup>
+      ))}
+      {filtrados.length === 0 && (
+        <SheetGroup>
+          <SheetNote>No model matches that.</SheetNote>
+        </SheetGroup>
+      )}
+    </>
   );
 }
 
