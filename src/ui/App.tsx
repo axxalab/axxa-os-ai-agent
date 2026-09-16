@@ -11,6 +11,7 @@ import type AxxaPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
 import type { Skill } from "../skills/skills";
 import { ChatView } from "./ChatView";
+import { Dashboard } from "./Dashboard";
 import { ModuleHome } from "./ModuleHome";
 import { ProjectsView } from "./ProjectsView";
 import { SkillsView } from "./SkillsView";
@@ -35,7 +36,9 @@ export function App({
   plugin: AxxaPlugin;
   session: ChatSession;
 }) {
-  const [view, setView] = useState<ViewId>("chat");
+  // Abre no PAINEL, não numa conversa vazia: a primeira pergunta de quem
+  // abre o app não é "o que eu escrevo", é "onde eu estava".
+  const [view, setView] = useState<ViewId>("home");
   const [menuOpen, setMenuOpen] = useState(false);
   /** De qual módulo é a home que está aberta (ou foi a última). */
   const [modulo, setModulo] = useState<string>(
@@ -71,7 +74,15 @@ export function App({
 
   return (
     <div className="axxa-root">
-      {view === "module" ? (
+      {view === "home" ? (
+        <Dashboard
+          plugin={plugin}
+          session={session}
+          onOpenMenu={() => setMenuOpen(true)}
+          onEnterModule={entrarNoModulo}
+          onOpenChat={() => setView("chat")}
+        />
+      ) : view === "module" ? (
         <ModuleHome
           plugin={plugin}
           session={session}

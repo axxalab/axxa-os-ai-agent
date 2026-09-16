@@ -829,12 +829,74 @@ body.theme-dark {
   color: var(--text-muted);
 }
 
+/* ── o painel ──────────────────────────────────────────────────────────
+   Dois por linha: com três módulos, a terceira ocupa a linha inteira e vira
+   a mais destacada — e não há razão pra uma delas valer mais. `auto-fit` com
+   mínimo faz três virarem 2+1 só quando a largura não dá pra mais. */
+.axxa-root .axxa-dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--axxa-2);
+}
+
+.axxa-root button.axxa-dash-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 108px;
+  padding: var(--axxa-3);
+  border-radius: var(--axxa-r);
+  background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
+  box-shadow: none;
+  color: var(--text-normal);
+  text-align: left;
+}
+
+.axxa-root button.axxa-dash-card:hover {
+  background-color: color-mix(in srgb, var(--text-normal) 10%, transparent);
+}
+
+/* Respirando, igual ao cartão da lista: é a mesma informação ("está
+   trabalhando") e seria estranho ela se anunciar de dois jeitos. */
+.axxa-root button.axxa-dash-card.is-running {
+  animation: axxa-respira 2.6s ease-in-out infinite;
+}
+
+.axxa-root .axxa-dash-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: var(--axxa-2);
+  color: var(--text-muted);
+}
+
+.axxa-root .axxa-dash-name {
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-medium);
+}
+
+.axxa-root .axxa-dash-hint {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
 /* Bloco de seção da home: rótulo + a ação daquela seção. */
 .axxa-root .axxa-home-block {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--axxa-2);
+}
+
+/* O `flex-start` acima é pra AÇÃO: um botão "Add skill" esticado na largura
+   toda seria um botão mentindo sobre o próprio tamanho. Mas lista não é ação —
+   se ela também encolhe pro próprio conteúdo, o cartão passa por cima da
+   margem e o título sai pela direita da tela. */
+.axxa-root .axxa-home-block > .axxa-history {
+  align-self: stretch;
+  min-width: 0;
 }
 
 /* Linha de seção com uma ação na ponta ("Sessions" ... "All ⌄"). */

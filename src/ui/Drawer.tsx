@@ -25,7 +25,7 @@ import { openPluginSettings } from "./modals";
 import { moduleHint, moduleStats, modulesInUse } from "./modules";
 import { alertCount } from "./chatAlert";
 
-export type ViewId = "chat" | "module" | "projects" | "skills";
+export type ViewId = "home" | "chat" | "module" | "projects" | "skills";
 
 /** O resto do menu — o que não é módulo. */
 const NAV: Array<{ id: ViewId; label: string; icon: string }> = [
@@ -141,8 +141,20 @@ export function Drawer({
         </button>
 
         <nav className="axxa-drawer-nav">
-            {/* Os módulos primeiro: é o que o menu É. O resto vem depois de
-                um traço, porque é ferramenta, não lugar. */}
+            {/* O painel vem primeiro — é a volta pro começo. */}
+            <button
+              type="button"
+              className={
+                view === "home" ? "axxa-nav-item is-active" : "axxa-nav-item"
+              }
+              onClick={() => go("home")}
+            >
+              <Icon name="layout-grid" />
+              <span>Home</span>
+            </button>
+
+            {/* Depois os módulos: é o que o menu É. O resto vem atrás de um
+                traço, porque é ferramenta, não lugar. */}
             {modulosVisiveis.map((m) => {
               const stats = moduleStats(chats, m.id);
               const pedindo = alertCount(chats, m.id, {
