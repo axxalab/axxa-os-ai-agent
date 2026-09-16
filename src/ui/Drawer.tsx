@@ -25,7 +25,13 @@ import { openPluginSettings } from "./modals";
 import { moduleHint, moduleStats, modulesInUse } from "./modules";
 import { alertCount } from "./chatAlert";
 
-export type ViewId = "home" | "chat" | "module" | "projects" | "skills";
+export type ViewId =
+  | "home"
+  | "chat"
+  | "module"
+  | "history"
+  | "projects"
+  | "skills";
 
 /** O resto do menu — o que não é módulo. */
 const NAV: Array<{ id: ViewId; label: string; icon: string }> = [

@@ -1,6 +1,6 @@
 // src/ui/Dashboard.tsx
-// A HOME do app: as conversas de todos os módulos numa lista só, filtrável
-// por aba, e — embaixo — um cartão por modo pra começar outra.
+// A HOME do app: uma pergunta com duas respostas — CONTINUAR de onde parou,
+// ou COMEÇAR algo novo. Quem decide é quem abriu.
 //
 // Ela existe porque abrir o plugin numa conversa vazia responde a pergunta
 // errada. A primeira pergunta de quem abre não é "o que eu escrevo", é "onde
@@ -11,8 +11,11 @@
 // ação de criar fica onde a mão alcança — a base do telefone. Os cartões são
 // ação, não navegação: tocar num deles já abre a conversa nova daquele modo
 // com o cursor no campo, porque quem escolheu "Agent" já sabe o que vai pedir.
+//
+// E são QUATRO conversas, não todas. Quatro é o que responde "onde eu estava";
+// a partir daí a lista deixa de ser uma resposta e vira um arquivo — que tem
+// tela própria, com busca (ver History.tsx).
 
-import { useState } from "react";
 import type AxxaPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import { CHAT_MODES, type ChatMode } from "../core/session";
@@ -29,21 +32,31 @@ import {
 } from "./modules";
 import type { ChatSummary } from "../core/chatPersistence";
 
+/** Quantas conversas a home mostra antes de mandar pro histórico. */
+const RECENTES = 4;
+
 export function Dashboard({
   plugin,
   session,
+  aba,
+  onAba,
   onOpenMenu,
   onNewChat,
   onOpenChat,
+  onOpenHistory,
 }: {
   plugin: AxxaPlugin;
   session: ChatSession;
+  /** A aba vale pras duas telas: filtrar aqui e pedir "ver tudo" leva o
+   *  filtro junto. */
+  aba: string;
+  onAba: (id: string) => void;
   onOpenMenu: () => void;
   /** Começar uma conversa naquele modo — já com o teclado aberto. */
   onNewChat: (mode: ChatMode) => void;
   onOpenChat: (chat: ChatSummary) => void;
+  onOpenHistory: () => void;
 }) {
-  const [aba, setAba] = useState(SEGMENT_ALL);
   const chats = useChatSummaries(plugin);
   const naoLidas = useUnreadChats(plugin);
   const esperandoId = useChatStore((s) => s.waitingChatId);
@@ -88,17 +101,37 @@ export function Dashboard({
             }))}
             value={atual}
             label="Filter chats by mode"
-            onChange={setAba}
+            onChange={onAba}
           />
         )}
 
         {visiveis.length > 0 && (
-          <ChatList
-            plugin={plugin}
-            session={session}
-            chats={visiveis}
-            onOpen={onOpenChat}
-          />
+          <>
+            <div className="axxa-home-headrow">
+              <span className="axxa-section-label">
+                Pick up where you left
+              </span>
+              {/* Só aparece quando há mesmo mais o que ver. Um "ver tudo" que
+                  mostra o que já está na tela é um toque que não leva a
+                  lugar nenhum. */}
+              {visiveis.length > RECENTES && (
+                <button
+                  type="button"
+                  className="axxa-home-filter"
+                  onClick={onOpenHistory}
+                >
+                  <span>See all {visiveis.length}</span>
+                  <Icon name="chevron-right" size={16} />
+                </button>
+              )}
+            </div>
+            <ChatList
+              plugin={plugin}
+              session={session}
+              chats={visiveis.slice(0, RECENTES)}
+              onOpen={onOpenChat}
+            />
+          </>
         )}
 
         {visiveis.length === 0 && (

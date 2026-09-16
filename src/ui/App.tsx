@@ -9,9 +9,11 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import type AxxaPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
+import { SEGMENT_ALL } from "./modules";
 import type { Skill } from "../skills/skills";
 import { ChatView } from "./ChatView";
 import { Dashboard } from "./Dashboard";
+import { History } from "./History";
 import { ModuleHome } from "./ModuleHome";
 import { ProjectsView } from "./ProjectsView";
 import { SkillsView } from "./SkillsView";
@@ -49,7 +51,12 @@ export function App({
    *  A seta tem que desfazer o toque que trouxe você, não levar a um lugar
    *  parecido: quem abriu do painel volta ao painel, quem abriu da tela do
    *  módulo volta pra ela. */
-  const [voltarPara, setVoltarPara] = useState<"home" | "module">("module");
+  const [voltarPara, setVoltarPara] = useState<"home" | "history" | "module">(
+    "module"
+  );
+  /** O recorte da lista, compartilhado pela home e pelo histórico: filtrar
+   *  numa e pedir "ver tudo" leva o filtro junto. */
+  const [aba, setAba] = useState(SEGMENT_ALL);
   const [, force] = useReducer((n: number) => n + 1, 0);
   // Re-render em mudanças de sessão (seleção/lock) e de settings.
   useEffect(() => {
@@ -83,6 +90,9 @@ export function App({
         <Dashboard
           plugin={plugin}
           session={session}
+          aba={aba}
+          onAba={setAba}
+          onOpenHistory={() => setView("history")}
           onOpenMenu={() => setMenuOpen(true)}
           // Cartão do painel: conversa nova naquele modo, JÁ ESCREVENDO. O
           // `inject` sem texto é exatamente isso — "põe o cursor no campo" —
@@ -96,6 +106,18 @@ export function App({
           }}
           onOpenChat={() => {
             setVoltarPara("home");
+            setView("chat");
+          }}
+        />
+      ) : view === "history" ? (
+        <History
+          plugin={plugin}
+          session={session}
+          aba={aba}
+          onAba={setAba}
+          onBack={() => setView("home")}
+          onOpenChat={() => {
+            setVoltarPara("history");
             setView("chat");
           }}
         />
@@ -130,8 +152,8 @@ export function App({
           // abriu um chat de Agent vindo do Chat, voltar leva ao Agent, que é
           // onde ele mora.
           onBackHome={() => {
-            if (voltarPara === "home") {
-              setView("home");
+            if (voltarPara !== "module") {
+              setView(voltarPara);
               return;
             }
             const m = session.config.mode;
