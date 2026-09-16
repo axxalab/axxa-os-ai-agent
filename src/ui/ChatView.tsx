@@ -79,6 +79,7 @@ import {
   SheetNote,
   SheetRow,
   SheetSearch,
+  SheetTabs,
   SheetSeg,
   SheetTile,
   SheetTiles,
@@ -96,6 +97,8 @@ import { ThinkingLine } from "./Thinking";
 import type { ComposerInject } from "./App";
 import { moduleLabel, modulePlaceholder } from "./modules";
 import { filterModels, groupModels } from "./modelGroups";
+// O limite de favoritos é UM número, e ele mora onde se marca o favorito.
+import { FAVORITE_LIMIT } from "./SettingsTab";
 
 /** Título da folha do "+" em cada nível. */
 const PLUS_SHEET_TITLE: Record<string, string> = {
@@ -184,6 +187,8 @@ export function ChatView({
   /** Nível da folha de modelos: os favoritos, ou a lista inteira. */
   /** O que foi digitado na busca da folha de modelos. */
   const [modelQuery, setModelQuery] = useState("");
+  /** Aba de categoria aberta no catálogo ("" = a primeira que existir). */
+  const [modelTab, setModelTab] = useState("");
   const [modelView, setModelView] = useState<"root" | "list" | "effort">(
     "root"
   );
@@ -1001,6 +1006,7 @@ Open Settings › Providers to add it, then run the connection test.`,
   // é a mesma armadilha da busca das homes.
   useEffect(() => {
     setModelQuery("");
+    setModelTab("");
   }, [pickProvider, modelView]);
 
   /** Tocar num modelo comita as DUAS coisas: o provider da folha e o modelo. */
@@ -1418,6 +1424,8 @@ Open Settings › Providers to add it, then run the connection test.`,
             atual={pickProvider === cfg.provider ? cfg.model : ""}
             query={modelQuery}
             onQuery={setModelQuery}
+            aba={modelTab}
+            onAba={setModelTab}
             onPick={chooseModel}
           />
         ) : (
@@ -1429,32 +1437,40 @@ Open Settings › Providers to add it, then run the connection test.`,
                   new chat to pick another model. Effort still changes freely.
                 </SheetNote>
               </SheetGroup>
-            ) : favorites.length === 0 && rest.length === 0 ? (
+            ) : favorites.length > 0 ? (
+              /* Só os favoritos aqui. O primeiro nível é o ATALHO — cinco
+                 linhas que se lê de um golpe. O catálogo inteiro mora um
+                 nível abaixo, onde há espaço pra ele. */
               <SheetGroup>
-                <SheetNote>
-                  Nothing marked to show for this provider yet — pick what
-                  appears here in Settings → Providers.
-                </SheetNote>
+                {favorites.map((m) => (
+                  <ModelRow
+                    key={m}
+                    provider={pickProvider}
+                    model={m}
+                    selected={m === cfg.model && pickProvider === cfg.provider}
+                    onClick={() => chooseModel(m)}
+                  />
+                ))}
               </SheetGroup>
             ) : (
-              <ListaDeModelos
-                provider={pickProvider}
-                models={favorites.length > 0 ? favorites : rest}
-                atual={pickProvider === cfg.provider ? cfg.model : ""}
-                query={modelQuery}
-                onQuery={setModelQuery}
-                onPick={chooseModel}
-              />
+              <SheetGroup>
+                <SheetNote>
+                  {rest.length > 0
+                    ? `No favorites for this provider yet — star up to ${FAVORITE_LIMIT} in Settings › Providers, or open the full list below.`
+                    : "Nothing marked to show for this provider yet — pick what appears here in Settings → Providers."}
+                </SheetNote>
+              </SheetGroup>
             )}
             {/* Navegação num cartão só, abaixo dos modelos: a lista inteira e
                 o effort. Os dois abrem OUTRO nível desta mesma folha. */}
             <SheetGroup>
-              {!locked && favorites.length > 0 && rest.length > 0 && (
+              {/* Sem depender de favoritos: é ele que leva ao catálogo, e
+                  quem não marcou favorito precisa MAIS dele, não menos. */}
+              {!locked && rest.length > 0 && (
                 <SheetNavRow
-                  title="Show list"
-                  note={`${rest.length} more ${
-                    rest.length === 1 ? "model" : "models"
-                  }`}
+                  icon="list"
+                  title="All models"
+                  note={`${rest.length}`}
                   onClick={() => setModelView("list")}
                 />
               )}
@@ -1736,6 +1752,8 @@ function ListaDeModelos({
   atual,
   query,
   onQuery,
+  aba,
+  onAba,
   onPick,
 }: {
   provider: string;
@@ -1743,6 +1761,8 @@ function ListaDeModelos({
   atual: string;
   query: string;
   onQuery: (v: string) => void;
+  aba: string;
+  onAba: (id: string) => void;
   onPick: (m: string) => void;
 }) {
   const filtrados = useMemo(
@@ -1753,6 +1773,10 @@ function ListaDeModelos({
     () => groupModels(provider, filtrados),
     [provider, filtrados]
   );
+  // Aba pedida, ou a primeira que existir — a busca pode ter esvaziado a que
+  // estava aberta, e aí insistir nela mostraria uma tela vazia com resultados
+  // logo ao lado.
+  const ativa = grupos.find((g) => g.label === aba) ?? grupos[0];
   // Abaixo disto a busca é um campo pedindo pra filtrar o que já cabe na tela.
   const BUSCA_A_PARTIR_DE = 8;
   return (
@@ -1765,9 +1789,21 @@ function ListaDeModelos({
           onChange={onQuery}
         />
       )}
-      {grupos.map((g) => (
-        <SheetGroup key={g.label || "principal"} label={g.label}>
-          {g.models.map((m) => (
+      {grupos.length > 1 && (
+        <SheetTabs
+          label="Model category"
+          activeId={ativa?.label ?? ""}
+          items={grupos.map((g) => ({
+            id: g.label,
+            label: g.label,
+            count: g.models.length,
+          }))}
+          onPick={onAba}
+        />
+      )}
+      {ativa && (
+        <SheetGroup>
+          {ativa.models.map((m) => (
             <ModelRow
               key={m}
               provider={provider}
@@ -1777,7 +1813,7 @@ function ListaDeModelos({
             />
           ))}
         </SheetGroup>
-      ))}
+      )}
       {filtrados.length === 0 && (
         <SheetGroup>
           <SheetNote>No model matches that.</SheetNote>

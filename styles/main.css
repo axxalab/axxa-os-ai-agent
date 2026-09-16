@@ -568,6 +568,51 @@ body.theme-dark {
    grudado nela. Foi assim que o botão flutuante da home do Agent sumiu no
    aparelho: ele é `sticky` na base, e a base estava 104px abaixo do visível.
    Projects e Skills tinham o mesmo vão morto, só que sem nada colado nele. */
+/* ── o texto DISSOLVE nas duas pontas ──────────────────────────────────
+   O composer é vidro: o texto passa por trás dele. Passando nítido, porém, a
+   linha cortada no meio pela borda do cartão fica pior do que se não passasse
+   — e o mesmo vale no topo, onde a conversa batia na barra e era cortada a
+   régua.
+
+   Quem resolve é uma máscara no PRÓPRIO scroller: o conteúdo vira
+   transparente perto das bordas, então ele some no fundo da página em vez de
+   ser tampado por uma faixa. O texto continua visível atrás do composer, só
+   que apagado — que é o que a referência faz.
+
+   Embaixo não vai a zero de propósito: a 12% ainda se enxerga que existe
+   texto ali, e é isso que dá a sensação de profundidade. Ir a zero faria a
+   conversa "acabar" num vazio logo acima do campo.
+
+   NÃO vale pras homes nem pras páginas: lá o final da caixa é onde mora o
+   botão flutuante, e apagá-lo seria repetir, de outro jeito, o sumiço que
+   custou a 0.5.98. */
+.axxa-root .axxa-messages:not(.axxa-home):not(.axxa-page) {
+  --axxa-fade-topo: 22px;
+  --axxa-fade-base: var(--axxa-composer-h, 104px);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--axxa-fade-topo),
+    #000 calc(100% - var(--axxa-fade-base) - 24px),
+    rgba(0, 0, 0, 0.12) calc(100% - var(--axxa-fade-base) + 28px),
+    rgba(0, 0, 0, 0.12) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--axxa-fade-topo),
+    #000 calc(100% - var(--axxa-fade-base) - 24px),
+    rgba(0, 0, 0, 0.12) calc(100% - var(--axxa-fade-base) + 28px),
+    rgba(0, 0, 0, 0.12) 100%
+  );
+}
+
+/* Com o texto dissolvendo no topo, a linha da barra vira uma segunda
+   separação pro mesmo trabalho — e a dura ganha da suave. */
+.axxa-root .axxa-topbar {
+  border-bottom: none;
+}
+
 .axxa-root .axxa-page,
 .axxa-root .axxa-home {
   margin-bottom: 0;
@@ -1555,16 +1600,30 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
      94 aqui), mas lá sobra mais espaço pro texto porque os botões são
      menores. Aqui: 14 em cima, 12 embaixo, 14 nas laterais. */
   padding: 14px 14px 12px;
-  border: 1px solid color-mix(in srgb, var(--axxa-line) 70%, transparent);
+  /* Medidos no print da referência, em luminância:
+
+       fundo da página   21      cartão  32      borda  60
+
+     ou seja, o cartão é o fundo + ~4,7% de branco e a borda + ~16,7%. Por
+     isso as duas são escritas como mistura com `--text-normal`: a proporção
+     vale em qualquer tema, e é ela que a referência mantém.
+
+     Antes o fundo saía de `--axxa-raised`, que neste tema resolve pro MESMO
+     `--background-primary` da página — o cartão media 30 num fundo de 30 e
+     só existia por causa da borda. É o mesmo tropeço dos cartões da home.
+
+     E não há sombra a acrescentar: na referência a coluna ao lado do cartão é
+     21 do topo à base, sem halo nenhum. Quem separa ali é o contraste. */
+  border: 1px solid color-mix(in srgb, var(--text-normal) 17%, transparent);
   border-radius: var(--axxa-r-lg);
-  /* AQUI é o vidro. Mais VIDRO que painel: o fundo segura menos da metade e
-     quem faz a legibilidade é o desfoque — com muita opacidade o cartão vira
-     um bloco sólido flutuando, que é o oposto de "o texto passa por trás".
-     O saturate compensa o cinza que o blur traz. */
-  background-color: color-mix(in srgb, var(--axxa-raised) 46%, transparent);
+  /* O vidro continua vidro: a cor é fraca e quem sustenta a legibilidade é o
+     desfoque. O saturate compensa o cinza que o blur traz. */
+  background-color: color-mix(in srgb, var(--text-normal) 5%, transparent);
   backdrop-filter: blur(28px) saturate(1.7);
   -webkit-backdrop-filter: blur(28px) saturate(1.7);
-  /* Borda e sombra também recuam: são elas que davam o peso de "caixa". */
+  /* A sombra fica só pelo tema claro, onde escuro sobre claro aparece de
+     verdade. No escuro ela é invisível — e é por isso que ela nunca foi o que
+     separava o cartão. */
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.1),
     0 6px 20px rgba(0, 0, 0, 0.16);
@@ -1833,6 +1892,52 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
 }
 
 /* Busca dentro da folha (lista de notas). */
+/* Abas de categoria da folha. Rolam na horizontal: com cinco ou seis nomes
+   num aparelho de 375px, dividir a largura em partes iguais espreme
+   "Reasoning" até sobrar "Reas…". */
+.axxa-root .axxa-sheet-tabs {
+  display: flex;
+  gap: var(--axxa-1);
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: var(--axxa-3);
+  padding-bottom: 2px;
+}
+
+.axxa-root .axxa-sheet-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.axxa-root button.axxa-sheet-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 var(--axxa-3);
+  border-radius: 999px;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+}
+
+.axxa-root button.axxa-sheet-tab.is-active {
+  background-color: color-mix(in srgb, var(--text-normal) 10%, transparent);
+  color: var(--text-normal);
+}
+
+/* A contagem diz quanto tem lá dentro ANTES do toque. */
+.axxa-root .axxa-sheet-tab-count {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-root button.axxa-sheet-tab.is-active .axxa-sheet-tab-count {
+  color: var(--text-muted);
+}
+
 /* Bloco de grupo da folha: rótulo + cartão. */
 .axxa-root .axxa-sheet-block {
   display: flex;

@@ -21,7 +21,7 @@ export interface ModelGroup {
 
 /** Ordem dos grupos e o nome de cada um. */
 const ORDEM: Array<{ id: string; label: string; cats: string[] }> = [
-  { id: "chat", label: "", cats: ["chat-vision", "chat-text", "agent"] },
+  { id: "chat", label: "Chat", cats: ["chat-vision", "chat-text", "agent"] },
   { id: "reasoning", label: "Reasoning", cats: ["reasoning"] },
   { id: "image", label: "Image", cats: ["image-gen"] },
   { id: "voice", label: "Voice", cats: ["audio-gen"] },
@@ -33,8 +33,9 @@ const ORDEM: Array<{ id: string; label: string; cats: string[] }> = [
  * Separa os modelos por natureza, preservando a ordem recebida dentro de cada
  * grupo (é a ordem que a pessoa montou em Settings).
  *
- * Grupos vazios não aparecem. Se sobra um grupo só, ele vem sem rótulo: um
- * título sobre a única lista da tela não informa nada.
+ * Grupos vazios não aparecem. TODO grupo tem nome: eles viram abas, e aba sem
+ * nome não existe. Quando sobra um grupo só, quem some é a barra de abas —
+ * decisão da tela, não daqui.
  */
 export function groupModels(
   provider: string,
@@ -49,12 +50,10 @@ export function groupModels(
     if (atual) atual.push(m);
     else porId.set(alvo, [m]);
   }
-  const grupos = ORDEM.filter((g) => porId.get(g.id)?.length).map((g) => ({
+  return ORDEM.filter((g) => porId.get(g.id)?.length).map((g) => ({
     label: g.label,
     models: porId.get(g.id) as string[],
   }));
-  if (grupos.length === 1) return [{ label: "", models: grupos[0].models }];
-  return grupos;
 }
 
 /**

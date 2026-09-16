@@ -17,15 +17,19 @@ describe("groupModels", () => {
       "tts-1",
       "gpt-5",
     ]);
-    // O primeiro grupo é o de conversa e não se apresenta: é o assunto da tela.
-    expect(g[0].label).toBe("");
+    expect(g[0].label).toBe("Chat");
     expect(g[0].models).toEqual(["gpt-4o", "gpt-5"]);
     const rotulos = g.map((x) => x.label);
     expect(rotulos).toContain("Reasoning");
     expect(rotulos).toContain("Image");
     expect(rotulos).toContain("Voice");
     // Conversa antes de qualquer outro grupo.
-    expect(rotulos.indexOf("")).toBe(0);
+    expect(rotulos.indexOf("Chat")).toBe(0);
+  });
+
+  it("TODO grupo tem nome — eles são abas, e aba sem nome não existe", () => {
+    const g = groupModels("openai", ["gpt-4o", "o1", "dall-e-3"]);
+    for (const x of g) expect(x.label.length).toBeGreaterThan(0);
   });
 
   it("não perde NENHUM modelo pelo caminho", () => {
@@ -50,11 +54,10 @@ describe("groupModels", () => {
     expect(g[0].models).toEqual(["gpt-5", "gpt-4o", "gpt-4o-mini"]);
   });
 
-  it("com um grupo só, ninguém ganha título", () => {
-    // Um rótulo sobre a única lista da tela não informa nada.
+  it("com um grupo só, ele continua nomeado — quem some é a barra de abas", () => {
     const g = groupModels("openai", ["gpt-4o", "gpt-5"]);
     expect(g).toHaveLength(1);
-    expect(g[0].label).toBe("");
+    expect(g[0].label).toBe("Chat");
   });
 
   it("lista vazia não vira grupo vazio", () => {

@@ -392,6 +392,47 @@ export function SheetGroup({
 }
 
 /**
+ * Abas de TEXTO dentro da folha (as categorias de modelo).
+ *
+ * Rolam na horizontal em vez de dividir a largura em partes iguais: com cinco
+ * ou seis categorias num aparelho de 375px, um segmentado fixo espreme
+ * "Reasoning" até virar "Reas…". Aqui cada aba tem o tamanho do nome dela e a
+ * fileira anda — e a contagem ao lado diz quanto tem lá dentro antes do toque.
+ */
+export function SheetTabs({
+  items,
+  activeId,
+  onPick,
+  label,
+}: {
+  items: { id: string; label: string; count: number }[];
+  activeId: string;
+  onPick: (id: string) => void;
+  label: string;
+}) {
+  return (
+    <div className="axxa-sheet-tabs" role="group" aria-label={label}>
+      {items.map((it) => (
+        <button
+          key={it.id}
+          type="button"
+          className={
+            it.id === activeId
+              ? "axxa-sheet-tab is-active"
+              : "axxa-sheet-tab"
+          }
+          aria-pressed={it.id === activeId}
+          onClick={() => onPick(it.id)}
+        >
+          <span>{it.label}</span>
+          <span className="axxa-sheet-tab-count">{it.count}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Segmented control DENTRO da folha — hoje, os providers. Colunas iguais
  * (são todos logos, mesma largura), então o thumb é só o índice ativo: nada
  * de medir nó, ao contrário do das Settings, onde os rótulos têm larguras

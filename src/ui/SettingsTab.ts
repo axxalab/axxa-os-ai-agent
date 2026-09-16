@@ -85,7 +85,7 @@ const SPEECH_LANGS: [string, string][] = [
 const SAMPLE_LINE = "This is the voice that will read your answers out loud.";
 
 /** Favoritos aparecem na tela inicial; mais que isso vira lista, não atalho. */
-const FAVORITE_LIMIT = 5;
+export const FAVORITE_LIMIT = 5;
 
 /** O que a bolinha do trilho quer dizer (vai no tooltip do item). */
 const HEALTH_TEXT: Record<ProviderHealth, string> = {
