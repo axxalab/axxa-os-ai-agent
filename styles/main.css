@@ -860,24 +860,48 @@ body.theme-dark {
   color: var(--text-muted);
 }
 
-/* ── a escolha, no meio da tela ────────────────────────────────────────
-   Numa tela alta com quatro conversas, o que estava em cima ficava colado no
-   topo, o que estava embaixo colado na base, e o buraco entre os dois era
-   maior que os dois juntos — a bifurcação deixava de se ler como uma coisa
-   só. As duas margens `auto` dividem a sobra em partes iguais ACIMA e ABAIXO
-   do grupo, então ele fica no meio do que resta depois do título.
-   Quando a lista é grande não há sobra: as margens valem zero, o grupo volta
-   pro fluxo e a barra de começar gruda na base como antes. */
-.axxa-root .axxa-dash .axxa-home-headrow,
-.axxa-root .axxa-dash .axxa-home-empty {
-  margin-top: auto;
+/* ── a barra de começar tem ENDEREÇO ───────────────────────────────────
+   Ela é a mesma ação em qualquer aba, então tem que estar sempre no mesmo
+   lugar: o polegar aprende a altura e para de procurar. Antes a sobra da tela
+   era dividida em volta do grupo, e a barra subia e descia conforme a aba
+   tinha quatro conversas ou uma (510, 526, 545 numa tela de 812) — cada
+   toque numa aba mexia o alvo do toque seguinte.
+
+   Agora a sobra fica TODA entre a lista e a barra: a lista começa onde
+   sempre começa, logo abaixo das abas, e a barra mora a uma distância fixa do
+   pé. O preço é o vão crescer numa aba com poucas conversas — mas vão parado
+   se ignora, alvo que anda não.
+
+   `margin-top: auto` empurra a barra pro fim; a margem de baixo é o respiro
+   que a mantém fora do canto. Com a lista grande não há sobra: `auto` vira
+   zero e o `sticky` assume, prendendo a barra na base enquanto a lista rola
+   por baixo. */
+/* Quem rola é a LISTA, não a página. Essa é a diferença entre a barra ter
+   endereço e a barra ter sorte: enquanto a página inteira rolava, uma aba de
+   cartões altos empurrava a barra pra fora e ela reaparecia noutra altura.
+   Com a lista rolando por dentro do próprio quadro, o topo (nome + abas) e o
+   pé (a barra) ficam parados, e é o meio que estica ou rola. */
+.axxa-root .axxa-dash .axxa-history {
+  flex: 1 1 auto;
+  /* A lista encolhe pra caber — mas até aqui. Abaixo disto a PÁGINA volta a
+     rolar (o `.axxa-messages` já é um scroller), e a barra continua
+     alcançável: numa janela muito baixa ela estava sendo cortada fora da
+     tela, sem nenhum jeito de chegar nela. */
+  min-height: 120px;
+  overflow-y: auto;
+  /* Chegou no fim da lista, para: não continua rolando a tela de trás. */
+  overscroll-behavior: contain;
 }
 
 .axxa-root .axxa-dash .axxa-start {
+  /* `relative` só pra ancorar o esmaecido do topo (o ::before), que antes se
+     pendurava no `sticky`. Ela não gruda mais em nada: não rola. */
+  position: relative;
+  bottom: auto;
   margin-top: 0;
-  margin-bottom: auto;
-  /* Mais perto da lista: o respiro grande fazia sentido quando a barra vivia
-     no pé da tela, longe de tudo. */
+  margin-bottom: var(--axxa-5);
+  /* Perto da lista quando elas se encontram: o respiro grande fazia sentido
+     quando a barra vivia colada no pé da tela. */
   padding-top: var(--axxa-1);
 }
 
