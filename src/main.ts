@@ -118,6 +118,16 @@ export interface AxxaSettings {
    * guardam a associação chat↔projeto, pela mesma razão.
    */
   unreadChats: string[];
+  /**
+   * Orçamento em dólares por período (0 = sem orçamento).
+   *
+   * É a RÉGUA das barras do cartão da home. Cobrança por token não tem teto
+   * próprio — quem sabe quanto é demais é você —, e barra sem régua não mede
+   * nada: só desenha uma sensação. Zerado, o cartão volta a mostrar o gasto
+   * puro em vez de inventar um limite.
+   */
+  budgetWeekly: number;
+  budgetMonthly: number;
   /** chat | vault-qa | agent */
   defaultMode: string;
   /** low | med | high | xhigh | max */
@@ -217,6 +227,8 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   modelProvider: {},
   discoveredEmbeddings: {},
   unreadChats: [],
+  budgetWeekly: 0,
+  budgetMonthly: 0,
   defaultMode: "chat",
   defaultEffort: "med",
   effortConfigs: {},

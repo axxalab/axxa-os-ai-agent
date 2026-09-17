@@ -90,7 +90,7 @@ export function Dashboard({
             sozinha enquanto você usa o app: conversa velha continua onde
             estava, conta não. Ele conta a semana inteira, de todos os modos —
             por isso não obedece à aba. */}
-        <UsageCard chats={chats} />
+        <UsageCard plugin={plugin} chats={chats} />
 
         {/* Os três, sempre — inclusive o que ainda não tem conversa: aqui a
             aba não é só filtro, é o lugar onde se está. */}

@@ -856,7 +856,62 @@ export class AxxaSettingsTab extends PluginSettingTab {
         });
       });
 
+    this.renderBudget(el);
     this.renderVoice(el);
+  }
+
+  // ── Orçamento ──────────────────────────────────────────────────────────────
+  // Dois números que só existem pra dar RÉGUA às barras da home. Não travam
+  // nada: o app não vai recusar um envio porque o mês estourou — ele te mostra
+  // onde você está e deixa a decisão com você.
+
+  private renderBudget(el: HTMLElement): void {
+    const s = this.s;
+    const brand = new Setting(el).setName("Budget").setHeading();
+    const mark = brand.nameEl.createSpan({ cls: "axxa-settings-brand" });
+    setIcon(mark, "gauge");
+    brand.nameEl.prepend(mark);
+    brand.setDesc(
+      "What you consider a normal week and a normal month. The home shows how much of each you have used — nothing is blocked when they run out."
+    );
+
+    const campo = (
+      nome: string,
+      desc: string,
+      ler: () => number,
+      gravar: (v: number) => void
+    ) => {
+      new Setting(el)
+        .setName(nome)
+        .setDesc(desc)
+        .addText((t) => {
+          t.inputEl.type = "number";
+          t.inputEl.min = "0";
+          t.inputEl.step = "1";
+          t.setPlaceholder("0");
+          t.setValue(ler() > 0 ? String(ler()) : "");
+          t.onChange(async (v) => {
+            // Texto vazio, negativo ou lixo = sem orçamento, não NaN: um NaN
+            // aqui viraria uma barra de largura "NaN%" no cartão.
+            const n = Number.parseFloat(v);
+            gravar(Number.isFinite(n) && n > 0 ? n : 0);
+            await this.save();
+          });
+        });
+    };
+
+    campo(
+      "Weekly (USD)",
+      "Resets Monday.",
+      () => s.budgetWeekly,
+      (v) => (s.budgetWeekly = v)
+    );
+    campo(
+      "Monthly (USD)",
+      "Resets on the 1st.",
+      () => s.budgetMonthly,
+      (v) => (s.budgetMonthly = v)
+    );
   }
 
   // ── Voz ────────────────────────────────────────────────────────────────────

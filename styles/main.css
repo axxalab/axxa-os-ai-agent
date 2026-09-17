@@ -869,10 +869,110 @@ body.theme-dark {
 .axxa-root .axxa-usage {
   display: flex;
   flex-direction: column;
-  gap: var(--axxa-1);
+  gap: var(--axxa-2);
   padding: var(--axxa-3);
   border-radius: var(--axxa-r);
   background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
+}
+
+/* Uma linha de período: nome + quando zera, a barra, e o quanto saiu.
+   É o formato do `/usage`: a régua diz mais que o número, porque a pergunta
+   não é "quanto gastei" e sim "quanto ainda dá". */
+.axxa-root .axxa-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.axxa-root .axxa-bar-head,
+.axxa-root .axxa-bar-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--axxa-2);
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-root .axxa-bar-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+}
+
+.axxa-root .axxa-bar-reset {
+  color: var(--text-faint);
+}
+
+/* Os números da direita: gasto, orçamento e porcentagem na mesma linha do
+   nome. `tabular-nums` pra a porcentagem não dançar de lado a cada refresh. */
+.axxa-root .axxa-bar-num {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.axxa-root .axxa-bar-of {
+  color: var(--text-faint);
+}
+
+.axxa-root .axxa-bar-pct {
+  color: var(--text-normal);
+  font-weight: var(--font-semibold);
+}
+
+.axxa-root .axxa-bar-foot {
+  color: var(--text-faint);
+}
+
+.axxa-root .axxa-bar-track {
+  height: 6px;
+  border-radius: 999px;
+  /* O trilho é o orçamento INTEIRO: ele precisa ser visível mesmo vazio,
+     senão a barra some no primeiro dia do mês e não há régua nenhuma. */
+  background-color: color-mix(in srgb, var(--text-normal) 12%, transparent);
+  overflow: hidden;
+}
+
+.axxa-root .axxa-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background-color: var(--interactive-accent);
+  transition: width 240ms cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+/* Estourou: a barra não cresce além de si mesma, então quem muda é a cor. */
+.axxa-root .axxa-bar-fill.is-over,
+.axxa-root .axxa-bar-pct.is-over {
+  background-color: var(--text-warning, #e0a030);
+}
+
+.axxa-root .axxa-bar-pct.is-over {
+  background-color: transparent;
+  color: var(--text-warning, #e0a030);
+}
+
+/* "Set a budget": a porta pra criar a régua, do tamanho de um link. */
+.axxa-root button.axxa-usage-set {
+  margin-left: auto;
+  padding: 0;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text-faint);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-smaller);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.axxa-root button.axxa-usage-set:hover {
+  background-color: transparent;
+  color: var(--text-normal);
 }
 
 .axxa-root .axxa-usage-head {

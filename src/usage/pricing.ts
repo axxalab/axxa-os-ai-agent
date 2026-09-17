@@ -226,6 +226,20 @@ export function calculateCost(
   return cost;
 }
 
+/**
+ * Dinheiro do jeito que dinheiro se escreve: duas casas.
+ *
+ * `formatUsd` existe pra o custo de UMA conversa, onde a quarta casa é o
+ * valor inteiro. Ao lado de um orçamento ela vira ruído — "$0.430 of $5.00"
+ * parece defeito. Abaixo de um centavo diz "<$0.01" em vez de "$0.00": gastou
+ * pouco não é o mesmo que não gastou.
+ */
+export function formatUsdRounded(n: number | null): string {
+  if (n == null) return "—";
+  if (n > 0 && n < 0.01) return "<$0.01";
+  return `$${n.toFixed(2)}`;
+}
+
 /** Formata número USD: $0.0023 / $1.42 / $128.50 */
 export function formatUsd(n: number | null): string {
   if (n == null) return "—";
