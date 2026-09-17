@@ -860,6 +860,27 @@ body.theme-dark {
   color: var(--text-muted);
 }
 
+/* ── a escolha, no meio da tela ────────────────────────────────────────
+   Numa tela alta com quatro conversas, o que estava em cima ficava colado no
+   topo, o que estava embaixo colado na base, e o buraco entre os dois era
+   maior que os dois juntos — a bifurcação deixava de se ler como uma coisa
+   só. As duas margens `auto` dividem a sobra em partes iguais ACIMA e ABAIXO
+   do grupo, então ele fica no meio do que resta depois do título.
+   Quando a lista é grande não há sobra: as margens valem zero, o grupo volta
+   pro fluxo e a barra de começar gruda na base como antes. */
+.axxa-root .axxa-dash .axxa-home-headrow,
+.axxa-root .axxa-dash .axxa-home-empty {
+  margin-top: auto;
+}
+
+.axxa-root .axxa-dash .axxa-start {
+  margin-top: 0;
+  margin-bottom: auto;
+  /* Mais perto da lista: o respiro grande fazia sentido quando a barra vivia
+     no pé da tela, longe de tudo. */
+  padding-top: var(--axxa-1);
+}
+
 /* ── começar algo, na base da home ─────────────────────────────────────
    Os modos ficam EMBAIXO porque ali eles são ação, não navegação: o que já
    existe fica onde o olho cai, e o que se cria fica onde o polegar alcança.

@@ -82,7 +82,7 @@ export function Dashboard({
         </button>
       </header>
 
-      <div className="axxa-messages axxa-home">
+      <div className="axxa-messages axxa-home axxa-dash">
         <h1 className="axxa-home-title">AXXA OS</h1>
 
         {/* Os três, sempre — inclusive o que ainda não tem conversa: aqui a
