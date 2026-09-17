@@ -689,6 +689,18 @@ body.theme-dark {
   border-bottom: none;
 }
 
+/* O nome do app na barra: assinatura, não cabeçalho. Fica do tamanho do resto
+   da interface — grande ele viraria título de página, que é justamente o que
+   ele deixou de ser. */
+.axxa-root .axxa-topbar-brand {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
 .axxa-root .axxa-home {
   display: flex;
   flex-direction: column;
@@ -1342,6 +1354,20 @@ body.theme-dark {
 .axxa-root button.axxa-home-filter:hover {
   color: var(--text-normal);
   background-color: transparent;
+}
+
+/* O botão que LEVA a algum lugar usa a cor do app — é o que o distingue do
+   irmão de classe, que abre um menu ali mesmo.
+   `--text-accent` e não `--interactive-accent`: o primeiro é a cor de TEXTO
+   accent do tema (a mesma dos links), já pensada pra ter contraste sobre o
+   fundo; o segundo é cor de PREENCHIMENTO de botão, e em tema claro ela sai
+   pálida demais pra ler. */
+.axxa-root button.axxa-home-filter.is-accent {
+  color: var(--text-accent);
+}
+
+.axxa-root button.axxa-home-filter.is-accent:hover {
+  color: var(--text-accent-hover, var(--text-accent));
 }
 
 /* ── o cartão de uma conversa ─────────────────────────────────────────── */

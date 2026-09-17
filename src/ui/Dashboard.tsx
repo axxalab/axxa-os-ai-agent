@@ -81,11 +81,15 @@ export function Dashboard({
         >
           <Icon name="menu" />
         </button>
+        {/* O nome mora na BARRA, ao lado do menu, e não como título dentro da
+            página: título de página serve pra dizer onde você está, e esta é
+            a única tela que não é "um lugar" — é a casa. Como nome do app ele
+            é assinatura, não cabeçalho, e o espaço que ele ocupava em cima
+            virou quase uma conversa a mais na lista. */}
+        <span className="axxa-brand axxa-topbar-brand">AXXA AI AGENT</span>
       </header>
 
       <div className="axxa-messages axxa-home axxa-dash">
-        <h1 className="axxa-home-title">AXXA OS</h1>
-
         {/* O gasto vem ANTES da lista porque é a única coisa aqui que corre
             sozinha enquanto você usa o app: conversa velha continua onde
             estava, conta não. Ele conta a semana inteira, de todos os modos —
@@ -123,7 +127,11 @@ export function Dashboard({
               {visiveis.length > RECENTES && (
                 <button
                   type="button"
-                  className="axxa-home-filter"
+                  // `is-accent` só aqui: este botão LEVA a algum lugar, e a
+                  // cor do app é o que diz isso. O irmão de classe (o filtro
+                  // de período do Agent) abre um menu no mesmo lugar — pintar
+                  // os dois igual ensinaria que a cor não significa nada.
+                  className="axxa-home-filter is-accent"
                   // Fixa a aba ANTES de sair: o histórico lê a mesma, e ela
                   // pode estar valendo por dedução (ver `atual`). Sem isto,
                   // "ver tudo" de Agent abriria o histórico em "All".
