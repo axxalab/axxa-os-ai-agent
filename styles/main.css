@@ -1017,10 +1017,12 @@ body.theme-dark {
   /* A caixa continua: ela é o que alinha os títulos numa coluna só, linha a
      linha. O que sai é o FUNDO dela — o logo do provider já tem forma
      própria, e a plaquinha em volta era uma segunda moldura brigando com a
-     primeira. */
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+     primeira.
+     Sem fundo ela encolhe pra perto do logo: 42px eram a plaquinha, e o que
+     sobrava era um vão entre o logo e o título que não significava nada. */
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   color: var(--text-muted);
 }
 
@@ -1171,9 +1173,11 @@ body.theme-dark {
 }
 
 .axxa-root .axxa-home .axxa-history-row.has-preview .axxa-history-more {
-  /* O brasão tem 42 e o botão 28: a diferença dividida por dois alinha o ⋯
-     com o centro dele, que é onde o olho espera. */
-  margin-top: 7px;
+  /* O ⋯ mora FORA da faixa de cima (é outro botão — botão não aninha em
+     botão), então não dá pra centralizá-lo nela por flex. A faixa tem a
+     altura do título + a linha de baixo (~40px) e o botão tem 28: a metade
+     da diferença põe os dois centros na mesma linha. */
+  margin-top: 6px;
 }
 
 .axxa-root .axxa-card-preview {
