@@ -40,6 +40,7 @@ import type {
   EffortLevel,
 } from "./core/effort";
 import type { RoleId, RoleModelEntry } from "./providers/modelRoles";
+import { chatIndexSignature } from "./core/chatIndex";
 
 /** Resultado do último teste de credencial de um provider. */
 export interface ProviderStatus {
@@ -344,8 +345,12 @@ export default class AxxaPlugin extends Plugin {
     return `${dir}/chatIndex.json`;
   }
   /** Versão do schema do índice persistido. Caches de versão desconhecida são
-   *  descartados (cai pro walk, que reescreve no formato atual). v0.1.228 */
-  private static readonly CHAT_INDEX_VERSION = 1;
+   *  descartados (cai pro walk, que reescreve no formato atual). v0.1.228
+   *
+   *  2 (0.6.16): entrou o `preview` — a última fala que o cartão do Agent
+   *  mostra. Sem subir a versão, o índice antigo continuava valendo e a linha
+   *  simplesmente não existia pra quem já usava o app. */
+  private static readonly CHAT_INDEX_VERSION = 2;
   private async readChatIndex(): Promise<ChatSummary[] | null> {
     try {
       const p = this.chatIndexPath();
@@ -459,30 +464,10 @@ export default class AxxaPlugin extends Plugin {
     this.reconcilingChats = true;
     try {
       const fresh = await listAllChats(this.app, this.settings.chatsPath, 100_000);
-      // Assinatura inclui os campos que aparecem na UI (não só id+date), senão
-      // uma edição externa de título/tokens/model com a mesma data passa batido
-      // e o cache nunca reconcilia. v0.1.228
-      const sig = (arr: ChatSummary[]) =>
-        arr.length +
-        ":" +
-        arr
-          .map(
-            (c) =>
-              c.id +
-              "\x1f" +
-              c.date +
-              "\x1f" +
-              c.title +
-              "\x1f" +
-              c.messageCount +
-              "\x1f" +
-              c.tokensIn +
-              "\x1f" +
-              c.tokensOut +
-              "\x1f" +
-              c.model
-          )
-          .join("|");
+      // A assinatura mora em core/chatIndex.ts, testada: campo que aparece num
+      // cartão e falta nela é uma diferença INVISÍVEL — a varredura acha tudo
+      // igual e joga fora o resultado novo.
+      const sig = chatIndexSignature;
       if (!this.chatSummaries || sig(fresh) !== sig(this.chatSummaries)) {
         this.chatSummaries = fresh;
         this.notifyChats();
