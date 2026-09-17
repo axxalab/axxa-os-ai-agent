@@ -13,6 +13,7 @@ import {
   type UsageBucket,
   sortBucketEntries,
 } from "./aggregate";
+import { formatCompact } from "./format";
 
 /** Pasta default pra reports — fica fora do generationPath pra não poluir. */
 const REPORTS_FOLDER = "axxa-ai/reports";
@@ -29,11 +30,8 @@ function tsFileName(): string {
   return `${stamp}-${rand}`;
 }
 
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + "k";
-  return String(n);
-}
+/** O mesmo formato compacto que o cartão da home usa (ver usage/format.ts). */
+const formatNumber = formatCompact;
 
 function periodLabel(agg: UsageAggregate, periodDays: number): string {
   if (periodDays > 0) return `últimos ${periodDays} dias`;

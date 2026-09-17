@@ -56,7 +56,16 @@ const chats = [
   // existe. Não pode sumir nem quebrar a tela — tem que aparecer com o nome
   // que tem.
   { id: "16", title: "Deep research on spaced repetition", date: dias(8, 13), mode: "research", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-].sort((a, b) => b.date.localeCompare(a.date));
+]
+  // Tokens plausíveis, derivados do tamanho de cada conversa. Com tudo zerado
+  // o cartão de uso da home dizia que a semana inteira foi de graça — e um
+  // preview que mente sobre o número é pior que não ter preview.
+  .map((c) => ({
+    ...c,
+    tokensIn: c.messageCount * 1400 + c.toolCount * 900,
+    tokensOut: c.messageCount * 520,
+  }))
+  .sort((a, b) => b.date.localeCompare(a.date));
 
 const chatsListeners = new Set<() => void>();
 const unreadListeners = new Set<() => void>();

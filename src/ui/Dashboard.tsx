@@ -28,6 +28,7 @@ import { useChatStore } from "../store/chat";
 import { ChatList, useChatSummaries, useUnreadChats } from "./ChatList";
 import { Icon } from "./Icon";
 import { Segmented } from "./Segmented";
+import { UsageCard } from "./UsageCard";
 import { alertCount } from "./chatAlert";
 import { MODULES, chatsOfModule, defaultSegment } from "./modules";
 import type { ChatSummary } from "../core/chatPersistence";
@@ -84,6 +85,12 @@ export function Dashboard({
 
       <div className="axxa-messages axxa-home axxa-dash">
         <h1 className="axxa-home-title">AXXA OS</h1>
+
+        {/* O gasto vem ANTES da lista porque é a única coisa aqui que corre
+            sozinha enquanto você usa o app: conversa velha continua onde
+            estava, conta não. Ele conta a semana inteira, de todos os modos —
+            por isso não obedece à aba. */}
+        <UsageCard chats={chats} />
 
         {/* Os três, sempre — inclusive o que ainda não tem conversa: aqui a
             aba não é só filtro, é o lugar onde se está. */}

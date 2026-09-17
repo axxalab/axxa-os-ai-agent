@@ -20,8 +20,10 @@ import { relativeShort } from "./modules";
 import { ALERT_LABEL, chatAlert } from "./chatAlert";
 
 /** Logo do provider da conversa. Desconhecido cai num ícone neutro em vez de
- *  quebrar o setIcon com um nome que não existe. */
-function providerIcon(id: string): string {
+ *  quebrar o setIcon com um nome que não existe.
+ *  Exportado porque o cartão de uso da home mostra o mesmo brasão pro modelo
+ *  favorito — dois jeitos de desenhar o mesmo provider seria um a mais. */
+export function providerIcon(id: string): string {
   return PROVIDERS.find((p) => p.id === id)?.icon ?? "message-square";
 }
 

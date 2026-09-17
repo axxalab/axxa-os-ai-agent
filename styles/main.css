@@ -863,6 +863,90 @@ body.theme-dark {
   color: var(--text-muted);
 }
 
+/* ── o cartão de uso ───────────────────────────────────────────────────
+   Superfície igual à do cartão de conversa: é informação do app sobre o app,
+   não uma promoção. O que o distingue é o tamanho do número. */
+.axxa-root .axxa-usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-1);
+  padding: var(--axxa-3);
+  border-radius: var(--axxa-r);
+  background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
+}
+
+.axxa-root .axxa-usage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--axxa-3);
+}
+
+/* O texto da esquerda encolhe antes do modelo sumir: numa linha apertada, o
+   que se corta é a frase, não o nome. */
+.axxa-root .axxa-usage-meta {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* As barras da semana: sete traços que só valem uns em relação aos outros. */
+.axxa-root .axxa-usage-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 22px;
+}
+
+.axxa-root .axxa-usage-bar {
+  width: 5px;
+  border-radius: 2px;
+  background-color: color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+}
+
+.axxa-root .axxa-usage-big {
+  display: flex;
+  align-items: baseline;
+  gap: var(--axxa-1);
+  font-family: var(--axxa-read-font);
+  font-size: 1.9em;
+  line-height: 1.1;
+}
+
+/* O "+" de "tem modelo sem preço aqui": pequeno e acima da linha, como uma
+   nota de rodapé — o número continua sendo o número. */
+.axxa-root .axxa-usage-approx {
+  align-self: flex-start;
+  color: var(--text-faint);
+  font-size: 0.5em;
+}
+
+.axxa-root .axxa-usage-unit {
+  color: var(--text-faint);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+}
+
+.axxa-root .axxa-usage-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--axxa-3);
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-root .axxa-usage-model {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* ── a barra de começar tem ENDEREÇO ───────────────────────────────────
    Ela é a mesma ação em qualquer aba, então tem que estar sempre no mesmo
    lugar: o polegar aprende a altura e para de procurar. Antes a sobra da tela
@@ -884,6 +968,12 @@ body.theme-dark {
    cartões altos empurrava a barra pra fora e ela reaparecia noutra altura.
    Com a lista rolando por dentro do próprio quadro, o topo (nome + abas) e o
    pé (a barra) ficam parados, e é o meio que estica ou rola. */
+/* Vãos um pouco menores no painel: com o cartão de uso no topo e a barra de
+   começar no pé, cada 4px de respiro aqui é meia conversa a menos na lista. */
+.axxa-root .axxa-dash {
+  gap: var(--axxa-3);
+}
+
 .axxa-root .axxa-dash .axxa-history {
   flex: 1 1 auto;
   /* A lista encolhe pra caber — mas até aqui. Abaixo disto a PÁGINA volta a
