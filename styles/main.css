@@ -875,6 +875,67 @@ body.theme-dark {
   background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
 }
 
+/* ── o calendário de uso ───────────────────────────────────────────────
+   Colunas são SEMANAS, linhas são dias da semana — o formato que deixa ler a
+   coluna ("esta semana") e a linha ("domingos") sem legenda nenhuma.
+   A célula tem tamanho FIXO: com coluna elástica ela vira retângulo em telas
+   largas, e um calendário de retângulos deixa de parecer calendário. */
+.axxa-root .axxa-heat {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, var(--axxa-heat-cell, 7px));
+  grid-auto-columns: var(--axxa-heat-cell, 7px);
+  gap: 2px;
+  /* Meio ano não cabe em tela estreita: o que passar rola de lado, em vez de
+     encolher a célula até virar poeira. */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.axxa-root .axxa-heat::-webkit-scrollbar {
+  display: none;
+}
+
+.axxa-root .axxa-heat-cell {
+  border-radius: 2px;
+  background-color: color-mix(in srgb, var(--text-normal) 8%, transparent);
+}
+
+/* Dia que ainda não chegou não é dia: não pinta nem o fundo de "não usei". */
+.axxa-root .axxa-heat-cell.is-void {
+  background-color: transparent;
+}
+
+.axxa-root .axxa-heat-cell.is-1 {
+  background-color: color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+}
+
+.axxa-root .axxa-heat-cell.is-2 {
+  background-color: color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+}
+
+.axxa-root .axxa-heat-cell.is-3 {
+  background-color: color-mix(in srgb, var(--interactive-accent) 78%, transparent);
+}
+
+.axxa-root .axxa-heat-cell.is-4 {
+  background-color: var(--interactive-accent);
+}
+
+/* O total é o número grande da linha de cima; o resto da linha é apoio. */
+.axxa-root .axxa-usage-big {
+  font-family: var(--axxa-read-font);
+  font-size: 1.45em;
+  line-height: 1.1;
+  color: var(--text-normal);
+}
+
+.axxa-root .axxa-usage-sep {
+  margin: 0 2px;
+  color: var(--text-faint);
+}
+
 /* Uma linha de período: nome + quando zera, a barra, e o quanto saiu.
    É o formato do `/usage`: a régua diz mais que o número, porque a pergunta
    não é "quanto gastei" e sim "quanto ainda dá". */
@@ -985,6 +1046,9 @@ body.theme-dark {
 /* O texto da esquerda encolhe antes do modelo sumir: numa linha apertada, o
    que se corta é a frase, não o nome. */
 .axxa-root .axxa-usage-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -1005,15 +1069,6 @@ body.theme-dark {
   background-color: color-mix(in srgb, var(--interactive-accent) 70%, transparent);
 }
 
-.axxa-root .axxa-usage-big {
-  display: flex;
-  align-items: baseline;
-  gap: var(--axxa-1);
-  font-family: var(--axxa-read-font);
-  font-size: 1.9em;
-  line-height: 1.1;
-}
-
 /* O "+" de "tem modelo sem preço aqui": pequeno e acima da linha, como uma
    nota de rodapé — o número continua sendo o número. */
 .axxa-root .axxa-usage-approx {
@@ -1030,7 +1085,7 @@ body.theme-dark {
 
 .axxa-root .axxa-usage-line {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: var(--axxa-3);
   color: var(--text-faint);

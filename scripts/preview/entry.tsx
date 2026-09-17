@@ -56,6 +56,15 @@ const chats = [
   // existe. Não pode sumir nem quebrar a tela — tem que aparecer com o nome
   // que tem.
   { id: "16", title: "Deep research on spaced repetition", date: dias(8, 13), mode: "research", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  // Meses atrás: sem histórico VELHO o calendário do cartão de uso nasce
+  // quase todo apagado, e não dá pra ver se o desenho funciona.
+  { id: "21", title: "Old notes cleanup", date: dias(36, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 20, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 20 },
+  { id: "22", title: "Reading list for June", date: dias(44, 15), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 12, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "23", title: "Where did the Q2 plan go?", date: dias(51, 9), mode: "vault-qa", provider: "openai", model: "gpt-4o", messageCount: 7, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "24", title: "Rewrite the onboarding copy", date: dias(52, 20), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 30, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "25", title: "Split the archive by year", date: dias(73, 11), mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 24, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 24 },
+  { id: "26", title: "Names for the plugin", date: dias(95, 16), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "27", title: "Which notes mention Obsidian sync?", date: dias(120, 8), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
 ]
   // Tokens plausíveis, derivados do tamanho de cada conversa. Com tudo zerado
   // o cartão de uso da home dizia que a semana inteira foi de graça — e um
