@@ -15,21 +15,21 @@
 // E são QUATRO conversas, não todas. Quatro é o que responde "onde eu estava";
 // a partir daí a lista deixa de ser uma resposta e vira um arquivo — que tem
 // tela própria, com busca (ver History.tsx).
+//
+// As abas aqui são OS TRÊS MODOS, sem "All": a home é sobre um lugar de cada
+// vez, e ela abre naquele em que se mexeu por último. "Tudo junto" — e as
+// conversas de módulos que esta versão não conhece — é assunto do histórico,
+// que é onde se garimpa.
 
 import type AxxaPlugin from "../main";
 import type { ChatSession } from "../core/session";
-import { CHAT_MODES, type ChatMode } from "../core/session";
+import { CHAT_MODES, isChatMode, type ChatMode } from "../core/session";
 import { useChatStore } from "../store/chat";
 import { ChatList, useChatSummaries, useUnreadChats } from "./ChatList";
 import { Icon } from "./Icon";
 import { Segmented } from "./Segmented";
 import { alertCount } from "./chatAlert";
-import {
-  MODULES,
-  SEGMENT_ALL,
-  filterSegment,
-  moduleSegments,
-} from "./modules";
+import { MODULES, chatsOfModule, defaultSegment } from "./modules";
 import type { ChatSummary } from "../core/chatPersistence";
 
 /** Quantas conversas a home mostra antes de mandar pro histórico. */
@@ -61,11 +61,13 @@ export function Dashboard({
   const naoLidas = useUnreadChats(plugin);
   const esperandoId = useChatStore((s) => s.waitingChatId);
 
-  const abas = moduleSegments(chats);
-  // A aba escolhida pode ter sumido (a última conversa dela foi apagada).
-  // Cair em "All" é melhor do que uma lista vazia sem explicação.
-  const atual = abas.some((s) => s.id === aba) ? aba : SEGMENT_ALL;
-  const visiveis = filterSegment(chats, atual);
+  // A aba compartilhada pode estar em "All" (o histórico tem essa) ou num
+  // módulo que só existe no disco. Aqui isso vira o modo de quem se mexeu
+  // por último — é o que "continuar de onde parou" quer dizer.
+  const atual: ChatMode = isChatMode(aba)
+    ? aba
+    : defaultSegment(chats, plugin.settings.defaultMode);
+  const visiveis = chatsOfModule(chats, atual);
 
   return (
     <div className="axxa-chat">
@@ -83,27 +85,24 @@ export function Dashboard({
       <div className="axxa-messages axxa-home">
         <h1 className="axxa-home-title">AXXA OS</h1>
 
-        {/* Com um módulo só em uso, o filtro filtraria a lista inteira em
-            "All" e nada no resto: só ocuparia a linha. */}
-        {abas.length > 2 && (
-          <Segmented
-            options={abas.map((s) => ({
-              id: s.id,
-              label: s.label,
-              // O ponto diz em qual aba está o que pede você. Sem ele, o
-              // filtro esconderia justamente o que não podia ser escondido.
-              dot:
-                s.id !== SEGMENT_ALL &&
-                alertCount(chats, s.id, {
-                  esperando: esperandoId,
-                  naoLidas,
-                }) > 0,
-            }))}
-            value={atual}
-            label="Filter chats by mode"
-            onChange={onAba}
-          />
-        )}
+        {/* Os três, sempre — inclusive o que ainda não tem conversa: aqui a
+            aba não é só filtro, é o lugar onde se está. */}
+        <Segmented
+          options={CHAT_MODES.map((m) => ({
+            id: m,
+            label: MODULES[m].short,
+            // O ponto diz em qual modo está o que pede você. Sem ele, a aba
+            // esconderia justamente o que não podia ser escondido.
+            dot:
+              alertCount(chats, m, {
+                esperando: esperandoId,
+                naoLidas,
+              }) > 0,
+          }))}
+          value={atual}
+          label="Chat mode"
+          onChange={onAba}
+        />
 
         {visiveis.length > 0 && (
           <>
@@ -118,7 +117,13 @@ export function Dashboard({
                 <button
                   type="button"
                   className="axxa-home-filter"
-                  onClick={onOpenHistory}
+                  // Fixa a aba ANTES de sair: o histórico lê a mesma, e ela
+                  // pode estar valendo por dedução (ver `atual`). Sem isto,
+                  // "ver tudo" de Agent abriria o histórico em "All".
+                  onClick={() => {
+                    onAba(atual);
+                    onOpenHistory();
+                  }}
                 >
                   <span>See all {visiveis.length}</span>
                   <Icon name="chevron-right" size={16} />
@@ -136,8 +141,8 @@ export function Dashboard({
 
         {visiveis.length === 0 && (
           <div className="axxa-home-empty">
-            <Icon name="message-circle" size={42} />
-            <p>Nothing here yet. Start one below.</p>
+            <Icon name={MODULES[atual].icon} size={42} />
+            <p>{MODULES[atual].emptyLine}</p>
           </div>
         )}
 

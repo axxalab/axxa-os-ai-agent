@@ -4,6 +4,7 @@ import {
   MODULE_LIST,
   SEGMENT_ALL,
   chatsOfModule,
+  defaultSegment,
   filterSegment,
   moduleSegments,
   moduleHint,
@@ -369,5 +370,45 @@ describe("filterSegment", () => {
     // A tela filtra a cada render; devolver o array original convidaria a
     // ordenar/cortar por cima do que o plugin mantém.
     expect(filterSegment(usadas, SEGMENT_ALL)).not.toBe(usadas);
+  });
+});
+
+describe("defaultSegment", () => {
+  it("abre no modo de quem se mexeu por ÚLTIMO", () => {
+    const chats = [
+      chat({ id: "a", mode: "chat", date: "2026-09-10T10:00:00.000Z" }),
+      chat({ id: "b", mode: "agent", date: "2026-09-12T10:00:00.000Z" }),
+      chat({ id: "c", mode: "vault-qa", date: "2026-09-11T10:00:00.000Z" }),
+    ];
+    expect(defaultSegment(chats, "chat")).toBe("agent");
+  });
+
+  it("não confia na ordem da lista", () => {
+    // A home recebe a lista já ordenada, mas "já ordenada" é um contrato de
+    // outro módulo: quem decide aqui compara as datas.
+    const chats = [
+      chat({ id: "a", mode: "chat", date: "2026-09-01T10:00:00.000Z" }),
+      chat({ id: "b", mode: "agent", date: "2026-09-20T10:00:00.000Z" }),
+    ];
+    expect(defaultSegment(chats, "vault-qa")).toBe("agent");
+  });
+
+  it("conversa de módulo desconhecido não escolhe a aba", () => {
+    // Ela não TEM aba na home (lá são os três modos e só) — abrir nela seria
+    // abrir em lugar nenhum. Quem a alcança é o histórico.
+    const chats = [
+      chat({ id: "a", mode: "vault-qa", date: "2026-09-10T10:00:00.000Z" }),
+      chat({ id: "z", mode: "research", date: "2026-09-30T10:00:00.000Z" }),
+    ];
+    expect(defaultSegment(chats, "chat")).toBe("vault-qa");
+  });
+
+  it("sem conversa nenhuma, vale o modo padrão das settings", () => {
+    expect(defaultSegment([], "agent")).toBe("agent");
+  });
+
+  it("padrão ausente ou inválido cai em chat", () => {
+    expect(defaultSegment([], undefined)).toBe("chat");
+    expect(defaultSegment([], "modo-que-nao-existe")).toBe("chat");
   });
 });

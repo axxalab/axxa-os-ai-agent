@@ -274,6 +274,28 @@ export function moduleSegments(chats: readonly ChatSummary[]): ModuleSegment[] {
   return segs;
 }
 
+/**
+ * Em que modo a home abre.
+ *
+ * No de quem se mexeu por ÚLTIMO — é a resposta literal de "continuar de onde
+ * parou". Conversa de módulo desconhecido não conta: ela não tem aba ali (a
+ * home tem os três modos e só), e abrir numa aba que não existe seria abrir
+ * em lugar nenhum. Sem nenhuma conversa, vale o modo padrão das settings.
+ */
+export function defaultSegment(
+  chats: readonly ChatSummary[],
+  padrao: string | undefined | null
+): ChatMode {
+  let melhor: ChatSummary | null = null;
+  for (const c of chats) {
+    if (!isChatMode(c.mode)) continue;
+    // Não confia na ordem de quem passou a lista: compara as datas.
+    if (!melhor || c.date > melhor.date) melhor = c;
+  }
+  if (melhor && isChatMode(melhor.mode)) return melhor.mode;
+  return isChatMode(padrao) ? padrao : "chat";
+}
+
 /** A lista que aquela aba mostra. */
 export function filterSegment(
   chats: readonly ChatSummary[],
