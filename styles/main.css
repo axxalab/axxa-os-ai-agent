@@ -424,6 +424,9 @@ body.theme-dark {
   --axxa-r: 14px;
   --axxa-r-lg: 20px;
   --axxa-r-pill: 999px;
+  /* Altura de um cartão de "começar algo". Vira unidade de medida: a folga
+     abaixo da barra é contada em cartões. */
+  --axxa-start-card: 68px;
 
   --axxa-line: var(--background-modifier-border);
   --axxa-hover: var(--background-modifier-hover);
@@ -900,10 +903,12 @@ body.theme-dark {
   bottom: auto;
   margin-top: 0;
   /* Fora do canto, e bem fora: no pé da tela o polegar precisa se esticar e
-     ainda disputa espaço com a barra de gestos do sistema. Dois passos da
-     escala em vez de um sobem os cartões pra altura em que o toque acerta de
-     primeira — que é o ponto de eles serem a ação principal. */
-  margin-bottom: calc(var(--axxa-5) * 2);
+     ainda disputa espaço com a barra de gestos do sistema — que no aparelho
+     come uns 60px abaixo do que o app enxerga como o pé. A folga é um CARTÃO
+     inteiro mais dois passos da escala: assim ela acompanha sozinha qualquer
+     mudança na altura dos cartões, e eles ficam na altura em que o toque
+     acerta de primeira, que é o ponto de serem a ação principal. */
+  margin-bottom: calc(var(--axxa-start-card) + var(--axxa-5) * 2);
   /* Perto da lista quando elas se encontram: o respiro grande fazia sentido
      quando a barra vivia colada no pé da tela. */
   padding-top: var(--axxa-1);
@@ -978,7 +983,10 @@ body.theme-dark {
   align-items: center;
   justify-content: center;
   gap: var(--axxa-1);
-  min-height: 68px;
+  /* Token porque a folga embaixo da barra é medida NELE (ver a margem da
+     `.axxa-dash .axxa-start`): mudar a altura do cartão sem mudar a folga
+     junto desalinharia as duas coisas em silêncio. */
+  min-height: var(--axxa-start-card);
   padding: var(--axxa-2);
   border-radius: var(--axxa-r);
   background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
