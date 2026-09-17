@@ -8,18 +8,18 @@
 // enquanto você usa; até aqui só dava pra saber delas indo atrás de um
 // relatório.
 //
-// Tudo aqui sai do que o app JÁ GRAVA por conversa. Nenhum número depende de
-// você configurar coisa nenhuma: uma barra de progresso precisaria de um
-// limite, e o limite teria que ser inventado — cobrança por token não tem
-// teto. Barra assim mede a régua, não o uso.
+// Tudo aqui é o MÊS VIGENTE e sai do que o app já grava por conversa. Nenhum
+// número depende de você configurar coisa nenhuma: uma barra de progresso
+// precisaria de um limite, e o limite teria que ser inventado — cobrança por
+// token não tem teto. Barra assim mede a régua, não o uso.
 //
 // Cada pedaço responde uma pergunta que os outros não respondem:
 //   • o TOTAL responde "quanto?";
 //   • o CALENDÁRIO responde "como tem sido?" — se é todo dia um pouco, se
 //     sumiu uma semana, se o mês inteiro coube em duas madrugadas;
+//   • os MODELOS respondem "com o quê?", e em que proporção;
 //   • os MÓDULOS põem número no que o calendário só insinua: sequência, dias
-//     ativos e o trabalho que o agente fez no vault;
-//   • o MODELO responde "com o quê?".
+//     ativos e o trabalho que o agente fez no vault.
 
 import type { CSSProperties } from "react";
 import type AxxaPlugin from "../main";
@@ -29,17 +29,17 @@ import { formatCompact } from "../usage/format";
 import { aggregateFromSummaries } from "../usage/aggregate";
 import { Icon } from "./Icon";
 import { providerIcon } from "./ChatList";
-import { resumoDeUso } from "./homeStats";
-import { heatmap, type Celula } from "./heatmap";
+import { heatmapDoMes, inicioDoMes, type Celula } from "./heatmap";
 import {
   diasAtivos,
+  modelosMaisUsados,
   sequenciaDeDias,
   trabalhoDoPeriodo,
+  type ModeloUsado,
 } from "./homeModules";
 
-/** Semanas no calendário. Meio ano cabe na largura de um telefone e é fundo
- *  suficiente pra um hábito aparecer. */
-const SEMANAS = 26;
+/** Quantos modelos cabem na lista sem ela virar um relatório. */
+const MODELOS = 3;
 
 export function UsageCard({
   plugin,
@@ -48,17 +48,17 @@ export function UsageCard({
   plugin: AxxaPlugin;
   chats: readonly ChatSummary[];
 }) {
-  const mapa = heatmap(chats, SEMANAS);
+  const mapa = heatmapDoMes(chats);
+  // UM corte pra tudo: número que discorda do desenho logo acima dele é a
+  // maneira mais rápida de o cartão perder a credibilidade.
+  const desde = inicioDoMes();
+  const doMes = chats.filter((c) => (c.date ?? "").slice(0, 10) >= desde);
+  const agg = aggregateFromSummaries(doMes, 0);
 
-  // Tudo no cartão conta o MESMO período do desenho: números e calendário
-  // discordando logo um acima do outro é a maneira mais rápida de o cartão
-  // perder a credibilidade.
-  const desde = mapa.celulas.find((c) => c.dia)?.dia ?? "";
-  const doPeriodo = chats.filter((c) => (c.date ?? "").slice(0, 10) >= desde);
-  const agg = aggregateFromSummaries(doPeriodo, 0);
-  const favorito = resumoDeUso(chats, 30).modeloFavorito;
-
-  const sequencia = sequenciaDeDias(mapa.celulas);
+  const modelos = modelosMaisUsados(chats, desde, MODELOS);
+  // A sequência é a única que olha ALÉM do mês: hábito não recomeça no dia 1
+  // só porque o desenho recomeça.
+  const sequencia = sequenciaDeDias(chats);
   const ativos = diasAtivos(mapa.celulas);
   const trabalho = trabalhoDoPeriodo(chats, desde);
 
@@ -67,7 +67,7 @@ export function UsageCard({
   if (agg.total.chats === 0) return null;
 
   return (
-    <section className="axxa-usage" aria-label="Usage">
+    <section className="axxa-usage" aria-label={`Usage in ${mapa.rotulo}`}>
       <div className="axxa-usage-line">
         <span className="axxa-usage-meta">
           <span className="axxa-usage-big">{formatCompact(mapa.total)}</span>
@@ -89,21 +89,24 @@ export function UsageCard({
             </>
           )}
         </span>
-        {favorito && (
-          <span className="axxa-usage-model" title="Most used model">
-            <Icon name={providerIcon(favorito.provider)} size={16} />
-            <span>{favorito.model}</span>
-          </span>
+        {/* O mês dá nome ao que está sendo contado. Sem ele o cartão parece
+            falar do começo dos tempos. */}
+        <span className="axxa-usage-month">{mapa.rotulo}</span>
+      </div>
+
+      {/* Calendário e modelos LADO A LADO: o mês é um quadrado estreito, e a
+          largura que sobrava dele não servia pra mais nada. */}
+      <div className="axxa-usage-mid">
+        <Calendario celulas={mapa.celulas} pico={mapa.pico} />
+        {modelos.length > 0 && (
+          <div className="axxa-models">
+            {modelos.map((m) => (
+              <LinhaDeModelo key={m.model} m={m} />
+            ))}
+          </div>
         )}
       </div>
 
-      <Calendario celulas={mapa.celulas} semanas={mapa.semanas} pico={mapa.pico} />
-
-      {/* TRÊS, sempre: uma fileira só. Cinco módulos viravam três fileiras e
-          o cartão passava de 300px — a lista sumia atrás dele.
-          "Dia mais forte" ficou de fora de propósito: é o quadradinho mais
-          escuro do calendário logo acima, e módulo que repete o desenho ocupa
-          espaço sem dizer nada novo. */}
       <div className="axxa-mods">
         {/* A sequência primeiro: é a única que muda de valor por você abrir o
             app hoje, e a única que se PERDE. */}
@@ -112,9 +115,9 @@ export function UsageCard({
           valor={sequencia > 0 ? String(sequencia) : "—"}
           unidade={sequencia === 1 ? "day" : "days"}
         />
-        {/* "Active days" quebrava em duas linhas num quadro de 92px e
-            esticava a fileira inteira: o rótulo é uma palavra só, e quem diz
-            que são dias é o vizinho da esquerda. */}
+        {/* "Active days" quebrava em duas linhas num quadro estreito e
+            esticava a fileira: o rótulo é uma palavra só, e quem diz que são
+            dias é o vizinho da esquerda. */}
         <Modulo
           rotulo="Active"
           valor={String(ativos.ativos)}
@@ -138,37 +141,56 @@ export function UsageCard({
           />
         )}
       </div>
-
     </section>
   );
 }
 
-/** O calendário: colunas são semanas, linhas são dias da semana. */
-function Calendario({
-  celulas,
-  semanas,
-  pico,
-}: {
-  celulas: Celula[];
-  semanas: number;
-  pico: number;
-}) {
+/** O calendário do mês: colunas são dias da semana, linhas são semanas. */
+function Calendario({ celulas, pico }: { celulas: Celula[]; pico: number }) {
   return (
     <div
       className="axxa-heat"
-      style={{ "--axxa-heat-cols": semanas } as CSSProperties}
       role="img"
-      aria-label={`Daily usage over the last ${semanas} weeks, busiest day ${formatCompact(pico)} tokens`}
+      aria-label={`Daily usage this month, busiest day ${formatCompact(pico)} tokens`}
     >
       {celulas.map((c, i) => (
         <span
           key={i}
-          className={c.dia ? `axxa-heat-cell is-${c.nivel}` : "axxa-heat-cell is-void"}
+          className={
+            c.dia
+              ? `axxa-heat-cell is-${c.nivel}`
+              : c.futuro
+                ? "axxa-heat-cell is-future"
+                : "axxa-heat-cell is-void"
+          }
           // O título é o que dá o número exato de um dia sem gastar linha:
           // no desktop sai no hover, no celular é inofensivo.
           title={c.dia ? `${c.dia} · ${formatCompact(c.tokens)} tokens` : undefined}
         />
       ))}
+    </div>
+  );
+}
+
+/**
+ * Uma linha de modelo: o anel com a fatia, o logo do provider e o nome.
+ *
+ * O anel é um `conic-gradient` com um furo de máscara, não um SVG: é uma
+ * declaração de CSS no lugar de uma árvore de elementos, e o furo precisa ser
+ * máscara pra valer sobre QUALQUER fundo — um círculo interno pintado teria
+ * que adivinhar a cor do cartão, que é translúcida.
+ */
+function LinhaDeModelo({ m }: { m: ModeloUsado }) {
+  return (
+    <div className="axxa-model-row" title={`${formatCompact(m.tokens)} tokens`}>
+      <span
+        className="axxa-donut"
+        style={{ "--axxa-pct": m.pct } as CSSProperties}
+        aria-hidden="true"
+      />
+      <Icon name={providerIcon(m.provider)} size={14} />
+      <span className="axxa-model-name">{m.model}</span>
+      <span className="axxa-model-pct">{m.pct}%</span>
     </div>
   );
 }

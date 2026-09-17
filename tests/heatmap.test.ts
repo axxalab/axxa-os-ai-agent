@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { diaLocal, heatmap, nivelDoDia } from "../src/ui/heatmap";
+import {
+  diaLocal,
+  heatmapDoMes,
+  inicioDoMes,
+  nivelDoDia,
+} from "../src/ui/heatmap";
 import type { ChatSummary } from "../src/core/chatPersistence";
 
 const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
@@ -20,7 +25,8 @@ const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
   ...over,
 });
 
-/** Quarta-feira, 16/09/2026, meio-dia local. */
+/** Quarta-feira, 16/09/2026, meio-dia local. Setembro de 2026 começa numa
+ *  terça e tem 30 dias. */
 const AGORA = new Date(2026, 8, 16, 12).getTime();
 const local = (a: number, m: number, d: number, h = 10) =>
   new Date(a, m - 1, d, h).toISOString();
@@ -30,8 +36,7 @@ describe("diaLocal", () => {
     // 23h50 local continua sendo hoje, ainda que em UTC já seja amanhã (ou
     // ontem) dependendo do fuso — o quadradinho tem que cair no dia em que a
     // pessoa lembra de ter usado.
-    const t = new Date(2026, 8, 16, 23, 50).getTime();
-    expect(diaLocal(t)).toBe("2026-09-16");
+    expect(diaLocal(new Date(2026, 8, 16, 23, 50).getTime())).toBe("2026-09-16");
   });
 
   it("zero à esquerda no mês e no dia", () => {
@@ -40,17 +45,14 @@ describe("diaLocal", () => {
 });
 
 describe("nivelDoDia", () => {
-  it("dia sem uso não tem nível", () => {
+  it("dia sem uso não tem nível, e o pico é o mais forte", () => {
     expect(nivelDoDia(0, 1000)).toBe(0);
-  });
-
-  it("o pico é o mais forte", () => {
     expect(nivelDoDia(1000, 1000)).toBe(4);
   });
 
   it("as faixas são do PICO, não do ranking", () => {
-    // Todos os dias iguais numa semana fraca = todos no mesmo tom. Quartil
-    // daria quatro cores e inventaria um contraste que não existe.
+    // Todos os dias iguais num mês fraco = todos no mesmo tom. Quartil daria
+    // quatro cores e inventaria um contraste que não existe.
     expect(nivelDoDia(100, 1000)).toBe(1);
     expect(nivelDoDia(300, 1000)).toBe(2);
     expect(nivelDoDia(600, 1000)).toBe(3);
@@ -62,70 +64,85 @@ describe("nivelDoDia", () => {
   });
 });
 
-describe("heatmap", () => {
-  it("a grade é retangular: 7 linhas por semana", () => {
-    const h = heatmap([], 12, AGORA);
-    expect(h.celulas).toHaveLength(84);
-    expect(h.semanas).toBe(12);
+describe("heatmapDoMes", () => {
+  it("a grade é retangular: 7 colunas por semana", () => {
+    const h = heatmapDoMes([], AGORA);
+    expect(h.celulas.length % 7).toBe(0);
+    expect(h.celulas).toHaveLength(h.linhas * 7);
   });
 
-  it("a última coluna é ESTA semana, e começa numa segunda", () => {
-    const h = heatmap([], 12, AGORA);
-    const ultimaColuna = h.celulas.slice(-7);
-    // 16/09/2026 é quarta; a semana dela começou na segunda, dia 14.
-    expect(ultimaColuna[0].dia).toBe("2026-09-14");
+  it("o mês começa na coluna do dia da semana dele", () => {
+    // 01/09/2026 é terça: uma casa vazia antes (segunda), e o dia 1 na
+    // segunda coluna.
+    const h = heatmapDoMes([], AGORA);
+    expect(h.celulas[0].dia).toBeNull();
+    expect(h.celulas[1].dia).toBe("2026-09-01");
   });
 
-  it("dia no FUTURO não é dia: fica sem data em vez de valer zero", () => {
-    // Pintar zero num dia que ainda não chegou diria "não usei" — e não é
-    // isso; a grade só é retangular porque grade é retangular.
-    const h = heatmap([], 12, AGORA);
-    const ultimaColuna = h.celulas.slice(-7);
-    // Quarta é o índice 2: quinta em diante ainda não aconteceu.
-    expect(ultimaColuna[2].dia).toBe("2026-09-16");
-    expect(ultimaColuna[3].dia).toBeNull();
-    expect(ultimaColuna[6].dia).toBeNull();
+  it("dia que ainda não chegou não é dia: fica sem data, não com zero", () => {
+    // Pintar zero num dia futuro diria "não usei" — e não é isso.
+    const h = heatmapDoMes([], AGORA);
+    const dezesseis = h.celulas.findIndex((c) => c.dia === "2026-09-16");
+    expect(dezesseis).toBeGreaterThan(0);
+    expect(h.celulas[dezesseis + 1].dia).toBeNull();
+    // Mas ele é marcado como FUTURO, e não como "fora do mês": é a diferença
+    // entre a grade manter a forma do mês e parecer cortada na metade.
+    expect(h.celulas[dezesseis + 1].futuro).toBe(true);
+    expect(h.celulas[0].futuro).toBeUndefined();
+  });
+
+  it("o mês anterior não entra — os quadrados são do mês VIGENTE", () => {
+    const h = heatmapDoMes([chat({ date: local(2026, 8, 30) })], AGORA);
+    expect(h.total).toBe(0);
+    expect(h.celulas.every((c) => !c.dia || c.dia.startsWith("2026-09"))).toBe(
+      true
+    );
   });
 
   it("soma os tokens do dia, de todas as conversas", () => {
-    const h = heatmap(
+    const h = heatmapDoMes(
       [
         chat({ id: "a", date: local(2026, 9, 15), tokensIn: 100, tokensOut: 50 }),
         chat({ id: "b", date: local(2026, 9, 15), tokensIn: 30, tokensOut: 20 }),
       ],
-      12,
       AGORA
     );
-    const quinze = h.celulas.find((c) => c.dia === "2026-09-15");
-    expect(quinze?.tokens).toBe(200);
+    expect(h.celulas.find((c) => c.dia === "2026-09-15")?.tokens).toBe(200);
     expect(h.pico).toBe(200);
     expect(h.total).toBe(200);
   });
 
-  it("conversa mais velha que a grade não conta no total mostrado", () => {
-    // O cartão promete "os últimos meses"; somar o que está fora faria o
-    // total discordar do desenho logo acima dele.
-    const h = heatmap([chat({ date: local(2025, 1, 10) })], 12, AGORA);
-    expect(h.total).toBe(0);
-    expect(h.pico).toBe(0);
-  });
-
   it("data ilegível não entra nem quebra a grade", () => {
-    const h = heatmap([chat({ date: "ontem de manhã" })], 12, AGORA);
+    const h = heatmapDoMes([chat({ date: "ontem de manhã" })], AGORA);
     expect(h.total).toBe(0);
-    expect(h.celulas).toHaveLength(84);
+    expect(h.celulas).toHaveLength(h.linhas * 7);
   });
 
   it("o dia mais forte fica no nível 4 e o mais fraco no 1", () => {
-    const h = heatmap(
+    const h = heatmapDoMes(
       [
         chat({ id: "a", date: local(2026, 9, 15), tokensIn: 1000, tokensOut: 0 }),
         chat({ id: "b", date: local(2026, 9, 14), tokensIn: 50, tokensOut: 0 }),
       ],
-      12,
       AGORA
     );
     expect(h.celulas.find((c) => c.dia === "2026-09-15")?.nivel).toBe(4);
     expect(h.celulas.find((c) => c.dia === "2026-09-14")?.nivel).toBe(1);
+  });
+
+  it("mês que começa numa segunda não tem casa vazia na frente", () => {
+    // 01/06/2026 é segunda.
+    const h = heatmapDoMes([], new Date(2026, 5, 10, 12).getTime());
+    expect(h.celulas[0].dia).toBe("2026-06-01");
+  });
+
+  it("leva o nome do mês pro rótulo", () => {
+    expect(heatmapDoMes([], AGORA).rotulo).toBe("September");
+  });
+});
+
+describe("inicioDoMes", () => {
+  it("é o corte que todos os números do cartão usam", () => {
+    expect(inicioDoMes(AGORA)).toBe("2026-09-01");
   });
 });

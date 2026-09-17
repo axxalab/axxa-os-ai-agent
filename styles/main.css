@@ -875,26 +875,17 @@ body.theme-dark {
   background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
 }
 
-/* ── o calendário de uso ───────────────────────────────────────────────
-   Colunas são SEMANAS, linhas são dias da semana — o formato que deixa ler a
-   coluna ("esta semana") e a linha ("domingos") sem legenda nenhuma.
-   A célula tem tamanho FIXO: com coluna elástica ela vira retângulo em telas
-   largas, e um calendário de retângulos deixa de parecer calendário. */
+/* ── o calendário do mês ───────────────────────────────────────────────
+   Sete colunas — segunda a domingo —, como calendário de parede: a coluna é o
+   dia da semana e a linha é a semana. A célula tem tamanho FIXO: com coluna
+   elástica ela vira retângulo, e um calendário de retângulos deixa de parecer
+   calendário. */
 .axxa-root .axxa-heat {
+  flex: 0 0 auto;
   display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(7, var(--axxa-heat-cell, 7px));
-  grid-auto-columns: var(--axxa-heat-cell, 7px);
-  gap: 2px;
-  /* Meio ano não cabe em tela estreita: o que passar rola de lado, em vez de
-     encolher a célula até virar poeira. */
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-}
-
-.axxa-root .axxa-heat::-webkit-scrollbar {
-  display: none;
+  grid-template-columns: repeat(7, var(--axxa-heat-cell, 12px));
+  grid-auto-rows: var(--axxa-heat-cell, 12px);
+  gap: 3px;
 }
 
 .axxa-root .axxa-heat-cell {
@@ -902,9 +893,16 @@ body.theme-dark {
   background-color: color-mix(in srgb, var(--text-normal) 8%, transparent);
 }
 
-/* Dia que ainda não chegou não é dia: não pinta nem o fundo de "não usei". */
+/* Fora do mês não é nada: nem quadradinho. */
 .axxa-root .axxa-heat-cell.is-void {
   background-color: transparent;
+}
+
+/* Dia que ainda não chegou: mais fraco que "não usei", porque não usar é um
+   fato e ainda não ter chegado não é. Mas ele fica no desenho — sem isso o
+   mês perde a forma na metade e a grade parece cortada. */
+.axxa-root .axxa-heat-cell.is-future {
+  background-color: color-mix(in srgb, var(--text-normal) 3%, transparent);
 }
 
 .axxa-root .axxa-heat-cell.is-1 {
@@ -934,6 +932,77 @@ body.theme-dark {
 .axxa-root .axxa-usage-sep {
   margin: 0 2px;
   color: var(--text-faint);
+}
+
+/* Calendário e modelos dividem a faixa do meio: o mês é estreito por
+   natureza (sete colunas), e a largura que sobrava ao lado dele não servia
+   pra mais nada. */
+.axxa-root .axxa-usage-mid {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-3);
+  min-width: 0;
+}
+
+.axxa-root .axxa-models {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.axxa-root .axxa-model-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+/* O ANEL da fatia: um `conic-gradient` com furo de máscara. O furo é máscara,
+   e não um círculo pintado por cima, porque o cartão é translúcido — um
+   círculo interno teria que adivinhar a cor de trás dele. */
+.axxa-root .axxa-donut {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--interactive-accent) calc(var(--axxa-pct, 0) * 1%),
+    color-mix(in srgb, var(--text-normal) 14%, transparent) 0
+  );
+  -webkit-mask-image: radial-gradient(
+    circle,
+    transparent 44%,
+    #000 46%
+  );
+  mask-image: radial-gradient(circle, transparent 44%, #000 46%);
+}
+
+.axxa-root .axxa-model-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A porcentagem nunca encolhe: é ela que o anel está dizendo. */
+.axxa-root .axxa-model-pct {
+  flex: 0 0 auto;
+  color: var(--text-normal);
+  font-variant-numeric: tabular-nums;
+}
+
+/* O nome do mês na ponta da primeira linha: dá nome ao que está sendo
+   contado, senão o cartão parece falar do começo dos tempos. */
+.axxa-root .axxa-usage-month {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
 }
 
 /* Os MÓDULOS: um quadro por número, na fileira embaixo do calendário.
