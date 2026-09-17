@@ -150,6 +150,21 @@ export function Dashboard({
             de módulo — fora dele precisaria de um ancestral posicionado, e
             `.axxa-chat` não é posicionado (ver o bloco do composer no CSS). */}
         <section className="axxa-start">
+          {/* O "ou" é o ponto da tela: continuar OU começar, e quem decide é
+              quem abriu. Sem ele os dois blocos viram uma lista comprida com
+              um rodapé — a escolha existe, mas não se lê.
+
+              Vive DENTRO da barra grudada na base, não solto no meio da
+              página: com a lista rolando, um "ou" que sobe junto separaria
+              duas coisas que já não estão mais uma de cada lado.
+
+              E só aparece quando há o que continuar: sem conversa nenhuma não
+              há bifurcação, há um caminho só. */}
+          {visiveis.length > 0 && (
+            <span className="axxa-or">
+              <span>or</span>
+            </span>
+          )}
           <span className="axxa-section-label">Start something new</span>
           <div className="axxa-start-grid">
             {CHAT_MODES.map((m) => (

@@ -868,6 +868,24 @@ body.theme-dark {
   background: linear-gradient(to top, var(--axxa-canvas), transparent);
 }
 
+/* `—— or ——`: os traços são os pseudos, o meio é a palavra. Eles crescem e
+   encolhem sozinhos, então a palavra fica centrada em qualquer largura. */
+.axxa-root .axxa-or {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-root .axxa-or::before,
+.axxa-root .axxa-or::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background-color: var(--axxa-line);
+}
+
 .axxa-root .axxa-start-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
