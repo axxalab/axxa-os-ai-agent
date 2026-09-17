@@ -781,6 +781,18 @@ body.theme-dark {
   background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
 }
 
+/* ── a lista CHAPADA (só o Chat) ───────────────────────────────────────
+   Na referência as duas listas não têm o mesmo peso, e isso não é enfeite:
+   uma sessão de trabalho é um OBJETO — tem estado, ferramenta, repositório —
+   e objeto ganha cartão. Conversa não é objeto; é fala. Quatro caixas
+   empilhadas fazem uma conversa parecer formulário.
+   Aqui o que separa uma da outra é o espaço, e quem ancora a linha é o brasão
+   do provider. O fundo só aparece no toque. */
+.axxa-root .axxa-home .axxa-history-row.is-flat {
+  padding: var(--axxa-2) var(--axxa-1);
+  background-color: transparent;
+}
+
 /* O `button` do Obsidian vem com fundo e canto arredondado próprios (é o que
    fazia aparecer uma pílula clara DENTRO do cartão, com o ⋯ do lado de fora
    dela). Dentro da lista quem tem forma é o cartão.
@@ -812,6 +824,21 @@ body.theme-dark {
    mesma força de seletor, pra ganhar por ordem. */
 .axxa-root .axxa-home .axxa-history-row.is-waiting {
   box-shadow: inset 0 0 0 1px var(--text-warning, #e0a030);
+}
+
+/* Sem cartão, o anel em volta da linha seria o cartão voltando pela porta dos
+   fundos — quem carrega o estado é o BRASÃO. */
+.axxa-root .axxa-home .axxa-history-row.is-flat.is-current,
+.axxa-root .axxa-home .axxa-history-row.is-flat.is-waiting {
+  box-shadow: none;
+}
+
+.axxa-root .axxa-home .axxa-history-row.is-flat.is-current .axxa-card-mark {
+  box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+.axxa-root .axxa-home .axxa-history-row.is-flat.is-waiting .axxa-card-mark {
+  box-shadow: 0 0 0 2px var(--text-warning, #e0a030);
 }
 
 .axxa-root .axxa-home .axxa-history-title {
@@ -1117,9 +1144,45 @@ body.theme-dark {
 }
 
 .axxa-root .axxa-home .axxa-history-open {
-  flex-direction: row;
+  /* Coluna: em cima a faixa (brasão | texto | idade), embaixo o preview da
+     sessão. Era `row` direto — não havia "embaixo". */
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--axxa-2);
+}
+
+.axxa-root .axxa-card-top {
+  display: flex;
   align-items: center;
   gap: var(--axxa-3);
+  min-width: 0;
+}
+
+/* A última fala da sessão, em duas linhas no máximo. Ela começa na margem do
+   cartão, não na coluna do texto: é o corpo do cartão, não mais um detalhe
+   pendurado no título. */
+/* No cartão alto o ⋯ sobe pra linha do título: centrado na altura ele ficava
+   no meio do texto do preview, apontando pra lugar nenhum. */
+.axxa-root .axxa-home .axxa-history-row.has-preview {
+  align-items: flex-start;
+}
+
+.axxa-root .axxa-home .axxa-history-row.has-preview .axxa-history-more {
+  /* O brasão tem 42 e o botão 28: a diferença dividida por dois alinha o ⋯
+     com o centro dele, que é onde o olho espera. */
+  margin-top: 7px;
+}
+
+.axxa-root .axxa-card-preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.45;
+  white-space: normal;
+  text-align: left;
 }
 
 .axxa-root .axxa-home .axxa-history-meta {

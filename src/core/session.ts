@@ -40,6 +40,7 @@ import { streamReply, type EngineCtx } from "./chatEngine";
 import { runAgentTurn } from "./agentTurn";
 import type { NoteAttachment } from "../providers/base";
 import type { Project } from "../projects";
+import { previewFromText } from "./chatPreview";
 
 export type ChatMode = "chat" | "vault-qa" | "agent";
 export const CHAT_MODES: ChatMode[] = ["chat", "vault-qa", "agent"];
@@ -418,6 +419,7 @@ export class ChatSession {
           : {}),
       })),
     };
+    const ultima = chat.messages[chat.messages.length - 1];
     try {
       const path = await saveChat(
         this.plugin.app,
@@ -441,6 +443,10 @@ export class ChatSession {
         ),
         filePath: path,
         starred: false,
+        // Da última fala que já está aqui: reler do disco o arquivo que
+        // acabamos de escrever seria trabalho por nada, e deixar vazio
+        // APAGARIA a linha do cartão a cada gravação.
+        preview: previewFromText(ultima?.content ?? ""),
       });
       // Respondeu com você em outro lugar: fica marcada até você abrir.
       this.plugin.markChatUnread(chat.id);
@@ -714,6 +720,7 @@ export class ChatSession {
           : {}),
       })),
     };
+    const ultima = chat.messages[chat.messages.length - 1];
     try {
       const path = await saveChat(
         this.plugin.app,
@@ -737,6 +744,7 @@ export class ChatSession {
         ),
         filePath: path,
         starred: chat.starred === true,
+        preview: previewFromText(ultima?.content ?? ""),
       });
     } catch (err) {
       console.error("[axxa] saveChat falhou:", err);

@@ -30,20 +30,20 @@ const dias = (n: number, h = 10) => {
 };
 
 const chats = [
-  { id: "1", title: "Weekly review plan", date: "2026-09-11T09:12:00", mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 14, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 14 },
+  { id: "1", title: "Weekly review plan", date: "2026-09-11T09:12:00", mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 14, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Wrote the review into Journal/2026-W37.md and linked the three open projects. Two tasks had no due date — left them as they were.", toolCount: 14 },
   { id: "2", title: "What did I write about spaced repetition?", date: "2026-09-10T21:03:00", mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 6, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "3", title: "Outline for the Axxa landing page", date: "2026-09-09T14:44:00", mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 22, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "4", title: "Clean up the inbox folder", date: "2026-09-08T08:20:00", mode: "agent", provider: "gemini", model: "gemini-2.5-flash", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 9 },
+  { id: "4", title: "Clean up the inbox folder", date: "2026-09-08T08:20:00", mode: "agent", provider: "gemini", model: "gemini-2.5-flash", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Moved 41 notes out of Inbox/ into the folders they belong to. Six had no clear home and stayed put; the list is at the end of this session.", toolCount: 9 },
   { id: "5", title: "Rewrite the plugin README", date: dias(0, 8), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 11, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "6", title: "Which notes mention the Anki backlog?", date: dias(1, 19), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 4, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "7", title: "Move last month's meeting notes", date: dias(2, 11), mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 18, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 18 },
+  { id: "7", title: "Move last month's meeting notes", date: dias(2, 11), mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 18, filePath: "", tokensIn: 0, tokensOut: 0, preview: "[edit_note] Meetings/2026-08 — moved 18 files, rewrote 9 wikilinks that pointed at the old paths.", toolCount: 18 },
   { id: "8", title: "Names for the voice feature", date: dias(3, 15), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 7, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "9", title: "What did I decide about pricing?", date: dias(4, 9), mode: "vault-qa", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "10", title: "Tag every note from the São Paulo trip", date: dias(5, 20), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 26, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 26 },
+  { id: "10", title: "Tag every note from the São Paulo trip", date: dias(5, 20), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 26, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Tagged 26 notes with #trip/sao-paulo. Skipped the three daily notes: they mention the trip but are not about it.", toolCount: 26 },
   { id: "11", title: "Explain event loops like I'm tired", date: dias(6, 23), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "12", title: "Summarise the reading list", date: dias(9, 12), mode: "vault-qa", provider: "openai", model: "gpt-4o", messageCount: 8, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "13", title: "Draft the changelog for 0.5", date: dias(12, 16), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 13, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "14", title: "Split the daily notes by quarter", date: dias(15, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 31, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 31 },
+  { id: "14", title: "Split the daily notes by quarter", date: dias(15, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 31, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Split Daily/ into Daily/2026-Q1..Q3. 31 files moved, no links broken — checked every backlink before writing.", toolCount: 31 },
   { id: "15", title: "Where did I write about sleep debt?", date: dias(21, 7), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 3, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   // O módulo Chat passa de OITO conversas de propósito: é a partir daí que a
   // busca da tela nasce, e sem um módulo gordo esse caminho não existiria no

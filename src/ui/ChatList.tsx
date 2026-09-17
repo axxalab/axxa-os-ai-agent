@@ -37,7 +37,7 @@ export function useChatSummaries(plugin: AxxaPlugin): ChatSummary[] {
       if (vivo) setChats(all);
     });
     const unsub = plugin.onChatsChange(() =>
-      setChats(plugin.chatSummaries ?? [])
+      setChats(plugin.chatSummaries ?? []),
     );
     return () => {
       vivo = false;
@@ -56,7 +56,7 @@ export function useChatSummaries(plugin: AxxaPlugin): ChatSummary[] {
  */
 export function useUnreadChats(plugin: AxxaPlugin): Set<string> {
   const [naoLidas, setNaoLidas] = useState<Set<string>>(() =>
-    plugin.unreadSet()
+    plugin.unreadSet(),
   );
   useEffect(() => {
     setNaoLidas(plugin.unreadSet());
@@ -140,59 +140,77 @@ export function ChatList({
         return (
           <div
             key={c.id}
-            className={
-              [
-                "axxa-history-row",
-                c.id === currentChatId ? "is-current" : "",
-                alerta ? `has-alert is-${alerta}` : "",
-              ]
-                .filter(Boolean)
-                .join(" ")
-            }
+            className={[
+              "axxa-history-row",
+              // A roupa vem do MÓDULO, não da tela onde a lista está:
+              // conversa é fala e vira LINHA; sessão de vault ou de agente é
+              // um objeto com estado e vira CARTÃO. Assim a mesma conversa
+              // se parece consigo mesma em qualquer lugar do app — inclusive
+              // no histórico, onde os três se misturam.
+              c.mode === "chat" ? "is-flat" : "",
+              // Cartão alto: o ⋯ precisa saber disso pra ficar na faixa de
+              // cima em vez de boiar no meio da altura.
+              c.mode === "agent" && c.preview ? "has-preview" : "",
+              c.id === currentChatId ? "is-current" : "",
+              alerta ? `has-alert is-${alerta}` : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
             <button
               type="button"
               className="axxa-history-open"
               onClick={() => abrir(c)}
             >
-              {/* O brasão é o LOGO DO PROVIDER, colorido: é o que diz de
+              <span className="axxa-card-top">
+                {/* O brasão é o LOGO DO PROVIDER, colorido: é o que diz de
                   relance com quem a conversa foi, sem gastar uma palavra. */}
-              <span className="axxa-card-mark" aria-hidden="true">
-                <Icon name={providerIcon(c.provider)} size={20} />
-              </span>
-
-              <span className="axxa-card-text">
-                <span className="axxa-history-title">
-                  {c.title || "Untitled"}
+                <span className="axxa-card-mark" aria-hidden="true">
+                  <Icon name={providerIcon(c.provider)} size={20} />
                 </span>
-                <span className="axxa-history-meta">
-                  {/* O ponto pulsa e a palavra diz o que ele significa — um
+
+                <span className="axxa-card-text">
+                  <span className="axxa-history-title">
+                    {c.title || "Untitled"}
+                  </span>
+                  <span className="axxa-history-meta">
+                    {/* O ponto pulsa e a palavra diz o que ele significa — um
                       ponto sozinho não se explica. */}
-                  {alerta && (
-                    <span className={`axxa-card-live is-${alerta}`}>
-                      <span className="axxa-card-pulse" aria-hidden="true" />
-                      {ALERT_LABEL[alerta]}
-                    </span>
-                  )}
-                  {alerta && <span className="axxa-card-dot">·</span>}
-                  {st && (
-                    <span
-                      className={
-                        st.ativo ? "axxa-card-state is-on" : "axxa-card-state"
-                      }
-                    >
-                      {st.texto}
-                    </span>
-                  )}
-                  {st && c.model && <span className="axxa-card-dot">·</span>}
-                  {c.model && <span>{c.model}</span>}
+                    {alerta && (
+                      <span className={`axxa-card-live is-${alerta}`}>
+                        <span className="axxa-card-pulse" aria-hidden="true" />
+                        {ALERT_LABEL[alerta]}
+                      </span>
+                    )}
+                    {alerta && <span className="axxa-card-dot">·</span>}
+                    {st && (
+                      <span
+                        className={
+                          st.ativo ? "axxa-card-state is-on" : "axxa-card-state"
+                        }
+                      >
+                        {st.texto}
+                      </span>
+                    )}
+                    {st && c.model && <span className="axxa-card-dot">·</span>}
+                    {c.model && <span>{c.model}</span>}
+                  </span>
                 </span>
-              </span>
 
-              {/* Tempo desde a ÚLTIMA interação: `date` é reescrito a cada
+                {/* Tempo desde a ÚLTIMA interação: `date` é reescrito a cada
                   gravação da conversa, não é a data de criação. Fica na ponta,
                   a coluna que se lê de cima a baixo pra achar "a de hoje". */}
-              <span className="axxa-card-age">{relativeShort(c.date)}</span>
+                <span className="axxa-card-age">{relativeShort(c.date)}</span>
+              </span>
+
+              {/* A última fala, no cartão da SESSÃO. Título e modelo dizem o
+                  que ela é; isto diz onde ela parou — a pergunta de quem está
+                  decidindo se volta. Só no Agent: numa conversa, o título já
+                  é a primeira frase, e repetir a fala embaixo dele seria dizer
+                  a mesma coisa duas vezes. */}
+              {c.mode === "agent" && c.preview && (
+                <span className="axxa-card-preview">{c.preview}</span>
+              )}
             </button>
 
             <button

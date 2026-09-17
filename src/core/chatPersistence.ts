@@ -13,6 +13,7 @@
 
 import type { App, DataAdapter } from "obsidian";
 import type { AIToolStep } from "../agent/types";
+import { previewFromMarkdown } from "./chatPreview";
 
 export interface ChatMessageStored {
   type: "user" | "ai-response";
@@ -75,6 +76,14 @@ export interface ChatSummary {
   filePath: string;
   /** Favoritada — sobe pro topo dos recentes e ganha estrela na lista. */
   starred: boolean;
+  /** A última fala, em uma linha — é o que o cartão de sessão do Agent mostra
+   *  embaixo do título (ver core/chatPreview.ts).
+   *
+   *  Vem vazia quando o frontmatter veio do metadataCache do Obsidian, que
+   *  não guarda corpo. Na prática ela quase sempre existe: as conversas moram
+   *  numa pasta oculta, que o Obsidian não indexa, então a listagem já lê o
+   *  arquivo — o preview sai dessa mesma leitura, sem abrir nada a mais. */
+  preview: string;
 }
 
 const TAG_LIST = ["axxa-chat"];
@@ -404,7 +413,8 @@ export async function loadChat(
 export function summaryFromFrontmatter(
   fm: Record<string, unknown>,
   fallbackMode: string,
-  filePath: string
+  filePath: string,
+  preview: string = ""
 ): ChatSummary {
   return {
     id: String(fm.id ?? ""),
@@ -420,6 +430,7 @@ export function summaryFromFrontmatter(
     toolCount: Array.isArray(fm.tools_used) ? fm.tools_used.length : 0,
     filePath,
     starred: yamlBool(fm.starred),
+    preview,
   };
 }
 
@@ -450,7 +461,15 @@ export async function listChats(
       const content = await app.vault.adapter.read(file);
       const match = content.match(/^---\n([\s\S]*?)\n---/);
       if (!match) continue;
-      summaries.push(summaryFromFrontmatter(parseSimpleYaml(match[1]), mode, file));
+      // O conteúdo já está aqui — o preview sai dele de graça.
+      summaries.push(
+        summaryFromFrontmatter(
+          parseSimpleYaml(match[1]),
+          mode,
+          file,
+          previewFromMarkdown(content)
+        )
+      );
     } catch {
       // skip arquivos quebrados
     }
