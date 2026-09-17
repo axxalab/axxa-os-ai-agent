@@ -1014,10 +1014,13 @@ body.theme-dark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* A caixa continua: ela é o que alinha os títulos numa coluna só, linha a
+     linha. O que sai é o FUNDO dela — o logo do provider já tem forma
+     própria, e a plaquinha em volta era uma segunda moldura brigando com a
+     primeira. */
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background-color: color-mix(in srgb, var(--text-normal) 8%, transparent);
   color: var(--text-muted);
 }
 
