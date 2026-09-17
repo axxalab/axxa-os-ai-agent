@@ -936,111 +936,68 @@ body.theme-dark {
   color: var(--text-faint);
 }
 
-/* Os MÓDULOS de orçamento: um quadro por período, lado a lado.
-   Empilhados em faixas da largura do cartão eles pediam leitura de linha pra
-   entregar um número só cada. Lado a lado viram comparação — semana contra
-   mês, de relance. `auto-fit` porque pode haver só um dos dois. */
+/* Os MÓDULOS: um quadro por número, na fileira embaixo do calendário.
+   Eles põem número no que o desenho só insinua — o calendário mostra que você
+   usou todo dia, o módulo diz que são 12 dias seguidos.
+   `auto-fit` porque a quantidade varia: quem nunca usou o Agent não tem o
+   quadro de ações, e o que sobra reparte a linha em vez de deixar buraco. */
 .axxa-root .axxa-mods {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  /* TRÊS colunas fixas, `minmax(0,…)` pra elas poderem encolher abaixo do
+     conteúdo (quem encolhe por dentro é a unidade). `auto-fit` aqui quebrava
+     em duas colunas num cartão estreito, e uma fileira virava duas. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--axxa-2);
 }
 
 .axxa-root .axxa-mod {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  min-width: 0;
   padding: var(--axxa-2);
   border-radius: var(--axxa-r-sm);
-  /* Um degrau ACIMA do cartão, que já é um degrau acima da página: sem isso o
-     módulo não tem contorno próprio e a fileira vira um bloco só. */
+  /* Um degrau ACIMA do cartão, que já é um degrau acima da página: sem isso a
+     fileira vira um bloco só. */
   background-color: color-mix(in srgb, var(--text-normal) 5%, transparent);
-  font-size: var(--font-ui-smaller);
 }
 
 .axxa-root .axxa-mod-title {
-  min-width: 0;
+  /* Uma linha, sempre: rótulo que quebra estica o quadro e desalinha a
+     fileira toda (os três têm que ter a mesma altura). */
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--text-muted);
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .axxa-root .axxa-mod-row {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--axxa-1);
-}
-
-.axxa-root .axxa-bar-reset {
-  color: var(--text-faint);
-}
-
-/* Os números da direita: gasto, orçamento e porcentagem na mesma linha do
-   nome. `tabular-nums` pra a porcentagem não dançar de lado a cada refresh. */
-.axxa-root .axxa-bar-num {
-  display: inline-flex;
-  align-items: baseline;
   gap: 4px;
+  min-width: 0;
+}
+
+.axxa-root .axxa-mod-value {
   flex: 0 0 auto;
-  color: var(--text-muted);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
   font-variant-numeric: tabular-nums;
 }
 
-.axxa-root .axxa-bar-of {
-  color: var(--text-faint);
-}
-
-.axxa-root .axxa-bar-pct {
-  color: var(--text-normal);
-  font-weight: var(--font-semibold);
-}
-
-.axxa-root .axxa-bar-track {
-  height: 6px;
-  border-radius: 999px;
-  /* O trilho é o orçamento INTEIRO: ele precisa ser visível mesmo vazio,
-     senão a barra some no primeiro dia do mês e não há régua nenhuma. */
-  background-color: color-mix(in srgb, var(--text-normal) 12%, transparent);
+/* A unidade explica o número e é ela que encolhe: "38" sozinho não é nada,
+   mas entre "38" e "of 182 days", quem tem que sobrar é o 38. */
+.axxa-root .axxa-mod-unit {
+  min-width: 0;
   overflow: hidden;
-}
-
-.axxa-root .axxa-bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background-color: var(--interactive-accent);
-  transition: width 240ms cubic-bezier(0.4, 0.2, 0.2, 1);
-}
-
-/* Estourou: a barra não cresce além de si mesma, então quem muda é a cor. */
-.axxa-root .axxa-bar-fill.is-over,
-.axxa-root .axxa-bar-pct.is-over {
-  background-color: var(--text-warning, #e0a030);
-}
-
-.axxa-root .axxa-bar-pct.is-over {
-  background-color: transparent;
-  color: var(--text-warning, #e0a030);
-}
-
-/* "Set a budget": a porta pra criar a régua, do tamanho de um link. */
-.axxa-root button.axxa-usage-set {
-  margin-left: auto;
-  padding: 0;
-  background-color: transparent;
-  box-shadow: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--text-faint);
-  font-family: var(--font-interface);
   font-size: var(--font-ui-smaller);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.axxa-root button.axxa-usage-set:hover {
-  background-color: transparent;
-  color: var(--text-normal);
 }
 
 .axxa-root .axxa-usage-head {

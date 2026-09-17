@@ -169,13 +169,6 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
       openai: { ok: true, at: Date.now(), detail: "24 models available." },
       gemini: { ok: false, at: Date.now(), detail: "401 invalid key" },
     },
-    // As barras do cartão de uso medem contra ISTO. `?orcamento=0` derruba a
-    // régua e mostra o outro estado do cartão (gasto puro + "Set a budget"),
-    // que é o que todo mundo vê antes de configurar qualquer coisa.
-    budgetWeekly:
-      new URLSearchParams(location.search).get("orcamento") === "0" ? 0 : 5,
-    budgetMonthly:
-      new URLSearchParams(location.search).get("orcamento") === "0" ? 0 : 15,
     defaultEffort: "med",
     voiceEnabled: true,
     voiceModel: "gpt-4o-mini-transcribe",

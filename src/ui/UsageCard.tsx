@@ -8,19 +8,23 @@
 // enquanto você usa; até aqui só dava pra saber delas indo atrás de um
 // relatório.
 //
-// Três informações, e cada uma responde uma pergunta diferente:
-//   • o TOTAL responde "quanto?";
-//   • o HEATMAP responde "como tem sido?" — se é todo dia um pouco, se sumiu
-//     uma semana, se o mês inteiro coube em duas madrugadas. Número nenhum
-//     responde isso;
-//   • o MODELO responde "com o quê?".
+// Tudo aqui sai do que o app JÁ GRAVA por conversa. Nenhum número depende de
+// você configurar coisa nenhuma: uma barra de progresso precisaria de um
+// limite, e o limite teria que ser inventado — cobrança por token não tem
+// teto. Barra assim mede a régua, não o uso.
 //
-// As barras de orçamento aparecem depois, e só pra quem definiu uma régua
-// (ver usageBars.ts): sem limite de plano, barra sem régua não mede nada.
+// Cada pedaço responde uma pergunta que os outros não respondem:
+//   • o TOTAL responde "quanto?";
+//   • o CALENDÁRIO responde "como tem sido?" — se é todo dia um pouco, se
+//     sumiu uma semana, se o mês inteiro coube em duas madrugadas;
+//   • os MÓDULOS põem número no que o calendário só insinua: sequência, dias
+//     ativos e o trabalho que o agente fez no vault;
+//   • o MODELO responde "com o quê?".
 
+import type { CSSProperties } from "react";
 import type AxxaPlugin from "../main";
 import type { ChatSummary } from "../core/chatPersistence";
-import { formatUsd, formatUsdRounded } from "../usage/pricing";
+import { formatUsdRounded } from "../usage/pricing";
 import { formatCompact } from "../usage/format";
 import { aggregateFromSummaries } from "../usage/aggregate";
 import { Icon } from "./Icon";
@@ -28,14 +32,10 @@ import { providerIcon } from "./ChatList";
 import { resumoDeUso } from "./homeStats";
 import { heatmap, type Celula } from "./heatmap";
 import {
-  barra,
-  gastoNoPeriodo,
-  mesAtual,
-  rotuloReset,
-  semanaAtual,
-  type GastoDoPeriodo,
-  type Periodo,
-} from "./usageBars";
+  diasAtivos,
+  sequenciaDeDias,
+  trabalhoDoPeriodo,
+} from "./homeModules";
 
 /** Semanas no calendário. Meio ano cabe na largura de um telefone e é fundo
  *  suficiente pra um hábito aparecer. */
@@ -49,15 +49,18 @@ export function UsageCard({
   chats: readonly ChatSummary[];
 }) {
   const mapa = heatmap(chats, SEMANAS);
-  const orcSemana = plugin.settings.budgetWeekly;
-  const orcMes = plugin.settings.budgetMonthly;
 
-  // Custo do MESMO período do desenho: total e calendário discordando logo um
-  // acima do outro é a maneira mais rápida de o cartão perder a credibilidade.
+  // Tudo no cartão conta o MESMO período do desenho: números e calendário
+  // discordando logo um acima do outro é a maneira mais rápida de o cartão
+  // perder a credibilidade.
   const desde = mapa.celulas.find((c) => c.dia)?.dia ?? "";
   const doPeriodo = chats.filter((c) => (c.date ?? "").slice(0, 10) >= desde);
   const agg = aggregateFromSummaries(doPeriodo, 0);
   const favorito = resumoDeUso(chats, 30).modeloFavorito;
+
+  const sequencia = sequenciaDeDias(mapa.celulas);
+  const ativos = diasAtivos(mapa.celulas);
+  const trabalho = trabalhoDoPeriodo(chats, desde);
 
   // Sai de cena quando não há o que contar. Zero repetido ensina a não olhar
   // pro lugar — e um calendário todo apagado é só um retângulo cinza.
@@ -96,28 +99,46 @@ export function UsageCard({
 
       <Calendario celulas={mapa.celulas} semanas={mapa.semanas} pico={mapa.pico} />
 
-      {(orcSemana > 0 || orcMes > 0) && (
-        <div className="axxa-mods">
-          {orcSemana > 0 && (
-            <Modulo
-              titulo="Week"
-              periodo={semanaAtual()}
-              tipo="semana"
-              gasto={gastoNoPeriodo(chats, semanaAtual())}
-              orcamento={orcSemana}
-            />
-          )}
-          {orcMes > 0 && (
-            <Modulo
-              titulo="Month"
-              periodo={mesAtual()}
-              tipo="mes"
-              gasto={gastoNoPeriodo(chats, mesAtual())}
-              orcamento={orcMes}
-            />
-          )}
-        </div>
-      )}
+      {/* TRÊS, sempre: uma fileira só. Cinco módulos viravam três fileiras e
+          o cartão passava de 300px — a lista sumia atrás dele.
+          "Dia mais forte" ficou de fora de propósito: é o quadradinho mais
+          escuro do calendário logo acima, e módulo que repete o desenho ocupa
+          espaço sem dizer nada novo. */}
+      <div className="axxa-mods">
+        {/* A sequência primeiro: é a única que muda de valor por você abrir o
+            app hoje, e a única que se PERDE. */}
+        <Modulo
+          rotulo="Streak"
+          valor={sequencia > 0 ? String(sequencia) : "—"}
+          unidade={sequencia === 1 ? "day" : "days"}
+        />
+        {/* "Active days" quebrava em duas linhas num quadro de 92px e
+            esticava a fileira inteira: o rótulo é uma palavra só, e quem diz
+            que são dias é o vizinho da esquerda. */}
+        <Modulo
+          rotulo="Active"
+          valor={String(ativos.ativos)}
+          unidade={`of ${ativos.total}`}
+        />
+        {/* Ações é o número mais AXXA de todos: é o equivalente daqui às
+            linhas de código do painel do Claude Code. Token mede consumo;
+            ação mede TRABALHO feito no vault. Sem nenhuma — quem nunca usou o
+            Agent —, o lugar vai pras mensagens em vez de exibir um zero. */}
+        {trabalho.acoes > 0 ? (
+          <Modulo
+            rotulo="Actions"
+            valor={formatCompact(trabalho.acoes)}
+            unidade="in vault"
+          />
+        ) : (
+          <Modulo
+            rotulo="Messages"
+            valor={formatCompact(trabalho.mensagens)}
+            unidade="sent"
+          />
+        )}
+      </div>
+
     </section>
   );
 }
@@ -135,7 +156,7 @@ function Calendario({
   return (
     <div
       className="axxa-heat"
-      style={{ "--axxa-heat-cols": semanas } as React.CSSProperties}
+      style={{ "--axxa-heat-cols": semanas } as CSSProperties}
       role="img"
       aria-label={`Daily usage over the last ${semanas} weeks, busiest day ${formatCompact(pico)} tokens`}
     >
@@ -153,56 +174,27 @@ function Calendario({
 }
 
 /**
- * Um MÓDULO de orçamento: quadradinho próprio com o período, a porcentagem, o
- * quanto saiu e a barra.
+ * Um módulo: rótulo miúdo em cima, o número embaixo, e a unidade ao lado dele.
  *
- * Eram duas faixas da largura do cartão, empilhadas. Faixa larga pede leitura
- * de linha — o olho corre da esquerda pra direita e volta —, e são só dois
- * números. Lado a lado, num quadro cada, eles viram uma COMPARAÇÃO: semana
- * contra mês, de relance, sem ler.
+ * O número é o que se lê de relance; a unidade existe pra ele não virar um
+ * inteiro solto sem significado ("38" do quê?).
  */
 function Modulo({
-  titulo,
-  periodo,
-  tipo,
-  gasto,
-  orcamento,
+  rotulo,
+  valor,
+  unidade,
 }: {
-  titulo: string;
-  periodo: Periodo;
-  tipo: "semana" | "mes";
-  gasto: GastoDoPeriodo;
-  orcamento: number;
+  rotulo: string;
+  valor: string;
+  unidade: string;
 }) {
-  const b = barra(gasto.custo, orcamento);
   return (
     <div className="axxa-mod">
-      <span className="axxa-mod-title">
-        {titulo}
-        <span className="axxa-bar-reset"> · {rotuloReset(periodo.reset, tipo)}</span>
-      </span>
+      <span className="axxa-mod-title">{rotulo}</span>
       <span className="axxa-mod-row">
-        <span className={b.estourou ? "axxa-bar-pct is-over" : "axxa-bar-pct"}>
-          {b.porcento}%
-        </span>
-        <span className="axxa-bar-num">
-          {formatUsdRounded(gasto.custo)}
-          {gasto.incompleto && <span className="axxa-usage-approx">+</span>}
-          <span className="axxa-bar-of"> / {formatUsdRounded(orcamento)}</span>
-        </span>
+        <span className="axxa-mod-value">{valor}</span>
+        <span className="axxa-mod-unit">{unidade}</span>
       </span>
-      {/* A barra é um `meter` em espírito, mas não em marcação: `<meter>` vem
-          com aparência própria do sistema e não se deixa pintar. */}
-      <div
-        className="axxa-bar-track"
-        role="img"
-        aria-label={`${titulo}: ${b.porcento}% of ${formatUsd(orcamento)}`}
-      >
-        <span
-          className={b.estourou ? "axxa-bar-fill is-over" : "axxa-bar-fill"}
-          style={{ width: `${Math.round(b.fracao * 100)}%` }}
-        />
-      </div>
     </div>
   );
 }
