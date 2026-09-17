@@ -936,30 +936,41 @@ body.theme-dark {
   color: var(--text-faint);
 }
 
-/* Uma linha de período: nome + quando zera, a barra, e o quanto saiu.
-   É o formato do `/usage`: a régua diz mais que o número, porque a pergunta
-   não é "quanto gastei" e sim "quanto ainda dá". */
-.axxa-root .axxa-bar-row {
+/* Os MÓDULOS de orçamento: um quadro por período, lado a lado.
+   Empilhados em faixas da largura do cartão eles pediam leitura de linha pra
+   entregar um número só cada. Lado a lado viram comparação — semana contra
+   mês, de relance. `auto-fit` porque pode haver só um dos dois. */
+.axxa-root .axxa-mods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--axxa-2);
+}
+
+.axxa-root .axxa-mod {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.axxa-root .axxa-bar-head,
-.axxa-root .axxa-bar-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--axxa-2);
+  padding: var(--axxa-2);
+  border-radius: var(--axxa-r-sm);
+  /* Um degrau ACIMA do cartão, que já é um degrau acima da página: sem isso o
+     módulo não tem contorno próprio e a fileira vira um bloco só. */
+  background-color: color-mix(in srgb, var(--text-normal) 5%, transparent);
   font-size: var(--font-ui-smaller);
 }
 
-.axxa-root .axxa-bar-name {
+.axxa-root .axxa-mod-title {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--text-muted);
+}
+
+.axxa-root .axxa-mod-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--axxa-1);
 }
 
 .axxa-root .axxa-bar-reset {
@@ -984,10 +995,6 @@ body.theme-dark {
 .axxa-root .axxa-bar-pct {
   color: var(--text-normal);
   font-weight: var(--font-semibold);
-}
-
-.axxa-root .axxa-bar-foot {
-  color: var(--text-faint);
 }
 
 .axxa-root .axxa-bar-track {

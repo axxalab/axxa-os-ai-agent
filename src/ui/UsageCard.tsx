@@ -96,23 +96,27 @@ export function UsageCard({
 
       <Calendario celulas={mapa.celulas} semanas={mapa.semanas} pico={mapa.pico} />
 
-      {orcSemana > 0 && (
-        <Linha
-          titulo="This week"
-          periodo={semanaAtual()}
-          tipo="semana"
-          gasto={gastoNoPeriodo(chats, semanaAtual())}
-          orcamento={orcSemana}
-        />
-      )}
-      {orcMes > 0 && (
-        <Linha
-          titulo="This month"
-          periodo={mesAtual()}
-          tipo="mes"
-          gasto={gastoNoPeriodo(chats, mesAtual())}
-          orcamento={orcMes}
-        />
+      {(orcSemana > 0 || orcMes > 0) && (
+        <div className="axxa-mods">
+          {orcSemana > 0 && (
+            <Modulo
+              titulo="Week"
+              periodo={semanaAtual()}
+              tipo="semana"
+              gasto={gastoNoPeriodo(chats, semanaAtual())}
+              orcamento={orcSemana}
+            />
+          )}
+          {orcMes > 0 && (
+            <Modulo
+              titulo="Month"
+              periodo={mesAtual()}
+              tipo="mes"
+              gasto={gastoNoPeriodo(chats, mesAtual())}
+              orcamento={orcMes}
+            />
+          )}
+        </div>
       )}
     </section>
   );
@@ -148,8 +152,16 @@ function Calendario({
   );
 }
 
-/** Uma linha de orçamento: nome + quando zera, quanto saiu, e a barra. */
-function Linha({
+/**
+ * Um MÓDULO de orçamento: quadradinho próprio com o período, a porcentagem, o
+ * quanto saiu e a barra.
+ *
+ * Eram duas faixas da largura do cartão, empilhadas. Faixa larga pede leitura
+ * de linha — o olho corre da esquerda pra direita e volta —, e são só dois
+ * números. Lado a lado, num quadro cada, eles viram uma COMPARAÇÃO: semana
+ * contra mês, de relance, sem ler.
+ */
+function Modulo({
   titulo,
   periodo,
   tipo,
@@ -164,21 +176,21 @@ function Linha({
 }) {
   const b = barra(gasto.custo, orcamento);
   return (
-    <div className="axxa-bar-row">
-      <div className="axxa-bar-head">
-        <span className="axxa-bar-name">
-          {titulo}
-          <span className="axxa-bar-reset"> · {rotuloReset(periodo.reset, tipo)}</span>
+    <div className="axxa-mod">
+      <span className="axxa-mod-title">
+        {titulo}
+        <span className="axxa-bar-reset"> · {rotuloReset(periodo.reset, tipo)}</span>
+      </span>
+      <span className="axxa-mod-row">
+        <span className={b.estourou ? "axxa-bar-pct is-over" : "axxa-bar-pct"}>
+          {b.porcento}%
         </span>
         <span className="axxa-bar-num">
           {formatUsdRounded(gasto.custo)}
           {gasto.incompleto && <span className="axxa-usage-approx">+</span>}
           <span className="axxa-bar-of"> / {formatUsdRounded(orcamento)}</span>
-          <span className={b.estourou ? "axxa-bar-pct is-over" : "axxa-bar-pct"}>
-            {b.porcento}%
-          </span>
         </span>
-      </div>
+      </span>
       {/* A barra é um `meter` em espírito, mas não em marcação: `<meter>` vem
           com aparência própria do sistema e não se deixa pintar. */}
       <div
