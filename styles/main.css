@@ -789,7 +789,11 @@ body.theme-dark {
    Aqui o que separa uma da outra é o espaço, e quem ancora a linha é o brasão
    do provider. O fundo só aparece no toque. */
 .axxa-root .axxa-home .axxa-history-row.is-flat {
-  padding: var(--axxa-2) var(--axxa-1);
+  /* Zero na lateral: o cartão tem borda pra justificar um respiro por dentro,
+     a linha não tem — aquele respiro só empurrava a lista pra dentro da
+     margem, e ela ficava desalinhada do título, das abas e dos cartões de
+     baixo, que começam todos na mesma coluna. */
+  padding: var(--axxa-2) 0;
   background-color: transparent;
 }
 
