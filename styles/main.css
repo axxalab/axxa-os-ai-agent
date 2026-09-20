@@ -814,14 +814,14 @@ body.theme-dark {
 
 /* A lista aqui não é o scroller (quem rola é a página), e cada conversa é um
    CARTÃO — na gaveta eram linhas apertadas porque o espaço era de menu. */
-.axxa-root .axxa-home .axxa-history {
+.axxa-root .axxa-history {
   flex: 0 0 auto;
   overflow: visible;
   min-height: 0;
   gap: var(--axxa-2);
 }
 
-.axxa-root .axxa-home .axxa-history-row {
+.axxa-root .axxa-history-row {
   padding: var(--axxa-3);
   border-radius: var(--axxa-r);
   /* Um passo ACIMA do fundo da página, seja ele qual for. `--axxa-raised`
@@ -837,7 +837,7 @@ body.theme-dark {
    empilhadas fazem uma conversa parecer formulário.
    Aqui o que separa uma da outra é o espaço, e quem ancora a linha é o brasão
    do provider. O fundo só aparece no toque. */
-.axxa-root .axxa-home .axxa-history-row.is-flat {
+.axxa-root .axxa-history-row.is-flat {
   /* Zero na lateral: o cartão tem borda pra justificar um respiro por dentro,
      a linha não tem — aquele respiro só empurrava a lista pra dentro da
      margem, e ela ficava desalinhada do título, das abas e dos cartões de
@@ -859,7 +859,7 @@ body.theme-dark {
   box-shadow: none;
 }
 
-.axxa-root .axxa-home .axxa-history-open {
+.axxa-root .axxa-history-open {
   padding: 0;
 }
 
@@ -868,33 +868,33 @@ body.theme-dark {
   border-radius: var(--axxa-r-sm);
 }
 
-.axxa-root .axxa-home .axxa-history-row.is-current {
+.axxa-root .axxa-history-row.is-current {
   box-shadow: inset 0 0 0 1px var(--interactive-accent);
 }
 
 /* "Precisa de você" vence o anel de "conversa aberta": a conversa aberta você
    já sabe qual é — a que parou esperando, não. Vem DEPOIS de propósito, com a
    mesma força de seletor, pra ganhar por ordem. */
-.axxa-root .axxa-home .axxa-history-row.is-waiting {
+.axxa-root .axxa-history-row.is-waiting {
   box-shadow: inset 0 0 0 1px var(--text-warning, #e0a030);
 }
 
 /* Sem cartão, o anel em volta da linha seria o cartão voltando pela porta dos
    fundos — quem carrega o estado é o BRASÃO. */
-.axxa-root .axxa-home .axxa-history-row.is-flat.is-current,
-.axxa-root .axxa-home .axxa-history-row.is-flat.is-waiting {
+.axxa-root .axxa-history-row.is-flat.is-current,
+.axxa-root .axxa-history-row.is-flat.is-waiting {
   box-shadow: none;
 }
 
-.axxa-root .axxa-home .axxa-history-row.is-flat.is-current .axxa-card-mark {
+.axxa-root .axxa-history-row.is-flat.is-current .axxa-card-mark {
   box-shadow: 0 0 0 2px var(--interactive-accent);
 }
 
-.axxa-root .axxa-home .axxa-history-row.is-flat.is-waiting .axxa-card-mark {
+.axxa-root .axxa-history-row.is-flat.is-waiting .axxa-card-mark {
   box-shadow: 0 0 0 2px var(--text-warning, #e0a030);
 }
 
-.axxa-root .axxa-home .axxa-history-title {
+.axxa-root .axxa-history-title {
   font-size: var(--font-ui-medium);
 }
 
@@ -1562,7 +1562,7 @@ body.theme-dark {
   opacity: 0.6;
 }
 
-.axxa-root .axxa-home .axxa-history-open {
+.axxa-root .axxa-history-open {
   /* Coluna: em cima a faixa (brasão | texto | idade), embaixo o preview da
      sessão. Era `row` direto — não havia "embaixo". */
   flex-direction: column;
@@ -1582,11 +1582,11 @@ body.theme-dark {
    pendurado no título. */
 /* No cartão alto o ⋯ sobe pra linha do título: centrado na altura ele ficava
    no meio do texto do preview, apontando pra lugar nenhum. */
-.axxa-root .axxa-home .axxa-history-row.has-preview {
+.axxa-root .axxa-history-row.has-preview {
   align-items: flex-start;
 }
 
-.axxa-root .axxa-home .axxa-history-row.has-preview .axxa-history-more {
+.axxa-root .axxa-history-row.has-preview .axxa-history-more {
   /* O ⋯ mora FORA da faixa de cima (é outro botão — botão não aninha em
      botão), então não dá pra centralizá-lo nela por flex. A faixa tem a
      altura do título + a linha de baixo (~40px) e o botão tem 28: a metade
@@ -1606,7 +1606,7 @@ body.theme-dark {
   text-align: left;
 }
 
-.axxa-root .axxa-home .axxa-history-meta {
+.axxa-root .axxa-history-meta {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3398,41 +3398,32 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet {
   font-size: var(--font-ui-smaller);
 }
 
+/* A ESTRUTURA da lista — o que vale onde quer que ela esteja: na home de um
+   módulo, no histórico, dentro da folha de busca.
+   Ela nasceu na gaveta, e por isso a aparência (cartão, linha chapada, brasão,
+   idade na ponta) ficou presa a `.axxa-home`. Dentro da folha de busca a lista
+   caía neste bloco sozinho: título em cima da meta, em coluna, e a data
+   parando num lugar diferente em cada linha — uma delas por baixo do ⋯.
+   Agora quem manda no visual da lista é a LISTA. */
 .axxa-root .axxa-history {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: var(--axxa-1);
 }
 
 .axxa-root .axxa-history-row {
   display: flex;
   align-items: center;
   gap: var(--axxa-1);
-  border-radius: var(--axxa-r-sm);
 }
 
 .axxa-root .axxa-history-row:hover {
   background-color: var(--axxa-hover);
 }
 
-.axxa-root .axxa-history-row.is-current {
-  background-color: var(--axxa-raised);
-}
-
 .axxa-root .axxa-history-open {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  /* idem: sem isto o título e a meta ficam centralizados na coluna. */
-  align-items: flex-start;
-  justify-content: center;
-  gap: 2px;
-  padding: var(--axxa-2) var(--axxa-3);
   text-align: left;
 }
 
