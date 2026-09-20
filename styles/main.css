@@ -1181,6 +1181,14 @@ body.theme-dark {
    elas ficavam num lugar, com uma, noutro.
 
    Quem come a sobra é a LISTA, que cresce entre as abas e o pé. */
+.axxa-root .axxa-dash .axxa-modes {
+  /* Um respiro FIXO entre o cartão e as abas — fixo, e não `auto`, que é o
+     que as fazia andar de aba pra aba. Ele separa duas coisas de naturezas
+     diferentes: em cima o que já aconteceu (é pra olhar), embaixo o que se
+     escolhe (é pra tocar). Colados, viravam um bloco só. */
+  margin-top: var(--axxa-5);
+}
+
 .axxa-root .axxa-dash .axxa-history {
   flex: 1 1 auto;
   /* A lista encolhe pra caber — mas até aqui. Abaixo disto a PÁGINA volta a
