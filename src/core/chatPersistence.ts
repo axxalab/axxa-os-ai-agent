@@ -47,6 +47,10 @@ export interface ChatData {
   persona?: string;
   /** Favoritada (item "Star" do menu ⋮). Ausente = não favoritada. */
   starred?: boolean;
+  /** As notas entram como contexto nesta conversa? AUSENTE é diferente de
+   *  `false`: ausente significa "ninguém mexeu no interruptor", e aí vale o
+   *  padrão do modo (ver core/vaultContext.ts). */
+  vault?: boolean;
   messages: ChatMessageStored[];
 }
 
@@ -160,7 +164,7 @@ mode: ${yamlString(chat.mode)}
 provider: ${yamlString(chat.provider)}
 model: ${yamlString(chat.model)}
 effort: ${yamlString(chat.effort)}
-${chat.persona ? `persona: ${yamlString(chat.persona)}\n` : ""}${chat.starred ? "starred: true\n" : ""}tokens_in: ${chat.tokensIn}
+${chat.persona ? `persona: ${yamlString(chat.persona)}\n` : ""}${chat.starred ? "starred: true\n" : ""}${chat.vault === undefined ? "" : `vault: ${chat.vault}\n`}tokens_in: ${chat.tokensIn}
 tokens_out: ${chat.tokensOut}
 message_count: ${chat.messages.length}
 ${toolsBlock}tags:
@@ -376,6 +380,8 @@ export function parseChatMarkdown(content: string): ChatData {
     // Ausente fica undefined (não `false`) — mantém o round-trip exato, igual
     // à persona: o que não foi escrito não volta como campo.
     starred: yamlBool(fm.starred) ? true : undefined,
+    // Mesma regra: ausente volta undefined, que é "nunca mexeram nisto".
+    vault: fm.vault === undefined ? undefined : yamlBool(fm.vault),
     tokensIn: Number(fm.tokens_in ?? 0),
     tokensOut: Number(fm.tokens_out ?? 0),
     messages,

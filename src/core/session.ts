@@ -41,6 +41,7 @@ import { runAgentTurn } from "./agentTurn";
 import type { NoteAttachment } from "../providers/base";
 import type { Project } from "../projects";
 import { previewFromText } from "./chatPreview";
+import { vaultAtivo } from "./vaultContext";
 
 export type ChatMode = "chat" | "vault-qa" | "agent";
 export const CHAT_MODES: ChatMode[] = ["chat", "vault-qa", "agent"];
@@ -53,6 +54,9 @@ export interface SessionConfig {
   model: string;
   mode: ChatMode;
   effort: string;
+  /** As suas notas entram como contexto nesta conversa? (ver
+   *  core/vaultContext.ts — o padrão vem do modo, a escolha é da pessoa.) */
+  vault: boolean;
   /** true após a 1ª mensagem: provider/modelo/modo não mudam mais neste chat. */
   locked: boolean;
 }
@@ -78,6 +82,8 @@ export class ChatSession {
   private model: string;
   private mode: ChatMode;
   private effort: string;
+  /** null = ninguém mexeu no interruptor das notas; vale o padrão do modo. */
+  private vaultEscolha: boolean | null = null;
 
   constructor(private readonly plugin: AxxaPlugin) {
     const s = plugin.settings;
@@ -145,6 +151,10 @@ export class ChatSession {
       model: st.sessionModel ?? this.model,
       mode: isChatMode(st.sessionMode) ? st.sessionMode : this.mode,
       effort: this.effort,
+      vault: vaultAtivo(
+        isChatMode(st.sessionMode) ? st.sessionMode : this.mode,
+        this.vaultEscolha
+      ),
       locked,
     };
   }
@@ -225,6 +235,17 @@ export class ChatSession {
     this.mode = mode;
     this.plugin.settings.defaultMode = mode;
     void this.plugin.saveSettings();
+    this.emit();
+  }
+
+  /**
+   * Liga/desliga as notas como contexto. Vale pra conversa inteira e persiste
+   * com ela — diferente de provider e modo, isto NÃO trava no primeiro envio:
+   * é a única decisão da barra que continua fazendo sentido no meio de uma
+   * conversa ("agora eu quero que você olhe minhas notas").
+   */
+  setVault(on: boolean): void {
+    this.vaultEscolha = on;
     this.emit();
   }
 
@@ -310,6 +331,7 @@ export class ChatSession {
       activeMode: cfg.mode,
       apiKeyFor: (p) => this.apiKeyFor(p),
       effort: this.effort,
+      useVault: cfg.vault,
       resolveStyleInstruction: () => "",
     };
     try {
@@ -489,6 +511,10 @@ export class ChatSession {
     if (!this.destacarTurno()) this.abortRef.current?.abort();
     this.flushSave();
     this.pendingProjectId = null;
+    // Conversa nova começa sem escolha: o interruptor das notas volta a
+    // seguir o modo. Herdar a escolha da conversa anterior faria um Chat
+    // nascer vasculhando o vault porque a sessão de Agent de ontem fazia.
+    this.vaultEscolha = null;
     useChatStore.getState().newChat();
     if (mode) {
       this.mode = mode;
@@ -586,6 +612,8 @@ export class ChatSession {
       // Abrir É ler.
       this.plugin.clearChatUnread(chat.id);
       if (chat.effort) this.effort = chat.effort;
+      // Sem campo no arquivo, volta a valer o padrão do modo.
+      this.vaultEscolha = chat.vault ?? null;
     } catch (err) {
       console.error("[axxa] loadChat falhou:", err);
       new Notice(
@@ -708,6 +736,10 @@ export class ChatSession {
       tokensOut: st.tokensOut,
       persona: st.sessionPersona || undefined,
       starred: st.currentChatStarred || undefined,
+      // `?? undefined` e não `?? false`: gravar um false de nascença faria a
+      // conversa reabrir com o interruptor travado em desligado, mesmo num
+      // modo cujo padrão é ligado.
+      vault: this.vaultEscolha ?? undefined,
       messages: userOrAi.map((m) => ({
         type: m.type,
         content: m.content,

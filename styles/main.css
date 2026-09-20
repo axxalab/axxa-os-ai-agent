@@ -1181,6 +1181,46 @@ body.theme-dark {
   text-overflow: ellipsis;
 }
 
+/* A linha do índice local: uma frase, não um cartão. O índice não é decisão
+   que se toma toda hora — é estado que se confere de vez em quando. */
+.axxa-root .axxa-rag-line {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  min-width: 0;
+  padding: 0 var(--axxa-1);
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+/* Com índice, o ícone acende: é o único sinal de que ele existe. */
+.axxa-root .axxa-rag-line.is-on .axxa-icon {
+  color: var(--interactive-accent);
+}
+
+.axxa-root .axxa-rag-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.axxa-root .axxa-rag-text strong {
+  color: var(--text-muted);
+  font-weight: var(--font-medium);
+}
+
+/* A pílula que LIGA: o contorno aceso é o que a distingue da que abre folha,
+   sem precisar de uma palavra a mais dizendo "ligado". */
+.axxa-root .axxa-pill.is-on {
+  color: var(--text-normal);
+  box-shadow: inset 0 0 0 1px var(--interactive-accent);
+}
+
+.axxa-root .axxa-pill.is-on .axxa-pill-logo {
+  color: var(--interactive-accent);
+}
+
 /* ── a barra de começar tem ENDEREÇO ───────────────────────────────────
    Ela é a mesma ação em qualquer aba, então tem que estar sempre no mesmo
    lugar: o polegar aprende a altura e para de procurar. Antes a sobra da tela

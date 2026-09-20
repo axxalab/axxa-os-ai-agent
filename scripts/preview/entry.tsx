@@ -9,6 +9,7 @@ import { useChatStore } from "./src/store/chat";
 import { registerBrandLogos } from "./src/ui/brandLogos";
 import type { ChatSession } from "./src/core/session";
 import type AxxaPlugin from "./src/main";
+import { vaultAtivo } from "./src/core/vaultContext";
 
 declare const PREVIEW_VERSION: string;
 
@@ -135,6 +136,14 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
   notifyUnread() {
     unreadListeners.forEach((cb) => cb());
   },
+  // O índice local do RAG. Sem ele o preview mostraria pra sempre o estado
+  // "ainda não indexado", que é o de quem acabou de instalar — e a linha da
+  // home nasceria sem nunca ter sido vista no estado normal.
+  // `?indice=0` derruba: é como a linha aparece pra quem ainda não indexou.
+  vectorIndex:
+    new URLSearchParams(location.search).get("indice") === "0"
+      ? null
+      : { size: 18430, fileCount: 1274 },
   settings: {
     // Uma já nasce não lida: sem isso o ponto de "New reply" só apareceria
     // depois de esperar um turno inteiro terminar fora da tela.
@@ -255,6 +264,7 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 /** Rodada em curso foi interrompida pelo botão de parar. */
+let vaultEscolha: boolean | null = null;
 let abortado = false;
 
 /** Tira o turno em andamento da tela sem matá-lo (ver session.destacarTurno). */
@@ -281,13 +291,22 @@ const destacarOuNada = () => {
 const session = {
   get config() {
     const st = useChatStore.getState();
+    const m = st.sessionMode ?? mode;
     return {
       provider: st.sessionProvider ?? provider,
       model: st.sessionModel ?? model,
-      mode: st.sessionMode ?? mode,
+      mode: m,
       effort,
+      // A MESMA regra do app (core/vaultContext): com o interruptor fora
+      // daqui, a pílula "Notes" nascia sem estado nenhum no preview e não dava
+      // pra ver se Chat nasce desligado e Agent ligado.
+      vault: vaultAtivo(m, vaultEscolha),
       locked: st.sessionProvider !== null,
     };
+  },
+  setVault: (on: boolean) => {
+    vaultEscolha = on;
+    emit();
   },
   setMode: (m: string) => {
     mode = m;

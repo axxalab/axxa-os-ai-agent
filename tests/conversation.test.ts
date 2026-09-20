@@ -70,6 +70,22 @@ describe("buildAgentSystemPrompt", () => {
   it("persona é PREPENDIDA (não substitui)", () => {
     expect(buildAgentSystemPrompt("PIRATA", "AGENT")).toBe("PIRATA\n\nAGENT");
   });
+  it("as notas entram no FIM, com o mesmo sufixo que o chat usa", () => {
+    // Mesmo texto de apresentação nos dois: dois jeitos de apresentar os
+    // trechos dariam ao agente uma leitura diferente do vault sem ninguém ter
+    // decidido isso.
+    const r = buildAgentSystemPrompt(undefined, "AGENT", {
+      suffix: "SUFIXO",
+      block: "BLOCO",
+    });
+    expect(r).toBe("AGENTSUFIXOBLOCO");
+  });
+  it("bloco vazio não deixa rastro — nem o sufixo entra", () => {
+    expect(
+      buildAgentSystemPrompt(undefined, "AGENT", { suffix: "SUFIXO", block: "" })
+    ).toBe("AGENT");
+    expect(buildAgentSystemPrompt(undefined, "AGENT", {})).toBe("AGENT");
+  });
 });
 
 describe("storeMessagesToProvider", () => {

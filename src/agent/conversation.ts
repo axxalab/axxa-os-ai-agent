@@ -38,13 +38,25 @@ export function buildChatSystemPrompt(p: ChatSystemParts): string {
   return head + style + vault + (p.noteBlock ?? "");
 }
 
-/** Monta o system prompt do AGENT: persona é PREPENDIDA (não substitui). */
+/**
+ * Monta o system prompt do AGENT: persona é PREPENDIDA (não substitui).
+ *
+ * O bloco de notas é opcional e entra no fim, com o MESMO sufixo que o chat
+ * usa — é o texto que explica pro modelo o que aqueles trechos são. Dois
+ * jeitos de apresentar a mesma coisa dariam ao agente uma leitura diferente
+ * do vault sem ninguém ter decidido isso.
+ */
 export function buildAgentSystemPrompt(
   persona: string | undefined,
-  agentPrompt: string
+  agentPrompt: string,
+  vault?: { suffix?: string; block?: string }
 ): string {
   const p = persona && persona.trim();
-  return (p ? p + "\n\n" : "") + agentPrompt;
+  const notas =
+    vault?.block && vault.block.length > 0
+      ? (vault.suffix ?? "") + vault.block
+      : "";
+  return (p ? p + "\n\n" : "") + agentPrompt + notas;
 }
 
 // ── History (store → provider) ─────────────────────────────

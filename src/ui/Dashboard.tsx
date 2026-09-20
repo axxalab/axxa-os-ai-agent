@@ -28,6 +28,7 @@ import { useChatStore } from "../store/chat";
 import { ChatList, useChatSummaries, useUnreadChats } from "./ChatList";
 import { Icon } from "./Icon";
 import { Segmented } from "./Segmented";
+import { RagLine } from "./RagLine";
 import { UsageCard } from "./UsageCard";
 import { alertCount } from "./chatAlert";
 import { MODULES, chatsOfModule, defaultSegment } from "./modules";
@@ -95,6 +96,10 @@ export function Dashboard({
             estava, conta não. Ele conta a semana inteira, de todos os modos —
             por isso não obedece à aba. */}
         <UsageCard plugin={plugin} chats={chats} />
+
+        {/* Logo abaixo do cartão, e do mesmo assunto: o cartão conta o que
+            saiu daqui pros modelos; esta linha conta o que FICA aqui. */}
+        <RagLine plugin={plugin} />
 
         {/* Os três, sempre — inclusive o que ainda não tem conversa: aqui a
             aba não é só filtro, é o lugar onde se está. */}

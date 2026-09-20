@@ -32,6 +32,7 @@ import {
 import type { MessageAttachment, ProviderMessage } from "../providers/base";
 import type { AIToolStep, PermissionLevel } from "../agent/types";
 import type { EngineCtx } from "./chatEngine";
+import { buscarContextoDoVault } from "./vaultLookup";
 
 export interface AgentCtx extends EngineCtx {
   /** "Aprovar todas" da rodada — resetado a cada turno. */
@@ -55,6 +56,7 @@ export async function runAgentTurn(
     activeModel,
     apiKeyFor,
     effort,
+    useVault,
   } = ctx;
   const {
     addMessage,
@@ -113,12 +115,28 @@ export async function runAgentTurn(
 
   const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
 
+  // As notas como contexto, quando o interruptor da conversa está ligado (ver
+  // core/vaultContext.ts). O agente já LÊ o vault com as ferramentas — o que
+  // isto muda é ele chegar sabendo o que já está escrito, em vez de descobrir
+  // procurando. É a mesma busca do turno de chat, no mesmo módulo.
+  const vaultContextBlock = useVault
+    ? await buscarContextoDoVault({
+        plugin,
+        t,
+        effort,
+        query: userText,
+        addMessage,
+        updateActivity,
+      })
+    : "";
+
   const history: ProviderMessage[] = [
     {
       role: "system",
       content: buildAgentSystemPrompt(
         useChatStore.getState().sessionPersona,
-        t.agent.systemPrompt
+        t.agent.systemPrompt,
+        { suffix: t.systemPrompt.vaultQaSuffix, block: vaultContextBlock }
       ),
     },
     // toolMode=true → agentSteps são expandidos pro shape wire (replay preciso).

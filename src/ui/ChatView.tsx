@@ -1346,6 +1346,18 @@ Open Settings › Providers to add it, then run the connection test.`,
                     }
                     onClick={() => openSheet("model")}
                   />
+                  {/* As SUAS notas como contexto. Fica ao lado do modelo
+                      porque são as duas coisas que decidem a resposta: com o
+                      que ela é feita, e com base em quê.
+                      Ao contrário do modelo e do modo, este não trava no
+                      primeiro envio — "agora olha minhas notas" é um pedido
+                      legítimo no meio de uma conversa. */}
+                  <Pill
+                    label="Notes"
+                    logo="library"
+                    active={cfg.vault}
+                    onClick={() => session.setVault(!cfg.vault)}
+                  />
                 </div>
 
                 {plugin.settings.voiceEnabled && (
@@ -1896,14 +1908,25 @@ function ListaDeModelos({
 function Pill({
   label,
   logo,
+  active,
   onClick,
 }: {
   label: string;
   logo?: string;
+  /** Pílula que LIGA e DESLIGA (o contexto das notas). `undefined` = pílula
+   *  comum, que abre alguma coisa. */
+  active?: boolean;
   onClick: () => void;
 }) {
   return (
-    <button type="button" className="axxa-pill" onClick={onClick}>
+    <button
+      type="button"
+      className={active ? "axxa-pill is-on" : "axxa-pill"}
+      // `aria-pressed` só quando ela é interruptor: numa pílula que abre uma
+      // folha, "pressionada" não quer dizer nada.
+      aria-pressed={active === undefined ? undefined : active}
+      onClick={onClick}
+    >
       {logo && <Icon name={logo} size={16} className="axxa-pill-logo" />}
       <span className="axxa-pill-label">{label}</span>
     </button>

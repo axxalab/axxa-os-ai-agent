@@ -25,6 +25,7 @@ import type {
   ProviderMessage,
 } from "../providers/base";
 import type AxxaPlugin from "../main";
+import { buscarContextoDoVault } from "./vaultLookup";
 
 /** Ref mutável do AbortController do turno em andamento (null = ocioso). */
 export interface AbortRef {
@@ -41,6 +42,10 @@ export interface EngineCtx {
   activeModel: string;
   /** "chat" | "vault-qa" | "agent" */
   activeMode: string;
+  /** Buscar nas notas antes de responder. Vem do interruptor da conversa (ver
+   *  core/vaultContext.ts), e não do modo: modo é escolha grossa demais pra
+   *  uma coisa que muda de mensagem pra mensagem. */
+  useVault: boolean;
   apiKeyFor: (providerId: string) => string;
   effort: string;
   /** Instrução extra de estilo pro system prompt ("" = nenhuma). */
@@ -69,6 +74,7 @@ export async function streamReply(
     activeMode,
     apiKeyFor,
     effort,
+    useVault,
     resolveStyleInstruction,
   } = ctx;
   const {
@@ -101,78 +107,18 @@ export async function streamReply(
   // Config completo do effort atual (com overrides do usuário).
   const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
 
-  // Modo Vault Q&A: busca notas relevantes ANTES da chamada. topK e
-  // excerptChars escalam com o effort. Com índice RAG → híbrida (semântica +
-  // keyword); sem índice → keyword puro. Nunca bloqueia o envio.
-  let vaultContextBlock = "";
-  if (activeMode === "vault-qa") {
-    const { topK, excerptChars } = effortToVaultLookup(
-      effort,
-      plugin.settings.effortConfigs
-    );
-
-    const searchActivityId = addMessage({
-      type: "ai-comment",
-      content: "",
-      activity: {
-        phase: "pending",
-        iconPending: "radar",
-        iconDone: "check",
-        pendingText: t.vault.searching(topK, effort),
-        doneText: t.vault.searchDone,
-      },
-    });
-
-    try {
-      const hits = await hybridSearch({
-        app: plugin.app,
-        index: plugin.vectorIndex,
-        creds: {
-          openaiApiKey: plugin.settings.openaiApiKey,
-          openrouterApiKey: plugin.settings.openrouterApiKey,
-          geminiApiKey: plugin.settings.geminiApiKey,
-          nimApiKey: plugin.settings.nimApiKey,
-        },
+  // Notas como contexto (ver core/vaultLookup.ts). Quem decide é o
+  // interruptor da conversa, não o modo.
+  const vaultContextBlock = useVault
+    ? await buscarContextoDoVault({
+        plugin,
+        t,
+        effort,
         query: userText,
-        topK,
-        excerptChars,
-      });
-      if (hits.length > 0) {
-        // Cabeçalho com o título CITÁVEL ([[basename]]) + path, pra IA citar a
-        // fonte exata e o link abrir a nota no clique.
-        vaultContextBlock = hits
-          .map((h) => {
-            const base =
-              h.path.replace(/\.md$/i, "").split("/").pop() ?? h.path;
-            return `### [[${base}]]\n_(${h.path})_\n\n${h.text}`;
-          })
-          .join("\n\n---\n\n");
-        const semanticUsed = hits.some((h) => h.via.includes("semantic"));
-        const hasIndex = !!plugin.vectorIndex && plugin.vectorIndex.size > 0;
-        updateActivity(searchActivityId, {
-          phase: "done",
-          doneText: semanticUsed
-            ? t.vault.foundContextSemantic(hits.length)
-            : hasIndex
-              ? t.vault.foundContextKeywordFallback(hits.length)
-              : t.vault.foundContextKeyword(hits.length),
-        });
-      } else {
-        updateActivity(searchActivityId, {
-          phase: "done",
-          iconDone: "circle-slash",
-          doneText: t.vault.notFound,
-        });
-      }
-    } catch (err) {
-      console.error("[axxa] vault search falhou:", err);
-      updateActivity(searchActivityId, {
-        phase: "failed",
-        iconFailed: "x-circle",
-        failedText: `${t.ai.errorPrefix} ${err instanceof Error ? err.message : t.ai.unknownError}`,
-      });
-    }
-  }
+        addMessage,
+        updateActivity,
+      })
+    : "";
 
   // "Pensando..." — vira done quando o primeiro token chega.
   const commentId = addMessage({
