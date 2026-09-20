@@ -766,6 +766,40 @@ body.theme-dark {
   border-color: var(--text-warning, #e0a030);
 }
 
+/* A pílula como GATILHO: mesma forma, mesma lupa, mas é botão. O `button` do
+   Obsidian traz fundo e canto próprios — aqui quem manda na forma é a pílula
+   de busca, igual à do campo de verdade. */
+.axxa-root button.axxa-search-field.is-trigger {
+  width: 100%;
+  justify-content: flex-start;
+  box-shadow: none;
+  text-align: left;
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+}
+
+/* O texto do gatilho: a busca em curso, ou o convite em tom de placeholder. */
+.axxa-root .axxa-search-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-normal);
+}
+
+.axxa-root .axxa-search-text.is-empty {
+  color: var(--text-faint);
+}
+
+/* Os resultados dentro da folha de busca. Sem altura fixa: quem dá o tamanho
+   é a folha, e a lista rola junto com ela. */
+.axxa-root .axxa-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--axxa-2);
+}
+
 .axxa-root .axxa-search-found {
   flex: 0 0 auto;
   color: var(--text-faint);

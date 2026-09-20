@@ -31,6 +31,8 @@ export function Sheet({
   open,
   onClose,
   onBack,
+  startFull,
+  focusOnOpen = true,
   children,
 }: {
   title: string;
@@ -39,12 +41,21 @@ export function Sheet({
   /** Quando existe, a folha está num nível interno: o X vira seta de voltar
    *  (e o X migra pra direita, pra fechar continuar a um toque). */
   onBack?: () => void;
+  /** Nasce no tamanho grande. É o caso da busca: ela abre com o teclado, e o
+   *  teclado já come metade — abrir pequena deixaria dois resultados à vista
+   *  e obrigaria a um arrasto antes de ler qualquer coisa. */
+  startFull?: boolean;
+  /** Por padrão o painel toma o foco ao abrir (é o que faz o teclado físico
+   *  navegar a folha). Quem tem um campo lá dentro que abre COM teclado passa
+   *  `false`: senão o painel rouba o foco do campo — o efeito do pai roda
+   *  depois do efeito do filho, e o campo apagava. */
+  focusOnOpen?: boolean;
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   /** peek = altura do conteúdo (teto baixo) · full = quase a tela toda. */
-  const [size, setSize] = useState<"peek" | "full">("peek");
+  const [size, setSize] = useState<"peek" | "full">(startFull ? "full" : "peek");
   const startY = useRef<number | null>(null);
   const dragY = useRef(0);
   /** O gesto lê o tamanho por REF: os listeners nativos são registrados uma vez
@@ -75,16 +86,17 @@ export function Sheet({
   // fora da tela.
   useEffect(() => {
     if (!open) return;
-    panelRef.current?.focus({ preventScroll: true });
+    if (focusOnOpen) panelRef.current?.focus({ preventScroll: true });
     // A lista começa do começo: reabrir no meio de onde parou parece que a
     // folha nasceu torta.
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
-  }, [open]);
+  }, [open, focusOnOpen]);
 
-  // Fechou: volta pro tamanho pequeno, senão a próxima abre gigante.
+  // Fechou: volta pro tamanho de nascença, senão a próxima abre do tamanho
+  // que a anterior ficou depois do arrasto.
   useEffect(() => {
-    if (!open) setSize("peek");
-  }, [open]);
+    if (!open) setSize(startFull ? "full" : "peek");
+  }, [open, startFull]);
 
   // Abrir e fechar são eventos de TELA, não toques: pulso um tico mais longo.
   // Só na TROCA: o efeito também roda na montagem, e com quatro folhas
@@ -352,12 +364,15 @@ export function SheetSearch({
   placeholder,
   onChange,
   found,
+  invalid,
   autoFocus,
 }: {
   value: string;
   placeholder: string;
   onChange: (v: string) => void;
   found?: number;
+  /** A expressão não compila como regex — caiu em busca literal. */
+  invalid?: boolean;
   autoFocus?: boolean;
 }) {
   return (
@@ -366,6 +381,7 @@ export function SheetSearch({
         value={value}
         placeholder={placeholder}
         found={found}
+        invalid={invalid}
         autoFocus={autoFocus}
         onChange={onChange}
       />

@@ -19,6 +19,7 @@ import type { ChatSummary } from "../core/chatPersistence";
 import { ChatList, useChatSummaries } from "./ChatList";
 import { Icon } from "./Icon";
 import { SearchField } from "./SearchField";
+import { SearchSheet } from "./SearchSheet";
 import { openActions } from "./menu";
 import {
   chatsOfModule,
@@ -55,6 +56,7 @@ export function ModuleHome({
   onOpenSkills: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [buscando, setBuscando] = useState(false);
   const [periodo, setPeriodo] = useState(PERIODOS[0]);
   const todas = useChatSummaries(plugin);
   const minhas = useMemo(() => chatsOfModule(todas, modulo), [todas, modulo]);
@@ -113,18 +115,15 @@ export function ModuleHome({
           </section>
         )}
 
-        {/* Busca em TODAS as homes, e com regex: `^draft`, `readme|changelog`,
-            `gpt-5$`. O campo NÃO anuncia isso: termo comum também é regex
-            válida, então pra quem só quer procurar palavra a palavra "regex"
-            no placeholder é uma instrução a mais pra ler e ignorar. Quem
-            precisa, digita e funciona. */}
+        {/* A pílula é GATILHO: quem toca vai pra folha de busca, onde o
+            teclado não cobre o resultado (ver SearchSheet.tsx). */}
         <SearchField
           value={query}
           placeholder="Search"
           label={`Search ${moduleLabel(modulo)}`}
           found={visiveis.length}
-          invalid={busca.invalida}
           onChange={setQuery}
+          onOpen={() => setBuscando(true)}
         />
 
         {ehAgent && (
@@ -184,6 +183,44 @@ export function ModuleHome({
           </button>
         )}
       </div>
+
+      {/* Busca com regex: `^draft`, `readme|changelog`, `gpt-5$`. O campo NÃO
+          anuncia isso: termo comum também é regex válida, então pra quem só
+          quer procurar palavra a palavra "regex" no rótulo é uma instrução a
+          mais pra ler e ignorar. Quem precisa, digita e funciona. */}
+      <SearchSheet
+        open={buscando}
+        title={`Search ${moduleLabel(modulo)}`}
+        placeholder="Search"
+        value={query}
+        found={visiveis.length}
+        invalid={busca.invalida}
+        onChange={setQuery}
+        onClose={() => setBuscando(false)}
+      >
+        {visiveis.length > 0 ? (
+          <ChatList
+            plugin={plugin}
+            session={session}
+            chats={visiveis}
+            onOpen={(c) => {
+              // Fecha a busca ANTES de sair: voltar da conversa e encontrar a
+              // folha ainda aberta por cima seria um fantasma.
+              setBuscando(false);
+              onOpenChat(c);
+            }}
+          />
+        ) : (
+          <div className="axxa-home-empty">
+            <Icon name="search" size={42} />
+            <p>
+              {query.trim()
+                ? "Nothing matches that search."
+                : `Type to search ${moduleLabel(modulo)}.`}
+            </p>
+          </div>
+        )}
+      </SearchSheet>
     </div>
   );
 }

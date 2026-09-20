@@ -10,6 +10,11 @@
 // Quem usa escolhe só o que É diferente: o texto de dentro, se o teclado abre
 // sozinho (na folha sim, porque ela abriu PARA buscar; na home não, porque
 // ela abriu pra escolher) e quantos achados mostrar.
+//
+// Ele também sabe ser GATILHO: com `onOpen`, a mesma pílula vira um botão que
+// abre a folha de busca (ver SearchSheet.tsx) em vez de receber texto ali
+// mesmo. É um componente só porque é o mesmo objeto — o que muda é onde a
+// digitação acontece, não o que a pessoa vê e toca.
 
 import { useEffect, useRef } from "react";
 import { Icon } from "./Icon";
@@ -22,6 +27,7 @@ export function SearchField({
   invalid,
   autoFocus,
   label,
+  onOpen,
 }: {
   value: string;
   placeholder: string;
@@ -34,9 +40,15 @@ export function SearchField({
   autoFocus?: boolean;
   /** Pra leitor de tela ("Search Chat", "Search notes"). */
   label?: string;
+  /** Quando existe, a pílula vira BOTÃO: tocar abre a folha de busca, e é lá
+   *  que se digita. */
+  onOpen?: () => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    // `autoFocus` pode virar true DEPOIS da montagem (a folha de busca amarra
+    // o valor à abertura dela) — por isso ele é dependência, e não uma leitura
+    // de uma vez só.
     if (!autoFocus) return;
     // `autoFocus` do React chama focus() sem preventScroll — e isso rola o
     // ancestral, que é o pulo que a folha levava ao entrar na busca.
@@ -44,6 +56,30 @@ export function SearchField({
   }, [autoFocus]);
 
   const procurando = value.trim().length > 0;
+
+  // Gatilho: mesma pílula, mesma lupa, mesmo lugar — mas sem campo. O texto
+  // mostra a busca em curso quando há uma, senão o convite.
+  if (onOpen) {
+    return (
+      <button
+        type="button"
+        className="axxa-search-field is-trigger"
+        aria-label={label ?? placeholder}
+        onClick={onOpen}
+      >
+        <Icon name="search" size={18} />
+        <span className={procurando ? "axxa-search-text" : "axxa-search-text is-empty"}>
+          {procurando ? value : placeholder}
+        </span>
+        {procurando && found !== undefined && (
+          <span className="axxa-search-found">
+            {found === 1 ? "1 found" : `${found} found`}
+          </span>
+        )}
+      </button>
+    );
+  }
+
   return (
     <label className={invalid ? "axxa-search-field is-bad" : "axxa-search-field"}>
       <Icon name="search" size={18} />

@@ -18,6 +18,7 @@ import { useChatStore } from "../store/chat";
 import { ChatList, useChatSummaries, useUnreadChats } from "./ChatList";
 import { Icon } from "./Icon";
 import { SearchField } from "./SearchField";
+import { SearchSheet } from "./SearchSheet";
 import { Segmented } from "./Segmented";
 import { alertCount } from "./chatAlert";
 import {
@@ -43,6 +44,7 @@ export function History({
   onOpenChat: (chat: ChatSummary) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [buscando, setBuscando] = useState(false);
   const chats = useChatSummaries(plugin);
   const naoLidas = useUnreadChats(plugin);
   const esperandoId = useChatStore((s) => s.waitingChatId);
@@ -67,10 +69,14 @@ export function History({
         >
           <Icon name="arrow-left" />
         </button>
+        {/* O nome da tela ao lado da seta, como o nome do app na home: quem
+            leva de volta e o que se está vendo moram na mesma barra. Como
+            título dentro da página ele ocupava uma linha inteira pra dizer
+            uma palavra. */}
+        <span className="axxa-brand axxa-topbar-brand">History</span>
       </header>
 
       <div className="axxa-messages axxa-home">
-        <h1 className="axxa-home-title">History</h1>
 
         {abas.length > 2 && (
           <Segmented
@@ -90,15 +96,15 @@ export function History({
           />
         )}
 
-        {/* Regex, como nas outras buscas do app — e sem anunciar isso: termo
-            comum também é regex válida (ver modules.searchChats). */}
+        {/* A pílula aqui é GATILHO: quem toca vai pra folha de busca, onde o
+            teclado não cobre o resultado (ver SearchSheet.tsx). */}
         <SearchField
           value={query}
           placeholder="Search"
           label="Search chats"
           found={visiveis.length}
-          invalid={busca.invalida}
           onChange={setQuery}
+          onOpen={() => setBuscando(true)}
         />
 
         {visiveis.length > 0 && (
@@ -121,6 +127,42 @@ export function History({
           </div>
         )}
       </div>
+
+      {/* Regex, como nas outras buscas do app — e sem anunciar isso: termo
+          comum também é regex válida (ver modules.searchChats). */}
+      <SearchSheet
+        open={buscando}
+        title="Search chats"
+        placeholder="Search"
+        value={query}
+        found={visiveis.length}
+        invalid={busca.invalida}
+        onChange={setQuery}
+        onClose={() => setBuscando(false)}
+      >
+        {visiveis.length > 0 ? (
+          <ChatList
+            plugin={plugin}
+            session={session}
+            chats={visiveis}
+            onOpen={(c) => {
+              // Fecha a busca ANTES de sair: voltar da conversa e encontrar a
+              // folha ainda aberta por cima seria um fantasma.
+              setBuscando(false);
+              onOpenChat(c);
+            }}
+          />
+        ) : (
+          <div className="axxa-home-empty">
+            <Icon name="search" size={42} />
+            <p>
+              {query.trim()
+                ? "Nothing matches that search."
+                : "Type to search your chats."}
+            </p>
+          </div>
+        )}
+      </SearchSheet>
     </div>
   );
 }
