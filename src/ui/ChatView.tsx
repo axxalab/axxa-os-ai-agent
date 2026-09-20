@@ -95,7 +95,7 @@ import type { MessageAttachment } from "../providers/base";
 import { StarterScreen } from "./StarterScreen";
 import { ThinkingLine } from "./Thinking";
 import type { ComposerInject } from "./App";
-import { moduleLabel, modulePlaceholder } from "./modules";
+import { moduleFabLabel, moduleLabel, modulePlaceholder } from "./modules";
 import { filterModels, groupModels } from "./modelGroups";
 // O limite de favoritos é UM número, e ele mora onde se marca o favorito.
 import { FAVORITE_LIMIT } from "./SettingsTab";
@@ -1073,7 +1073,15 @@ Open Settings › Providers to add it, then run the connection test.`,
         </button>
         <div className="axxa-topbar-title">
           <span className="axxa-topbar-name">
-            {currentChatId ? currentChatTitle || "Untitled" : "New chat"}
+            {/* Sem conversa gravada, o título é O QUE VAI SER CRIADO — e isso
+                muda com o modo escolhido logo abaixo: "New chat", "New
+                question", "New session". É a mesma palavra que o botão de
+                criar usa em cada módulo (moduleFabLabel), porque é a mesma
+                coisa sendo nomeada. Um "New chat" fixo desmentia o trilho:
+                você escolhia Agent e a barra continuava falando de chat. */}
+            {currentChatId
+              ? currentChatTitle || "Untitled"
+              : moduleFabLabel(cfg.mode)}
           </span>
           {locked && (
             <span className="axxa-topbar-meta">
