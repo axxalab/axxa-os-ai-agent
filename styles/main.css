@@ -1198,6 +1198,53 @@ body.theme-dark {
   color: var(--interactive-accent);
 }
 
+/* O texto inteiro é o botão que abre as settings — alvo grande pra um toque,
+   sem parecer botão: quem manda na forma é a linha. */
+.axxa-root button.axxa-rag-open {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  background-color: transparent;
+  box-shadow: none;
+  color: inherit;
+  font-family: var(--font-interface);
+  font-size: inherit;
+  text-align: left;
+}
+
+.axxa-root button.axxa-rag-open:hover {
+  background-color: transparent;
+  color: var(--text-muted);
+}
+
+/* O ↻ é o gesto frequente (entraram notas novas); fica na ponta, do tamanho
+   de um toque, e vira ■ enquanto roda — o mesmo botão cancela. */
+.axxa-root button.axxa-rag-refresh {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--axxa-r-sm);
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text-faint);
+}
+
+.axxa-root button.axxa-rag-refresh:hover {
+  background-color: var(--axxa-hover);
+  color: var(--text-normal);
+}
+
+.axxa-root button.axxa-rag-refresh.is-running {
+  color: var(--interactive-accent);
+}
+
 .axxa-root .axxa-rag-text {
   min-width: 0;
   overflow: hidden;

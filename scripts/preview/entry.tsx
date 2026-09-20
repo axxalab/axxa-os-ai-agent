@@ -144,6 +144,27 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     new URLSearchParams(location.search).get("indice") === "0"
       ? null
       : { size: 18430, fileCount: 1274 },
+  indexing: null,
+  // Reindexar de mentira: conta 1,2 segundos, muda o número e avisa a tela —
+  // o bastante pra ver o botão virar ■ e a linha se atualizar sozinha. Sem
+  // isto o ↻ do preview não faria nada e pareceria quebrado.
+  async runVaultIndex() {
+    if (plugin.indexing) {
+      plugin.indexing.abort();
+      plugin.indexing = null;
+      settingsListeners.forEach((cb) => cb());
+      return;
+    }
+    plugin.indexing = new AbortController();
+    settingsListeners.forEach((cb) => cb());
+    await new Promise((r) => setTimeout(r, 1200));
+    plugin.vectorIndex = {
+      size: (plugin.vectorIndex?.size ?? 0) + 37,
+      fileCount: (plugin.vectorIndex?.fileCount ?? 0) + 3,
+    };
+    plugin.indexing = null;
+    settingsListeners.forEach((cb) => cb());
+  },
   settings: {
     // Uma já nasce não lida: sem isso o ponto de "New reply" só apareceria
     // depois de esperar um turno inteiro terminar fora da tela.

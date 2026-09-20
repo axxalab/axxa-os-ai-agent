@@ -245,6 +245,8 @@ export default class AxxaPlugin extends Plugin {
   /** Índice vetorial RAG carregado em memória — compartilhado entre Settings
    *  (indexação) e AxxaApp (busca). null = ainda não foi carregado/indexado. */
   vectorIndex: VectorIndex | null = null;
+  /** Indexação em curso (o mesmo botão cancela). */
+  indexing: AbortController | null = null;
   /** (P1-69) Ref da settings tab — permite abrir numa aba específica. */
   settingsTab: AxxaSettingsTab | null = null;
   /** Listeners avisados a cada saveSettings — usados pra re-renderizar o
@@ -528,6 +530,69 @@ export default class AxxaPlugin extends Plugin {
     const p = getProvider(providerId);
     if (!p.listModels) return [];
     return p.listModels(this.providerCredential(providerId));
+  }
+
+  /**
+   * Indexa (ou reindexa) o vault pro RAG. É INCREMENTAL: só re-embeda o que
+   * mudou desde a última vez, que é o que faz "atualizar" caber num botão.
+   *
+   * Mora aqui, e não na aba de settings onde nasceu, porque agora tem dois
+   * chamadores — a linha do índice na home e o botão das settings — e a
+   * segunda cópia divergiria na primeira mudança de opção de embedding.
+   *
+   * Chamar de novo enquanto roda CANCELA: é o mesmo botão, e um segundo
+   * índice rodando por cima do primeiro gastaria tokens duas vezes pelo mesmo
+   * resultado.
+   */
+  async runVaultIndex(): Promise<void> {
+    if (this.indexing) {
+      this.indexing.abort();
+      return;
+    }
+    const s = this.settings;
+    this.indexing = new AbortController();
+    this.notifyListeners();
+    const notice = new Notice("Indexing vault…", 0);
+    try {
+      this.vectorIndex = await indexVault(this.vectorIndex, {
+        app: this.app,
+        openaiApiKey: s.openaiApiKey,
+        openrouterApiKey: s.openrouterApiKey,
+        geminiApiKey: s.geminiApiKey,
+        nimApiKey: s.nimApiKey,
+        model: s.ragEmbeddingModel,
+        profile: s.ragQuantProfile,
+        indexPath: s.ragIndexPath,
+        // O índice e as conversas ficam de fora: indexar o que o app escreve
+        // faria o vault responder com as próprias respostas.
+        excludePaths: [s.ragIndexPath, s.chatsPath],
+        shardSize: s.ragStreamShards ? RAG_SHARD_SIZE : 0,
+        signal: this.indexing.signal,
+        onProgress: (p) => {
+          notice.setMessage(
+            `Indexing (${p.phase}): ${p.filesEmbedded}/${p.filesToEmbed} files · ${p.chunksEmbedded} chunks`
+          );
+        },
+      });
+      notice.hide();
+      new Notice(`Index ready: ${this.vectorIndex.size} chunks.`);
+    } catch (err) {
+      notice.hide();
+      if (err instanceof DOMException && err.name === "AbortError") {
+        new Notice("Indexing cancelled.");
+      } else {
+        console.error("[axxa] indexVault falhou:", err);
+        new Notice(
+          `Indexing failed: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    } finally {
+      this.indexing = null;
+      // Avisa a tela: o número de trechos mudou, e quem o mostra precisa
+      // saber. Indexar não mexe em settings, então não há saveSettings pra
+      // disparar isso sozinho.
+      this.notifyListeners();
+    }
   }
 
   /** Inscreve um callback chamado a cada saveSettings. Retorna unsubscribe. */

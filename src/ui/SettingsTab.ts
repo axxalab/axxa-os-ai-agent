@@ -152,7 +152,6 @@ const TABS: TabDef[] = [
 ];
 
 export class AxxaSettingsTab extends PluginSettingTab {
-  private indexing: AbortController | null = null;
   /** Sobrevivem ao display(): re-render não joga o usuário pra primeira aba. */
   private tab: TabId = "providers";
   private provider = "openai";
@@ -1176,7 +1175,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       )
       .addButton((b) =>
         b
-          .setButtonText(this.indexing ? "Cancel indexing" : "Index vault")
+          .setButtonText(this.plugin.indexing ? "Cancel indexing" : "Index vault")
           .setCta()
           .onClick(() => void this.runIndex())
       )
@@ -1257,49 +1256,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
   // ── ações ─────────────────────────────────────────────────────────────────
 
+  /** A indexação mora no plugin (dois chamadores: aqui e a linha da home). */
   private async runIndex(): Promise<void> {
-    if (this.indexing) {
-      this.indexing.abort();
-      return;
-    }
-    const s = this.s;
-    this.indexing = new AbortController();
-    const notice = new Notice("Indexing vault…", 0);
+    await this.plugin.runVaultIndex();
     this.renderBody();
-    try {
-      this.plugin.vectorIndex = await indexVault(this.plugin.vectorIndex, {
-        app: this.app,
-        openaiApiKey: s.openaiApiKey,
-        openrouterApiKey: s.openrouterApiKey,
-        geminiApiKey: s.geminiApiKey,
-        nimApiKey: s.nimApiKey,
-        model: s.ragEmbeddingModel,
-        profile: s.ragQuantProfile,
-        indexPath: s.ragIndexPath,
-        excludePaths: [s.ragIndexPath, s.chatsPath],
-        shardSize: s.ragStreamShards ? RAG_SHARD_SIZE : 0,
-        signal: this.indexing.signal,
-        onProgress: (p) => {
-          notice.setMessage(
-            `Indexing (${p.phase}): ${p.filesEmbedded}/${p.filesToEmbed} files · ${p.chunksEmbedded} chunks`
-          );
-        },
-      });
-      notice.hide();
-      new Notice(`Index ready: ${this.plugin.vectorIndex.size} chunks.`);
-    } catch (err) {
-      notice.hide();
-      if (err instanceof DOMException && err.name === "AbortError") {
-        new Notice("Indexing cancelled.");
-      } else {
-        console.error("[axxa] indexVault falhou:", err);
-        new Notice(
-          `Indexing failed: ${err instanceof Error ? err.message : String(err)}`
-        );
-      }
-    } finally {
-      this.indexing = null;
-      this.renderBody();
-    }
   }
 }
