@@ -46,6 +46,7 @@ export function Dashboard({
   onNewChat,
   onOpenChat,
   onOpenHistory,
+  onOpenUsage,
 }: {
   plugin: AxxaPlugin;
   session: ChatSession;
@@ -58,6 +59,7 @@ export function Dashboard({
   onNewChat: (mode: ChatMode) => void;
   onOpenChat: (chat: ChatSummary) => void;
   onOpenHistory: () => void;
+  onOpenUsage: () => void;
 }) {
   const chats = useChatSummaries(plugin);
   const naoLidas = useUnreadChats(plugin);
@@ -95,7 +97,7 @@ export function Dashboard({
             sozinha enquanto você usa o app: conversa velha continua onde
             estava, conta não. Ele conta a semana inteira, de todos os modos —
             por isso não obedece à aba. */}
-        <UsageCard plugin={plugin} chats={chats} />
+        <UsageCard plugin={plugin} chats={chats} onOpen={onOpenUsage} />
 
         {/* Logo abaixo do cartão, e do mesmo assunto: o cartão conta o que
             saiu daqui pros modelos; esta linha conta o que FICA aqui. */}

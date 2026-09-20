@@ -44,9 +44,12 @@ const MODELOS = 3;
 export function UsageCard({
   plugin,
   chats,
+  onOpen,
 }: {
   plugin: AxxaPlugin;
   chats: readonly ChatSummary[];
+  /** Abre a página de uso — o cartão inteiro é a porta dela. */
+  onOpen: () => void;
 }) {
   const mapa = heatmapDoMes(chats);
   // UM corte pra tudo: número que discorda do desenho logo acima dele é a
@@ -67,7 +70,22 @@ export function UsageCard({
   if (agg.total.chats === 0) return null;
 
   return (
-    <section className="axxa-usage" aria-label={`Usage in ${mapa.rotulo}`}>
+    // O cartão INTEIRO abre a página: ele já é um resumo, e todo resumo
+    // convida a mesma pergunta ("e daí?"). Um botãozinho "ver mais" num canto
+    // seria um alvo pequeno pra uma intenção grande.
+    <section
+      className="axxa-usage is-clickable"
+      role="button"
+      tabIndex={0}
+      aria-label={`Usage in ${mapa.rotulo} — open details`}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       <div className="axxa-usage-line">
         <span className="axxa-usage-meta">
           <span className="axxa-usage-big">{formatCompact(mapa.total)}</span>

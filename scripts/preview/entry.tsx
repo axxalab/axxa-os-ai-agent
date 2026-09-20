@@ -96,6 +96,14 @@ const plugin = {
       adapter: {
         readBinary: async () =>
           Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]).buffer,
+        // Escrita de mentira, mas VISÍVEL: o relatório de uso vai parar no
+        // console em vez de sumir. Sem isto o botão "Save report" estourava
+        // num TypeError e o preview dizia que ele não funciona.
+        exists: async () => true,
+        mkdir: async () => undefined,
+        write: async (caminho: string, conteudo: string) => {
+          console.log(`[preview] gravaria ${caminho}:`, conteudo.slice(0, 400));
+        },
       },
       cachedRead: async (f: { path: string }) =>
         `# ${f.path.split("/").pop()}

@@ -30,6 +30,7 @@ export type ViewId =
   | "chat"
   | "module"
   | "history"
+  | "usage"
   | "projects"
   | "skills";
 

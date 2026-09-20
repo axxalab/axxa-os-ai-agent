@@ -14,6 +14,7 @@ import type { Skill } from "../skills/skills";
 import { ChatView } from "./ChatView";
 import { Dashboard } from "./Dashboard";
 import { History } from "./History";
+import { UsageView } from "./UsageView";
 import { ModuleHome } from "./ModuleHome";
 import { ProjectsView } from "./ProjectsView";
 import { SkillsView } from "./SkillsView";
@@ -93,6 +94,7 @@ export function App({
           aba={aba}
           onAba={setAba}
           onOpenHistory={() => setView("history")}
+          onOpenUsage={() => setView("usage")}
           onOpenMenu={() => setMenuOpen(true)}
           // Cartão do painel: conversa nova naquele modo, JÁ ESCREVENDO. O
           // `inject` sem texto é exatamente isso — "põe o cursor no campo" —
@@ -109,6 +111,8 @@ export function App({
             setView("chat");
           }}
         />
+      ) : view === "usage" ? (
+        <UsageView plugin={plugin} onBack={() => setView("home")} />
       ) : view === "history" ? (
         <History
           plugin={plugin}
