@@ -42,7 +42,7 @@ export function ModuleHome({
   plugin,
   session,
   modulo,
-  onOpenMenu,
+  onBack,
   onOpenChat,
   onNewChat,
   onOpenSkills,
@@ -50,7 +50,8 @@ export function ModuleHome({
   plugin: AxxaPlugin;
   session: ChatSession;
   modulo: string;
-  onOpenMenu: () => void;
+  /** Sai desta tela — volta pra home. */
+  onBack: () => void;
   onOpenChat: (chat: ChatSummary) => void;
   onNewChat: () => void;
   onOpenSkills: () => void;
@@ -85,18 +86,23 @@ export function ModuleHome({
   return (
     <div className="axxa-chat">
       <header className="axxa-topbar is-bare">
+        {/* Seta, não hambúrguer: o menu mora na home, e esta tela é um lugar
+            DENTRO dela. Antes daqui só se saía pelo menu — um lugar que só
+            tem porta lateral. */}
         <button
           type="button"
           className="axxa-icon-btn"
-          aria-label="Open menu"
-          onClick={onOpenMenu}
+          aria-label="Back"
+          onClick={onBack}
         >
-          <Icon name="menu" />
+          <Icon name="arrow-left" />
         </button>
+        <span className="axxa-brand axxa-topbar-brand">
+          {moduleLabel(modulo)}
+        </span>
       </header>
 
       <div className="axxa-messages axxa-home">
-        <h1 className="axxa-home-title">{moduleLabel(modulo)}</h1>
 
         {ehAgent && (
           <section className="axxa-home-block">

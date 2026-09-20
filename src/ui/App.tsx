@@ -126,7 +126,7 @@ export function App({
           plugin={plugin}
           session={session}
           modulo={modulo}
-          onOpenMenu={() => setMenuOpen(true)}
+          onBack={() => setView("home")}
           // Só troca de tela: quem manda carregar é a própria lista
           // (ChatList.abrir). Carregar aqui de novo era pedir a mesma conversa
           // duas vezes — inofensivo pelo guarda de identidade da sessão, mas
@@ -160,31 +160,26 @@ export function App({
             setModulo(m);
             setView("module");
           }}
-          onOpenMenu={() => setMenuOpen(true)}
           onUseSkill={useSkill}
         />
       ) : (
         <div className="axxa-chat">
+          {/* Uma porta só, e é a de voltar: o menu mora na home, e estas
+              páginas são lugares DENTRO dela. O atalho "voltar pro chat" que
+              ficava na direita saiu junto — ele levava pra uma conversa que
+              podia nem ser a que você estava vendo. */}
           <header className="axxa-topbar">
             <button
               type="button"
               className="axxa-icon-btn"
-              aria-label="Open menu"
-              onClick={() => setMenuOpen(true)}
+              aria-label="Back"
+              onClick={() => setView("home")}
             >
-              <Icon name="menu" />
+              <Icon name="arrow-left" />
             </button>
             <div className="axxa-topbar-title">
               <span className="axxa-topbar-name">{PAGE_TITLE[view]}</span>
             </div>
-            <button
-              type="button"
-              className="axxa-icon-btn"
-              aria-label="Back to chat"
-              onClick={() => setView("chat")}
-            >
-              <Icon name="message-square" />
-            </button>
           </header>
           <div className="axxa-messages axxa-page">
             {view === "projects" && (

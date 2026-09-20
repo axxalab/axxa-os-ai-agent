@@ -120,7 +120,6 @@ export function ChatView({
   session,
   inject,
   onBackHome,
-  onOpenMenu,
   onUseSkill,
 }: {
   plugin: AxxaPlugin;
@@ -128,7 +127,6 @@ export function ChatView({
   inject: ComposerInject | null;
   /** Volta pra home do módulo desta conversa. */
   onBackHome: () => void;
-  onOpenMenu: () => void;
   onUseSkill: (skill: Skill) => void;
 }) {
   const messages = useChatStore((s) => s.messages);
@@ -1060,9 +1058,11 @@ Open Settings › Providers to add it, then run the connection test.`,
   return (
     <div className="axxa-chat">
       <header className="axxa-topbar">
-        {/* Voltar vem PRIMEIRO: a conversa mora dentro da home do módulo, e
-            é pra lá que se volta. O menu fica ao lado em vez de dar lugar —
-            tirá-lo daqui poria Settings a três toques de dentro de um chat. */}
+        {/* Só a seta. O menu tem UMA porta, e ela é a home — que fica a um
+            toque daqui. Duas portas pro mesmo lugar na mesma barra gastavam
+            a única coisa escassa desta tela, que é largura: a seta, o
+            hambúrguer, o título e o botão de nova conversa disputavam a mesma
+            linha, e o título perdia. */}
         <button
           type="button"
           className="axxa-icon-btn"
@@ -1070,14 +1070,6 @@ Open Settings › Providers to add it, then run the connection test.`,
           onClick={onBackHome}
         >
           <Icon name="arrow-left" />
-        </button>
-        <button
-          type="button"
-          className="axxa-icon-btn"
-          aria-label="Open menu"
-          onClick={onOpenMenu}
-        >
-          <Icon name="menu" />
         </button>
         <div className="axxa-topbar-title">
           <span className="axxa-topbar-name">
