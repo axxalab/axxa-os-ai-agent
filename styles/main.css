@@ -1174,19 +1174,15 @@ body.theme-dark {
   gap: var(--axxa-3);
 }
 
-/* O cartão fica em cima; o RESTO desce. A sobra da tela vai toda pra cima das
-   abas, então a escolha (filtrar, retomar, começar) fica junta no alcance do
-   polegar, e o cartão — que é pra olhar, não pra tocar — fica onde o olho
-   cai primeiro. */
-.axxa-root .axxa-dash .axxa-modes {
-  margin-top: auto;
-}
+/* As abas têm ENDEREÇO, como a barra de começar: logo abaixo do cartão, na
+   mesma altura em qualquer aba. Elas são o controle que se usa pra trocar de
+   aba — se a própria troca move o controle, o segundo toque erra o alvo.
+   Empurrá-las pra baixo com a sobra fazia exatamente isso: com duas conversas
+   elas ficavam num lugar, com uma, noutro.
 
+   Quem come a sobra é a LISTA, que cresce entre as abas e o pé. */
 .axxa-root .axxa-dash .axxa-history {
-  /* Não CRESCE (senão engoliria a sobra e a fileira de baixo voltaria pro
-     meio), mas ENCOLHE: com lista grande ela cede altura e rola por dentro,
-     que é o que mantém a barra de começar parada no mesmo lugar. */
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   /* A lista encolhe pra caber — mas até aqui. Abaixo disto a PÁGINA volta a
      rolar (o `.axxa-messages` já é um scroller), e a barra continua
      alcançável: numa janela muito baixa ela estava sendo cortada fora da
