@@ -23,6 +23,7 @@ import { Segmented } from "./Segmented";
 import { alertCount } from "./chatAlert";
 import {
   SEGMENT_ALL,
+  defaultSegment,
   filterSegment,
   moduleSegments,
   searchChats,
@@ -50,7 +51,13 @@ export function History({
   const esperandoId = useChatStore((s) => s.waitingChatId);
 
   const abas = moduleSegments(chats);
-  const atual = abas.some((s) => s.id === aba) ? aba : SEGMENT_ALL;
+  // A aba pode chegar na sentinela (ninguém escolheu nada ainda) ou num modo
+  // que ficou sem conversa. Cai no mesmo critério da home: o modo de quem se
+  // mexeu por último — e, se nem isso, na primeira aba que existir.
+  const atual = abas.some((s) => s.id === aba)
+    ? aba
+    : (abas.find((x) => x.id === defaultSegment(chats, plugin.settings.defaultMode))
+        ?.id ?? abas[0]?.id ?? SEGMENT_ALL);
 
   // Aba primeiro, busca depois: a busca procura DENTRO do que está sendo
   // mostrado, senão a aba viraria mentira na tela.
@@ -78,13 +85,14 @@ export function History({
 
       <div className="axxa-messages axxa-home">
 
-        {abas.length > 2 && (
+        {/* Com um módulo só em uso, o trilho teria uma aba: um controle que
+            não controla nada. */}
+        {abas.length > 1 && (
           <Segmented
             options={abas.map((s) => ({
               id: s.id,
               label: s.label,
               dot:
-                s.id !== SEGMENT_ALL &&
                 alertCount(chats, s.id, {
                   esperando: esperandoId,
                   naoLidas,

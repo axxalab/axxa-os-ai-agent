@@ -317,35 +317,40 @@ describe("moduleSegments", () => {
     chat({ id: "c", mode: "agent" }),
   ];
 
-  it("a primeira aba é a que não filtra nada, e conta tudo", () => {
+  it("NÃO existe aba de 'tudo junto'", () => {
+    // Uma lista que mistura os três modos não é a lista de nada: quem abre o
+    // histórico já vem com o modo na cabeça.
+    const ids = moduleSegments(usadas).map((s) => s.id);
+    expect(ids).not.toContain(SEGMENT_ALL);
+    expect(ids).toEqual(["chat", "agent"]);
+  });
+
+  it("cada aba conta as conversas dela", () => {
     const segs = moduleSegments(usadas);
-    expect(segs[0]).toEqual({ id: SEGMENT_ALL, label: "All", count: 3 });
+    expect(segs.find((s) => s.id === "chat")?.count).toBe(2);
+    expect(segs.find((s) => s.id === "agent")?.count).toBe(1);
   });
 
   it("módulo SEM conversa não vira aba", () => {
-    // Uma aba que só leva a uma lista vazia não é filtro, é porta pra lugar
+    // Aba que só leva a uma lista vazia não é filtro, é porta pra lugar
     // nenhum: quem quer começar naquele modo usa os cartões de baixo.
-    const ids = moduleSegments(usadas).map((s) => s.id);
-    expect(ids).toEqual([SEGMENT_ALL, "chat", "agent"]);
-    expect(ids).not.toContain("vault-qa");
+    expect(moduleSegments(usadas).map((s) => s.id)).not.toContain("vault-qa");
   });
 
-  it("a aba usa o nome CURTO — 'Vault Q&A' não cabe em quatro colunas", () => {
+  it("a aba usa o nome CURTO — 'Vault Q&A' não cabe num trilho de telefone", () => {
     const segs = moduleSegments([chat({ mode: "vault-qa" })]);
-    expect(segs.map((s) => s.label)).toEqual(["All", "Vault"]);
+    expect(segs.map((s) => s.label)).toEqual(["Vault"]);
   });
 
   it("modo que só existe no disco também ganha aba", () => {
     // Mesma razão de `modulesInUse`: sem a aba, as conversas gravadas por
-    // outra versão ficariam sem recorte próprio na lista.
+    // outra versão ficariam inalcançáveis.
     const segs = moduleSegments([...usadas, chat({ id: "d", mode: "research" })]);
     expect(segs.map((s) => s.id)).toContain("research");
   });
 
-  it("nenhuma conversa, nenhuma aba de módulo", () => {
-    expect(moduleSegments([])).toEqual([
-      { id: SEGMENT_ALL, label: "All", count: 0 },
-    ]);
+  it("nenhuma conversa, nenhuma aba", () => {
+    expect(moduleSegments([])).toEqual([]);
   });
 });
 
@@ -355,7 +360,10 @@ describe("filterSegment", () => {
     chat({ id: "c", mode: "agent" }),
   ];
 
-  it("'All' devolve tudo, na ordem em que veio", () => {
+  it("a sentinela devolve tudo, na ordem em que veio", () => {
+    // Ela não é uma aba: é o valor de "ninguém escolheu ainda". Devolver vazio
+    // aí pareceria uma lista que sumiu.
+
     expect(filterSegment(usadas, SEGMENT_ALL).map((c) => c.id)).toEqual([
       "a",
       "c",

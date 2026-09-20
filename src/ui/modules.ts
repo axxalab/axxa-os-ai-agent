@@ -247,7 +247,15 @@ export function relativeDay(iso: string, agora: number = Date.now()): string {
   return iso.slice(0, 10);
 }
 
-/** O id da aba que não filtra nada. */
+/**
+ * O id de "ainda não escolhi".
+ *
+ * Já foi uma aba de verdade ("All", que mostrava tudo misturado). Deixou de
+ * ser: nem a home nem o histórico têm essa aba — uma lista que mistura os
+ * três modos não é a lista de nada. O valor sobreviveu como SENTINELA: é com
+ * ele que a aba nasce, antes de a pessoa tocar em alguma, e cada tela o troca
+ * pelo modo que faz sentido nela.
+ */
 export const SEGMENT_ALL = "all";
 
 export interface ModuleSegment {
@@ -257,16 +265,20 @@ export interface ModuleSegment {
 }
 
 /**
- * As abas do filtro da lista: "All" mais os módulos QUE TÊM conversa.
+ * As abas do histórico: os módulos QUE TÊM conversa, e só.
  *
- * Módulo sem nenhuma conversa fica de fora de propósito. Uma aba que só leva
- * a uma lista vazia não é filtro, é uma porta pra lugar nenhum — e quem quer
- * COMEÇAR naquele modo não usa o filtro, usa os cartões de baixo.
+ * Sem "All": uma lista que mistura os três modos não é a lista de nada — a
+ * pergunta de quem abre o histórico é "onde estava aquela conversa", e ela já
+ * vem com o modo na cabeça. É a mesma regra da home, que também mostra um
+ * modo de cada vez.
+ *
+ * Módulo sem nenhuma conversa fica de fora pelo mesmo motivo de sempre: aba
+ * que só leva a uma lista vazia não é filtro, é porta pra lugar nenhum. E os
+ * módulos que só existem no disco entram — é por aqui que uma conversa
+ * gravada por outra versão continua alcançável.
  */
 export function moduleSegments(chats: readonly ChatSummary[]): ModuleSegment[] {
-  const segs: ModuleSegment[] = [
-    { id: SEGMENT_ALL, label: "All", count: chats.length },
-  ];
+  const segs: ModuleSegment[] = [];
   for (const m of modulesInUse(chats)) {
     const count = chatsOfModule(chats, m.id).length;
     if (count > 0) segs.push({ id: m.id, label: m.short, count });
@@ -296,7 +308,14 @@ export function defaultSegment(
   return isChatMode(padrao) ? padrao : "chat";
 }
 
-/** A lista que aquela aba mostra. */
+/**
+ * A lista que aquela aba mostra.
+ *
+ * A sentinela ainda devolve tudo — não porque exista uma aba "All", mas
+ * porque quem chamar com ela não escolheu nada ainda, e devolver vazio
+ * pareceria uma lista que sumiu. Na prática as telas trocam a sentinela por
+ * um modo antes de chegar aqui.
+ */
 export function filterSegment(
   chats: readonly ChatSummary[],
   seg: string
