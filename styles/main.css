@@ -1203,13 +1203,13 @@ body.theme-dark {
   position: relative;
   bottom: auto;
   margin-top: 0;
-  /* Fora do canto, e bem fora: no pé da tela o polegar precisa se esticar e
-     ainda disputa espaço com a barra de gestos do sistema — que no aparelho
-     come uns 60px abaixo do que o app enxerga como o pé. A folga é um CARTÃO
-     inteiro mais dois passos da escala: assim ela acompanha sozinha qualquer
-     mudança na altura dos cartões, e eles ficam na altura em que o toque
-     acerta de primeira, que é o ponto de serem a ação principal. */
-  margin-bottom: calc(var(--axxa-start-card) + var(--axxa-5) * 2);
+  /* UM passo da escala, e o respiro da área segura já vem no padding de
+     baixo. Esta folga já foi de um cartão inteiro + dois passos: fazia sentido
+     quando o grupo flutuava no meio de uma tela vazia, e virou um buraco de
+     448px de tela quando o cartão de uso encheu o topo e o grupo passou a ser
+     ancorado embaixo. Margem grande aqui não afasta do canto — EMPURRA os três
+     blocos pra cima. */
+  margin-bottom: var(--axxa-5);
   /* Perto da lista quando elas se encontram: o respiro grande fazia sentido
      quando a barra vivia colada no pé da tela. */
   padding-top: var(--axxa-1);
