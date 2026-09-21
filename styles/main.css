@@ -5186,8 +5186,15 @@ body.is-mobile .axxa-root .axxa-history-more {
   background-color: var(--axxa-swatch);
 }
 
+/* O vão entre a bolinha e o anel é a cor DA FOLHA (`--axxa-canvas`), não
+   `--background-primary`: no celular a folha é o `--background-secondary` e o
+   primary é preto puro — o vão virava um anel PRETO desenhado em cima do
+   cinza, e a bolinha branca ficava com cara de alvo quebrado.
+
+   E o anel é a cor do app, não a da própria bolinha: anel branco em volta de
+   bolinha branca não é anel, é borrão — some no meio e sobra o preto. */
 .axxa-root button.axxa-swatch.is-on {
-  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px var(--axxa-swatch);
+  box-shadow: 0 0 0 2px var(--axxa-canvas), 0 0 0 4px var(--interactive-accent);
 }
 
 /* A coisa sendo criada, como ela vai aparecer na lista depois. Fica no TOPO
