@@ -424,6 +424,14 @@ body.theme-dark {
   --axxa-r: 14px;
   --axxa-r-lg: 20px;
   --axxa-r-pill: 999px;
+  /* A forma SQUIRCLE (ver docs/SQUIRCLE.md). Quatro cúbicas, sem um trecho
+     reto: a curvatura começa no meio de cada lado e nunca para. Declarada UMA
+     vez — cada elemento que a usa aponta pra mesma URL, e o navegador decodifica
+     o SVG só uma vez (inline por elemento, numa lista longa, seria uma cópia
+     da string por item).
+     O `fill='black'` é de propósito: máscara só liga pra opacidade, e um `#`
+     no data URI teria que virar %23 dentro do CSS. */
+  --axxa-squircle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M50 0C84 0 100 16 100 50C100 84 84 100 50 100C16 100 0 84 0 50C0 16 16 0 50 0Z'/%3E%3C/svg%3E");
   /* Altura de um cartão de "começar algo". Vira unidade de medida: a folga
      abaixo da barra é contada em cartões. */
   --axxa-start-card: 68px;
@@ -624,6 +632,40 @@ body.theme-dark {
 
 .axxa-root .axxa-page {
   gap: var(--axxa-3);
+}
+
+/* ── o squircle ────────────────────────────────────────────────────────
+   Máscara, não `border-radius`: a forma vem de um SVG de quatro cúbicas (ver
+   docs/SQUIRCLE.md, extraído do Clipei Front Lab).
+
+   Ela vale só em caixa QUADRADA. `preserveAspectRatio='none'` + `mask-size:
+   100% 100%` esticam o desenho junto com o elemento: num quadrado é o
+   squircle; num retângulo largo vira pastilha, porque não há lado reto pra
+   absorver a diferença. Por isso aqui ela cai só nos botões quadrados — os
+   cartões e as pílulas continuam no `border-radius`, que é o certo pra eles.
+
+   E máscara APAGA pixels: borda sai cortada, `box-shadow` e `outline` somem.
+   Nenhum destes tem os três, e foi conferido antes de aplicar. Quem precisar
+   de anel um dia: pai mascarado com padding + cor de fundo, filho mascarado
+   por cima (o padrão de anel do documento).
+
+   O `border-radius` de cada um fica onde está: ele é ignorado enquanto a
+   máscara funciona, e vira a forma de reserva onde ela não aplicar. */
+.axxa-root .axxa-squircle,
+.axxa-root button.axxa-round-btn,
+.axxa-root .axxa-send,
+.axxa-root .axxa-icon-btn,
+.axxa-root button.axxa-history-more,
+.axxa-root button.axxa-rag-refresh {
+  /* O `-webkit-` não é legado: é ele que cobre o Safari (iOS/macOS) e o
+     WebView antigo do Android. Sem ele, lá a forma volta a ser retângulo em
+     silêncio — sem erro nenhum no console. */
+  -webkit-mask-image: var(--axxa-squircle);
+  mask-image: var(--axxa-squircle);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 /* ── botões base ───────────────────────────────────────────────────────── */
