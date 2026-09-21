@@ -3551,22 +3551,6 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet {
   letter-spacing: 0.04em;
 }
 
-.axxa-root .axxa-new-chat {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--axxa-2);
-  padding: var(--axxa-3);
-  border-radius: var(--axxa-r);
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  font-weight: var(--font-semibold);
-}
-
-.axxa-root .axxa-new-chat:hover {
-  background-color: var(--interactive-accent-hover);
-}
-
 .axxa-root .axxa-drawer-nav {
   display: flex;
   flex-direction: column;

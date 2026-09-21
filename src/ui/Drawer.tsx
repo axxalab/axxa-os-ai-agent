@@ -112,11 +112,6 @@ export function Drawer({
     onClose();
   };
 
-  const onNewChat = () => {
-    session.newChat();
-    go("chat");
-  };
-
   return (
     <div
       className={open ? "axxa-drawer-layer is-open" : "axxa-drawer-layer"}
@@ -142,26 +137,15 @@ export function Drawer({
           </button>
         </header>
 
-        <button type="button" className="axxa-new-chat" onClick={onNewChat}>
-          <Icon name="plus" />
-          <span>New chat</span>
-        </button>
-
         <nav className="axxa-drawer-nav">
-            {/* O painel vem primeiro — é a volta pro começo. */}
-            <button
-              type="button"
-              className={
-                view === "home" ? "axxa-nav-item is-active" : "axxa-nav-item"
-              }
-              onClick={() => go("home")}
-            >
-              <Icon name="layout-grid" />
-              <span>Home</span>
-            </button>
-
-            {/* Depois os módulos: é o que o menu É. O resto vem atrás de um
-                traço, porque é ferramenta, não lugar. */}
+            {/* Os módulos, direto. Saíram daqui o "New chat" e o "Home", que
+                tinham virado eco: a home já é o que a seta de voltar alcança
+                de qualquer tela (0.6.39), e começar conversa é o que os três
+                cartões dela fazem — nomeando o modo, coisa que um "New chat"
+                genérico não fazia. Menu com atalho pro que já está a um toque
+                só ensina a duvidar do resto da lista.
+                Os módulos ficam porque são o que o menu É; o resto vem atrás
+                de um traço, porque é ferramenta, não lugar. */}
             {modulosVisiveis.map((m) => {
               const stats = moduleStats(chats, m.id);
               const pedindo = alertCount(chats, m.id, {
