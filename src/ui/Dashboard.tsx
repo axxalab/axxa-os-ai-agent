@@ -21,6 +21,7 @@
 // conversas de módulos que esta versão não conhece — é assunto do histórico,
 // que é onde se garimpa.
 
+import { Platform } from "obsidian";
 import type AxxaPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import { CHAT_MODES, isChatMode, type ChatMode } from "../core/session";
@@ -61,6 +62,13 @@ export function Dashboard({
   onOpenHistory: () => void;
   onOpenUsage: () => void;
 }) {
+  // A AxxaView reage ao saveSettings e troca as classes nos ancestrais (ver
+  // AxxaView.applyFullscreen) — aqui só se vira a chave.
+  const alternarTelaCheia = async () => {
+    plugin.settings.mobileFullscreen = !plugin.settings.mobileFullscreen;
+    await plugin.saveSettings();
+  };
+
   const chats = useChatSummaries(plugin);
   const naoLidas = useUnreadChats(plugin);
   const esperandoId = useChatStore((s) => s.waitingChatId);
@@ -90,6 +98,31 @@ export function Dashboard({
             é assinatura, não cabeçalho, e o espaço que ele ocupava em cima
             virou quase uma conversa a mais na lista. */}
         <span className="axxa-brand axxa-topbar-brand">AXXA AI AGENT</span>
+
+        {/* Tela cheia SÓ aqui, e só no celular. Ela era uma linha do menu, e
+            menu é lugar de ir pra algum lugar — isto não vai a lugar nenhum,
+            muda o tamanho do que já se está vendo. Na home porque é a tela em
+            que se decide o que fazer; dentro de uma conversa, mexer no chrome
+            no meio da leitura é ruído.
+            A SAÍDA continua a um toque: no modo cheio esta barra não some, e
+            o mesmo botão desfaz. */}
+        {Platform.isMobile && (
+          <button
+            type="button"
+            className="axxa-icon-btn axxa-topbar-end"
+            aria-label={
+              plugin.settings.mobileFullscreen ? "Exit fullscreen" : "Fullscreen"
+            }
+            aria-pressed={plugin.settings.mobileFullscreen === true}
+            onClick={() => void alternarTelaCheia()}
+          >
+            <Icon
+              name={
+                plugin.settings.mobileFullscreen ? "minimize-2" : "maximize-2"
+              }
+            />
+          </button>
+        )}
       </header>
 
       <div className="axxa-messages axxa-home axxa-dash">

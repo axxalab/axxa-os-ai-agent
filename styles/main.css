@@ -731,6 +731,11 @@ body.theme-dark {
   border-bottom: none;
 }
 
+/* Empurra o que vier depois pra ponta direita da barra. */
+.axxa-root .axxa-topbar-end {
+  margin-left: auto;
+}
+
 /* O nome do app na barra: assinatura, não cabeçalho. Fica do tamanho do resto
    da interface — grande ele viraria título de página, que é justamente o que
    ele deixou de ser. */
