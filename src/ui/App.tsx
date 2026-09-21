@@ -19,18 +19,11 @@ import { ModuleHome } from "./ModuleHome";
 import { ProjectsView } from "./ProjectsView";
 import { SkillsView } from "./SkillsView";
 import { Drawer, type ViewId } from "./Drawer";
-import { Icon } from "./Icon";
 
 export interface ComposerInject {
   text: string;
   nonce: number;
 }
-
-/** Só as páginas que usam a topbar comum — a home do módulo tem a sua. */
-const PAGE_TITLE: Partial<Record<ViewId, string>> = {
-  projects: "Projects",
-  skills: "Skills",
-};
 
 export function App({
   plugin,
@@ -52,9 +45,14 @@ export function App({
    *  A seta tem que desfazer o toque que trouxe você, não levar a um lugar
    *  parecido: quem abriu do painel volta ao painel, quem abriu da tela do
    *  módulo volta pra ela. */
-  const [voltarPara, setVoltarPara] = useState<"home" | "history" | "module">(
-    "module"
-  );
+  const [voltarPara, setVoltarPara] = useState<
+    "home" | "history" | "module" | "projects" | "skills"
+  >("module");
+  /** Qual projeto está aberto. Mora AQUI, e não dentro da tela de projetos,
+   *  por causa da seta de voltar: entrar numa conversa desmonta a tela, e com
+   *  o estado lá dentro a volta caía na lista — perdendo o projeto que a
+   *  pessoa tinha aberto dois toques antes. */
+  const [projetoAberto, setProjetoAberto] = useState<string | null>(null);
   /** O recorte da lista, compartilhado pela home e pelo histórico: filtrar
    *  numa e pedir "ver tudo" leva o filtro junto. */
   const [aba, setAba] = useState(SEGMENT_ALL);
@@ -166,38 +164,29 @@ export function App({
           }}
           onUseSkill={useSkill}
         />
+      ) : view === "projects" ? (
+        <ProjectsView
+          plugin={plugin}
+          session={session}
+          abertoId={projetoAberto}
+          onAbrir={setProjetoAberto}
+          onBack={() => setView("home")}
+          onOpenChat={() => {
+            setVoltarPara("projects");
+            setView("chat");
+          }}
+        />
       ) : (
-        <div className="axxa-chat">
-          {/* Uma porta só, e é a de voltar: o menu mora na home, e estas
-              páginas são lugares DENTRO dela. O atalho "voltar pro chat" que
-              ficava na direita saiu junto — ele levava pra uma conversa que
-              podia nem ser a que você estava vendo. */}
-          <header className="axxa-topbar">
-            <button
-              type="button"
-              className="axxa-icon-btn"
-              aria-label="Back"
-              onClick={() => setView("home")}
-            >
-              <Icon name="arrow-left" />
-            </button>
-            <div className="axxa-topbar-title">
-              <span className="axxa-topbar-name">{PAGE_TITLE[view]}</span>
-            </div>
-          </header>
-          <div className="axxa-messages axxa-page">
-            {view === "projects" && (
-              <ProjectsView
-                plugin={plugin}
-                session={session}
-                onOpenChat={() => setView("chat")}
-              />
-            )}
-            {view === "skills" && (
-              <SkillsView plugin={plugin} onUse={useSkill} />
-            )}
-          </div>
-        </div>
+        <SkillsView
+          plugin={plugin}
+          onBack={() => setView("home")}
+          // Usar uma skill DAQUI leva pra conversa — e a volta tem que trazer
+          // de volta pra cá, não pro último módulo visitado.
+          onUse={(sk) => {
+            setVoltarPara("skills");
+            useSkill(sk);
+          }}
+        />
       )}
 
       <Drawer

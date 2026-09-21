@@ -10,6 +10,8 @@ import { registerBrandLogos } from "./src/ui/brandLogos";
 import type { ChatSession } from "./src/core/session";
 import type AxxaPlugin from "./src/main";
 import { vaultAtivo } from "./src/core/vaultContext";
+import { loadSkills } from "./src/skills/skills";
+import { TFile } from "obsidian";
 
 declare const PREVIEW_VERSION: string;
 
@@ -87,12 +89,44 @@ const plugin = {
   // "+" e do `[[`. Com `app: {}` o buscador não tinha o que buscar — e um
   // buscador vazio "passa" em qualquer teste.
   app: {
+    // Abrir a nota sai do app no aparelho; aqui vira registro no console — o
+    // que importa é que o caminho EXISTE e não estoura.
+    workspace: {
+      getLeaf: () => ({
+        openFile: async (f: { path: string }) =>
+          console.log("[preview] abriria a nota", f.path),
+      }),
+    },
+    fileManager: {
+      renameFile: async (f: { path: string }, alvo: string) => {
+        const c = SKILL_FILES.get(f.path);
+        if (c === undefined) return;
+        SKILL_FILES.delete(f.path);
+        SKILL_FILES.set(alvo, c);
+      },
+    },
     vault: {
-      getMarkdownFiles: () => FAKE_NOTES,
+      getMarkdownFiles: () => [...FAKE_NOTES, ...skillFiles()],
       // getFiles inclui a MÍDIA — é dela que sai a lista de artefatos.
       getFiles: () => [...FAKE_NOTES, ...FAKE_ARTIFACTS],
       getAbstractFileByPath: (p: string) =>
-        [...FAKE_NOTES, ...FAKE_ARTIFACTS].find((f) => f.path === p) ?? null,
+        SKILL_FILES.has(p)
+          ? fakeFile(p)
+          : ([...FAKE_NOTES, ...FAKE_ARTIFACTS].find((f) => f.path === p) ??
+            null),
+      // Criar / reescrever / apagar DE VERDADE (na memória): é o que faz o
+      // formulário de skill ser testável aqui — sem isto ele "salvava" num
+      // no-op e a lista nunca mudava.
+      create: async (caminho: string, conteudo: string) => {
+        SKILL_FILES.set(caminho, conteudo);
+        return fakeFile(caminho);
+      },
+      modify: async (f: { path: string }, conteudo: string) => {
+        SKILL_FILES.set(f.path, conteudo);
+      },
+      trash: async (f: { path: string }) => {
+        SKILL_FILES.delete(f.path);
+      },
       adapter: {
         readBinary: async () =>
           Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]).buffer,
@@ -106,18 +140,15 @@ const plugin = {
         },
       },
       cachedRead: async (f: { path: string }) =>
+        SKILL_FILES.get(f.path) ??
         `# ${f.path.split("/").pop()}
 
 Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     },
   },
-  skills: [
-    // `body` preenchido de propósito: é ele que cai no composer. Com body
-    // vazio (como estava) o atalho "funcionava" sem escrever nada, e o preview
-    // não conseguia mostrar a diferença entre certo e quebrado.
-    { id: "s1", name: "Daily note", description: "Start today's note", icon: "calendar", body: "Open today's daily note and list what's still open.", path: "" },
-    { id: "s2", name: "Summarize", description: "Summarize a note", icon: "align-left", body: "Summarize the note I'm looking at in five bullets.", path: "" },
-  ],
+  // Preenchido pelo reloadSkills abaixo, que roda o CARREGADOR DE VERDADE em
+  // cima da pasta falsa: aqui o preview passa pelo mesmo parser do aparelho.
+  skills: [],
   chatSummaries: chats,
   // Mesmo contrato do plugin: marcar/desmarcar avisa a lista pelo MESMO canal
   // do cache de conversas, senão a marca só aparecia na próxima re-renderização
@@ -219,7 +250,27 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     elevenModel: "eleven_multilingual_v2",
     elevenVoice: "",
     elevenVoices: [],
-    projects: [],
+    skillsPath: "axxa-ai/skills",
+    projects: [
+      {
+        id: "proj-thesis",
+        name: "Thesis",
+        icon: "graduation-cap",
+        color: "#4361ee",
+        sources: ["PROJECTS/FRAMEWORKS.md", "Learning/Spaced repetition.md"],
+        chatIds: ["1", "3"],
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "proj-nutri",
+        name: "NUTRITION 1.0",
+        icon: "leaf",
+        color: "#46a758",
+        sources: ["NUTRITION 1.0/Plano semanal.md"],
+        chatIds: [],
+        createdAt: new Date().toISOString(),
+      },
+    ],
   },
   // A casca grava em quase toda interação; sem isto o clique morre num
   // TypeError e o preview mente dizendo que o botão não faz nada.
@@ -269,8 +320,32 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
           "qwen/qwen-2.5-7b:free",
           "deepseek/deepseek-r1",
         ],
-  reloadSkills: async () => {},
-  seedExampleSkills: async () => {},
+  reloadSkills: async () => {
+    plugin.skills = await loadSkills(
+      plugin.app as never,
+      plugin.settings.skillsPath
+    );
+    settingsListeners.forEach((cb) => cb());
+  },
+  seedExampleSkills: async () => {
+    const p = "axxa-ai/skills/Resumo TL;DR.md";
+    if (SKILL_FILES.has(p)) return 0;
+    SKILL_FILES.set(
+      p,
+      [
+        "---",
+        'name: "Resumo TL;DR"',
+        'description: "Resume em 3 bullets + 1 ação"',
+        'icon: "list"',
+        "---",
+        "",
+        "Resuma o conteúdo abaixo em 3 bullets curtos.",
+        "",
+      ].join("\n")
+    );
+    await plugin.reloadSkills();
+    return 1;
+  },
 } as unknown as AxxaPlugin;
 
 /** Modelo padrão de cada provider — o que o motor tira do settings. */
@@ -468,7 +543,9 @@ const session = {
     }
     emit();
   },
-  newChatInProject: async () => {},
+  newChatInProject: async (p: { name: string }) => {
+    console.log("[preview] nova conversa no projeto", p.name);
+  },
   // Abrir uma conversa da lista: põe mensagens de mentira na tela e TRAVA a
   // sessão no modo/modelo daquela conversa, que é o que o motor faz ao ler o
   // arquivo. Antes era um no-op, então tocar numa conversa do menu não fazia
@@ -528,7 +605,10 @@ const session = {
   },
   delete: async () => {},
   rename: async () => {},
-  updateProjects: async () => {},
+  updateProjects: async (fn: (prev: unknown[]) => unknown[]) => {
+    plugin.settings.projects = fn(plugin.settings.projects ?? []);
+    settingsListeners.forEach((cb) => cb());
+  },
   onChange: (cb: () => void) => {
     listeners.add(cb);
     return () => listeners.delete(cb);
@@ -581,6 +661,60 @@ const FAKE_NOTES = [
   { path: "Notas/2024/framing-de-produto/rascunho.md", basename: "rascunho", extension: "md", stat: { mtime: 10 } },
   { path: "NUTRITION 1.0/Plano semanal.md", basename: "Plano semanal", extension: "md", stat: { mtime: 20 } },
 ];
+
+/** A pasta de skills do vault falso: arquivos .md DE VERDADE, com
+ *  frontmatter, pra criação e edição passarem pelo mesmo caminho do aparelho
+ *  (escrever a nota → reler a pasta). A lista fixa de antes fazia o preview
+ *  dizer que criar funcionava sem nunca ter escrito nada. */
+const SKILL_FILES = new Map<string, string>([
+  [
+    "axxa-ai/skills/Daily note.md",
+    [
+      "---",
+      'name: "Daily note"',
+      'description: "Start today’s note"',
+      'icon: "calendar"',
+      'mode: "chat"',
+      "---",
+      "",
+      "Open today’s daily note and list what is still open.",
+      "",
+    ].join("\n"),
+  ],
+  [
+    "axxa-ai/skills/Summarize.md",
+    [
+      "---",
+      'name: "Summarize"',
+      'description: "Summarize a note"',
+      'icon: "align-left"',
+      "---",
+      "",
+      "Summarize the note I am looking at in five bullets.",
+      "",
+    ].join("\n"),
+  ],
+]);
+
+/** Um TFile de mentira que PASSA no `instanceof TFile` — é o que decide se
+ *  "Open note" funciona ou cai no "Not found". */
+function fakeFile(path: string, mtime = 50) {
+  const f = Object.create(TFile.prototype) as TFile & {
+    path: string;
+    basename: string;
+    extension: string;
+    stat: { mtime: number };
+  };
+  f.path = path;
+  f.basename = (path.split("/").pop() ?? path).replace(/\.md$/i, "");
+  f.extension = path.split(".").pop() ?? "md";
+  f.stat = { mtime };
+  return f;
+}
+
+function skillFiles() {
+  return [...SKILL_FILES.keys()].map((p) => fakeFile(p));
+}
 
 /** O que o plugin "gerou" — a lista de artefatos do "+". */
 const FAKE_ARTIFACTS = [

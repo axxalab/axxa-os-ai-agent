@@ -6,8 +6,26 @@
 export function normalizePath(p: string): string {
   return p.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
 }
-export function parseYaml(): unknown {
-  return {};
+/**
+ * YAML de mentirinha, do tamanho do frontmatter que o app escreve: uma chave
+ * por linha, valor entre aspas ou solto.
+ *
+ * O `{}` de antes fazia todo skill do preview aparecer com o ícone padrão e
+ * sem modo, acontecesse o que acontecesse no formulário — ou seja, o preview
+ * escondia justamente o efeito do seletor de ícone.
+ */
+export function parseYaml(texto?: string): unknown {
+  const out: Record<string, string> = {};
+  for (const linha of (texto ?? "").split(/\r?\n/)) {
+    const m = linha.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
+    if (!m) continue;
+    let v = m[2].trim();
+    if (v.startsWith('"') && v.endsWith('"') && v.length > 1) {
+      v = v.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+    }
+    out[m[1]] = v;
+  }
+  return out;
 }
 export class Notice {
   constructor(public message?: string) {

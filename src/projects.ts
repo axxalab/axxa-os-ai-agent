@@ -42,3 +42,43 @@ export function makeProjectId(): string {
   // Sem Date.now()/random colisão — id estável o suficiente pra settings.
   return "proj-" + Math.random().toString(36).slice(2, 10);
 }
+
+// ── O formulário ────────────────────────────────────────────────────────────
+// Criar um projeto pedia só o nome, e o ícone e a cor eram sempre os
+// primeiros da lista — ou seja: todo projeto nascia igual, e a grade de 28
+// ícones que já existia aqui nunca chegava a aparecer. O rascunho abaixo é o
+// que a folha coleta.
+
+export interface ProjectDraft {
+  name: string;
+  icon: string;
+  color: string;
+}
+
+export const PROJECT_DRAFT_VAZIO: ProjectDraft = {
+  name: "",
+  icon: PROJECT_ICONS[0],
+  color: PROJECT_COLORS[0],
+};
+
+/**
+ * O que impede de salvar — ou null quando está pronto.
+ *
+ * Nome repetido não é erro de arquivo (projeto mora nas settings, não no
+ * vault): é erro de gente. Dois "Cliente" na lista e não há como saber em
+ * qual deles está a nota que você pinou ontem.
+ */
+export function projectProblema(
+  d: ProjectDraft,
+  existentes: readonly Project[],
+  /** O projeto sendo editado — ele não colide consigo mesmo. */
+  atualId?: string
+): string | null {
+  const nome = d.name.trim();
+  if (!nome) return "Give it a name.";
+  const colide = existentes.some(
+    (p) => p.id !== atualId && p.name.trim().toLowerCase() === nome.toLowerCase()
+  );
+  if (colide) return "There is already a project with that name.";
+  return null;
+}
