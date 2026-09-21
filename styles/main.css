@@ -3144,6 +3144,16 @@ body.is-mobile.axxa-keyboard-open .axxa-root .axxa-composer {
   /* O respiro do safe-area mora AQUI: assim o cartão rola até o fim da tela em
      vez de morrer atrás de uma faixa. */
   padding-bottom: max(var(--safe-area-inset-bottom, 0px), var(--axxa-3));
+  /* Seis pixels de espaço PRA PINTAR nas laterais, devolvidos pela margem
+     negativa — o conteúdo não anda um fio de lugar.
+     Sem isto, tudo que um filho desenha PRA FORA da própria caixa (o anel da
+     bolinha de cor escolhida sai 4px) era cortado rente: `overflow-y: auto`
+     faz o navegador calcular `overflow-x: auto`, e o corte na horizontal vem
+     junto mesmo sem ninguém ter pedido. O anel aparecia comido do lado. */
+  padding-left: 6px;
+  padding-right: 6px;
+  margin-left: -6px;
+  margin-right: -6px;
 }
 
 /* Trilho de PROVIDERS dentro da folha. Colunas iguais (são todos logos), então
@@ -5139,19 +5149,23 @@ body.is-mobile .axxa-root .axxa-history-more {
   gap: var(--axxa-1);
 }
 
+/* Cada ícone mora num azulejo, e o azulejo é a forma da casa. Com fundo só
+   no escolhido, 27 deles eram desenhos soltos no vazio e um era um bloco —
+   a grade não parecia uma grade, e a única forma à vista era a do que já
+   estava marcado. */
 .axxa-root button.axxa-icontile {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
   border-radius: var(--axxa-r-sm);
-  background-color: transparent;
+  background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
   box-shadow: none;
   color: var(--text-muted);
 }
 
 .axxa-root button.axxa-icontile:hover {
-  background-color: var(--axxa-hover);
+  background-color: color-mix(in srgb, var(--text-normal) 12%, transparent);
 }
 
 /* O escolhido usa a cor do app, não um cinza um tico mais claro: com o
