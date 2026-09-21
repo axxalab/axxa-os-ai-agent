@@ -58,9 +58,18 @@ novo.
 com o elemento. Num quadrado ele é o squircle; num retângulo largo vira uma
 pastilha, porque não há lado reto pra absorver a diferença.
 
-Regra prática: até ~1,2:1 passa despercebido. Acima disso, `border-radius` — é
-o caso dos cartões de conversa, do cartão de uso, dos módulos e dos cartões de
-começar, que são todos largos.
+Os limites, como o demo do documento original os mede (a prosa dele fala em
+"uns 1,2:1"; o código do demo é mais preciso):
+
+| proporção | veredito |
+|---|---|
+| até 1,05 : 1 | a forma está correta |
+| até 1,35 : 1 | a distorção existe, mas passa despercebida |
+| acima de 1,35 : 1 | virou pastilha — use `border-radius` |
+
+Os cinco botões daqui são 1,00 : 1 — medidos, não presumidos. Cartões de
+conversa, cartão de uso, módulos e cartões de começar passam de 1,7 : 1, e por
+isso ficaram no `border-radius`.
 
 ## O que a máscara quebra
 
