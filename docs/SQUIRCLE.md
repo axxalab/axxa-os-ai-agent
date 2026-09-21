@@ -48,6 +48,8 @@ Só caixa **quadrada**:
 | `.axxa-icon-btn` (botões da barra de cima) | 44×44 |
 | `.axxa-history-more` (⋯ da conversa) | 28×28 |
 | `.axxa-rag-refresh` (↻ do índice) | 26×26 |
+| `.axxa-thing-mark` (brasão de skill/projeto) | 36×36 (48×48 no topo do projeto, 30×30 na lista densa) |
+| `.axxa-icontile` (grade de ícones do formulário) | 44×44 |
 
 Além disso existe a classe `.axxa-squircle`, pra quando aparecer um quadrado
 novo.
@@ -67,7 +69,7 @@ Os limites, como o demo do documento original os mede (a prosa dele fala em
 | até 1,35 : 1 | a distorção existe, mas passa despercebida |
 | acima de 1,35 : 1 | virou pastilha — use `border-radius` |
 
-Os cinco botões daqui são 1,00 : 1 — medidos, não presumidos. Cartões de
+Todos os de cima são 1,00 : 1 — medidos, não presumidos. Cartões de
 conversa, cartão de uso, módulos e cartões de começar passam de 1,7 : 1, e por
 isso ficaram no `border-radius`.
 
@@ -78,7 +80,9 @@ desenha fora da caixa some junto.
 
 - **`border` não acompanha.** A borda é pintada no retângulo e depois
   mascarada: aparece comida nos cantos. Não existe borda de squircle.
-- **`box-shadow` e `outline` somem.** Pra sombra, use um pai não mascarado.
+- **`box-shadow` e `outline` somem.** Inclusive `inset`: a marcação do
+  azulejo de ícone escolhido era um anel `inset` e virou fundo cheio quando a
+  forma chegou nele (0.6.50). Pra sombra, use um pai não mascarado.
   Pra foco de teclado, um pai com `outline` ou um `::after` fora do elemento
   mascarado.
 - **Filho fora do fluxo escapa.** Um `<img>` dentro do contêiner mascarado é

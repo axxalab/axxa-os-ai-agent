@@ -651,7 +651,13 @@ body.theme-dark {
 .axxa-root .axxa-send,
 .axxa-root .axxa-icon-btn,
 .axxa-root button.axxa-history-more,
-.axxa-root button.axxa-rag-refresh {
+.axxa-root button.axxa-rag-refresh,
+/* Os quadrados de Projects e Skills (0.6.50): o brasão da linha e cada
+   azulejo da grade de ícones. Eram os únicos quadrados do app que ainda
+   tinham canto de `border-radius` — ao lado de uma folha inteira de squircle,
+   é o canto miúdo que salta aos olhos. */
+.axxa-root .axxa-thing-mark,
+.axxa-root button.axxa-icontile {
   /* O `-webkit-` não é legado: é ele que cobre o Safari (iOS/macOS) e o
      WebView antigo do Android. Sem ele, lá a forma volta a ser retângulo em
      silêncio — sem erro nenhum no console. */
@@ -5075,7 +5081,9 @@ body.is-mobile .axxa-root .axxa-history-more {
   width: 100%;
   padding: var(--axxa-3);
   border: 1px solid var(--axxa-line);
-  border-radius: var(--axxa-r-sm);
+  /* O canto da casa. Com o miúdo, um campo de 56px de altura ficava de canto
+     quase reto no meio de uma folha onde tudo o mais é redondo. */
+  border-radius: var(--axxa-r);
   background-color: var(--axxa-hover);
   color: var(--text-normal);
   font-family: inherit;
@@ -5149,10 +5157,15 @@ body.is-mobile .axxa-root .axxa-history-more {
 /* O escolhido usa a cor do app, não um cinza um tico mais claro: com o
    `:hover` bem ao lado (mouse) os dois ficavam quase iguais, e "qual está
    marcado" virava adivinhação. */
+/* O escolhido usa a cor do app, não um cinza um tico mais claro: com o
+   `:hover` bem ao lado (mouse) os dois ficavam quase iguais, e "qual está
+   marcado" virava adivinhação.
+   Sem anel: a máscara do squircle APAGA pixels, e um `box-shadow` (mesmo
+   inset) é desenhado no retângulo — apareceria comido nos cantos. Quem
+   carrega a marcação é o fundo cheio (ver docs/SQUIRCLE.md). */
 .axxa-root button.axxa-icontile.is-on {
-  background-color: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
-  box-shadow: inset 0 0 0 1px var(--interactive-accent);
-  color: var(--text-normal);
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
 }
 
 /* A cor escolhida ganha um ANEL, não um check: o check taparia justamente a
