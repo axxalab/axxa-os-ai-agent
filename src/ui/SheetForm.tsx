@@ -157,8 +157,17 @@ export function SheetIconGrid({
   );
 }
 
-/** As cores, em bolinhas. A marcada ganha um anel, não um check: o check
- *  taparia justamente a cor que se está escolhendo. */
+/**
+ * As cores, em azulejos da forma da casa — os mesmos 44px dos ícones logo
+ * abaixo. Eram bolinhas de 30px: forma que o app não usa em lugar nenhum e
+ * alvo menor que o mínimo de toque, então escolher uma cor era mira.
+ *
+ * A marcada ganha um ANEL, não um check: o check taparia justamente a cor que
+ * se está escolhendo. E o anel é feito do jeito que a forma exige — pai
+ * mascarado com padding e a cor do anel no fundo, filho mascarado por cima
+ * (docs/SQUIRCLE.md, "O padrão de anel"): `box-shadow` não serve, a máscara
+ * apaga tudo que é desenhado fora da caixa.
+ */
 export function SheetSwatches({
   colors,
   value,
@@ -180,9 +189,13 @@ export function SheetSwatches({
           className={c === value ? "axxa-swatch is-on" : "axxa-swatch"}
           aria-label={c}
           aria-pressed={c === value}
-          style={{ "--axxa-swatch": resolve(c) } as React.CSSProperties}
           onClick={() => onPick(c)}
-        />
+        >
+          <span
+            className="axxa-swatch-fill"
+            style={{ backgroundColor: resolve(c) }}
+          />
+        </button>
       ))}
     </div>
   );

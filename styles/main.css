@@ -657,7 +657,9 @@ body.theme-dark {
    tinham canto de `border-radius` — ao lado de uma folha inteira de squircle,
    é o canto miúdo que salta aos olhos. */
 .axxa-root .axxa-thing-mark,
-.axxa-root button.axxa-icontile {
+.axxa-root button.axxa-icontile,
+.axxa-root button.axxa-swatch,
+.axxa-root .axxa-swatch-fill {
   /* O `-webkit-` não é legado: é ele que cobre o Safari (iOS/macOS) e o
      WebView antigo do Android. Sem ele, lá a forma volta a ser retângulo em
      silêncio — sem erro nenhum no console. */
@@ -5182,34 +5184,51 @@ body.is-mobile .axxa-root .axxa-history-more {
   color: var(--text-on-accent);
 }
 
-/* A cor escolhida ganha um ANEL, não um check: o check taparia justamente a
-   cor que se está escolhendo. */
+/* As cores são azulejos, do mesmo tamanho e da mesma forma dos ícones logo
+   abaixo — 44px, que é o mínimo de toque. Como bolinha de 30px, escolher uma
+   cor era mira: o alvo era menor que a ponta do dedo. */
 .axxa-root .axxa-swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--axxa-3);
+  /* Mesma grade dos ícones, e não um flex que quebra: em tela estreita as
+     sete cores caíam pra uma segunda linha com uma sozinha lá embaixo. Aqui
+     elas dividem a largura como as colunas de baixo, e ficam alinhadas com
+     elas. */
+  display: grid;
+  /* UMA fileira, sempre: as cores são poucas e são um conjunto — sete numa
+     linha e uma sozinha embaixo não é uma paleta, é uma sobra. Coluna
+     automática de 1fr divide a largura pelo que houver, seja lá quantas
+     cores a paleta tenha um dia. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--axxa-1);
 }
 
+/* O anel do escolhido é o PAI: ele ganha a cor no fundo e 3px de padding, e a
+   cor de verdade é o filho por cima. `box-shadow` não serve aqui — a máscara
+   apaga tudo que é desenhado fora da caixa (docs/SQUIRCLE.md).
+   O padding existe SEMPRE, escolhido ou não: senão a pastilha mudava de
+   tamanho no toque. */
 .axxa-root button.axxa-swatch {
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border-radius: 999px;
+  /* O tamanho vem da coluna (44px é o piso da grade); a altura vem da
+     proporção, que é o que mantém a forma quadrada — esticada, ela vira
+     pastilha. */
+  aspect-ratio: 1;
+  padding: 3px;
   border: none;
   box-shadow: none;
-  background-color: var(--axxa-swatch);
+  background-color: transparent;
 }
 
-/* O vão entre a bolinha e o anel é a cor DA FOLHA (`--axxa-canvas`), não
-   `--background-primary`: no celular a folha é o `--background-secondary` e o
-   primary é preto puro — o vão virava um anel PRETO desenhado em cima do
-   cinza, e a bolinha branca ficava com cara de alvo quebrado.
-
-   E o anel é a cor do app, não a da própria bolinha: anel branco em volta de
-   bolinha branca não é anel, é borrão — some no meio e sobra o preto. */
 .axxa-root button.axxa-swatch.is-on {
-  box-shadow: 0 0 0 2px var(--axxa-canvas), 0 0 0 4px var(--interactive-accent);
+  background-color: var(--interactive-accent);
 }
+
+.axxa-root .axxa-swatch-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--axxa-r-sm);
+}
+
 
 /* A coisa sendo criada, como ela vai aparecer na lista depois. Fica no TOPO
    da folha: é o que dá sentido ao seletor de ícone e à descrição antes de
