@@ -572,6 +572,54 @@ export function SheetNavRow({
   );
 }
 
+/**
+ * Linha que LIGA e DESLIGA, no mesmo cartão das que navegam.
+ *
+ * O interruptor fica à direita, onde o chevron estaria: quem lê a fileira de
+ * cima pra baixo aprende num golpe o que cada linha faz — seta leva a outro
+ * lugar, chave muda alguma coisa aqui mesmo.
+ *
+ * A linha INTEIRA é o alvo, não só a chavinha: num telefone, acertar 34px de
+ * chave é pior do que acertar a linha toda, e o estado é o mesmo.
+ */
+export function SheetToggleRow({
+  title,
+  note,
+  icon,
+  on,
+  onToggle,
+}: {
+  title: string;
+  note?: string;
+  icon?: string;
+  on: boolean;
+  onToggle: (on: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="axxa-sheet-row is-nav"
+      role="switch"
+      aria-checked={on}
+      onClick={() => onToggle(!on)}
+    >
+      {icon && (
+        <Icon name={icon} size={20} className="axxa-sheet-row-icon is-badge" />
+      )}
+      <span className="axxa-sheet-row-title">{title}</span>
+      {note && <span className="axxa-sheet-row-value">{note}</span>}
+      {/* `aria-hidden`: quem anuncia o estado é o `role="switch"` da linha —
+          a chave é o desenho dele, não um segundo controle. */}
+      <span
+        className={on ? "axxa-switch is-on" : "axxa-switch"}
+        aria-hidden="true"
+      >
+        <span className="axxa-switch-bola" />
+      </span>
+    </button>
+  );
+}
+
 /** Linha de recado dentro do cartão (lista vazia, aviso). */
 export function SheetNote({ children }: { children: ReactNode }) {
   return <p className="axxa-sheet-note">{children}</p>;

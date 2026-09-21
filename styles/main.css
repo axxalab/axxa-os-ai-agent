@@ -1411,15 +1411,38 @@ body.theme-dark {
   font-weight: var(--font-medium);
 }
 
-/* A pílula que LIGA: o contorno aceso é o que a distingue da que abre folha,
-   sem precisar de uma palavra a mais dizendo "ligado". */
-.axxa-root .axxa-pill.is-on {
-  color: var(--text-normal);
-  box-shadow: inset 0 0 0 1px var(--interactive-accent);
+/* A chavinha das linhas de folha. Desenho de interruptor mesmo — trilho e
+   bola — porque numa fileira onde as outras linhas têm seta, o que diferencia
+   "muda aqui" de "leva pra outro lugar" tem que ser visível sem ler. */
+.axxa-root .axxa-switch {
+  flex: 0 0 auto;
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--text-normal) 16%, transparent);
+  transition: background-color 160ms ease;
 }
 
-.axxa-root .axxa-pill.is-on .axxa-pill-logo {
-  color: var(--interactive-accent);
+.axxa-root .axxa-switch.is-on {
+  background-color: var(--interactive-accent);
+}
+
+.axxa-root .axxa-switch-bola {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--text-on-accent, #fff);
+  /* Sombra pra a bola existir sobre o trilho claro do tema claro. */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 160ms cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+.axxa-root .axxa-switch.is-on .axxa-switch-bola {
+  transform: translateX(16px);
 }
 
 /* ── a barra de começar tem ENDEREÇO ───────────────────────────────────

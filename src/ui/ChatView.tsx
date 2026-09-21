@@ -76,6 +76,7 @@ import {
   Sheet,
   SheetGroup,
   SheetNavRow,
+  SheetToggleRow,
   SheetNote,
   SheetRow,
   SheetSearch,
@@ -1346,18 +1347,6 @@ Open Settings › Providers to add it, then run the connection test.`,
                     }
                     onClick={() => openSheet("model")}
                   />
-                  {/* As SUAS notas como contexto. Fica ao lado do modelo
-                      porque são as duas coisas que decidem a resposta: com o
-                      que ela é feita, e com base em quê.
-                      Ao contrário do modelo e do modo, este não trava no
-                      primeiro envio — "agora olha minhas notas" é um pedido
-                      legítimo no meio de uma conversa. */}
-                  <Pill
-                    label="Notes"
-                    logo="library"
-                    active={cfg.vault}
-                    onClick={() => session.setVault(!cfg.vault)}
-                  />
                 </div>
 
                 {plugin.settings.voiceEnabled && (
@@ -1536,6 +1525,21 @@ Open Settings › Providers to add it, then run the connection test.`,
                 title="Effort"
                 note={EFFORT_LABELS[effort] ?? cfg.effort}
                 onClick={() => setModelView("effort")}
+              />
+              {/* As SUAS notas como contexto. Mora aqui porque esta folha é
+                  onde se decide COMO a resposta vai ser feita — modelo,
+                  esforço e agora a fonte. Como pílula no composer ela
+                  disputava largura com o modelo e o "+", e uma barra com dois
+                  interruptores parecidos convida ao toque errado.
+                  Ao contrário do modelo e do modo, este não trava no primeiro
+                  envio: "agora olha minhas notas" é pedido legítimo no meio da
+                  conversa. */}
+              <SheetToggleRow
+                icon="library"
+                title="Use my notes"
+                note={cfg.vault ? "On" : "Off"}
+                on={cfg.vault}
+                onToggle={(on) => session.setVault(on)}
               />
             </SheetGroup>
           </>
