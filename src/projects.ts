@@ -14,6 +14,9 @@ export interface Project {
   color: string;
   /** Caminhos de notas do vault pinadas como fontes/contexto. */
   sources: string[];
+  /** O que o modelo deve saber em TODA conversa deste projeto. Soma ao prompt
+   *  do app, não substitui (ver agent/conversation.ts). */
+  instructions?: string;
   /** IDs das conversas criadas dentro do projeto. */
   chatIds: string[];
   createdAt: string;

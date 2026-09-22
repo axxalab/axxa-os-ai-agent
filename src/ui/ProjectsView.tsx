@@ -32,6 +32,7 @@ import { ConfirmModal } from "./modals";
 import { Icon } from "./Icon";
 import { Sheet, SheetGroup, SheetNote, SheetRow, SheetSearch } from "./Sheet";
 import { ProjectSheet } from "./ProjectSheet";
+import { SheetField, SheetSubmit, SheetTextarea } from "./SheetForm";
 import { openActions } from "./menu";
 import { rankNotes, vaultNotes } from "./notePicker";
 
@@ -57,9 +58,13 @@ export function ProjectsView({
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   /** Id do projeto em edição — null quando é criação. */
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  /** A folha de escolher nota está aberta pra qual projeto. */
-  const [anexandoEm, setAnexandoEm] = useState<string | null>(null);
+  /** A folha de notas está aberta pra qual projeto (null = fechada). */
+  const [vendoNotas, setVendoNotas] = useState<string | null>(null);
+  /** Dentro dela, o nível de ESCOLHER uma nota do vault. */
+  const [escolhendo, setEscolhendo] = useState(false);
   const [noteQuery, setNoteQuery] = useState("");
+  /** O texto das instruções em edição (null = folha fechada; "" é válido). */
+  const [instrucoes, setInstrucoes] = useState<string | null>(null);
 
   const chats = useChatSummaries(plugin);
   const projects = plugin.settings.projects ?? [];
@@ -152,48 +157,143 @@ export function ProjectsView({
   };
 
   const notasAchadas = useMemo(() => {
-    const p = projects.find((x) => x.id === anexandoEm);
+    const p = projects.find((x) => x.id === vendoNotas);
     const todas = rankNotes(vaultNotes(plugin.app), noteQuery);
     // O que já é fonte não aparece: escolher de novo não faria nada, e uma
     // lista onde metade dos toques é no-op ensina a desconfiar dela.
     return p ? todas.filter((n) => !p.sources.includes(n.path)) : todas;
-  }, [plugin, projects, anexandoEm, noteQuery]);
+  }, [plugin, projects, vendoNotas, noteQuery]);
 
+  const naFolha = projects.find((x) => x.id === vendoNotas) ?? null;
+
+  /** As notas do projeto numa folha de dois níveis: as que já estão, e o
+   *  vault pra escolher mais. Fora da página porque a página é sobre
+   *  CONVERSAR — o que alimenta o projeto se configura e sai da frente. */
   const folhaDeNotas = (
     <Sheet
-      title="Add a note"
-      open={anexandoEm !== null}
-      onClose={() => setAnexandoEm(null)}
+      title={escolhendo ? "Add a note" : "Project notes"}
+      open={vendoNotas !== null}
+      onClose={() => {
+        setVendoNotas(null);
+        setEscolhendo(false);
+        setNoteQuery("");
+      }}
+      onBack={escolhendo ? () => setEscolhendo(false) : undefined}
       startFull
       focusOnOpen={false}
     >
-      <SheetSearch
-        value={noteQuery}
-        placeholder="Search notes"
-        found={notasAchadas.length}
-        autoFocus={anexandoEm !== null}
-        onChange={setNoteQuery}
-      />
-      <SheetGroup>
-        {notasAchadas.map((n) => (
+      {escolhendo ? (
+        <>
+          <SheetSearch
+            value={noteQuery}
+            placeholder="Search notes"
+            found={notasAchadas.length}
+            autoFocus={escolhendo}
+            onChange={setNoteQuery}
+          />
+          <SheetGroup>
+            {notasAchadas.map((n) => (
+              <SheetRow
+                key={n.path}
+                dense
+                icon="file-text"
+                title={n.basename}
+                note={n.path}
+                onClick={() => {
+                  if (naFolha) void anexarNota(naFolha, n.path);
+                  // Volta pra lista do projeto em vez de fechar: quem veio
+                  // pôr notas quase sempre põe mais de uma, e ver a que
+                  // acabou de entrar é a confirmação de que entrou.
+                  setEscolhendo(false);
+                  setNoteQuery("");
+                }}
+              />
+            ))}
+            {notasAchadas.length === 0 && (
+              <SheetNote>No note matches that.</SheetNote>
+            )}
+          </SheetGroup>
+        </>
+      ) : (
+        <SheetGroup>
+          {(naFolha?.sources ?? []).map((path) => (
+            <SheetRow
+              key={path}
+              dense
+              icon="file-text"
+              title={path.split("/").pop()?.replace(/\.md$/i, "") ?? path}
+              note={path}
+              action={{
+                icon: "x",
+                label: `Remove ${path}`,
+                onClick: () => {
+                  if (naFolha) void tirarNota(naFolha, path);
+                },
+              }}
+              onClick={() => abrirNota(path)}
+            />
+          ))}
+          {(naFolha?.sources ?? []).length === 0 && (
+            <SheetNote>
+              No notes yet. What you add here goes in as context on every new
+              chat in this project.
+            </SheetNote>
+          )}
           <SheetRow
-            key={n.path}
-            dense
-            icon="file-text"
-            title={n.basename}
-            note={n.path}
+            icon="plus"
+            badge
+            chevron
+            title="Add a note"
             onClick={() => {
-              const p = projects.find((x) => x.id === anexandoEm);
-              if (p) void anexarNota(p, n.path);
-              setAnexandoEm(null);
               setNoteQuery("");
+              setEscolhendo(true);
             }}
           />
-        ))}
-        {notasAchadas.length === 0 && (
-          <SheetNote>No note matches that.</SheetNote>
-        )}
-      </SheetGroup>
+        </SheetGroup>
+      )}
+    </Sheet>
+  );
+
+  /** As instruções do projeto: o que o modelo deve saber em toda conversa
+   *  daqui. Elas SOMAM ao prompt do app — ver agent/conversation.ts. */
+  const folhaDeInstrucoes = (
+    <Sheet
+      title="Custom instructions"
+      open={instrucoes !== null}
+      onClose={() => setInstrucoes(null)}
+      startFull
+      focusOnOpen={false}
+    >
+      <SheetField
+        label="Instructions"
+        hint="Sent with every new chat in this project — it adds to how the app already works, it does not replace it."
+      >
+        <SheetTextarea
+          value={instrucoes ?? ""}
+          rows={9}
+          placeholder={
+            "Answer in Portuguese.\nCite the note you took it from.\nShort paragraphs, no bullet lists."
+          }
+          onChange={setInstrucoes}
+        />
+      </SheetField>
+      <SheetSubmit
+        label="Save instructions"
+        onSubmit={() => {
+          const alvo = aberto;
+          const texto = (instrucoes ?? "").trim();
+          if (alvo) {
+            void update((prev) =>
+              prev.map((x) =>
+                x.id === alvo.id
+                  ? { ...x, instructions: texto || undefined }
+                  : x
+              )
+            );
+          }
+          setInstrucoes(null);
+        }}
+      />
     </Sheet>
   );
 
@@ -214,6 +314,17 @@ export function ProjectsView({
           >
             <Icon name="arrow-left" />
           </button>
+          {/* A cor e o ícone do projeto vêm pra BARRA. Eles são a identidade
+              que a pessoa escolheu; sem eles, aberto o projeto, toda tela de
+              projeto fica igual à outra. Grande no corpo da página seria um
+              bloco decorativo ocupando a dobra — aqui cabem em 28px. */}
+          <span
+            className="axxa-thing-mark is-sm"
+            style={{ color: cor }}
+            aria-hidden="true"
+          >
+            <Icon name={aberto.icon} size={16} />
+          </span>
           <span className="axxa-brand axxa-topbar-brand">{aberto.name}</span>
           <button
             type="button"
@@ -236,90 +347,83 @@ export function ProjectsView({
         </header>
 
         <div className="axxa-messages axxa-home">
-          <div className="axxa-project-head">
-            <span className="axxa-thing-mark is-big" style={{ color: cor }}>
-              <Icon name={aberto.icon} size={26} />
+          {/* A pílula diz ONDE isto mora — o projeto é agrupamento e vive nos
+              dados do plugin, dentro do vault, não num serviço nosso. Não diz
+              "privado": as notas daqui vão como contexto pro modelo quando
+              você conversa, e uma pílula que promete o contrário mentiria. */}
+          <div className="axxa-pills">
+            <span className="axxa-pill">
+              <Icon name="hard-drive" size={14} />
+              <span>Lives in this vault</span>
             </span>
-            <p className="axxa-lead">
-              {aberto.sources.length === 0
-                ? "Add the notes this project is about — they go in as context every time you start a chat here."
-                : `${aberto.sources.length} note${
-                    aberto.sources.length === 1 ? "" : "s"
-                  } go in as context on every new chat here.`}
-            </p>
+            <span className="axxa-pill">
+              <Icon name="calendar" size={14} />
+              <span>Since {aberto.createdAt.slice(0, 10)}</span>
+            </span>
           </div>
 
-          <div className="axxa-home-headrow">
-            <span className="axxa-section-label">Notes</span>
+          {/* A caixa de cima responde "o que este projeto faz por mim" — e a
+              resposta muda conforme ele tem ou não notas, porque a pergunta de
+              quem tem zero não é a mesma de quem tem seis. */}
+          <p className="axxa-boxnote">
+            {aberto.sources.length === 0
+              ? "Pick the notes this project is about. They go in as context every time you start a chat here."
+              : aberto.sources.length === 1
+                ? "1 note goes in as context on every new chat here."
+                : `${aberto.sources.length} notes go in as context on every new chat here.`}
+          </p>
+
+          {/* Os dois lados do projeto, lado a lado: o que ele SABE e como ele
+              deve responder. */}
+          <div className="axxa-duo">
             <button
               type="button"
-              className="axxa-home-filter"
-              onClick={() => {
-                setNoteQuery("");
-                setAnexandoEm(aberto.id);
-              }}
+              className="axxa-duo-card"
+              onClick={() => setVendoNotas(aberto.id)}
             >
-              <Icon name="plus" size={16} />
-              <span>Add</span>
+              <span className="axxa-duo-title">Project notes</span>
+              <span className="axxa-duo-note">
+                {aberto.sources.length === 0
+                  ? "Nothing yet"
+                  : `${aberto.sources.length} note${
+                      aberto.sources.length === 1 ? "" : "s"
+                    }`}
+              </span>
+              <span className="axxa-duo-action">
+                {aberto.sources.length === 0 ? "Add notes" : "See notes"}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="axxa-duo-card"
+              onClick={() => setInstrucoes(aberto.instructions ?? "")}
+            >
+              <span className="axxa-duo-title">Custom instructions</span>
+              <span className="axxa-duo-note">
+                {aberto.instructions?.trim()
+                  ? aberto.instructions.trim().split("\n")[0]
+                  : "Nothing yet"}
+              </span>
+              <span className="axxa-duo-action">
+                {aberto.instructions?.trim() ? "Edit" : "Add instructions"}
+              </span>
             </button>
           </div>
 
-          {aberto.sources.length > 0 ? (
-            <div className="axxa-things">
-              {aberto.sources.map((path) => (
-                <div key={path} className="axxa-thing-wrap">
-                  <button
-                    type="button"
-                    className="axxa-thing is-dense"
-                    onClick={() => abrirNota(path)}
-                  >
-                    <span className="axxa-thing-mark" aria-hidden="true">
-                      <Icon name="file-text" size={18} />
-                    </span>
-                    <span className="axxa-thing-text">
-                      <span className="axxa-thing-name">
-                        {path.split("/").pop()?.replace(/\.md$/i, "") ?? path}
-                      </span>
-                      <span className="axxa-thing-note">{path}</span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="axxa-icon-btn axxa-history-more"
-                    aria-label={`Remove ${path}`}
-                    onClick={() => void tirarNota(aberto, path)}
-                  >
-                    <Icon name="x" size={18} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="axxa-home-pill"
-              onClick={() => {
-                setNoteQuery("");
-                setAnexandoEm(aberto.id);
-              }}
-            >
-              <Icon name="file-plus" size={18} />
-              <span>Add the first note</span>
-            </button>
-          )}
-
-          <span className="axxa-section-label">Chats</span>
           {meus.length > 0 ? (
-            <ChatList
-              plugin={plugin}
-              session={session}
-              chats={meus}
-              onOpen={onOpenChat}
-            />
+            <>
+              <span className="axxa-section-label">Chats</span>
+              <ChatList
+                plugin={plugin}
+                session={session}
+                chats={meus}
+                onOpen={onOpenChat}
+              />
+            </>
           ) : (
-            <div className="axxa-home-empty">
-              <Icon name="message-circle" size={38} />
-              <p>Nothing here yet. The first chat starts below.</p>
+            <div className="axxa-home-empty is-tall">
+              <Icon name="message-circle" size={42} />
+              <p>Ask anything. Chats in this project show up here.</p>
             </div>
           )}
 
@@ -349,6 +453,7 @@ export function ProjectsView({
           onSubmit={() => void salvar()}
         />
         {folhaDeNotas}
+        {folhaDeInstrucoes}
       </div>
     );
   }

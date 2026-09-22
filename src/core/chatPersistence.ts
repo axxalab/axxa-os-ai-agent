@@ -45,6 +45,10 @@ export interface ChatData {
   tokensOut: number;
   /** Persona / system prompt custom do chat ("" ou ausente = prompt padrão). */
   persona?: string;
+  /** Instruções do projeto onde a conversa nasceu. Ficam GRAVADAS na conversa,
+   *  e não são lidas do projeto na hora de responder: mudar as instruções do
+   *  projeto amanhã não pode reescrever o que já foi combinado ontem. */
+  instructions?: string;
   /** Favoritada (item "Star" do menu ⋮). Ausente = não favoritada. */
   starred?: boolean;
   /** As notas entram como contexto nesta conversa? AUSENTE é diferente de
@@ -164,7 +168,7 @@ mode: ${yamlString(chat.mode)}
 provider: ${yamlString(chat.provider)}
 model: ${yamlString(chat.model)}
 effort: ${yamlString(chat.effort)}
-${chat.persona ? `persona: ${yamlString(chat.persona)}\n` : ""}${chat.starred ? "starred: true\n" : ""}${chat.vault === undefined ? "" : `vault: ${chat.vault}\n`}tokens_in: ${chat.tokensIn}
+${chat.persona ? `persona: ${yamlString(chat.persona)}\n` : ""}${chat.instructions ? `instructions: ${yamlString(chat.instructions)}\n` : ""}${chat.starred ? "starred: true\n" : ""}${chat.vault === undefined ? "" : `vault: ${chat.vault}\n`}tokens_in: ${chat.tokensIn}
 tokens_out: ${chat.tokensOut}
 message_count: ${chat.messages.length}
 ${toolsBlock}tags:
@@ -377,6 +381,7 @@ export function parseChatMarkdown(content: string): ChatData {
     model: String(fm.model ?? ""),
     effort: String(fm.effort ?? "med"),
     persona: fm.persona ? String(fm.persona) : undefined,
+    instructions: fm.instructions ? String(fm.instructions) : undefined,
     // Ausente fica undefined (não `false`) — mantém o round-trip exato, igual
     // à persona: o que não foi escrito não volta como campo.
     starred: yamlBool(fm.starred) ? true : undefined,

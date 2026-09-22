@@ -136,7 +136,8 @@ export async function runAgentTurn(
       content: buildAgentSystemPrompt(
         useChatStore.getState().sessionPersona,
         t.agent.systemPrompt,
-        { suffix: t.systemPrompt.vaultQaSuffix, block: vaultContextBlock }
+        { suffix: t.systemPrompt.vaultQaSuffix, block: vaultContextBlock },
+        useChatStore.getState().sessionInstructions
       ),
     },
     // toolMode=true → agentSteps são expandidos pro shape wire (replay preciso).

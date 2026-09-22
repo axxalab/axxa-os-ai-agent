@@ -5054,16 +5054,6 @@ body.is-mobile .axxa-root .axxa-history-more {
   text-overflow: ellipsis;
 }
 
-/* O cabeçalho do projeto aberto: o brasão grande + a frase que diz o que as
-   notas dali fazem. É a única explicação da tela, e ela muda conforme o
-   projeto tem ou não fontes — porque a pergunta de quem tem zero nota não é a
-   mesma de quem tem seis. */
-.axxa-root .axxa-project-head {
-  display: flex;
-  align-items: center;
-  gap: var(--axxa-3);
-}
-
 /* ── o formulário da folha ─────────────────────────────────────────────
    Rótulo ACIMA do campo, sempre: rótulo que vive de placeholder some na hora
    em que a pessoa começa a digitar — justamente quando ela ainda precisa
@@ -5284,4 +5274,105 @@ body.is-mobile .axxa-root .axxa-history-more {
 .axxa-root button.axxa-form-submit[aria-disabled="true"] {
   background-color: var(--axxa-hover);
   color: var(--text-muted);
+}
+
+/* ── a página de um projeto ────────────────────────────────────────────
+   Desenho da referência (a tela de projeto do app da Claude): uma fileira de
+   pílulas, uma caixa contornada com a frase que explica o lugar, dois cartões
+   lado a lado com o que o projeto SABE e como ele deve responder, e embaixo
+   as conversas — ou o vazio dizendo que é ali que elas vão aparecer. */
+
+.axxa-root .axxa-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--axxa-2);
+}
+
+/* Pílula de informação: ela não faz nada, e por isso não tem cara de botão —
+   contorno, tom de apoio, sem fundo. */
+.axxa-root .axxa-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  height: 30px;
+  padding: 0 var(--axxa-3);
+  border-radius: 999px;
+  border: 1px solid var(--axxa-line);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+/* A caixa da frase: contorno e nada de fundo. Ela é recado, não superfície —
+   com fundo, competiria com os dois cartões logo abaixo, que são onde se
+   toca. */
+.axxa-root .axxa-boxnote {
+  margin: 0;
+  padding: var(--axxa-3) var(--axxa-4);
+  border: 1px solid var(--axxa-line);
+  border-radius: var(--axxa-r-lg);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.axxa-root .axxa-duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--axxa-2);
+}
+
+/* Cartão de configuração: título em cima, o estado no meio, e a ação na cor
+   do app embaixo. A ação é TEXTO, não botão dentro do cartão: o cartão
+   inteiro já é o alvo, e um botão dentro dele seria um alvo dentro do outro. */
+.axxa-root button.axxa-duo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--axxa-1);
+  min-height: 118px;
+  padding: var(--axxa-3);
+  border-radius: var(--axxa-r-lg);
+  background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
+  box-shadow: none;
+  text-align: left;
+}
+
+.axxa-root button.axxa-duo-card:hover {
+  background-color: var(--axxa-hover);
+}
+
+.axxa-root .axxa-duo-title {
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+}
+
+/* O estado atual do cartão em uma linha, e no máximo duas: é resumo, e resumo
+   que vira parágrafo empurra a ação pra fora do cartão. */
+.axxa-root .axxa-duo-note {
+  flex: 1 1 auto;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+.axxa-root .axxa-duo-action {
+  color: var(--text-accent);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+}
+
+/* O brasão do projeto na barra de cima — pequeno, ao lado do nome. */
+.axxa-root .axxa-thing-mark.is-sm {
+  width: 28px;
+  height: 28px;
+}
+
+/* O vazio das conversas ocupa o miolo da página, como na referência: ele não
+   é um aviso de canto, é o lugar onde elas vão nascer. */
+.axxa-root .axxa-home-empty.is-tall {
+  padding-top: var(--axxa-5);
+  padding-bottom: var(--axxa-5);
 }

@@ -22,11 +22,25 @@ export interface ChatSystemParts {
   /** Instrução de estilo de resposta (Conciso/Explicativo/etc). Anexada ao
    *  head sem substituir a persona/base. Vazio = sem efeito. */
   styleInstruction?: string;
+  /**
+   * Instruções do PROJETO em que a conversa nasceu.
+   *
+   * Somam, não substituem — ao contrário da persona. A diferença não é
+   * detalhe: persona é "seja outro assistente"; instrução de projeto é "neste
+   * assunto, faça assim". Trocar o prompt base por ela levaria junto as regras
+   * do app (o que o agente pode mexer, como citar nota, o idioma) — e ninguém
+   * que escreveu "responda em tópicos curtos" pediu isso.
+   */
+  instructions?: string;
 }
 
 /** Monta o system prompt do CHAT/Vault-QA: (persona || base) + style + vault + notes. */
 export function buildChatSystemPrompt(p: ChatSystemParts): string {
   const head = (p.persona && p.persona.trim()) || p.base;
+  const proj =
+    p.instructions && p.instructions.trim()
+      ? "\n\n" + p.instructions.trim()
+      : "";
   const style =
     p.styleInstruction && p.styleInstruction.trim()
       ? "\n\n" + p.styleInstruction.trim()
@@ -35,7 +49,7 @@ export function buildChatSystemPrompt(p: ChatSystemParts): string {
     p.vaultBlock && p.vaultBlock.length > 0
       ? (p.vaultSuffix ?? "") + p.vaultBlock
       : "";
-  return head + style + vault + (p.noteBlock ?? "");
+  return head + proj + style + vault + (p.noteBlock ?? "");
 }
 
 /**
@@ -49,14 +63,23 @@ export function buildChatSystemPrompt(p: ChatSystemParts): string {
 export function buildAgentSystemPrompt(
   persona: string | undefined,
   agentPrompt: string,
-  vault?: { suffix?: string; block?: string }
+  vault?: { suffix?: string; block?: string },
+  /** Instruções do projeto — depois do prompt do agente, antes das notas: as
+   *  regras da casa continuam valendo, e o que o projeto pede vem por cima. */
+  instructions?: string
 ): string {
   const p = persona && persona.trim();
+  const proj = instructions && instructions.trim();
   const notas =
     vault?.block && vault.block.length > 0
       ? (vault.suffix ?? "") + vault.block
       : "";
-  return (p ? p + "\n\n" : "") + agentPrompt + notas;
+  return (
+    (p ? p + "\n\n" : "") +
+    agentPrompt +
+    (proj ? "\n\n" + proj : "") +
+    notas
+  );
 }
 
 // ── History (store → provider) ─────────────────────────────

@@ -161,6 +161,7 @@ export async function streamReply(
       vaultSuffix: t.systemPrompt.vaultQaSuffix,
       vaultBlock: vaultContextBlock,
       noteBlock: noteContextBlock,
+      instructions: useChatStore.getState().sessionInstructions,
       styleInstruction: resolveStyleInstruction(),
     });
     const history: ProviderMessage[] = [

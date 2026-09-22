@@ -182,6 +182,9 @@ interface ChatState {
   sessionMode: string | null;
   /** Persona / system prompt custom do chat atual ("" = prompt padrão). */
   sessionPersona: string;
+  /** Instruções do projeto onde a conversa nasceu ("" = nenhuma). Somam ao
+   *  prompt, não substituem — ver agent/conversation.ts. */
+  sessionInstructions: string;
   /** ID do chat atual (UUID). null antes da primeira msg. Usado pra save/load. */
   currentChatId: string | null;
   /** Título do chat atual (auto-gerado da primeira msg do user). */
@@ -298,6 +301,7 @@ interface ChatState {
   unlockSession: () => void;
   /** Define a persona (system prompt custom) do chat atual. */
   setSessionPersona: (persona: string) => void;
+  setSessionInstructions: (instructions: string) => void;
   setCurrentChatId: (id: string | null) => void;
   setCurrentChatTitle: (title: string) => void;
   setCurrentChatStarred: (starred: boolean) => void;
@@ -356,6 +360,7 @@ const BASE_RESET = {
   sessionModel: null as string | null,
   sessionMode: null as string | null,
   sessionPersona: "",
+  sessionInstructions: "",
 } as const;
 
 /** Chave do rascunho da conversa que ainda não foi salva. */
@@ -379,6 +384,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sessionModel: null,
   sessionMode: null,
   sessionPersona: "",
+  sessionInstructions: "",
   currentChatId: null,
   background: null,
   turnChatId: null,
@@ -631,6 +637,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   unlockSession: () =>
     set({ sessionProvider: null, sessionModel: null, sessionMode: null }),
   setSessionPersona: (persona) => set({ sessionPersona: persona }),
+  setSessionInstructions: (instructions) =>
+    set({ sessionInstructions: instructions }),
   setCurrentChatId: (id) => set({ currentChatId: id }),
   setCurrentChatTitle: (title) => set({ currentChatTitle: title }),
   setCurrentChatStarred: (starred) => set({ currentChatStarred: starred }),

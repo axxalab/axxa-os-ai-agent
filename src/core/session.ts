@@ -528,6 +528,10 @@ export class ChatSession {
   async newChatInProject(project: Project): Promise<void> {
     this.newChat();
     this.pendingProjectId = project.id;
+    // As instruções do projeto entram AGORA, e ficam gravadas nesta conversa.
+    // Não são lidas do projeto na hora de responder: mudar as instruções
+    // amanhã não pode reescrever o que já foi combinado ontem.
+    useChatStore.getState().setSessionInstructions(project.instructions ?? "");
     const notes: NoteAttachment[] = [];
     const missing: string[] = [];
     for (const src of project.sources) {
@@ -599,6 +603,7 @@ export class ChatSession {
       st.resetUsage();
       st.addUsage(chat.tokensIn, chat.tokensOut);
       st.setSessionPersona(chat.persona ?? "");
+      st.setSessionInstructions(chat.instructions ?? "");
       st.setCurrentChatStarred(chat.starred === true);
       // Conversa que respondeu sem você ver abre NA RESPOSTA, não no fim dela:
       // aqui não há px guardados (a conversa veio do disco), então o ponto é a
@@ -735,6 +740,7 @@ export class ChatSession {
       tokensIn: st.tokensIn,
       tokensOut: st.tokensOut,
       persona: st.sessionPersona || undefined,
+      instructions: st.sessionInstructions || undefined,
       starred: st.currentChatStarred || undefined,
       // `?? undefined` e não `?? false`: gravar um false de nascença faria a
       // conversa reabrir com o interruptor travado em desligado, mesmo num
