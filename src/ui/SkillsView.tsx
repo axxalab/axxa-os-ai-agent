@@ -26,6 +26,7 @@ import { ensureFolder } from "../core/chatPersistence";
 import { ConfirmModal } from "./modals";
 import { Icon } from "./Icon";
 import { SearchField } from "./SearchField";
+import { SearchSheet } from "./SearchSheet";
 import { SkillSheet } from "./SkillSheet";
 import { openActions } from "./menu";
 import { MODULES, relativeShort } from "./modules";
@@ -50,6 +51,7 @@ export function SkillsView({
   const [, force] = useReducer((n: number) => n + 1, 0);
   const [query, setQuery] = useState("");
   const [filtro, setFiltro] = useState(FILTROS[0]);
+  const [buscando, setBuscando] = useState(false);
   const [draft, setDraft] = useState<SkillDraft | null>(null);
   /** Caminho do skill em edição — null quando é criação. */
   const [editandoPath, setEditandoPath] = useState<string | null>(null);
@@ -169,6 +171,86 @@ export function SkillsView({
     force();
   };
 
+  /** A galeria. É função porque ela aparece em DOIS lugares: na página e
+   *  dentro da folha de busca — e um acervo que muda de forma quando você
+   *  procura nele não parece o mesmo acervo. */
+  const galeria = (lista: Skill[], dentroDaBusca = false) => (
+    <div className="axxa-tiles">
+      {lista.map((s) => (
+        <div key={s.id} className="axxa-tile-wrap">
+          <button
+            type="button"
+            className="axxa-tile"
+            onClick={() => {
+              // Fecha a busca ANTES de sair: voltar da conversa e encontrar a
+              // folha ainda aberta por cima seria um fantasma.
+              if (dentroDaBusca) setBuscando(false);
+              onUse(s);
+            }}
+          >
+            {/* O prompt, como ele é. A miniatura do cartão não é ilustração:
+                é o texto que vai cair no campo quando você tocar — a única
+                pergunta que se faz olhando uma lista de skills é "qual deles
+                escreve o quê". */}
+            <span className="axxa-tile-paper">
+              <span className="axxa-tile-text">{s.body}</span>
+            </span>
+            <span className="axxa-tile-name">{s.name}</span>
+            <span className="axxa-tile-meta">
+              <Icon
+                name={isChatMode(s.mode) ? MODULES[s.mode].icon : "sparkles"}
+                size={14}
+              />
+              <span>
+                {s.mtime
+                  ? `Edited ${relativeShort(new Date(s.mtime).toISOString())}`
+                  : s.description || "Prompt"}
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className="axxa-icon-btn axxa-tile-more"
+            aria-label={`Actions for ${s.name}`}
+            onClick={(e) =>
+              openActions(e as unknown as MouseEvent, [
+                {
+                  label: "Use",
+                  icon: "corner-down-left",
+                  run: () => {
+                    if (dentroDaBusca) setBuscando(false);
+                    onUse(s);
+                  },
+                },
+                {
+                  label: "Edit",
+                  icon: "pencil",
+                  run: () => {
+                    setBuscando(false);
+                    editar(s);
+                  },
+                },
+                {
+                  label: "Open note",
+                  icon: "file-text",
+                  run: () => abrirNota(s.path),
+                },
+                {
+                  label: "Delete",
+                  icon: "trash-2",
+                  danger: true,
+                  run: () => void apagar(s),
+                },
+              ])
+            }
+          >
+            <Icon name="more-horizontal" size={18} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="axxa-chat">
       <header className="axxa-topbar is-bare">
@@ -190,12 +272,18 @@ export function SkillsView({
             forma sozinha. O filtro ao lado dela é por modo, que é a única
             divisão que um skill tem. */}
         <div className="axxa-toolrow">
+          {/* A pílula é GATILHO, como em toda busca do app: quem toca vai
+              pra folha, onde o campo encosta no topo e a lista cresce contra
+              o teclado. Digitando AQUI, o teclado comia metade da tela e
+              empurrava o botão flutuante pra cima dos cartões — porque ele é
+              `sticky` no fim de um scroller que acabou de encolher. */}
           <SearchField
             value={query}
             placeholder="Search skills"
             label="Search skills"
             found={visiveis.length}
             onChange={setQuery}
+            onOpen={() => setBuscando(true)}
           />
           <button
             type="button"
@@ -217,67 +305,7 @@ export function SkillsView({
           </button>
         </div>
 
-        {visiveis.length > 0 && (
-          <div className="axxa-tiles">
-            {visiveis.map((s) => (
-              <div key={s.id} className="axxa-tile-wrap">
-                <button
-                  type="button"
-                  className="axxa-tile"
-                  onClick={() => onUse(s)}
-                >
-                  {/* O prompt, como ele é. A miniatura do cartão não é
-                      ilustração: é o texto que vai cair no campo quando você
-                      tocar — a única pergunta que se faz olhando uma lista de
-                      skills é "qual deles escreve o quê". */}
-                  <span className="axxa-tile-paper">
-                    <span className="axxa-tile-text">{s.body}</span>
-                  </span>
-                  <span className="axxa-tile-name">{s.name}</span>
-                  <span className="axxa-tile-meta">
-                    <Icon
-                      name={isChatMode(s.mode) ? MODULES[s.mode].icon : "sparkles"}
-                      size={14}
-                    />
-                    <span>
-                      {s.mtime
-                        ? `Edited ${relativeShort(new Date(s.mtime).toISOString())}`
-                        : s.description || "Prompt"}
-                    </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="axxa-icon-btn axxa-tile-more"
-                  aria-label={`Actions for ${s.name}`}
-                  onClick={(e) =>
-                    openActions(e as unknown as MouseEvent, [
-                      {
-                        label: "Use",
-                        icon: "corner-down-left",
-                        run: () => onUse(s),
-                      },
-                      { label: "Edit", icon: "pencil", run: () => editar(s) },
-                      {
-                        label: "Open note",
-                        icon: "file-text",
-                        run: () => abrirNota(s.path),
-                      },
-                      {
-                        label: "Delete",
-                        icon: "trash-2",
-                        danger: true,
-                        run: () => void apagar(s),
-                      },
-                    ])
-                  }
-                >
-                  <Icon name="more-horizontal" size={18} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        {visiveis.length > 0 && galeria(visiveis)}
 
         {visiveis.length === 0 && (
           <div className="axxa-home-empty is-tall">
@@ -307,6 +335,31 @@ export function SkillsView({
           <span>New skill</span>
         </button>
       </div>
+
+      {/* A MESMA folha de busca das outras telas (SearchSheet). A regra é do
+          app inteiro: buscar é uma tela, não um campo no canto. */}
+      <SearchSheet
+        open={buscando}
+        title="Search skills"
+        placeholder="Search skills"
+        value={query}
+        found={visiveis.length}
+        onChange={setQuery}
+        onClose={() => setBuscando(false)}
+      >
+        {visiveis.length > 0 ? (
+          galeria(visiveis, true)
+        ) : (
+          <div className="axxa-home-empty">
+            <Icon name="search" size={42} />
+            <p>
+              {query.trim()
+                ? "Nothing matches that."
+                : "Type to search your skills."}
+            </p>
+          </div>
+        )}
+      </SearchSheet>
 
       <SkillSheet
         open={draft !== null}
