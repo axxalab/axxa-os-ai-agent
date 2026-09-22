@@ -20,10 +20,17 @@ export interface Skill {
   /** Corpo da nota = prompt/template injetado no composer. */
   body: string;
   path: string;
+  /** Última edição do arquivo (ms). É a nota que manda: um skill editado no
+   *  Obsidian é tão editado quanto um salvo pela folha. */
+  mtime: number;
 }
 
 /** Parseia uma nota .md → Skill (frontmatter + corpo). null se não tiver corpo. */
-function parseSkillFile(path: string, raw: string): Skill | null {
+function parseSkillFile(
+  path: string,
+  raw: string,
+  mtime = 0
+): Skill | null {
   let fm: Record<string, unknown> = {};
   let body = raw;
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
@@ -47,6 +54,7 @@ function parseSkillFile(path: string, raw: string): Skill | null {
     mode: fm.mode ? String(fm.mode) : undefined,
     body,
     path,
+    mtime,
   };
 }
 
@@ -83,7 +91,7 @@ export async function loadSkills(
   for (const f of files) {
     try {
       const raw = await app.vault.cachedRead(f);
-      const s = parseSkillFile(f.path, raw);
+      const s = parseSkillFile(f.path, raw, f.stat?.mtime ?? 0);
       if (!s) continue;
       if (seenIds.has(s.id)) {
         let n = 2;

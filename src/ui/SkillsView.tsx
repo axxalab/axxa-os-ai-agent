@@ -28,12 +28,15 @@ import { Icon } from "./Icon";
 import { SearchField } from "./SearchField";
 import { SkillSheet } from "./SkillSheet";
 import { openActions } from "./menu";
-import { MODULES } from "./modules";
-import { isChatMode } from "../core/session";
+import { MODULES, relativeShort } from "./modules";
+import { CHAT_MODES, isChatMode } from "../core/session";
 
-/** A partir de quantos skills a busca aparece. Abaixo disso ela seria um
- *  campo pra procurar cinco linhas que já estão todas na tela. */
-const BUSCA_A_PARTIR_DE = 8;
+/** O filtro da galeria: o modo em que o skill abre. É a única divisão que um
+ *  skill tem — o resto (nome, prompt) é assunto da busca. */
+const FILTROS: Array<{ id: string; label: string }> = [
+  { id: "all", label: "All" },
+  ...CHAT_MODES.map((m) => ({ id: m, label: MODULES[m].short })),
+];
 
 export function SkillsView({
   plugin,
@@ -46,6 +49,7 @@ export function SkillsView({
 }) {
   const [, force] = useReducer((n: number) => n + 1, 0);
   const [query, setQuery] = useState("");
+  const [filtro, setFiltro] = useState(FILTROS[0]);
   const [draft, setDraft] = useState<SkillDraft | null>(null);
   /** Caminho do skill em edição — null quando é criação. */
   const [editandoPath, setEditandoPath] = useState<string | null>(null);
@@ -60,14 +64,20 @@ export function SkillsView({
 
   const visiveis = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return skills;
-    return skills.filter(
+    // Modo primeiro, busca depois: a busca procura DENTRO do que está sendo
+    // mostrado, senão o filtro viraria mentira na tela.
+    const noModo =
+      filtro.id === "all"
+        ? skills
+        : skills.filter((s) => (s.mode ?? "") === filtro.id);
+    if (!q) return noModo;
+    return noModo.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.description.toLowerCase().includes(q) ||
         s.body.toLowerCase().includes(q)
     );
-  }, [skills, query]);
+  }, [skills, query, filtro]);
 
   const problema = draft
     ? skillProblema(
@@ -174,15 +184,12 @@ export function SkillsView({
       </header>
 
       <div className="axxa-messages axxa-home">
-        {/* Uma linha, e só onde ela ainda faz falta: quem tem skills já sabe o
-            que eles são — a lista explica sozinha. */}
-        {skills.length > 0 && (
-          <p className="axxa-lead">
-            Saved prompts. Tap one to start writing with it.
-          </p>
-        )}
-
-        {skills.length >= BUSCA_A_PARTIR_DE && (
+        {/* A busca fica SEMPRE, e não a partir de oito: numa galeria de
+            cartões a fileira de cima é a barra de ferramentas da tela — ela
+            aparecendo e sumindo conforme a contagem faria a página trocar de
+            forma sozinha. O filtro ao lado dela é por modo, que é a única
+            divisão que um skill tem. */}
+        <div className="axxa-toolrow">
           <SearchField
             value={query}
             placeholder="Search skills"
@@ -190,37 +197,58 @@ export function SkillsView({
             found={visiveis.length}
             onChange={setQuery}
           />
-        )}
+          <button
+            type="button"
+            className="axxa-home-filter"
+            aria-label="Filter skills by mode"
+            onClick={(e) =>
+              openActions(
+                e as unknown as MouseEvent,
+                FILTROS.map((f) => ({
+                  label: f.label,
+                  checked: f.id === filtro.id,
+                  run: () => setFiltro(f),
+                }))
+              )
+            }
+          >
+            <span>{filtro.label}</span>
+            <Icon name="chevron-down" size={16} />
+          </button>
+        </div>
 
         {visiveis.length > 0 && (
-          <div className="axxa-things">
+          <div className="axxa-tiles">
             {visiveis.map((s) => (
-              <div key={s.id} className="axxa-thing-wrap">
+              <div key={s.id} className="axxa-tile-wrap">
                 <button
                   type="button"
-                  className="axxa-thing"
+                  className="axxa-tile"
                   onClick={() => onUse(s)}
                 >
-                  <span className="axxa-thing-mark" aria-hidden="true">
-                    <Icon name={s.icon || "sparkles"} size={20} />
+                  {/* O prompt, como ele é. A miniatura do cartão não é
+                      ilustração: é o texto que vai cair no campo quando você
+                      tocar — a única pergunta que se faz olhando uma lista de
+                      skills é "qual deles escreve o quê". */}
+                  <span className="axxa-tile-paper">
+                    <span className="axxa-tile-text">{s.body}</span>
                   </span>
-                  <span className="axxa-thing-text">
-                    <span className="axxa-thing-name">
-                      {s.name}
-                      {isChatMode(s.mode) && (
-                        <span className="axxa-thing-tag">
-                          {MODULES[s.mode].short}
-                        </span>
-                      )}
-                    </span>
-                    <span className="axxa-thing-note">
-                      {s.description || s.body.split("\n")[0]}
+                  <span className="axxa-tile-name">{s.name}</span>
+                  <span className="axxa-tile-meta">
+                    <Icon
+                      name={isChatMode(s.mode) ? MODULES[s.mode].icon : "sparkles"}
+                      size={14}
+                    />
+                    <span>
+                      {s.mtime
+                        ? `Edited ${relativeShort(new Date(s.mtime).toISOString())}`
+                        : s.description || "Prompt"}
                     </span>
                   </span>
                 </button>
                 <button
                   type="button"
-                  className="axxa-icon-btn axxa-history-more"
+                  className="axxa-icon-btn axxa-tile-more"
                   aria-label={`Actions for ${s.name}`}
                   onClick={(e) =>
                     openActions(e as unknown as MouseEvent, [
@@ -252,11 +280,11 @@ export function SkillsView({
         )}
 
         {visiveis.length === 0 && (
-          <div className="axxa-home-empty">
+          <div className="axxa-home-empty is-tall">
             <Icon name="sparkles" size={42} />
             <p>
               {skills.length > 0
-                ? "Nothing matches that search."
+                ? "Nothing matches that."
                 : "A skill is a prompt you keep. Write it once, use it in one tap — here, in the composer’s +, or by typing / in any chat."}
             </p>
             {skills.length === 0 && (

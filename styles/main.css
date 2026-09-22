@@ -5376,3 +5376,129 @@ body.is-mobile .axxa-root .axxa-history-more {
   padding-top: var(--axxa-5);
   padding-bottom: var(--axxa-5);
 }
+
+/* ── a galeria de skills ───────────────────────────────────────────────
+   Desenho da referência (a galeria de artefatos do app da Claude): busca e
+   filtro na fileira de cima, e o acervo em cartões de duas colunas, cada um
+   mostrando um PEDAÇO do conteúdo em vez de um ícone.
+
+   A miniatura não é ilustração: a única pergunta que se faz olhando uma lista
+   de prompts guardados é "qual deles escreve o quê", e nenhum ícone responde
+   isso. O texto responde. */
+
+.axxa-root .axxa-toolrow {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-2);
+}
+
+/* A busca toma a largura; o filtro fica do tamanho do nome dele. */
+.axxa-root .axxa-toolrow .axxa-search-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.axxa-root .axxa-toolrow .axxa-home-filter {
+  flex: 0 0 auto;
+}
+
+.axxa-root .axxa-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--axxa-3);
+}
+
+/* O cartão e o ⋯ são dois botões: o ⋯ flutua no canto do cartão, porque botão
+   dentro de botão não existe. */
+.axxa-root .axxa-tile-wrap {
+  position: relative;
+}
+
+.axxa-root button.axxa-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--axxa-1);
+  width: 100%;
+  padding: 0 0 var(--axxa-3);
+  border-radius: var(--axxa-r-lg);
+  background-color: color-mix(in srgb, var(--text-normal) 6%, transparent);
+  box-shadow: none;
+  overflow: hidden;
+  text-align: left;
+}
+
+.axxa-root button.axxa-tile:hover {
+  background-color: var(--axxa-hover);
+}
+
+/* A "folha": o prompt como ele está escrito na nota, cortado por uma máscara
+   em vez de reticências — o texto não termina, ele some, que é o que diz
+   "tem mais aqui dentro". */
+.axxa-root .axxa-tile-paper {
+  display: block;
+  /* Altura pelo conteúdo, com teto: prompt de uma linha não precisa de um
+     retângulo vazio embaixo dele, e prompt de trinta não pode virar a página
+     inteira. */
+  min-height: 84px;
+  max-height: 132px;
+  padding: var(--axxa-3);
+  overflow: hidden;
+  background-color: var(--axxa-canvas);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 60%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+  mask-image: linear-gradient(to bottom, #000 60%, rgba(0, 0, 0, 0.15) 100%);
+}
+
+.axxa-root .axxa-tile-text {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.axxa-root .axxa-tile-name {
+  padding: var(--axxa-1) var(--axxa-3) 0;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.axxa-root .axxa-tile-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-1);
+  padding: 0 var(--axxa-3);
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* O ⋯ mora no RODAPÉ do cartão, na altura do nome — não sobre a miniatura.
+   Em cima ele cobria a primeira linha do prompt, que é justamente a linha que
+   faz o cartão valer alguma coisa. Aqui o espaço já é dele: o nome corta com
+   reticências antes de chegar, e a legenda é curta.
+   No celular não existe hover pra revelar um ⋯ escondido, então ele fica à
+   vista — discreto, sem fundo, sobre a superfície do próprio cartão. */
+.axxa-root button.axxa-tile-more {
+  position: absolute;
+  right: var(--axxa-1);
+  bottom: var(--axxa-1);
+  width: 32px;
+  height: 32px;
+  background-color: transparent;
+  color: var(--text-faint);
+}
+
+.axxa-root .axxa-tile-name,
+.axxa-root .axxa-tile-meta {
+  padding-right: 38px;
+}

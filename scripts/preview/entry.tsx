@@ -698,7 +698,10 @@ const SKILL_FILES = new Map<string, string>([
 
 /** Um TFile de mentira que PASSA no `instanceof TFile` — é o que decide se
  *  "Open note" funciona ou cai no "Not found". */
-function fakeFile(path: string, mtime = 50) {
+// mtime plausível: com o 50 de antes (50ms depois de 1970) o cartão do
+// skill dizia "Edited 1970-01-01" — o preview mentindo sobre a única
+// informação que o rodapé do cartão carrega.
+function fakeFile(path: string, mtime = Date.now() - 3 * 86400000) {
   const f = Object.create(TFile.prototype) as TFile & {
     path: string;
     basename: string;
