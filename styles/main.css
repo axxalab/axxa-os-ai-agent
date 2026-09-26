@@ -4963,7 +4963,10 @@ body.is-mobile .axxa-root .axxa-history-more {
 .axxa-root .axxa-things {
   display: flex;
   flex-direction: column;
-  gap: var(--axxa-1);
+  /* Oito, não quatro: a linha já é alta (brasão de 36px), e com quatro o que
+     separava dois projetos era menos do que separa o ícone do texto DENTRO de
+     um deles — a lista lia como um bloco só. */
+  gap: var(--axxa-2);
 }
 
 /* A linha e o ⋯ são dois botões lado a lado — botão dentro de botão não
@@ -5240,6 +5243,60 @@ body.is-mobile .axxa-root .axxa-history-more {
   padding-bottom: var(--axxa-3);
 }
 
+/* O botão de CONCLUIR um formulário (salvar) gruda na base da folha: num
+   formulário longo ele ficava lá embaixo, e salvar virava uma rolagem.
+   O fundo é o da folha porque o conteúdo passa POR BAIXO dele. */
+.axxa-root .axxa-sheet-body .axxa-form-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: var(--axxa-5);
+  padding-top: var(--axxa-3);
+  background-color: var(--axxa-canvas);
+}
+
+/* A barra de ação de uma LISTA dentro da folha. Aqui o botão não é o fim de um
+   formulário — é o "criar" da tela, e no app inteiro criar tem a forma de
+   pílula na direita, ao alcance do polegar (a home, a tela de cada módulo).
+   Barra larga e roxa atravessando a folha tinha o peso de uma conclusão, que
+   é o oposto do que "New skill" é: um começo. */
+.axxa-root .axxa-sheet-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--axxa-3);
+  margin-top: var(--axxa-5);
+  padding-top: var(--axxa-3);
+  padding-bottom: var(--axxa-1);
+  background-color: var(--axxa-canvas);
+}
+
+/* O secundário fica na esquerda, em texto: ele explica o que faz sem disputar
+   com o que a tela quer que você faça. */
+.axxa-root .axxa-sheet-foot .axxa-home-filter {
+  margin-right: auto;
+}
+
+.axxa-root button.axxa-sheet-cta {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--axxa-2);
+  min-height: 48px;
+  padding: 0 var(--axxa-4);
+  border-radius: 999px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: var(--font-semibold);
+  box-shadow: var(--axxa-shadow, 0 6px 24px rgba(0, 0, 0, 0.35));
+}
+
+.axxa-root button.axxa-sheet-cta:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
 /* O que falta pra salvar, em uma frase. O botão não fica apagado: botão
    apagado não diz o que falta. */
 .axxa-root .axxa-form-problem {
@@ -5405,7 +5462,11 @@ body.is-mobile .axxa-root .axxa-history-more {
 .axxa-root .axxa-tiles {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--axxa-3);
+  /* Mais ar entre as FILEIRAS que entre as colunas: dois cartões lado a lado
+     se leem como um par; dois cartões um embaixo do outro precisam de um
+     corte, senão o rodapé de um parece o topo do outro. */
+  column-gap: var(--axxa-3);
+  row-gap: var(--axxa-5);
 }
 
 /* O cartão e o ⋯ são dois botões: o ⋯ flutua no canto do cartão, porque botão

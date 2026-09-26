@@ -334,15 +334,11 @@ export function SkillsView({
             </div>
           )}
 
-          {/* Criar é a ação da folha, e mora no fim dela: numa folha não há
-              canto onde um botão flutuante possa morar sem tapar conteúdo. */}
-          <div className="axxa-form-foot">
-            <button
-              type="button"
-              className="axxa-form-submit"
-              onClick={criar}
-            >
-              <Icon name="plus" size={18} />
+          {/* Criar é a ação da folha: pílula na direita, grudada na base —
+              a mesma forma que criar tem na home e na tela de cada módulo. */}
+          <div className="axxa-sheet-foot">
+            <button type="button" className="axxa-sheet-cta" onClick={criar}>
+              <Icon name="plus" size={20} />
               <span>New skill</span>
             </button>
           </div>

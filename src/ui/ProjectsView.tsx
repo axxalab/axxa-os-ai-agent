@@ -431,22 +431,11 @@ export function ProjectsView({
             </div>
           )}
 
-          <div className="axxa-form-foot">
-            <button
-              type="button"
-              className="axxa-form-submit"
-              onClick={() => {
-                void session.newChatInProject(aberto);
-                onOpenChat();
-              }}
-            >
-              <Icon name="plus" size={18} />
-              <span>New chat here</span>
-            </button>
-            {/* Editar e apagar ficam AQUI, no fim, e não num ⋯ da barra: a
-                folha já usa o canto direito da barra pro X, e um menu escondido
-                atrás de um ícone que divide espaço com o de fechar é convite
-                pra fechar sem querer. */}
+          <div className="axxa-sheet-foot">
+            {/* Editar e apagar ficam AQUI, à esquerda e em texto, e não num ⋯
+                da barra: a folha já usa o canto direito da barra pro X, e um
+                menu escondido atrás de um ícone que divide espaço com o de
+                fechar é convite pra fechar sem querer. */}
             <button
               type="button"
               className="axxa-home-filter"
@@ -464,6 +453,17 @@ export function ProjectsView({
             >
               <Icon name="settings-2" size={16} />
               <span>Project settings</span>
+            </button>
+            <button
+              type="button"
+              className="axxa-sheet-cta"
+              onClick={() => {
+                void session.newChatInProject(aberto);
+                onOpenChat();
+              }}
+            >
+              <Icon name="plus" size={20} />
+              <span>New chat here</span>
             </button>
           </div>
         </>
@@ -537,9 +537,9 @@ export function ProjectsView({
             </div>
           )}
 
-          <div className="axxa-form-foot">
-            <button type="button" className="axxa-form-submit" onClick={criar}>
-              <Icon name="plus" size={18} />
+          <div className="axxa-sheet-foot">
+            <button type="button" className="axxa-sheet-cta" onClick={criar}>
+              <Icon name="plus" size={20} />
               <span>New project</span>
             </button>
           </div>
