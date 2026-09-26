@@ -1,21 +1,21 @@
 // src/ui/SkillSheet.tsx
-// A folha de CRIAR (e editar) um skill.
+// O FORMULÁRIO de um skill — o conteúdo, não a folha.
 //
-// Um skill é uma nota com frontmatter — e até 0.6.48 criar um era isto:
-// digitar um nome num modal e cair dentro do editor do Obsidian, com um bloco
-// de YAML pela metade e nenhuma pista do que preencher. No telefone, com o
-// teclado cobrindo metade da tela, isso não é criar: é ser abandonado.
+// Ele já foi uma folha própria. Deixou de ser quando Skills virou uma folha
+// inteira (0.6.57): folha dentro de folha não funciona no nosso desenho (a de
+// dentro é posicionada pelo painel da de fora e some junto com a rolagem
+// dele), e mesmo que funcionasse seriam duas cascas empilhadas pro mesmo
+// assunto. Agora ele é um NÍVEL da folha de Skills, como "escolher nota" é um
+// nível da folha de projetos.
 //
-// Aqui a pessoa responde perguntas e o arquivo é problema nosso. A ordem das
-// perguntas é a ordem da cabeça de quem cria: primeiro COMO SE CHAMA e O QUE
-// ELE ESCREVE — que é o skill inteiro —, e só depois os enfeites. Quem parar
-// de responder no meio já tem um skill que funciona.
+// A ordem das perguntas é a ordem da cabeça de quem cria: primeiro COMO SE
+// CHAMA e O QUE ELE ESCREVE — que é o skill inteiro —, e só depois os
+// enfeites. Quem parar de responder no meio já tem um skill que funciona.
 
 import { CHAT_MODES } from "../core/session";
 import { SKILL_ICONS, type SkillDraft } from "../skills/skillFile";
 import { Icon } from "./Icon";
 import { MODULES } from "./modules";
-import { Sheet } from "./Sheet";
 import {
   SheetChoices,
   SheetField,
@@ -25,38 +25,27 @@ import {
   SheetTextarea,
 } from "./SheetForm";
 
-export function SkillSheet({
-  open,
+export function SkillForm({
   editando,
   draft,
   problema,
+  focar,
   onDraft,
-  onClose,
   onSubmit,
 }: {
-  open: boolean;
-  /** Editando um skill que já existe (muda título e botão). */
+  /** Editando um skill que já existe (muda o botão). */
   editando: boolean;
   draft: SkillDraft;
   problema: string | null;
+  /** O campo do nome toma o foco (a folha acabou de abrir neste nível). */
+  focar: boolean;
   onDraft: (d: SkillDraft) => void;
-  onClose: () => void;
   onSubmit: () => void;
 }) {
   const set = (campo: Partial<SkillDraft>) => onDraft({ ...draft, ...campo });
 
   return (
-    <Sheet
-      title={editando ? "Edit skill" : "New skill"}
-      open={open}
-      onClose={onClose}
-      // Nasce grande: ela abre com o teclado (o nome pega o foco), e o teclado
-      // já come metade da tela — pequena, sobraria um campo à vista.
-      startFull
-      // O painel não toma o foco: ele roda DEPOIS do campo e apagaria o
-      // cursor de dentro do nome (a mesma armadilha da busca).
-      focusOnOpen={false}
-    >
+    <>
       {/* O skill como ele vai aparecer na lista. Não é enfeite: é o que faz o
           seletor de ícone e a descrição terem sentido antes de salvar —
           senão são dois campos que só se explicam depois. */}
@@ -81,7 +70,7 @@ export function SkillSheet({
         <SheetInput
           value={draft.name}
           placeholder="Weekly review"
-          autoFocus={open}
+          autoFocus={focar}
           onChange={(name) => set({ name })}
         />
       </SheetField>
@@ -145,6 +134,6 @@ export function SkillSheet({
         problema={problema}
         onSubmit={onSubmit}
       />
-    </Sheet>
+    </>
   );
 }

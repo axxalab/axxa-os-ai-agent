@@ -53,6 +53,10 @@ export function App({
    *  o estado lá dentro a volta caía na lista — perdendo o projeto que a
    *  pessoa tinha aberto dois toques antes. */
   const [projetoAberto, setProjetoAberto] = useState<string | null>(null);
+  /** Projetos e Skills não são TELAS: são folhas que sobem por cima do que
+   *  você está fazendo, entregam o que você foi buscar e descem. Por isso
+   *  moram aqui, e não em `view` — a tela debaixo não se perde. */
+  const [painel, setPainel] = useState<"projects" | "skills" | null>(null);
   /** O recorte da lista, compartilhado pela home e pelo histórico: filtrar
    *  numa e pedir "ver tudo" leva o filtro junto. */
   const [aba, setAba] = useState(SEGMENT_ALL);
@@ -69,10 +73,20 @@ export function App({
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
+  /** O que o menu faz com cada destino: dois viram folha, o resto vira tela. */
+  const navegar = useCallback((id: ViewId) => {
+    if (id === "projects" || id === "skills") {
+      setPainel(id);
+      return;
+    }
+    setView(id);
+  }, []);
+
   /** Entrar num módulo pelo menu: abre a HOME dele. */
   const entrarNoModulo = useCallback((mode: string) => {
     setModulo(mode);
     setView("module");
+    setPainel(null);
     setMenuOpen(false);
   }, []);
 
@@ -142,7 +156,7 @@ export function App({
             setVoltarPara("module");
             setView("chat");
           }}
-          onOpenSkills={() => setView("skills")}
+          onOpenSkills={() => setPainel("skills")}
         />
       ) : view === "chat" ? (
         <ChatView
@@ -154,6 +168,14 @@ export function App({
           // abriu um chat de Agent vindo do Chat, voltar leva ao Agent, que é
           // onde ele mora.
           onBackHome={() => {
+            // Voltar de uma conversa aberta por uma FOLHA reabre a folha, por
+            // cima da tela em que ela estava — a seta desfaz o toque que
+            // trouxe você, e o toque foi na gaveta, não numa tela.
+            if (voltarPara === "projects" || voltarPara === "skills") {
+              setPainel(voltarPara);
+              setView("home");
+              return;
+            }
             if (voltarPara !== "module") {
               setView(voltarPara);
               return;
@@ -164,39 +186,45 @@ export function App({
           }}
           onUseSkill={useSkill}
         />
-      ) : view === "projects" ? (
-        <ProjectsView
-          plugin={plugin}
-          session={session}
-          abertoId={projetoAberto}
-          onAbrir={setProjetoAberto}
-          onBack={() => setView("home")}
-          onOpenChat={() => {
-            setVoltarPara("projects");
-            setView("chat");
-          }}
-        />
-      ) : (
-        <SkillsView
-          plugin={plugin}
-          onBack={() => setView("home")}
-          // Usar uma skill DAQUI leva pra conversa — e a volta tem que trazer
-          // de volta pra cá, não pro último módulo visitado.
-          onUse={(sk) => {
-            setVoltarPara("skills");
-            useSkill(sk);
-          }}
-        />
-      )}
+      ) : null}
+
+      {/* As duas folhas ficam FORA do rodízio de telas: elas não substituem o
+          que está embaixo, sobem por cima. Montadas sempre (é assim que elas
+          deslizam em vez de aparecer), e fechadas por padrão. */}
+      <ProjectsView
+        plugin={plugin}
+        session={session}
+        open={painel === "projects"}
+        abertoId={projetoAberto}
+        onAbrir={setProjetoAberto}
+        onClose={() => setPainel(null)}
+        onOpenChat={() => {
+          // Entrar na conversa FECHA a folha — e a seta de voltar da conversa
+          // reabre ela no mesmo projeto, que é o toque que trouxe você.
+          setPainel(null);
+          setVoltarPara("projects");
+          setView("chat");
+        }}
+      />
+      <SkillsView
+        plugin={plugin}
+        open={painel === "skills"}
+        onClose={() => setPainel(null)}
+        onUse={(sk) => {
+          setPainel(null);
+          setVoltarPara("skills");
+          useSkill(sk);
+        }}
+      />
 
       <Drawer
         plugin={plugin}
         session={session}
         open={menuOpen}
-        view={view}
+        view={painel ?? view}
         modulo={modulo}
         onEnterModule={entrarNoModulo}
-        onNavigate={setView}
+        onNavigate={navegar}
         onClose={closeMenu}
       />
     </div>

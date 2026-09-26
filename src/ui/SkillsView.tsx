@@ -1,15 +1,20 @@
 // src/ui/SkillsView.tsx
-// A tela de SKILLS: os prompts que você guardou.
+// SKILLS — os prompts que você guardou, numa FOLHA.
 //
-// Um skill é uma nota .md na pasta de skills — e é por isso que ele se
-// compartilha, se versiona e se edita no Obsidian como qualquer outra nota.
-// Só que o ARQUIVO é a implementação, não a tela: quem chega aqui quer um
-// prompt guardado, não um bloco de YAML. A nota continua a um toque (o ⋯ abre
-// ela), mas ninguém mais é obrigado a passar por lá pra criar.
+// Era uma página inteira, com barra e botão de voltar. Virou folha (0.6.57)
+// pelo mesmo motivo que projetos: skill não é um LUGAR do app, é uma gaveta
+// que se abre por cima do que você está fazendo e se fecha quando acabou.
+// Página tem endereço e história; gaveta tem um gesto. E o gesto aqui é o
+// certo: você pega um prompt e volta pra onde estava — quase sempre pra
+// escrever com ele.
 //
-// O toque na linha USA o skill: cai no campo de texto já escrito, que é o
-// único motivo de um skill existir. Editar, abrir a nota e apagar moram no ⋯,
-// onde moram as ações de uma conversa — mesma gramática, mesmo lugar.
+// A folha tem DOIS níveis, e não folhas empilhadas: a galeria e o formulário.
+// Folha dentro de folha não funciona no nosso desenho — a de dentro é
+// posicionada pelo painel da de fora e rola junto com ele.
+//
+// Um skill continua sendo uma nota .md na pasta de skills: é por isso que ele
+// se compartilha, se versiona e se edita no Obsidian como qualquer outra nota.
+// O ARQUIVO é a implementação, não a tela.
 
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { Notice, TFile, normalizePath } from "obsidian";
@@ -25,53 +30,63 @@ import {
 import { ensureFolder } from "../core/chatPersistence";
 import { ConfirmModal } from "./modals";
 import { Icon } from "./Icon";
-import { SearchField } from "./SearchField";
-import { SearchSheet } from "./SearchSheet";
-import { SkillSheet } from "./SkillSheet";
+import { Sheet, SheetSearch, SheetTabs } from "./Sheet";
+import { SkillForm } from "./SkillSheet";
 import { openActions } from "./menu";
 import { MODULES, relativeShort } from "./modules";
 import { CHAT_MODES, isChatMode } from "../core/session";
 
-/** O filtro da galeria: o modo em que o skill abre. É a única divisão que um
+/** As abas da galeria: o modo em que o skill abre. É a única divisão que um
  *  skill tem — o resto (nome, prompt) é assunto da busca. */
-const FILTROS: Array<{ id: string; label: string }> = [
+const ABAS: Array<{ id: string; label: string }> = [
   { id: "all", label: "All" },
   ...CHAT_MODES.map((m) => ({ id: m, label: MODULES[m].short })),
 ];
 
 export function SkillsView({
   plugin,
+  open,
   onUse,
-  onBack,
+  onClose,
 }: {
   plugin: AxxaPlugin;
+  open: boolean;
   onUse: (skill: Skill) => void;
-  onBack: () => void;
+  onClose: () => void;
 }) {
   const [, force] = useReducer((n: number) => n + 1, 0);
   const [query, setQuery] = useState("");
-  const [filtro, setFiltro] = useState(FILTROS[0]);
-  const [buscando, setBuscando] = useState(false);
+  const [aba, setAba] = useState("all");
   const [draft, setDraft] = useState<SkillDraft | null>(null);
   /** Caminho do skill em edição — null quando é criação. */
   const [editandoPath, setEditandoPath] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!open) return;
     void plugin.reloadSkills().then(() => force());
     return plugin.onSettingsChange(force);
-  }, [plugin]);
+  }, [plugin, open]);
 
   const skills = plugin.skills;
   const folder = plugin.settings.skillsPath || "axxa-ai/skills";
 
+  /** Quantos skills cada aba tem — a contagem aparece na própria aba, que é
+   *  o que evita tocar numa pra descobrir que está vazia. */
+  const porModo = useMemo(() => {
+    const m = new Map<string, number>([["all", skills.length]]);
+    for (const s of skills) {
+      const k = s.mode ?? "";
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return m;
+  }, [skills]);
+
   const visiveis = useMemo(() => {
     const q = query.trim().toLowerCase();
     // Modo primeiro, busca depois: a busca procura DENTRO do que está sendo
-    // mostrado, senão o filtro viraria mentira na tela.
+    // mostrado, senão a aba viraria mentira na tela.
     const noModo =
-      filtro.id === "all"
-        ? skills
-        : skills.filter((s) => (s.mode ?? "") === filtro.id);
+      aba === "all" ? skills : skills.filter((s) => (s.mode ?? "") === aba);
     if (!q) return noModo;
     return noModo.filter(
       (s) =>
@@ -79,7 +94,7 @@ export function SkillsView({
         s.description.toLowerCase().includes(q) ||
         s.body.toLowerCase().includes(q)
     );
-  }, [skills, query, filtro]);
+  }, [skills, query, aba]);
 
   const problema = draft
     ? skillProblema(
@@ -111,6 +126,11 @@ export function SkillsView({
     });
   };
 
+  const fecharNivel = () => {
+    setDraft(null);
+    setEditandoPath(null);
+  };
+
   /** Grava o rascunho: cria a nota ou reescreve a que está sendo editada. */
   const salvar = async () => {
     if (!draft || problema) return;
@@ -137,8 +157,7 @@ export function SkillsView({
         await plugin.app.vault.create(alvo, conteudo);
       }
       await plugin.reloadSkills();
-      setDraft(null);
-      setEditandoPath(null);
+      fecharNivel();
       force();
     } catch (err) {
       new Notice(
@@ -171,208 +190,164 @@ export function SkillsView({
     force();
   };
 
-  /** A galeria. É função porque ela aparece em DOIS lugares: na página e
-   *  dentro da folha de busca — e um acervo que muda de forma quando você
-   *  procura nele não parece o mesmo acervo. */
-  const galeria = (lista: Skill[], dentroDaBusca = false) => (
-    <div className="axxa-tiles">
-      {lista.map((s) => (
-        <div key={s.id} className="axxa-tile-wrap">
-          <button
-            type="button"
-            className="axxa-tile"
-            onClick={() => {
-              // Fecha a busca ANTES de sair: voltar da conversa e encontrar a
-              // folha ainda aberta por cima seria um fantasma.
-              if (dentroDaBusca) setBuscando(false);
-              onUse(s);
-            }}
-          >
-            {/* O prompt, como ele é. A miniatura do cartão não é ilustração:
-                é o texto que vai cair no campo quando você tocar — a única
-                pergunta que se faz olhando uma lista de skills é "qual deles
-                escreve o quê". */}
-            <span className="axxa-tile-paper">
-              <span className="axxa-tile-text">{s.body}</span>
-            </span>
-            <span className="axxa-tile-name">{s.name}</span>
-            <span className="axxa-tile-meta">
-              <Icon
-                name={isChatMode(s.mode) ? MODULES[s.mode].icon : "sparkles"}
-                size={14}
-              />
-              <span>
-                {s.mtime
-                  ? `Edited ${relativeShort(new Date(s.mtime).toISOString())}`
-                  : s.description || "Prompt"}
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className="axxa-icon-btn axxa-tile-more"
-            aria-label={`Actions for ${s.name}`}
-            onClick={(e) =>
-              openActions(e as unknown as MouseEvent, [
-                {
-                  label: "Use",
-                  icon: "corner-down-left",
-                  run: () => {
-                    if (dentroDaBusca) setBuscando(false);
-                    onUse(s);
-                  },
-                },
-                {
-                  label: "Edit",
-                  icon: "pencil",
-                  run: () => {
-                    setBuscando(false);
-                    editar(s);
-                  },
-                },
-                {
-                  label: "Open note",
-                  icon: "file-text",
-                  run: () => abrirNota(s.path),
-                },
-                {
-                  label: "Delete",
-                  icon: "trash-2",
-                  danger: true,
-                  run: () => void apagar(s),
-                },
-              ])
-            }
-          >
-            <Icon name="more-horizontal" size={18} />
-          </button>
-        </div>
-      ))}
-    </div>
-  );
+  const noFormulario = draft !== null;
 
   return (
-    <div className="axxa-chat">
-      <header className="axxa-topbar is-bare">
-        <button
-          type="button"
-          className="axxa-icon-btn"
-          aria-label="Back"
-          onClick={onBack}
-        >
-          <Icon name="arrow-left" />
-        </button>
-        <span className="axxa-brand axxa-topbar-brand">Skills</span>
-      </header>
-
-      <div className="axxa-messages axxa-home">
-        {/* A busca fica SEMPRE, e não a partir de oito: numa galeria de
-            cartões a fileira de cima é a barra de ferramentas da tela — ela
-            aparecendo e sumindo conforme a contagem faria a página trocar de
-            forma sozinha. O filtro ao lado dela é por modo, que é a única
-            divisão que um skill tem. */}
-        <div className="axxa-toolrow">
-          {/* A pílula é GATILHO, como em toda busca do app: quem toca vai
-              pra folha, onde o campo encosta no topo e a lista cresce contra
-              o teclado. Digitando AQUI, o teclado comia metade da tela e
-              empurrava o botão flutuante pra cima dos cartões — porque ele é
-              `sticky` no fim de um scroller que acabou de encolher. */}
-          <SearchField
+    <Sheet
+      title={
+        noFormulario ? (editandoPath ? "Edit skill" : "New skill") : "Skills"
+      }
+      open={open}
+      onClose={() => {
+        fecharNivel();
+        onClose();
+      }}
+      onBack={noFormulario ? fecharNivel : undefined}
+      // Nasce grande: é um acervo, e acervo pequeno mostra dois cartões.
+      startFull
+      // O painel não toma o foco: no formulário quem toma é o campo do nome, e
+      // o efeito do pai roda depois do do filho (a mesma armadilha da busca).
+      focusOnOpen={false}
+    >
+      {noFormulario ? (
+        <SkillForm
+          editando={editandoPath !== null}
+          draft={draft ?? SKILL_DRAFT_VAZIO}
+          problema={problema}
+          focar={noFormulario}
+          onDraft={setDraft}
+          onSubmit={() => void salvar()}
+        />
+      ) : (
+        <>
+          {/* A busca fica no TOPO da folha, que é onde ela funciona: o campo
+              encosta na borda de cima e a lista cresce contra o teclado. É a
+              mesma peça (SheetSearch) da folha de notas e da de modelos. */}
+          <SheetSearch
             value={query}
             placeholder="Search skills"
-            label="Search skills"
             found={visiveis.length}
             onChange={setQuery}
-            onOpen={() => setBuscando(true)}
           />
-          <button
-            type="button"
-            className="axxa-home-filter"
-            aria-label="Filter skills by mode"
-            onClick={(e) =>
-              openActions(
-                e as unknown as MouseEvent,
-                FILTROS.map((f) => ({
-                  label: f.label,
-                  checked: f.id === filtro.id,
-                  run: () => setFiltro(f),
-                }))
-              )
-            }
-          >
-            <span>{filtro.label}</span>
-            <Icon name="chevron-down" size={16} />
-          </button>
-        </div>
 
-        {visiveis.length > 0 && galeria(visiveis)}
+          {skills.length > 0 && (
+            <SheetTabs
+              label="Filter skills by mode"
+              activeId={aba}
+              onPick={setAba}
+              items={ABAS.map((a) => ({
+                id: a.id,
+                label: a.label,
+                count: porModo.get(a.id === "all" ? "all" : a.id) ?? 0,
+              }))}
+            />
+          )}
 
-        {visiveis.length === 0 && (
-          <div className="axxa-home-empty is-tall">
-            <Icon name="sparkles" size={42} />
-            <p>
-              {skills.length > 0
-                ? "Nothing matches that."
-                : "A skill is a prompt you keep. Write it once, use it in one tap — here, in the composer’s +, or by typing / in any chat."}
-            </p>
-            {skills.length === 0 && (
-              <button
-                type="button"
-                className="axxa-home-pill"
-                onClick={() => void exemplos()}
-              >
-                <Icon name="wand" size={18} />
-                <span>Start with three examples</span>
-              </button>
-            )}
+          {visiveis.length > 0 && (
+            <div className="axxa-tiles">
+              {visiveis.map((s) => (
+                <div key={s.id} className="axxa-tile-wrap">
+                  <button
+                    type="button"
+                    className="axxa-tile"
+                    onClick={() => onUse(s)}
+                  >
+                    {/* O prompt, como ele é. A miniatura do cartão não é
+                        ilustração: é o texto que vai cair no campo quando você
+                        tocar — a única pergunta que se faz olhando uma lista
+                        de skills é "qual deles escreve o quê". */}
+                    <span className="axxa-tile-paper">
+                      <span className="axxa-tile-text">{s.body}</span>
+                    </span>
+                    <span className="axxa-tile-name">{s.name}</span>
+                    <span className="axxa-tile-meta">
+                      <Icon
+                        name={
+                          isChatMode(s.mode) ? MODULES[s.mode].icon : "sparkles"
+                        }
+                        size={14}
+                      />
+                      <span>
+                        {s.mtime
+                          ? `Edited ${relativeShort(
+                              new Date(s.mtime).toISOString()
+                            )}`
+                          : s.description || "Prompt"}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="axxa-icon-btn axxa-tile-more"
+                    aria-label={`Actions for ${s.name}`}
+                    onClick={(e) =>
+                      openActions(e as unknown as MouseEvent, [
+                        {
+                          label: "Use",
+                          icon: "corner-down-left",
+                          run: () => onUse(s),
+                        },
+                        {
+                          label: "Edit",
+                          icon: "pencil",
+                          run: () => editar(s),
+                        },
+                        {
+                          label: "Open note",
+                          icon: "file-text",
+                          run: () => abrirNota(s.path),
+                        },
+                        {
+                          label: "Delete",
+                          icon: "trash-2",
+                          danger: true,
+                          run: () => void apagar(s),
+                        },
+                      ])
+                    }
+                  >
+                    <Icon name="more-horizontal" size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {visiveis.length === 0 && (
+            <div className="axxa-home-empty">
+              <Icon name="sparkles" size={42} />
+              <p>
+                {skills.length > 0
+                  ? "Nothing matches that."
+                  : "A skill is a prompt you keep. Write it once, use it in one tap — here, in the composer’s +, or by typing / in any chat."}
+              </p>
+              {skills.length === 0 && (
+                <button
+                  type="button"
+                  className="axxa-home-pill"
+                  onClick={() => void exemplos()}
+                >
+                  <Icon name="wand" size={18} />
+                  <span>Start with three examples</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Criar é a ação da folha, e mora no fim dela: numa folha não há
+              canto onde um botão flutuante possa morar sem tapar conteúdo. */}
+          <div className="axxa-form-foot">
+            <button
+              type="button"
+              className="axxa-form-submit"
+              onClick={criar}
+            >
+              <Icon name="plus" size={18} />
+              <span>New skill</span>
+            </button>
           </div>
-        )}
-
-        {/* Grudado na base DENTRO do scroller, como nas outras telas: fora
-            dele precisaria de um ancestral posicionado, e `.axxa-chat` não é. */}
-        <button type="button" className="axxa-fab" onClick={criar}>
-          <Icon name="plus" size={20} />
-          <span>New skill</span>
-        </button>
-      </div>
-
-      {/* A MESMA folha de busca das outras telas (SearchSheet). A regra é do
-          app inteiro: buscar é uma tela, não um campo no canto. */}
-      <SearchSheet
-        open={buscando}
-        title="Search skills"
-        placeholder="Search skills"
-        value={query}
-        found={visiveis.length}
-        onChange={setQuery}
-        onClose={() => setBuscando(false)}
-      >
-        {visiveis.length > 0 ? (
-          galeria(visiveis, true)
-        ) : (
-          <div className="axxa-home-empty">
-            <Icon name="search" size={42} />
-            <p>
-              {query.trim()
-                ? "Nothing matches that."
-                : "Type to search your skills."}
-            </p>
-          </div>
-        )}
-      </SearchSheet>
-
-      <SkillSheet
-        open={draft !== null}
-        editando={editandoPath !== null}
-        draft={draft ?? SKILL_DRAFT_VAZIO}
-        problema={problema}
-        onDraft={setDraft}
-        onClose={() => {
-          setDraft(null);
-          setEditandoPath(null);
-        }}
-        onSubmit={() => void salvar()}
-      />
-    </div>
+        </>
+      )}
+    </Sheet>
   );
 }

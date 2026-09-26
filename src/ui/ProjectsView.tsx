@@ -1,14 +1,19 @@
 // src/ui/ProjectsView.tsx
-// A tela de PROJETOS: um assunto que dura mais que uma conversa.
+// PROJETOS — um assunto que dura mais que uma conversa, numa FOLHA.
 //
-// Um projeto é duas coisas juntas — as NOTAS que entram como contexto toda
-// vez que se começa uma conversa ali, e as CONVERSAS que nasceram dela. É a
+// Um projeto é duas coisas juntas: as NOTAS que entram como contexto toda vez
+// que se começa uma conversa ali, e as CONVERSAS que nasceram dele. É a
 // diferença entre anexar as mesmas três notas dez vezes e anexá-las uma vez.
 //
-// São duas telas: a lista e o projeto aberto. A lista existe pra escolher; o
-// projeto aberto é onde se trabalha, e por isso o botão grudado na base dele
-// é "New chat here" — o resto (notas, conversas velhas) é o que sustenta
-// esse toque.
+// Era uma página inteira; virou folha na 0.6.57. Projeto não é um LUGAR do
+// app — é uma gaveta que se abre por cima do que você está fazendo, entrega o
+// que você foi buscar (uma conversa naquele assunto) e se fecha.
+//
+// A folha tem NÍVEIS, e não folhas empilhadas: lista → projeto → (notas,
+// instruções, formulário). Folha dentro de folha não funciona no nosso
+// desenho — a de dentro é posicionada pelo painel da de fora e rola junto com
+// ele. O nível também dá de graça a regra de navegação da casa: a seta
+// desfaz o toque que trouxe você.
 //
 // Nada disso vive no vault: projeto é agrupamento, e mora nas settings. Apagar
 // um projeto não apaga nota nem conversa nenhuma — some o agrupamento, e a
@@ -18,7 +23,6 @@ import { useMemo, useReducer, useState } from "react";
 import { Notice, TFile } from "obsidian";
 import type AxxaPlugin from "../main";
 import type { ChatSession } from "../core/session";
-import type { ChatSummary } from "../core/chatPersistence";
 import {
   makeProjectId,
   projectColor,
@@ -31,7 +35,7 @@ import { ChatList, useChatSummaries } from "./ChatList";
 import { ConfirmModal } from "./modals";
 import { Icon } from "./Icon";
 import { Sheet, SheetGroup, SheetNote, SheetRow, SheetSearch } from "./Sheet";
-import { ProjectSheet } from "./ProjectSheet";
+import { ProjectForm } from "./ProjectSheet";
 import { SheetField, SheetSubmit, SheetTextarea } from "./SheetForm";
 import { openActions } from "./menu";
 import { rankNotes, vaultNotes } from "./notePicker";
@@ -39,31 +43,33 @@ import { rankNotes, vaultNotes } from "./notePicker";
 export function ProjectsView({
   plugin,
   session,
+  open,
   abertoId,
   onAbrir,
   onOpenChat,
-  onBack,
+  onClose,
 }: {
   plugin: AxxaPlugin;
   session: ChatSession;
+  open: boolean;
   /** Qual projeto está aberto. Vem de fora (App) pra sobreviver à ida e volta
-   *  de uma conversa — ver o comentário em App.tsx. */
+   *  de uma conversa: entrar numa conversa fecha a folha, e voltar reabre
+   *  no projeto de onde se saiu. */
   abertoId: string | null;
   onAbrir: (id: string | null) => void;
   onOpenChat: () => void;
-  onBack: () => void;
+  onClose: () => void;
 }) {
   const [, force] = useReducer((n: number) => n + 1, 0);
   const setAbertoId = onAbrir;
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   /** Id do projeto em edição — null quando é criação. */
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  /** A folha de notas está aberta pra qual projeto (null = fechada). */
-  const [vendoNotas, setVendoNotas] = useState<string | null>(null);
-  /** Dentro dela, o nível de ESCOLHER uma nota do vault. */
+  /** Está no nível das notas? E, dentro dele, escolhendo uma do vault? */
+  const [vendoNotas, setVendoNotas] = useState(false);
   const [escolhendo, setEscolhendo] = useState(false);
   const [noteQuery, setNoteQuery] = useState("");
-  /** O texto das instruções em edição (null = folha fechada; "" é válido). */
+  /** O texto das instruções em edição (null = fora desse nível; "" é válido). */
   const [instrucoes, setInstrucoes] = useState<string | null>(null);
 
   const chats = useChatSummaries(plugin);
@@ -157,38 +163,121 @@ export function ProjectsView({
   };
 
   const notasAchadas = useMemo(() => {
-    const p = projects.find((x) => x.id === vendoNotas);
     const todas = rankNotes(vaultNotes(plugin.app), noteQuery);
     // O que já é fonte não aparece: escolher de novo não faria nada, e uma
     // lista onde metade dos toques é no-op ensina a desconfiar dela.
-    return p ? todas.filter((n) => !p.sources.includes(n.path)) : todas;
-  }, [plugin, projects, vendoNotas, noteQuery]);
+    return aberto ? todas.filter((n) => !aberto.sources.includes(n.path)) : todas;
+  }, [plugin, aberto, noteQuery]);
 
-  const naFolha = projects.find((x) => x.id === vendoNotas) ?? null;
+  // ── Qual nível está à vista ───────────────────────────────────────────────
+  // A ordem importa: o formulário e as instruções são abertos DE DENTRO de um
+  // projeto, então eles vêm antes dele na conta.
+  const nivel = draft
+    ? "form"
+    : instrucoes !== null
+      ? "instrucoes"
+      : escolhendo
+        ? "escolher"
+        : vendoNotas
+          ? "notas"
+          : aberto
+            ? "projeto"
+            : "lista";
 
-  /** As notas do projeto numa folha de dois níveis: as que já estão, e o
-   *  vault pra escolher mais. Fora da página porque a página é sobre
-   *  CONVERSAR — o que alimenta o projeto se configura e sai da frente. */
-  const folhaDeNotas = (
+  const TITULOS: Record<string, string> = {
+    form: editandoId ? "Edit project" : "New project",
+    instrucoes: "Custom instructions",
+    escolher: "Add a note",
+    notas: "Project notes",
+    projeto: aberto?.name ?? "Project",
+    lista: "Projects",
+  };
+
+  /** A seta de voltar de cada nível — ela desfaz o toque que trouxe você. */
+  const voltar: Record<string, (() => void) | undefined> = {
+    form: () => {
+      setDraft(null);
+      setEditandoId(null);
+    },
+    instrucoes: () => setInstrucoes(null),
+    escolher: () => setEscolhendo(false),
+    notas: () => setVendoNotas(false),
+    projeto: () => setAbertoId(null),
+    lista: undefined,
+  };
+
+  const fecharTudo = () => {
+    setDraft(null);
+    setEditandoId(null);
+    setInstrucoes(null);
+    setEscolhendo(false);
+    setVendoNotas(false);
+    setNoteQuery("");
+    onClose();
+  };
+
+  return (
     <Sheet
-      title={escolhendo ? "Add a note" : "Project notes"}
-      open={vendoNotas !== null}
-      onClose={() => {
-        setVendoNotas(null);
-        setEscolhendo(false);
-        setNoteQuery("");
-      }}
-      onBack={escolhendo ? () => setEscolhendo(false) : undefined}
+      title={TITULOS[nivel]}
+      open={open}
+      onClose={fecharTudo}
+      onBack={voltar[nivel]}
       startFull
       focusOnOpen={false}
     >
-      {escolhendo ? (
+      {nivel === "form" && (
+        <ProjectForm
+          editando={editandoId !== null}
+          draft={draft ?? PROJECT_DRAFT_VAZIO}
+          problema={problema}
+          focar={nivel === "form"}
+          onDraft={setDraft}
+          onSubmit={() => void salvar()}
+        />
+      )}
+
+      {nivel === "instrucoes" && (
+        <>
+          <SheetField
+            label="Instructions"
+            hint="Sent with every new chat in this project — it adds to how the app already works, it does not replace it."
+          >
+            <SheetTextarea
+              value={instrucoes ?? ""}
+              rows={9}
+              placeholder={
+                "Answer in Portuguese.\nCite the note you took it from.\nShort paragraphs, no bullet lists."
+              }
+              onChange={setInstrucoes}
+            />
+          </SheetField>
+          <SheetSubmit
+            label="Save instructions"
+            onSubmit={() => {
+              const alvo = aberto;
+              const texto = (instrucoes ?? "").trim();
+              if (alvo) {
+                void update((prev) =>
+                  prev.map((x) =>
+                    x.id === alvo.id
+                      ? { ...x, instructions: texto || undefined }
+                      : x
+                  )
+                );
+              }
+              setInstrucoes(null);
+            }}
+          />
+        </>
+      )}
+
+      {nivel === "escolher" && (
         <>
           <SheetSearch
             value={noteQuery}
             placeholder="Search notes"
             found={notasAchadas.length}
-            autoFocus={escolhendo}
+            autoFocus={nivel === "escolher"}
             onChange={setNoteQuery}
           />
           <SheetGroup>
@@ -200,10 +289,10 @@ export function ProjectsView({
                 title={n.basename}
                 note={n.path}
                 onClick={() => {
-                  if (naFolha) void anexarNota(naFolha, n.path);
-                  // Volta pra lista do projeto em vez de fechar: quem veio
-                  // pôr notas quase sempre põe mais de uma, e ver a que
-                  // acabou de entrar é a confirmação de que entrou.
+                  if (aberto) void anexarNota(aberto, n.path);
+                  // Volta pra lista do projeto em vez de fechar: quem veio pôr
+                  // notas quase sempre põe mais de uma, e ver a que acabou de
+                  // entrar é a confirmação de que entrou.
                   setEscolhendo(false);
                   setNoteQuery("");
                 }}
@@ -214,9 +303,11 @@ export function ProjectsView({
             )}
           </SheetGroup>
         </>
-      ) : (
+      )}
+
+      {nivel === "notas" && (
         <SheetGroup>
-          {(naFolha?.sources ?? []).map((path) => (
+          {(aberto?.sources ?? []).map((path) => (
             <SheetRow
               key={path}
               dense
@@ -227,13 +318,13 @@ export function ProjectsView({
                 icon: "x",
                 label: `Remove ${path}`,
                 onClick: () => {
-                  if (naFolha) void tirarNota(naFolha, path);
+                  if (aberto) void tirarNota(aberto, path);
                 },
               }}
               onClick={() => abrirNota(path)}
             />
           ))}
-          {(naFolha?.sources ?? []).length === 0 && (
+          {(aberto?.sources ?? []).length === 0 && (
             <SheetNote>
               No notes yet. What you add here goes in as context on every new
               chat in this project.
@@ -251,114 +342,25 @@ export function ProjectsView({
           />
         </SheetGroup>
       )}
-    </Sheet>
-  );
 
-  /** As instruções do projeto: o que o modelo deve saber em toda conversa
-   *  daqui. Elas SOMAM ao prompt do app — ver agent/conversation.ts. */
-  const folhaDeInstrucoes = (
-    <Sheet
-      title="Custom instructions"
-      open={instrucoes !== null}
-      onClose={() => setInstrucoes(null)}
-      startFull
-      focusOnOpen={false}
-    >
-      <SheetField
-        label="Instructions"
-        hint="Sent with every new chat in this project — it adds to how the app already works, it does not replace it."
-      >
-        <SheetTextarea
-          value={instrucoes ?? ""}
-          rows={9}
-          placeholder={
-            "Answer in Portuguese.\nCite the note you took it from.\nShort paragraphs, no bullet lists."
-          }
-          onChange={setInstrucoes}
-        />
-      </SheetField>
-      <SheetSubmit
-        label="Save instructions"
-        onSubmit={() => {
-          const alvo = aberto;
-          const texto = (instrucoes ?? "").trim();
-          if (alvo) {
-            void update((prev) =>
-              prev.map((x) =>
-                x.id === alvo.id
-                  ? { ...x, instructions: texto || undefined }
-                  : x
-              )
-            );
-          }
-          setInstrucoes(null);
-        }}
-      />
-    </Sheet>
-  );
-
-  // ── O projeto aberto ──────────────────────────────────────────────────────
-  if (aberto) {
-    const meus = chats.filter((c) => aberto.chatIds.includes(c.id));
-    const cor = projectColor(aberto.color);
-    return (
-      <div className="axxa-chat">
-        <header className="axxa-topbar is-bare">
-          {/* Volta pra LISTA, não pra home: a seta desfaz o toque que trouxe
-              você — e aqui o toque foi na lista. */}
-          <button
-            type="button"
-            className="axxa-icon-btn"
-            aria-label="Back to projects"
-            onClick={() => setAbertoId(null)}
-          >
-            <Icon name="arrow-left" />
-          </button>
-          {/* A cor e o ícone do projeto vêm pra BARRA. Eles são a identidade
-              que a pessoa escolheu; sem eles, aberto o projeto, toda tela de
-              projeto fica igual à outra. Grande no corpo da página seria um
-              bloco decorativo ocupando a dobra — aqui cabem em 28px. */}
-          <span
-            className="axxa-thing-mark is-sm"
-            style={{ color: cor }}
-            aria-hidden="true"
-          >
-            <Icon name={aberto.icon} size={16} />
-          </span>
-          <span className="axxa-brand axxa-topbar-brand">{aberto.name}</span>
-          <button
-            type="button"
-            className="axxa-icon-btn axxa-topbar-end"
-            aria-label={`Actions for ${aberto.name}`}
-            onClick={(e) =>
-              openActions(e as unknown as MouseEvent, [
-                { label: "Edit", icon: "pencil", run: () => editar(aberto) },
-                {
-                  label: "Delete",
-                  icon: "trash-2",
-                  danger: true,
-                  run: () => void apagar(aberto),
-                },
-              ])
-            }
-          >
-            <Icon name="more-horizontal" />
-          </button>
-        </header>
-
-        <div className="axxa-messages axxa-home">
-          {/* A pílula diz ONDE isto mora — o projeto é agrupamento e vive nos
-              dados do plugin, dentro do vault, não num serviço nosso. Não diz
-              "privado": as notas daqui vão como contexto pro modelo quando
-              você conversa, e uma pílula que promete o contrário mentiria. */}
+      {nivel === "projeto" && aberto && (
+        <>
+          {/* As pílulas dizem ONDE isto mora — o projeto é agrupamento e vive
+              nos dados do plugin, dentro do vault, não num serviço nosso. Não
+              dizem "privado": as notas daqui vão como contexto pro modelo
+              quando você conversa, e uma pílula que promete o contrário
+              mentiria. */}
           <div className="axxa-pills">
+            <span
+              className="axxa-pill is-mark"
+              style={{ color: projectColor(aberto.color) }}
+            >
+              <Icon name={aberto.icon} size={14} />
+              <span>{aberto.name}</span>
+            </span>
             <span className="axxa-pill">
               <Icon name="hard-drive" size={14} />
               <span>Lives in this vault</span>
-            </span>
-            <span className="axxa-pill">
-              <Icon name="calendar" size={14} />
-              <span>Since {aberto.createdAt.slice(0, 10)}</span>
             </span>
           </div>
 
@@ -379,7 +381,7 @@ export function ProjectsView({
             <button
               type="button"
               className="axxa-duo-card"
-              onClick={() => setVendoNotas(aberto.id)}
+              onClick={() => setVendoNotas(true)}
             >
               <span className="axxa-duo-title">Project notes</span>
               <span className="axxa-duo-note">
@@ -410,161 +412,139 @@ export function ProjectsView({
             </button>
           </div>
 
-          {meus.length > 0 ? (
+          {chats.filter((c) => aberto.chatIds.includes(c.id)).length > 0 ? (
             <>
-              <span className="axxa-section-label">Chats</span>
+              {/* Rótulo DA FOLHA, não da home: dentro dela o versalete
+                  miúdo é a letra de grupo, e o da home é palavra normal. */}
+              <span className="axxa-sheet-group-label">Chats</span>
               <ChatList
                 plugin={plugin}
                 session={session}
-                chats={meus}
+                chats={chats.filter((c) => aberto.chatIds.includes(c.id))}
                 onOpen={onOpenChat}
               />
             </>
           ) : (
-            <div className="axxa-home-empty is-tall">
+            <div className="axxa-home-empty">
               <Icon name="message-circle" size={42} />
               <p>Ask anything. Chats in this project show up here.</p>
             </div>
           )}
 
-          <button
-            type="button"
-            className="axxa-fab"
-            onClick={() => {
-              void session.newChatInProject(aberto);
-              onOpenChat();
-            }}
-          >
-            <Icon name="plus" size={20} />
-            <span>New chat here</span>
-          </button>
-        </div>
+          <div className="axxa-form-foot">
+            <button
+              type="button"
+              className="axxa-form-submit"
+              onClick={() => {
+                void session.newChatInProject(aberto);
+                onOpenChat();
+              }}
+            >
+              <Icon name="plus" size={18} />
+              <span>New chat here</span>
+            </button>
+            {/* Editar e apagar ficam AQUI, no fim, e não num ⋯ da barra: a
+                folha já usa o canto direito da barra pro X, e um menu escondido
+                atrás de um ícone que divide espaço com o de fechar é convite
+                pra fechar sem querer. */}
+            <button
+              type="button"
+              className="axxa-home-filter"
+              onClick={(e) =>
+                openActions(e as unknown as MouseEvent, [
+                  { label: "Edit", icon: "pencil", run: () => editar(aberto) },
+                  {
+                    label: "Delete",
+                    icon: "trash-2",
+                    danger: true,
+                    run: () => void apagar(aberto),
+                  },
+                ])
+              }
+            >
+              <Icon name="settings-2" size={16} />
+              <span>Project settings</span>
+            </button>
+          </div>
+        </>
+      )}
 
-        <ProjectSheet
-          open={draft !== null}
-          editando={editandoId !== null}
-          draft={draft ?? PROJECT_DRAFT_VAZIO}
-          problema={problema}
-          onDraft={setDraft}
-          onClose={() => {
-            setDraft(null);
-            setEditandoId(null);
-          }}
-          onSubmit={() => void salvar()}
-        />
-        {folhaDeNotas}
-        {folhaDeInstrucoes}
-      </div>
-    );
-  }
-
-  // ── A lista ───────────────────────────────────────────────────────────────
-  return (
-    <div className="axxa-chat">
-      <header className="axxa-topbar is-bare">
-        <button
-          type="button"
-          className="axxa-icon-btn"
-          aria-label="Back"
-          onClick={onBack}
-        >
-          <Icon name="arrow-left" />
-        </button>
-        <span className="axxa-brand axxa-topbar-brand">Projects</span>
-      </header>
-
-      <div className="axxa-messages axxa-home">
-        {projects.length > 0 && (
-          <p className="axxa-lead">
-            Notes and chats that belong to the same thing.
-          </p>
-        )}
-
-        {projects.length > 0 ? (
-          <div className="axxa-things">
-            {projects.map((p) => (
-              <div key={p.id} className="axxa-thing-wrap">
-                <button
-                  type="button"
-                  className="axxa-thing"
-                  onClick={() => setAbertoId(p.id)}
-                >
-                  <span
-                    className="axxa-thing-mark"
-                    style={{ color: projectColor(p.color) }}
-                    aria-hidden="true"
+      {nivel === "lista" && (
+        <>
+          {projects.length > 0 ? (
+            <div className="axxa-things">
+              {projects.map((p) => (
+                <div key={p.id} className="axxa-thing-wrap">
+                  <button
+                    type="button"
+                    className="axxa-thing"
+                    onClick={() => setAbertoId(p.id)}
                   >
-                    <Icon name={p.icon} size={20} />
-                  </span>
-                  <span className="axxa-thing-text">
-                    <span className="axxa-thing-name">{p.name}</span>
-                    <span className="axxa-thing-note">
-                      {p.sources.length} note{p.sources.length === 1 ? "" : "s"}{" "}
-                      · {p.chatIds.length} chat
-                      {p.chatIds.length === 1 ? "" : "s"}
+                    <span
+                      className="axxa-thing-mark"
+                      style={{ color: projectColor(p.color) }}
+                      aria-hidden="true"
+                    >
+                      <Icon name={p.icon} size={20} />
                     </span>
-                  </span>
-                  <Icon
-                    name="chevron-right"
-                    size={18}
-                    className="axxa-module-chev"
-                  />
-                </button>
-                <button
-                  type="button"
-                  className="axxa-icon-btn axxa-history-more"
-                  aria-label={`Actions for ${p.name}`}
-                  onClick={(e) =>
-                    openActions(e as unknown as MouseEvent, [
-                      {
-                        label: "Open",
-                        icon: "folder-open",
-                        run: () => setAbertoId(p.id),
-                      },
-                      { label: "Edit", icon: "pencil", run: () => editar(p) },
-                      {
-                        label: "Delete",
-                        icon: "trash-2",
-                        danger: true,
-                        run: () => void apagar(p),
-                      },
-                    ])
-                  }
-                >
-                  <Icon name="more-horizontal" size={18} />
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="axxa-home-empty">
-            <Icon name="folder-open" size={42} />
-            <p>
-              A project keeps notes and chats about the same thing together. Its
-              notes go in as context every time you start a chat there.
-            </p>
-          </div>
-        )}
+                    <span className="axxa-thing-text">
+                      <span className="axxa-thing-name">{p.name}</span>
+                      <span className="axxa-thing-note">
+                        {p.sources.length} note
+                        {p.sources.length === 1 ? "" : "s"} · {p.chatIds.length}{" "}
+                        chat{p.chatIds.length === 1 ? "" : "s"}
+                      </span>
+                    </span>
+                    <Icon
+                      name="chevron-right"
+                      size={18}
+                      className="axxa-module-chev"
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    className="axxa-icon-btn axxa-history-more"
+                    aria-label={`Actions for ${p.name}`}
+                    onClick={(e) =>
+                      openActions(e as unknown as MouseEvent, [
+                        {
+                          label: "Open",
+                          icon: "folder-open",
+                          run: () => setAbertoId(p.id),
+                        },
+                        { label: "Edit", icon: "pencil", run: () => editar(p) },
+                        {
+                          label: "Delete",
+                          icon: "trash-2",
+                          danger: true,
+                          run: () => void apagar(p),
+                        },
+                      ])
+                    }
+                  >
+                    <Icon name="more-horizontal" size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="axxa-home-empty">
+              <Icon name="folder-open" size={42} />
+              <p>
+                A project keeps notes and chats about the same thing together.
+                Its notes go in as context every time you start a chat there.
+              </p>
+            </div>
+          )}
 
-        <button type="button" className="axxa-fab" onClick={criar}>
-          <Icon name="plus" size={20} />
-          <span>New project</span>
-        </button>
-      </div>
-
-      <ProjectSheet
-        open={draft !== null}
-        editando={editandoId !== null}
-        draft={draft ?? PROJECT_DRAFT_VAZIO}
-        problema={problema}
-        onDraft={setDraft}
-        onClose={() => {
-          setDraft(null);
-          setEditandoId(null);
-        }}
-        onSubmit={() => void salvar()}
-      />
-      {folhaDeNotas}
-    </div>
+          <div className="axxa-form-foot">
+            <button type="button" className="axxa-form-submit" onClick={criar}>
+              <Icon name="plus" size={18} />
+              <span>New project</span>
+            </button>
+          </div>
+        </>
+      )}
+    </Sheet>
   );
 }

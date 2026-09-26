@@ -5502,3 +5502,9 @@ body.is-mobile .axxa-root .axxa-history-more {
 .axxa-root .axxa-tile-meta {
   padding-right: 38px;
 }
+
+/* A pílula do projeto aberto leva a COR dele — é a identidade que a pessoa
+   escolheu, e numa folha não há barra de título onde ela possa morar. */
+.axxa-root .axxa-pill.is-mark {
+  border-color: currentColor;
+}
