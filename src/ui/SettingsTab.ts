@@ -28,10 +28,12 @@ import { CHAT_MODES } from "../core/session";
 import { getAllEmbeddingModels } from "../rag/types";
 import { indexVault } from "../rag/indexer";
 import { deleteIndex, RAG_SHARD_SIZE } from "../rag/vectorIndex";
+import { getModelCapabilities } from "../providers/modelCapabilities";
+import { freeTag, compactTokens } from "../usage/freeTag";
 import {
-  getFreeDailyTokens,
-  getModelCapabilities,
-} from "../providers/modelCapabilities";
+  FREE_TOKENS_AS_OF,
+  openaiFreeTierForModel,
+} from "../usage/freeTokens";
 import { buildModelCatalog } from "./modelCatalog";
 import { prettyModelName } from "../providers/modelDescriptions";
 import {
@@ -549,6 +551,11 @@ export class AxxaSettingsTab extends PluginSettingTab {
         })
       );
 
+    // ── a cota diária da OpenAI ───────────────────────────────────────────
+    // Só aqui: é um programa DELES, e prometer a cota nos outros providers
+    // seria inventar desconto.
+    if (p.id === "openai") this.renderFreeTokens(el);
+
     // ── catálogo ──────────────────────────────────────────────────────────
     new Setting(el)
       .setName("Models")
@@ -565,6 +572,67 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     this.modelsEl = el.createDiv({ cls: "axxa-models" });
     this.renderModels();
+  }
+
+  /**
+   * A cota diária de tokens da OpenAI (o "Data controls" do painel deles).
+   *
+   * Isto não LIGA nada: o interruptor é da OpenAI, e mora na conta. O que a
+   * gente guarda aqui é se ele está ligado e em que tier a conta está — as
+   * duas coisas que decidem o NÚMERO. Sem elas, a lista de modelos teria que
+   * escolher entre mostrar uma cota que talvez não exista ou não mostrar
+   * nenhuma; as duas mentem pra metade das contas.
+   */
+  private renderFreeTokens(el: HTMLElement): void {
+    const s = this.s;
+    new Setting(el).setName("Free daily tokens").setHeading();
+
+    new Setting(el)
+      .setName("I share API data with OpenAI")
+      .setDesc(
+        "Their switch, in Data controls on platform.openai.com. Turning it on there gives your account a daily quota at no cost; telling us here is what makes this list show the real numbers."
+      )
+      .addToggle((t) =>
+        t.setValue(s.openaiDataSharing === true).onChange(async (v) => {
+          s.openaiDataSharing = v;
+          await this.save();
+          this.renderModels();
+        })
+      );
+
+    new Setting(el)
+      .setName("Usage tier")
+      .setDesc(
+        "Tiers 1–2 get 250k tokens/day on the big models and 2.5M/day on mini and nano. Tier 3 and up get 1M and 10M."
+      )
+      .addDropdown((d) => {
+        for (const n of [1, 2, 3, 4, 5]) d.addOption(String(n), `Tier ${n}`);
+        d.setValue(String(s.openaiTier ?? 1)).onChange(async (v) => {
+          s.openaiTier = Number(v) || 1;
+          await this.save();
+          this.renderModels();
+        });
+      });
+
+    // Com o programa desligado, a lista abaixo marca com "+" o que ele DARIA.
+    // A conta aqui diz de quantos modelos se está falando — sem ela, o "+"
+    // seria um sinal sem tamanho.
+    if (!s.openaiDataSharing) {
+      const cobertos = (
+        this.catalog.openai ?? s.activeModels.openai ?? []
+      ).filter((m) => openaiFreeTierForModel(m) !== null).length;
+      if (cobertos > 0) {
+        this.hint(
+          el,
+          `${cobertos} model${cobertos === 1 ? "" : "s"} in this list would get a daily quota — they are the ones marked with a "+".`
+        );
+      }
+    }
+
+    this.hint(
+      el,
+      `The quota counts ALL your OpenAI API use, not just this vault — so anything the app says you have left is optimistic. Image models are never covered. Program terms as of ${FREE_TOKENS_AS_OF}.`
+    );
   }
 
   /** A lista de modelos — o único pedaço que os toggles e o filtro remontam. */
@@ -603,14 +671,47 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // (ver src/ui/modelCatalog.ts). Um catálogo de provider vem com dezenas de
     // ids embaralhados; sem isso a lista é indigerível.
     const groups = buildModelCatalog(p.id, models);
-    if (this.kind !== "all" && !groups.some((g) => g.id === this.kind)) {
+    if (
+      this.kind !== "all" &&
+      this.kind !== "free" &&
+      !groups.some((g) => g.id === this.kind)
+    ) {
       this.kind = "all";
     }
 
-    if (groups.length > 1) {
+    // FAVORITOS em cima, sempre abertos. É o mesmo arranjo da folha de
+    // modelos do chat — e a razão é a mesma: quem já escolheu os seus cinco
+    // não devia caçá-los dentro de um catálogo de oitenta a cada visita.
+    if (favs.length > 0) {
+      const sec = list.createDiv({ cls: "axxa-models-fav" });
+      const cab = sec.createDiv({ cls: "axxa-models-fav-head" });
+      const ico = cab.createSpan({ cls: "axxa-models-fav-ico" });
+      setIcon(ico, "star");
+      cab.createSpan({ text: "Favorites" });
+      cab.createSpan({
+        cls: "axxa-model-section-count",
+        text: `${favs.length}/${FAVORITE_LIMIT}`,
+      });
+      for (const m of [...favs].sort()) this.modelRow(sec, p.id, m);
+    }
+
+    // Quantos modelos têm cota ou são de graça — o número decide se o filtro
+    // "Free" aparece. Filtro que leva a uma lista vazia é um toque perdido.
+    const gratis = models.filter((m) =>
+      freeTag(p.id, m, {
+        free: getModelCapabilities(p.id, m).free === true,
+        dataSharing: this.s.openaiDataSharing === true,
+        tier: this.s.openaiTier ?? 1,
+      })
+    );
+
+    if (groups.length > 1 || gratis.length > 0) {
       const filter = list.createDiv({ cls: "axxa-seg axxa-models-filter" });
       const items = [
         { id: "all", label: "All", icon: "layers" },
+        ...(gratis.length > 0
+          ? [{ id: "free", label: "Free", icon: "gift" }]
+          : []),
         ...groups.map((g) => ({ id: g.id, label: g.label, icon: g.icon })),
       ];
       for (const it of items) {
@@ -633,6 +734,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
         };
       }
       this.placeThumb(filter);
+    }
+
+    // "Free" é um recorte que atravessa os papéis (tem chat, tem reasoning,
+    // tem mini), então ele não é um grupo do catálogo: é uma lista chapada.
+    if (this.kind === "free") {
+      const wrap = list.createDiv({ cls: "axxa-model-fam" });
+      for (const m of gratis) this.modelRow(wrap, p.id, m);
+      if (gratis.length === 0) {
+        list.createEl("p", {
+          cls: "axxa-models-empty",
+          text: "Nothing free in this catalog.",
+        });
+      }
+      return;
     }
 
     const visible =
@@ -703,19 +818,20 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const info = row.createDiv({ cls: "axxa-model-info" });
     const title = info.createDiv({ cls: "axxa-model-name" });
     title.createSpan({ text: prettyModelName(m) });
-    // Tag FREE: vem das capabilities do motor — tabela curada, overlay do
-    // catálogo, sufixo `:free` do OpenRouter e a cota diária da OpenAI. Nada
-    // de lista escrita à mão aqui.
-    if (getModelCapabilities(providerId, m).free) {
-      const tag = title.createSpan({ cls: "axxa-tag is-free", text: "free" });
-      const daily = getFreeDailyTokens(providerId, m);
-      if (daily) {
-        // A cota da OpenAI tem condição: só vale compartilhando tráfego.
-        tag.setAttribute(
-          "title",
-          `${(daily / 1000).toLocaleString()}k tokens/day free while you share traffic with OpenAI`
-        );
-      }
+    // A etiqueta separa DE GRAÇA SEMPRE de DE GRAÇA ATÉ UM LIMITE (ver
+    // usage/freeTag.ts). Chamar as duas de "free" faz a segunda parecer a
+    // primeira — e a conta chega.
+    const tag = freeTag(providerId, m, {
+      free: getModelCapabilities(providerId, m).free === true,
+      dataSharing: this.s.openaiDataSharing === true,
+      tier: this.s.openaiTier ?? 1,
+    });
+    if (tag) {
+      const el = title.createSpan({
+        cls: `axxa-tag is-free is-${tag.kind}`,
+        text: tag.label,
+      });
+      el.setAttribute("title", tag.detail);
     }
     info.createDiv({ cls: "axxa-model-id", text: m });
 

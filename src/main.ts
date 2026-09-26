@@ -73,6 +73,14 @@ export interface AxxaSettings {
   activeModels: Record<string, string[]>;
   /** Modelos FAVORITOS por provider — aparecem na tela inicial. Máx. 5. */
   favoriteModels: Record<string, string[]>;
+  /** O "Data controls" da OpenAI está ligado na conta? Ligando lá, ela dá uma
+   *  cota diária de tokens sem custo. É um interruptor DELES — aqui a gente só
+   *  registra, pra poder mostrar a cota certa em vez de prometer desconto que
+   *  a conta não tem. */
+  openaiDataSharing: boolean;
+  /** Usage tier da conta OpenAI (1–5). A cota diária dobra e quadruplica com
+   *  ele (250k/2.5M nos tiers 1–2; 1M/10M do 3 em diante). */
+  openaiTier: number;
   /** Último teste de conexão por provider (Settings → Test). Persiste porque
    *  quem precisa do resultado é o CHAT: ele não vai testar sozinho na hora de
    *  abrir a folha de modelos. */
@@ -200,6 +208,9 @@ const DEFAULT_SETTINGS: AxxaSettings = {
     ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
   },
   favoriteModels: {},
+  // Desligado e tier 1: o padrão é o que a conta nova TEM, não o melhor caso.
+  openaiDataSharing: false,
+  openaiTier: 1,
   providerStatus: {},
   voiceEnabled: true,
   voiceModel: "gpt-4o-mini-transcribe",

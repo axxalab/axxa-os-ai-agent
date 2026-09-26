@@ -251,6 +251,10 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     elevenVoice: "",
     elevenVoices: [],
     skillsPath: "axxa-ai/skills",
+    // O padrão de uma conta nova: programa desligado, tier 1. Com eles
+    // ausentes, o preview mostrava a cota de quem já ligou tudo.
+    openaiDataSharing: false,
+    openaiTier: 1,
     projects: [
       {
         id: "proj-thesis",

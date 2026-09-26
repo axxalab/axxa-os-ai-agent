@@ -4438,9 +4438,52 @@ body.is-mobile .axxa-root .axxa-history-more {
   text-transform: uppercase;
 }
 
+/* Três etiquetas, três significados (ver usage/freeTag.ts):
+   `always` é sem fatura — verde cheio, é uma afirmação;
+   `daily` é a cota já valendo — verde cheio também, porque vale hoje;
+   `offer` é o que você GANHARIA ligando o data-sharing na OpenAI — contorno,
+   não preenchimento: preenchida, ela prometeria um desconto que a conta ainda
+   não tem. */
 .axxa-settings-root .axxa-tag.is-free {
   background-color: var(--background-modifier-success, var(--interactive-accent));
   color: var(--text-on-accent);
+  text-transform: none;
+}
+
+.axxa-settings-root .axxa-tag.is-offer {
+  background-color: transparent;
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-faint);
+}
+
+/* Os favoritos, em cima da lista: mesma ideia da folha de modelos do chat —
+   quem já escolheu os seus cinco não devia caçá-los num catálogo de oitenta. */
+.axxa-settings-root .axxa-models-fav {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--size-4-3);
+  padding-bottom: var(--size-4-2);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.axxa-settings-root .axxa-models-fav-head {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-1) 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+}
+
+.axxa-settings-root .axxa-models-fav-ico {
+  display: inline-flex;
+  color: var(--text-accent);
+}
+
+.axxa-settings-root .axxa-models-fav-ico svg {
+  width: 15px;
+  height: 15px;
 }
 
 .axxa-settings-root .axxa-model-actions {
